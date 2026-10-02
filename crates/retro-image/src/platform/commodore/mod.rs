@@ -295,11 +295,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
     // Wave 5: C64
     Format::new(C64, "Centauri Logo-Editor", &["cle"], cle::decode_cle),
+    Format::new(C64, "Hires-Editor", &["het"], bitmap::decode_hires_editor),
     Format::new(
         C64,
-        "Hires-Editor",
-        &["het"],
-        bitmap::decode_hires_editor,
+        "Interlace Hires Editor",
+        &["ihe"],
+        interlace::decode_interlace_hires_editor,
     ),
     Format::new(
         C64,
