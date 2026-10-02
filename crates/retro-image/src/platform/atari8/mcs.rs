@@ -52,9 +52,9 @@ pub(super) fn decode_mcs(data: &[u8]) -> Result<Image, DecodeError> {
     let mut image = Image::new(320, LINES as u32);
     for y in 0..LINES {
         let objects = line_objects(data, y);
-        for x in 0..320 {
+        for (x, &object) in objects.iter().enumerate() {
             let playfield = playfield_pixel(data, x, y);
-            let color = gtia::resolve(PRIOR, objects[x], playfield, &colors);
+            let color = gtia::resolve(PRIOR, object, playfield, &colors);
             image.set(x as u32, y as u32, register_rgb(color));
         }
     }

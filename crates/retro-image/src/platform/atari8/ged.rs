@@ -30,9 +30,10 @@
 //!     relative to the left edge of the picture, in colour clocks; the
 //!     writes use the hardware's (`$30` is the left edge);
 //!   - the 200 lines of 40 bytes of Graphics 15 at 3302.
-//!   Pixel value 0 shows COLBK, 1-3 playfield 0-2. A PRIOR value with bits 6-7
-//!   (GTIA modes 9-11, which RECOIL draws differently) is rejected, as no
-//!   sample uses one.
+//!   - Pixel value 0 shows COLBK, 1-3 playfield 0-2.
+//!
+//! A PRIOR value with bits 6-7 (GTIA modes 9-11, which RECOIL draws
+//! differently) is rejected, as no sample uses one.
 
 use super::antic::Bitmap;
 use super::gtia::{self, Colors, Pmg};

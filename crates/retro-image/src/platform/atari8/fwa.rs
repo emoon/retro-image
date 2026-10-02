@@ -115,9 +115,12 @@ fn interrupt_lines(data: &[u8]) -> Option<Vec<bool>> {
     (*data.get(pos)? == 0x41).then_some(lines)
 }
 
+/// The registers (as indexes into [`REGISTERS`]) and colours a handler writes.
+type Writes = Vec<(usize, u8)>;
+
 /// The DLI handlers up to the end of `data`, each as (register index in
 /// [`REGISTERS`], colour) writes. `None` if the data isn't exactly handlers.
-fn parse_handlers(data: &[u8]) -> Option<Vec<Vec<(usize, u8)>>> {
+fn parse_handlers(data: &[u8]) -> Option<Vec<Writes>> {
     let mut handlers = Vec::new();
     let mut pos = 0;
     while pos < data.len() {
@@ -132,8 +135,8 @@ fn parse_handlers(data: &[u8]) -> Option<Vec<Vec<(usize, u8)>>> {
 }
 
 /// `LDA #c, STA WSYNC, STA reg` and further `LDA #c, STA reg` pairs.
-fn parse_writes(mut rest: &[u8]) -> Option<(Vec<(usize, u8)>, &[u8])> {
-    let mut writes: Vec<(usize, u8)> = Vec::new();
+fn parse_writes(mut rest: &[u8]) -> Option<(Writes, &[u8])> {
+    let mut writes = Writes::new();
     while let [0xa9, color, tail @ ..] = rest {
         let tail = if writes.is_empty() {
             tail.strip_prefix(&[0x8d, 0x0a, 0xd4])?
