@@ -4,6 +4,7 @@
 //! [`palette`]; ANTIC/GTIA bitmap rendering in [`antic`].
 
 mod antic;
+mod apac;
 mod font;
 mod koala;
 mod mad_studio;
@@ -34,6 +35,19 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "AtariCAD", &["drg"], screen::decode_drg),
     Format::new(ATARI8, "Mad Designer", &["mbg"], screen::decode_mbg),
     Format::new(ATARI8, "Graphics 9", &["gr9"], screen::decode_gr9),
+    Format::new(ATARI8, "APAC 80x96", &["256", "ap2"], apac::decode_planar),
+    Format::new(
+        ATARI8,
+        "APAC 80x96 interleaved",
+        &["apa", "apc", "plm"],
+        apac::decode_interleaved,
+    ),
+    Format::new(
+        ATARI8,
+        "APAC 80x192 interlaced",
+        &["ap3", "apv", "dgi", "dgp", "esc", "ilc", "pzm"],
+        apac::decode_interlaced,
+    ),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
     Format::new(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
