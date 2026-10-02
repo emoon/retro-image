@@ -217,41 +217,36 @@ impl Frame {
 
     /// Converts to RGB, dropping the leftmost `crop` pixels.
     pub(super) fn to_image(&self, crop: usize) -> Image {
-        to_image(crop, WIDTH - crop, self.height, |x, y| rgb(self.get(x, y)))
+        self.crop(crop, WIDTH - crop, self.height)
     }
 
     /// Converts the leftmost `width` pixels to RGB.
     pub(super) fn to_image_width(&self, width: usize) -> Image {
-        to_image(0, width.min(WIDTH), self.height, |x, y| rgb(self.get(x, y)))
+        self.crop(0, width.min(WIDTH), self.height)
     }
 
     /// Blends two interlace frames into one picture, dropping the leftmost `crop` pixels.
     pub(super) fn blend(&self, other: &Frame, crop: usize) -> Image {
         let height = self.height.min(other.height);
-        to_image(crop, WIDTH - crop, height, |x, y| {
-            mix(rgb(self.get(x, y)), rgb(other.get(x, y)))
-        })
+        let width = WIDTH - crop;
+        Image::blend(&[
+            &self.crop(crop, width, height),
+            &other.crop(crop, width, height),
+        ])
     }
-}
 
-/// Per-channel average of two `0xRRGGBB` colours, rounding down.
-pub(super) fn mix(a: u32, b: u32) -> u32 {
-    ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1) + (a & b & 0x010101)
-}
-
-fn to_image(
-    crop: usize,
-    width: usize,
-    height: usize,
-    pixel: impl Fn(usize, usize) -> u32,
-) -> Image {
-    let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            image.set(x as u32, y as u32, pixel(x + crop, y));
-        }
+    /// The `width`×`height` pixels starting at column `left`, as RGB.
+    fn crop(&self, left: usize, width: usize, height: usize) -> Image {
+        let indices: Vec<u8> = self
+            .pixels
+            .chunks_exact(WIDTH)
+            .take(height)
+            .flat_map(|row| &row[left..left + width])
+            .map(|&color| color & 15)
+            .collect();
+        Image::from_indexed(width as u32, height as u32, &indices, &PALETTE)
+            .unwrap_or_else(|_| unreachable!("indices are masked to the palette"))
     }
-    image
 }
 
 #[cfg(test)]
@@ -303,11 +298,5 @@ mod tests {
     fn short_data_is_rejected() {
         let bitmap = [0u8; 100];
         assert!(Frame::hires(&Bitmap::hires(&bitmap, &bitmap), 200).is_none());
-    }
-
-    #[test]
-    fn mix_averages_channels() {
-        assert_eq!(mix(0xffffff, 0x000000), 0x7f7f7f);
-        assert_eq!(mix(0x020406, 0x020406), 0x020406);
     }
 }
