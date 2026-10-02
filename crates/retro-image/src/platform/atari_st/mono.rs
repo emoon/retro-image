@@ -1,7 +1,7 @@
 //! Monochrome formats: Public Painter (`CMP`), STAD (`PAC`), MegaPaint
-//! (`BLD`), DEGAS Elite fonts (`FNT`), brushes (`BRU`) and icons (`ICN`),
-//! Picworks (`CP3`), ColorSTar objects (`OBJ`) and Calamus Raster Graphic
-//! (`CRG`). Further sources are given per decoder.
+//! (`BLD`), DEGAS Elite and GDOS fonts (`FNT`), brushes (`BRU`) and icons
+//! (`ICN`), Picworks (`CP3`), ColorSTar objects (`OBJ`, also in colour) and
+//! Calamus Raster Graphic (`CRG`). Further sources are given per decoder.
 //!
 //! Sources:
 //! - STAD: <https://temlib.org/AtariForumWiki/index.php/STAD_file_format>
@@ -14,8 +14,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, mono_image};
-use crate::bytes::{be16, be32};
+use super::common::{MAX_PIXELS, MONO_PALETTE, crop, mono_image, planar_image, st_palette};
+use crate::bytes::{be16, be32, le16, le32};
 use crate::{DecodeError, Image};
 
 /// Public Painter: escape byte, size byte (0 = 640x400, 200 = 640x800),
@@ -159,6 +159,83 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     mono_image(&bitmap, 256, (rows * 16) as u32, 32).ok_or(DecodeError::Unrecognized)
 }
 
+/// GDOS font: 88-byte header, character offset table and one raster form
+/// holding all characters side by side.
+/// Sources: <https://temlib.org/AtariForumWiki/index.php/GDOS_Font_file_format>,
+/// Atari Compendium appendix C. Observed from `recoil2png` output and
+/// black-box tests: the byte order is taken from the point size (1-255 in
+/// one of the two orders; the Motorola flag is ignored), and characters are
+/// laid out as running text, wrapping at 16 times the form height; columns
+/// past the form are blank.
+pub(super) fn decode_gdos_fnt(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_gdos_fnt_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_gdos_fnt_inner(data: &[u8]) -> Option<Image> {
+    let big_endian = match (le16(data, 2)?, be16(data, 2)?) {
+        (1..=255, _) => false,
+        (_, 1..=255) => true,
+        _ => return None,
+    };
+    let word = |at: usize| {
+        if big_endian {
+            be16(data, at)
+        } else {
+            le16(data, at)
+        }
+        .map(usize::from)
+    };
+    let long = |at: usize| {
+        if big_endian {
+            be32(data, at)
+        } else {
+            le32(data, at)
+        }
+        .map(|v| v as usize)
+    };
+    let (first, last) = (word(36)?, word(38)?);
+    let offsets_at = long(72)?;
+    let form_at = long(76)?;
+    let (form_width, form_height) = (word(80)?, word(82)?);
+    if first > last || form_height == 0 {
+        return None;
+    }
+    let form = data.get(form_at..form_at.checked_add(form_width * form_height)?)?;
+    let offsets: Vec<usize> = (0..=last - first + 1)
+        .map(|i| word(offsets_at + i * 2))
+        .collect::<Option<_>>()?;
+    // Lay the characters out as running text.
+    let width = 16 * form_height;
+    let mut placed = Vec::with_capacity(offsets.len());
+    let (mut x, mut line) = (0, 0);
+    for pair in offsets.windows(2) {
+        let w = pair[1].saturating_sub(pair[0]);
+        if x > 0 && x + w > width {
+            (x, line) = (0, line + 1);
+        }
+        placed.push((pair[0], w, x, line));
+        x += w;
+    }
+    let height = (line + 1) * form_height;
+    if width.checked_mul(height)? > MAX_PIXELS {
+        return None;
+    }
+    let mut ink = alloc::vec![0u8; width * height];
+    for (src, w, x, line) in placed {
+        for col in 0..w.min(width - x) {
+            let sx = src + col;
+            if sx >= form_width * 8 {
+                break;
+            }
+            for y in 0..form_height {
+                ink[(line * form_height + y) * width + x + col] =
+                    form[y * form_width + sx / 8] >> (7 - sx % 8) & 1;
+            }
+        }
+    }
+    Image::from_indexed(width as u32, height as u32, &ink, &MONO_PALETTE).ok()
+}
+
 /// DEGAS Elite brush: 8x8 pixels, one byte (0 or 1) each.
 /// Source: <http://fileformats.archiveteam.org/wiki/DEGAS_Elite_brush> (size);
 /// the byte-per-pixel layout is derived from the sample file.
@@ -258,20 +335,56 @@ fn parse_hex(token: &str) -> Option<usize> {
         .filter(|&v| v <= 0xffff)
 }
 
-/// ColorSTar / MonoSTar object (monochrome only): width - 1, height - 1,
-/// plane count (1), then word-aligned rows. Derived from sample files and
-/// `recoil2png` output (the survey found no documentation).
+/// ColorSTar / MonoSTar object: width - 1, height - 1, plane count, then
+/// word-aligned rows. Monochrome objects start with the header; colour ones
+/// (4 planes, word-interleaved) are preceded by 16 ST palette words written
+/// as decimal text lines. Derived from sample files and `recoil2png` output
+/// (the survey found no documentation).
 pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
-    let word = |i: usize| be16(data, i).map(usize::from);
+    let (palette, body) = match obj_text_palette(data) {
+        Some((palette, body)) => (Some(palette), body),
+        None => (None, data),
+    };
+    let word = |i: usize| be16(body, i).map(usize::from);
     let (width, height, planes) = match (word(0), word(2), word(4)) {
         (Some(w), Some(h), Some(p)) => (w + 1, h + 1, p),
         _ => return Err(DecodeError::Unrecognized),
     };
-    let row_len = width.div_ceil(16) * 2;
-    if planes != 1 || data.len() != 6 + row_len * height {
+    let words = width.div_ceil(16);
+    let planes_wanted = if palette.is_some() { 4 } else { 1 };
+    if planes != planes_wanted || body.len() != 6 + words * 2 * planes * height {
         return Err(DecodeError::Unrecognized);
     }
-    mono_image(&data[6..], width as u32, height as u32, row_len).ok_or(DecodeError::Unrecognized)
+    let bitmap = &body[6..];
+    let image = match palette {
+        None => mono_image(bitmap, width as u32, height as u32, words * 2),
+        Some(palette) => {
+            let padded = (words * 16) as u32;
+            planar_image(bitmap, padded, height as u32, 4, &palette, 1)
+                .map(|image| crop(&image, width as u32, height as u32))
+        }
+    };
+    image.ok_or(DecodeError::Unrecognized)
+}
+
+/// The 16 decimal palette lines (CR LF) of a colour object, as colours,
+/// and the data after them.
+fn obj_text_palette(data: &[u8]) -> Option<(Vec<u32>, &[u8])> {
+    let mut words = Vec::with_capacity(16);
+    let mut rest = data;
+    for _ in 0..16 {
+        let end = rest.iter().take(6).position(|&b| b == b'\r')?;
+        let (digits, tail) = rest.split_at(end);
+        if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
+            return None;
+        }
+        let value = digits
+            .iter()
+            .fold(0u32, |v, &d| v * 10 + u32::from(d - b'0'));
+        words.push(u16::try_from(value).ok().filter(|&w| w <= 0xfff)?);
+        rest = tail.strip_prefix(b"\r\n")?;
+    }
+    Some((st_palette(&words), rest))
 }
 
 /// Calamus Raster Graphic: 42-byte header, byte RLE.
@@ -306,4 +419,45 @@ fn decode_crg_inner(data: &[u8]) -> Option<Image> {
         }
     }
     mono_image(&bitmap, width as u32, height as u32, row_len)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn colour_object_reads_the_decimal_palette() {
+        let mut data = Vec::new();
+        for i in 0..16u16 {
+            data.extend_from_slice(alloc::format!("{}\r\n", (i % 8) * 0x111).as_bytes());
+        }
+        // 1x1 pixel, 4 planes: colour 3 (planes 0 and 1 set).
+        data.extend_from_slice(&[0, 0, 0, 0, 0, 4, 0x80, 0, 0x80, 0, 0, 0, 0, 0]);
+        let image = decode_obj(&data).unwrap();
+        assert_eq!(image.get(0, 0), 0x6d6d6d);
+        data[0] = b'x';
+        assert!(decode_obj(&data).is_err());
+    }
+
+    #[test]
+    fn gdos_font_wraps_at_sixteen_form_heights() {
+        // Big-endian, point 8, characters 'A' and 'B', 1 pixel high,
+        // widths 10 and 8: 'B' wraps (16 pixels per line).
+        let mut data = alloc::vec![0u8; 88];
+        data[3] = 8;
+        data[37] = b'A';
+        data[39] = b'B';
+        data[72..76].copy_from_slice(&88u32.to_be_bytes());
+        data[76..80].copy_from_slice(&94u32.to_be_bytes());
+        data[81] = 3; // form width in bytes
+        data[83] = 1; // form height
+        data.extend_from_slice(&[0, 0, 0, 10, 0, 18]);
+        data.extend_from_slice(&[0x80, 0x20, 0x80]);
+        let image = decode_gdos_fnt(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (16, 2));
+        assert_eq!(image.get(0, 0), 0);
+        assert_eq!(image.get(0, 1), 0);
+        assert_eq!(image.get(1, 1), 0xffffff);
+        assert_eq!(image.get(6, 1), 0);
+    }
 }

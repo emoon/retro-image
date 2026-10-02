@@ -14,6 +14,7 @@ mod duo;
 mod falcon;
 mod falcon_paint;
 mod gem_img;
+mod grafix;
 mod iff;
 mod imagic;
 mod lz4;
@@ -146,6 +147,7 @@ pub(super) static FORMATS: &[Format] = &[
     st("QuantumPaint", &["pbx"], quantumpaint::decode_pbx),
     st("MegaPaint", &["bld"], mono::decode_bld),
     st("DEGAS Elite font", &["fnt"], mono::decode_fnt),
+    st("GDOS font", &["fnt"], mono::decode_gdos_fnt),
     st("DEGAS Elite brush", &["bru"], mono::decode_bru),
     st(
         "DEGAS Elite block",
@@ -224,7 +226,7 @@ pub(super) static FORMATS: &[Format] = &[
         simple::decode_aim_col,
     ),
     st("ColorSTar object", &["obj"], mono::decode_obj),
-    st("Grafix", &["grx"], simple::decode_grx).signature(),
+    st("Grafix", &["grx"], grafix::decode_grx).signature(),
     st("Imagic", &["ic1", "ic2", "ic3"], imagic::decode_ic).signature(),
 ];
 

@@ -10,6 +10,9 @@
 //!   scaled as `v * 255 / 1000`, truncated; monochrome set bits are black;
 //!   16, 24 and 32-"plane" XIMG pictures hold chunky RGB565, RGB and xRGB
 //!   pixels; TIMG pictures are true bitplanes, see [`timg_color`].
+//! - Reverse engineered from sample files and black-box tests with
+//!   `recoil2png` (hand-modified copies): FSNAP's line-above copies and
+//!   256-byte literals, 8-plane grey levels and the 24-bit BGR dialect.
 
 use alloc::vec::Vec;
 
@@ -60,6 +63,9 @@ fn header(data: &[u8]) -> Option<Header> {
 
 fn decode(data: &[u8]) -> Option<Image> {
     let h = header(data)?;
+    if h.header_len == 18 && be16(data, 16)? == 3 {
+        return bgr_literals(&data[h.header_len..], &h);
+    }
     let palette = palette(data, &h)?;
     let timg = timg_bits(data, &h);
     if h.planes > 8 && timg.is_none() {
@@ -166,6 +172,33 @@ fn true_color(data: &[u8], h: &Header) -> Option<Image> {
     Some(image)
 }
 
+/// A true-colour dialect flagged by a ninth header word of 3 (the planes
+/// and pattern words are ignored): lines of chunky blue, green, red pixels
+/// stored only as `0x80, n` records followed by `n` pixels. Derived from a
+/// sample file and black-box tests with `recoil2png`, which rejects
+/// pattern, solid and repeat records in it.
+fn bgr_literals(data: &[u8], h: &Header) -> Option<Image> {
+    let total = h.width * h.height;
+    let mut image = Image::new(h.width as u32, h.height as u32);
+    let (mut pos, mut pixel) = (0, 0);
+    while pixel < total {
+        if *data.get(pos)? != 0x80 {
+            return None;
+        }
+        let n = usize::from(*data.get(pos + 1)?);
+        let run = data.get(pos + 2..pos + 2 + n * 3)?;
+        pos += 2 + n * 3;
+        for p in run.chunks_exact(3) {
+            if pixel < total {
+                let color = u32::from_be_bytes([0, p[2], p[1], p[0]]);
+                image.set((pixel % h.width) as u32, (pixel / h.width) as u32, color);
+            }
+            pixel += 1;
+        }
+    }
+    Some(image)
+}
+
 /// Pixels clearly taller or wider than square are doubled on output
 /// (observed from `recoil2png` output).
 fn pixel_scale(h: &Header) -> (usize, usize) {
@@ -193,6 +226,20 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
     // One extra word (seen as 0 or 1) still means no palette.
     if extra.len() <= 2 && h.planes <= 4 {
         return Some(super::common::default_vdi_palette(colors));
+    }
+    // 256 colours without a palette are inverted grey levels. Without an
+    // `XIMG` header the planes count from the most significant bit (black-box
+    // tests with `recoil2png`, moving the samples' rasters between headers).
+    if h.planes == 8 && (extra.len() <= 2 || extra == b"XIMG\0\0") {
+        let msb_first = extra.len() <= 2;
+        return Some(
+            (0..=255u8)
+                .map(|i| {
+                    let level = 255 - u32::from(if msb_first { i.reverse_bits() } else { i });
+                    level * 0x010101
+                })
+                .collect(),
+        );
     }
     if extra.len() >= 6 + colors * 6 && &extra[..4] == b"XIMG" && be16(extra, 4)? == 0 {
         return (0..colors)
@@ -262,9 +309,16 @@ fn unpack(data: &[u8], pattern_len: usize, line_len: usize, lines: usize) -> Opt
             0 => {
                 let n = usize::from(byte(pos)?);
                 if n == 0 {
-                    // Some snapshot tools write `0, 0, n` records whose
-                    // meaning is unknown.
-                    return None;
+                    // Snapshot tools (FSNAP) write `0, 0, n` inside lines:
+                    // `n + 1` bytes copied from the line above (derived from
+                    // sample files and `recoil2png` output).
+                    let count = usize::from(byte(pos + 1)?) + 1;
+                    pos += 2;
+                    let start = out.len().checked_sub(line_len)?;
+                    for i in start..start + count {
+                        out.push(out[i]);
+                    }
+                    continue;
                 }
                 let pattern = data.get(pos + 1..pos + 1 + pattern_len)?;
                 pos += 1 + pattern_len;
@@ -273,7 +327,11 @@ fn unpack(data: &[u8], pattern_len: usize, line_len: usize, lines: usize) -> Opt
                 }
             }
             0x80 => {
-                let n = usize::from(byte(pos)?);
+                // A zero count means 256 (FSNAP; derived from sample files).
+                let n = match byte(pos)? {
+                    0 => 256,
+                    n => usize::from(n),
+                };
                 out.extend_from_slice(data.get(pos + 1..pos + 1 + n)?);
                 pos += 1 + n;
             }
@@ -297,6 +355,19 @@ mod tests {
         let data = [0, 0, 0xff, 2, 0x81, 0x80, 1, 0x12, 0, 1, 0xab, 0xcd];
         let out = unpack(&data, 2, 4, 2).unwrap();
         assert_eq!(out, [0xff, 0x12, 0xab, 0xcd, 0xff, 0x12, 0xab, 0xcd]);
+    }
+
+    #[test]
+    fn fsnap_copies_from_the_line_above_and_long_literals() {
+        // Line 1: literal 1 2 3; line 2: copy 2 bytes from above, solid 0.
+        let data = [0x80, 3, 1, 2, 3, 0, 0, 1, 0x01];
+        assert_eq!(unpack(&data, 1, 3, 2).unwrap(), [1, 2, 3, 1, 2, 0]);
+        let mut long = alloc::vec![0x80, 0];
+        long.extend(1..=255u8);
+        long.push(0);
+        assert_eq!(unpack(&long, 1, 256, 1).unwrap().len(), 256);
+        // A copy needs a line above.
+        assert_eq!(unpack(&[0, 0, 1], 1, 3, 1), None);
     }
 
     #[test]
