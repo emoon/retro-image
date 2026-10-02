@@ -11,6 +11,7 @@ mod font;
 mod graph2font;
 mod gtia;
 mod hip;
+mod ice;
 mod inflate;
 mod interlace;
 mod koala;
@@ -233,4 +234,18 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
+    // Wave 4: charset interlace
+    Format::new(ATARI8, "ICE MIN", &["imn"], ice::decode_imn),
+    Format::new(ATARI8, "ICE CIN", &["icn"], ice::decode_icn),
+    Format::new(ATARI8, "ICE PCIN", &["ipc"], ice::decode_ipc),
+    Format::new(ATARI8, "ICE PCIN+", &["ip2"], ice::decode_ip2),
+    Format::new(ATARI8, "Super IRG", &["irg"], ice::decode_irg),
+    Format::new(ATARI8, "Super IRG 2", &["ir2"], ice::decode_ir2),
+    Format::new(ATARI8, "DIN", &["din"], ice::decode_din),
+    Format::new(
+        ATARI8,
+        "Interlace Character Editor font",
+        &["ice"],
+        ice::decode_ice,
+    ),
 ];
