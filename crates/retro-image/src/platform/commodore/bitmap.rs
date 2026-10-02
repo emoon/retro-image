@@ -21,6 +21,7 @@
 //! | Cheese | <http://fileformats.archiveteam.org/wiki/Cheese> (size); load `$8000`, bitmap `$8000`, screen `$C200`, colour `$C800`, background `$CFFD`: reverse engineered from 3 samples and checked against `recoil2png` output (changing `$CFFD` changes its background) |
 //! | Rainbow Painter | <http://fileformats.archiveteam.org/wiki/Rainbow_Painter> (size); load `$5C00`, screen `$5C00`, bitmap `$6000`, colour `$8000`: reverse engineered from 2 samples. No byte sets the background: `recoil2png` shows black whatever the unused bytes hold |
 //! | Face Painter | Koala layout at `$4000` plus one trailing byte: reverse engineered from 3 samples by mutating bytes and watching `recoil2png` (bitmap `$4000`, screen `$5F40`, colour `$6328`, background `$6710`; the byte after it changes nothing) |
+//! | Dolphin Ed | Drazpaint's memory map at `$5800` with the background at `$5FE8` (offset 2026), 10242 bytes: reverse engineered from 1 sample by mutating bytes and watching `recoil2png`. The background is found by changing it (the sample's own is black) |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
@@ -114,6 +115,14 @@ const fn koala_at(load: u16, sizes: &'static [usize]) -> Multicolor {
 
 pub(super) const KOALA: Multicolor = koala_at(0x6000, &[10003]);
 const FACE_PAINTER: Multicolor = koala_at(0x4000, &[10004]);
+const DOLPHIN_ED: Multicolor = Multicolor {
+    load: 0x5800,
+    sizes: &[10242],
+    bitmap: 0x6000,
+    screen: 0x5c00,
+    color: 0x5800,
+    background: 0x5fe8,
+};
 const RUN_PAINT: Multicolor = koala_at(0x6000, &[10003, 10006]);
 const INTERPAINT_LORES: Multicolor = koala_at(0x4000, &[10003]);
 const CREATE_WITH_GARFIELD: Multicolor = koala_at(0x8000, &[10007]);
@@ -276,6 +285,10 @@ pub(super) fn decode_koala(data: &[u8]) -> Result<Image, DecodeError> {
 
 pub(super) fn decode_face_painter(data: &[u8]) -> Result<Image, DecodeError> {
     FACE_PAINTER.decode(data)
+}
+
+pub(super) fn decode_dolphin_ed(data: &[u8]) -> Result<Image, DecodeError> {
+    DOLPHIN_ED.decode(data)
 }
 
 pub(super) fn decode_run_paint(data: &[u8]) -> Result<Image, DecodeError> {
