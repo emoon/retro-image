@@ -23,7 +23,8 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
+use std::time::{Duration, Instant};
 
 #[test]
 fn matches_recoil_on_corpus() {
@@ -128,14 +129,37 @@ fn reference_png(recoil: &OsStr, sample: &common::Sample, cache: &Path) -> Optio
     }
     let lone = cache.join("isolated").join(&sample.name);
     std::fs::copy(&sample.path, &lone).unwrap();
-    let status = Command::new(recoil)
+    let mut child = Command::new(recoil)
         .arg("-o")
         .arg(&png)
         .arg(&lone)
-        .status()
+        .spawn()
         .unwrap();
+    let succeeded = wait_with_timeout(&mut child, RECOIL_TIMEOUT);
     std::fs::remove_file(&lone).unwrap();
-    status.success().then_some(png)
+    if !succeeded {
+        let _ = std::fs::remove_file(&png); // don't cache partial output
+    }
+    succeeded.then_some(png)
+}
+
+/// RECOIL can misbehave on hostile input; treat a hang as a rejection.
+const RECOIL_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Whether `child` exited successfully within `timeout`; kills it otherwise.
+fn wait_with_timeout(child: &mut Child, timeout: Duration) -> bool {
+    let start = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return status.success();
+        }
+        if start.elapsed() > timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
 struct PlatformFilter(Option<Vec<String>>);
