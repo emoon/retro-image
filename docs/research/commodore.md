@@ -400,3 +400,33 @@ Both reverse engineered with `recoil2png` as a black box; every corpus sample ma
 
 - **FLI Editor (`.fed`, 4 samples).** 17665 bytes, load `$3B00`: this is exactly the FLI Graph memory map (per-line background table at `$3B00`, colour RAM `$3C00`, eight screen RAMs from `$4000`, bitmap `$6000`), 296x200 with the three FLI-bug columns cut. It reuses the FLI Graph renderer and accepts only that size. Ten more 17665-byte FLI pictures (Morbid Art 3 and LCPpic disks, copied as `.fed`) also match `recoil2png`.
 - **HCB-editor (`.hcb`, 2 samples).** 12148 bytes, load `$5000`, found by flipping bytes and by writing single bytes into a synthetic file with a fixed bitmap. Two screen RAMs at `$5800` (lines 0-3 of each character row) and `$5C00` (lines 4-7), multicolour bitmap at `$6000`, then 50 background colours at `$7F40`, one per four lines. Pair `01` is the screen high nibble, `10` and `11` both its low nibble; there is no colour RAM. `$5000-$57FF` (non-zero in the samples) changes nothing; no other bytes exist. The picture is 296x200 (left 24 pixels cut). The name probably means "half colour bitmap" (colour changes every 4 lines). Only 2 samples; `recoil2png` accepts only 12148 bytes.
+
+## Wave 6: PetDraw and Super Hires Editor
+
+No documentation was found for either format (the survey rows say so), so both were reverse
+engineered by running `recoil2png` as a black box on samples and modified copies.
+
+- **PetDraw64 (`.pdr`, 5 corpus samples plus the 23 pictures on the PetDraw disk): done.**
+  All 28 pictures match `recoil2png` (one pixel differs in `gary`, the ROM's reversed `@`, the
+  same recorded divergence as `gary.pet`). The file is exactly 2029 bytes: 2 load address
+  bytes (ignored; `$3592` or `$7131` in the samples), 3 header bytes of which only the second
+  matters (background colour, low nibble; the other two are ignored), 1000 screen codes,
+  24 ignored bytes (`ff`s or zeros), 1000 colour RAM bytes. 40x25 characters, upper
+  case/graphics ROM set. Any other length is rejected by `recoil2png`. Byte sweeps of
+  every header and gap byte showed no other effect.
+- **Super Hires Editor (`.she`, 1 sample `doggy.she`): done for the 3250-byte variant.**
+  Layout, found by writing single bytes into a zeroed copy with a visible screen RAM:
+  bitmap `2..1058` (12x11 cells of 8 bytes), screen RAM `1058..1190`, 32 sprites of 64 bytes
+  from `1190` (four bands of 21 lines, eight per band: lower layer then upper layer, four
+  columns each), colours of the lower and upper layer at `3238`/`3239`, 10 ignored bytes.
+  Lines 84-87 have no sprites. The upper layer wins over the lower, which wins over the
+  bitmap. Random mutations of every region match `recoil2png` (40 of 40 files).
+- **"Super Hires Editor 2" (not decoded, no sample).** Sweeping the length of `doggy.she`
+  padded with random bytes (3250..19999) shows `recoil2png` accepts `.she` only at 3250
+  bytes (96x88) and 8642 bytes (192x168). Probing a zero-filled 8642-byte file: bitmap
+  `2..4034` (24x21 cells, row-major, 8 bytes each), 64 single-layer sprites of 64 bytes from
+  `4034` (eight bands of eight, one per 24-pixel column; sprite line 0 is picture line 1,
+  so the bitmap shows alone on line 0), screen RAM `8130..8634`, then eight colour bytes,
+  one per sprite column. Not checked: sprite versus bitmap priority, whether colours use
+  the low nibble. Our decoder only takes exactly 3250 bytes, so it does not claim these
+  files. A real sample is needed before registering it.

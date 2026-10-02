@@ -31,6 +31,7 @@ mod nufli;
 mod petscii;
 mod prg;
 mod printfox;
+mod she;
 mod sprites;
 mod superhires;
 mod ted;
@@ -366,6 +367,9 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 6: C64 FLI Editor + HCB
     Format::new(C64, "FLI Editor", &["fed"], fli::decode_fed),
     Format::new(C64, "HCB-editor", &["hcb"], hcb::decode_hcb),
+    // Wave 6: C64 PetDraw and Super Hires Editor
+    Format::new(C64, "PetDraw64", &["pdr"], petscii::decode_petdraw),
+    Format::new(C64, "Super Hires Editor", &["she"], she::decode_she),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
