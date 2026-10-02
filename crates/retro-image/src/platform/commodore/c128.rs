@@ -11,7 +11,11 @@
 //!   <https://www.godot64.de/german/s_ipaint.htm> (header, colour modes,
 //!   attribute row interleave, RLE). The `COLR` chunk tag between the
 //!   separately packed bitmap and colours was found in sample files; only
-//!   packed files with colour (modes 1-4) are supported.
+//!   packed files with colour (modes 1-4) are supported. The attribute row
+//!   interleave applies only to interlaced (taller than 200 lines)
+//!   pictures: non-interlaced samples (BASIC 8 mode 1 slideshow pictures,
+//!   152-line IPaint clip art) render with colour fringes at every shape
+//!   edge when interleaved and cleanly with one attribute row per cell.
 
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -55,8 +59,9 @@ fn unpack(packed: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
 
 /// BASIC 8 / IPaint `brus` picture, packed, colour modes 1-4: load
 /// address, 16-byte header, the bitmap (width × height bytes), `COLR`,
-/// then one background/foreground byte per attribute cell. Even and odd
-/// lines use alternate attribute rows.
+/// then one background/foreground byte per attribute cell. In interlaced
+/// pictures even and odd lines (the two fields) use alternate attribute
+/// rows; otherwise each attribute row covers one cell's lines.
 pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
     let header = data.get(..18).ok_or(DecodeError::Unrecognized)?;
     if &header[2..7] != b"BRUS\x04" || header[10] != 1 {
@@ -71,6 +76,7 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let columns = usize::from(header[12]);
     let height = usize::from(u16::from_le_bytes([header[13], header[14]]));
+    let interlaced = height > 200;
     let attribute_rows = height.div_ceil(2 * cell_height) * 2;
     // The bitmap must fit in the VDC's 64K.
     if columns == 0 || height == 0 || columns * height > 0x10000 {
@@ -84,7 +90,11 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
     let (colors, _) = unpack(packed, columns * attribute_rows).ok_or(DecodeError::Unrecognized)?;
     let mut image = Image::new((columns * 8) as u32, height as u32);
     for y in 0..height {
-        let row = y / (2 * cell_height) * 2 + y % 2;
+        let row = if interlaced {
+            y / (2 * cell_height) * 2 + y % 2
+        } else {
+            y / cell_height
+        };
         for x in 0..columns * 8 {
             let attribute = colors[row * columns + x / 8];
             let set = bitmap[y * columns + x / 8] & (0x80 >> (x % 8)) != 0;
@@ -115,4 +125,46 @@ pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// One 8-pixel column, colour mode 1 (8×2 cells), all pixels set,
+    /// attribute rows alternating foreground 1 and 2; `height` lines.
+    fn brus(height: u16) -> Vec<u8> {
+        let mut data = b"\0\0BRUS\x04\0\0\0\x01\x01\x01".to_vec();
+        data.extend(height.to_le_bytes());
+        data.extend([0, 0, 0]);
+        for _ in 0..height {
+            data.extend([0x81, 0xff]);
+        }
+        data.extend(b"COLR");
+        for row in 0..usize::from(height).div_ceil(4) * 2 {
+            data.extend([1, (row % 2 + 1) as u8]);
+        }
+        data
+    }
+
+    /// Foreground colour index of each line (`rgbi` 1 is grey, 2 blue).
+    fn line_colors(image: &Image) -> Vec<u8> {
+        image
+            .rgb()
+            .chunks_exact(8 * 3)
+            .map(|line| if line[2] == 0xaa { 2 } else { 1 })
+            .collect()
+    }
+
+    #[test]
+    fn non_interlaced_rows_cover_whole_cells() {
+        let image = decode_brus(&brus(4)).unwrap();
+        assert_eq!(line_colors(&image), [1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn interlaced_rows_alternate_per_field() {
+        let image = decode_brus(&brus(204)).unwrap();
+        assert_eq!(line_colors(&image)[..4], [1, 2, 1, 2]);
+    }
 }
