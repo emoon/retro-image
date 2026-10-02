@@ -13,6 +13,10 @@
 //! - JGP: Just Solve "Jet Graphics Planner" (exactly 2054 bytes, 4 colours).
 //!   The binary-load header, the two charsets stacked as 8x16 characters
 //!   and the grey colours: observed from `recoil2png` output.
+//! - NLQ: Just Solve "Daisy-Dot font" and the Daisy-Dot II reader of
+//!   monobit (MIT, <https://github.com/robhagemans/monobit>): signature,
+//!   per character a width and two passes of column bytes. The 20x16 cell
+//!   sheet: observed from `recoil2png` output.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
@@ -94,6 +98,50 @@ pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+/// Daisy-Dot II NLQ printer font: signature, then for characters 32-124
+/// except 96 and 123: width, the even rows' column bytes,
+/// the odd rows' column bytes and a 0x9B separator. Characters are 16 dots
+/// tall and drawn in 20x16 cells, 16 to a row, by character code from 32.
+pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
+    const CELL_WIDTH: u32 = 20;
+    let mut glyphs = data
+        .strip_prefix(b"DAISY-DOT NLQ FONT\x9b")
+        .ok_or(DecodeError::Unrecognized)?;
+    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
+    let mut image = Image::new(16 * CELL_WIDTH, 96);
+    for code in (32..125).filter(|&code| code != 96 && code != 123) {
+        let (&width, rest) = glyphs.split_first().ok_or(DecodeError::Unrecognized)?;
+        let width = usize::from(width);
+        let (glyph, rest) = rest
+            .split_at_checked(2 * width)
+            .ok_or(DecodeError::Unrecognized)?;
+        let (&0x9b, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)? else {
+            return Err(DecodeError::Unrecognized);
+        };
+        if width as u32 > CELL_WIDTH {
+            return Err(DecodeError::Unrecognized);
+        }
+        glyphs = rest;
+        let (even, odd) = glyph.split_at(width);
+        let x0 = (code - 32) % 16 * CELL_WIDTH;
+        let y0 = (code - 32) / 16 * 16;
+        for (column, (&even, &odd)) in even.iter().zip(odd).enumerate() {
+            for bit in 0..8 {
+                for (row, bits) in [(2 * bit, even), (2 * bit + 1, odd)] {
+                    let set = bits & (0x80 >> bit) != 0;
+                    let color = if set { foreground } else { background };
+                    image.set(x0 + column as u32, y0 + row, color);
+                }
+            }
+        }
+    }
+    if glyphs.is_empty() {
+        Ok(image)
+    } else {
+        Err(DecodeError::Unrecognized)
+    }
 }
 
 /// Draws an ANTIC mode 4 glyph (4x8 pixels of 2 bits, each 2 pixels wide)

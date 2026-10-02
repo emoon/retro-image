@@ -16,6 +16,8 @@
 //! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
 //! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
+//! - PSF: AtariAge "Print Shop graphics" thread and Just Solve "The Print
+//!   Shop" (572-byte raw 88x52 bitmap).
 //! - RAP: Just Solve "Vidig Paint" (7681 bytes = 7680 + 1).
 //! - Observed from `recoil2png` output: accepted sizes, the 5-byte MIC tail,
 //!   the GR8 colour tail, default colours, the fixed GR9/G11 luminances, the
@@ -141,6 +143,15 @@ pub(super) fn decode_mbg(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_rap(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(exactly(data, 7681)?)?;
     Ok(gtia9(bitmap, tail[0]))
+}
+
+/// Print Shop graphic: 88x52 mono, 11 bytes per line, black on white.
+/// RECOIL accepts up to 68 trailing bytes.
+pub(super) fn decode_psf(data: &[u8]) -> Result<Image, DecodeError> {
+    if !(572..=640).contains(&data.len()) {
+        return Err(DecodeError::Unrecognized);
+    }
+    Ok(hires(bitmap(&data[..572], 11, 1), rgb(0x0e), rgb(0x00)))
 }
 
 /// Graphics 9: 80 pixels of 16 grey luminances.
