@@ -134,18 +134,29 @@ fn check<'a>(
     }
 }
 
+/// Fails with a per-format count of panics, then the first few in full.
+/// Each failure starts with "platform / format name: ".
 fn report(failures: Vec<String>) {
     const SHOWN: usize = 50;
-    assert!(
-        failures.is_empty(),
-        "{} panics (first {SHOWN}):\n{}",
+    if failures.is_empty() {
+        return;
+    }
+    let mut per_format = std::collections::BTreeMap::<&str, usize>::new();
+    for failure in &failures {
+        let format = failure.split(": ").next().unwrap_or_default();
+        *per_format.entry(format).or_default() += 1;
+    }
+    let summary: Vec<String> = per_format
+        .iter()
+        .map(|(format, count)| format!("{count:>6}  {format}"))
+        .collect();
+    let first: Vec<&str> = failures.iter().take(SHOWN).map(String::as_str).collect();
+    panic!(
+        "{} panics in {} formats:\n{}\nfirst {SHOWN}:\n{}",
         failures.len(),
-        failures
-            .iter()
-            .take(SHOWN)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
+        per_format.len(),
+        summary.join("\n"),
+        first.join("\n")
     );
 }
 

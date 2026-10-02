@@ -24,7 +24,9 @@
    the fingerprint to copy. Never record a divergence just to make a failure go away.
 6. `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo test --workspace`.
    `cargo test` includes `tests/robustness.rs`, which feeds truncated and mutated
-   corpus files to your decoder and fails on any panic.
+   corpus files to your decoder and fails on any panic. Both corpus tests silently
+   skip the corpus when it isn't at `<workspace>/corpus` (e.g. in a git worktree),
+   so set `RETRO_IMAGE_CORPUS=/path/to/corpus` there.
 7. For new decoders with packers or variable-length headers, also fuzz for a few minutes:
    `cargo +nightly fuzz run decode fuzz/corpus/decode corpus -- -max_total_time=300`
    (see [fuzz/README.md](../fuzz/README.md)).
