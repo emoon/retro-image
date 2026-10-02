@@ -125,6 +125,7 @@ pub(super) static FORMATS: &[Format] = &[
         mad_studio::decode_tl4,
     ),
     Format::new(ATARI8, "Super-IRG font", &["sif"], font::decode_sif),
+    Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,

@@ -8,12 +8,16 @@
 //!   `recoil2png` output.
 //! - SIF: Super-IRG Font Editor doc SIFE.TXT by Bill Kendrick (two 1024-byte
 //!   ANTIC mode 4 charsets flipped every frame).
+//! - JGP: Just Solve "Jet Graphics Planner" (exactly 2054 bytes, 4 colours).
+//!   The binary-load header, the two charsets stacked as 8x16 characters
+//!   and the grey colours: observed from `recoil2png` output.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
 
 use super::antic::{Bitmap, fill, mix};
 use super::palette::register_rgb;
+use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
 
 const CHARS_PER_ROW: usize = 32;
@@ -51,6 +55,27 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
         image
     };
     Ok(mix(&charset(&data[..1024]), &charset(&data[1024..])))
+}
+
+/// Jet Graphics Planner: a DOS binary-load header for $A000-$A7FF, then two
+/// ANTIC mode 4 charsets shown as 8x16 characters (first charset on top),
+/// in greys.
+pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
+    let Some(charsets) = data.strip_prefix(&[0xff, 0xff, 0x00, 0xa0, 0xff, 0xa7]) else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if charsets.len() != 2048 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);
+    for (part, charset) in charsets.chunks_exact(1024).enumerate() {
+        for (index, glyph) in charset.chunks_exact(8).enumerate() {
+            let x = (index % CHARS_PER_ROW) as u32 * 8;
+            let y = (index / CHARS_PER_ROW) as u32 * 16 + part as u32 * 8;
+            draw_multicolor_glyph(&mut image, x, y, glyph, GREY_COLORS);
+        }
+    }
+    Ok(image)
 }
 
 /// Draws an ANTIC mode 4 glyph (4x8 pixels of 2 bits, each 2 pixels wide)
