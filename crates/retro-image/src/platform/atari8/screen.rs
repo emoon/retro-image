@@ -1,13 +1,25 @@
-//! Raw screen dumps of the OS graphics modes: GR7, GR8, GR9, G10, G11, MIC.
+//! Raw screen dumps of the OS bitmap graphics modes.
 //!
 //! Sources:
 //! - Modes: De Re Atari ch. 2 and App. E; Mapping the Atari App. 15 (colour
-//!   registers 708-712).
+//!   registers 704-712).
 //! - GR7, GR8, GR9: Just Solve "GR*" and AtariWiki File Suffix (sizes).
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
+//! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
 //! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710).
-//! - Accepted sizes, the 5-byte MIC tail, the GR8 colour tail, default colours
-//!   and the fixed GR9/G11 luminances: observed from `recoil2png` output.
+//! - DRG: Just Solve "AtariCAD" (6400 bytes = 320x160 GR8).
+//! - MBG: Just Solve "Mad Designer" (16384 bytes = 512x256 mono).
+//! - SKP: Sketch-PadDles page (raw 7680-byte GR15 screen).
+//! - DIT: Just Solve "DrawIt" (3845 bytes = GR7 screen + 5 colours).
+//! - BKG: Just Solve "Movie Maker" (3856 bytes = GR7 screen + 16 bytes).
+//! - MGP: Just Solve "Magic Painter" (3845 bytes, starts `F4 0E 36 00`).
+//! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
+//! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
+//! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
+//! - Observed from `recoil2png` output: accepted sizes, the 5-byte MIC tail,
+//!   the GR8 colour tail, default colours, the fixed GR9/G11 luminances, the
+//!   tail orders of DIT, BKG and MGP, and the AGP header (mode, then
+//!   registers 704-712).
 
 use super::antic::Bitmap;
 use super::palette::{register_rgb, rgb};
@@ -16,6 +28,11 @@ use crate::{DecodeError, Image};
 const LINE: usize = 40;
 const MAX_LINES: usize = 240;
 
+/// The OS power-up colours: background, playfield 0-2.
+pub(super) const OS_COLORS: [u8; 4] = [0x00, 0x28, 0xca, 0x94];
+/// Grey ramp used when a GR15 file has no colours.
+const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
+
 /// Splits a dump of whole 40-byte lines (1 to 240) from the bytes after them.
 fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
     let lines = data.len() / LINE;
@@ -23,61 +40,60 @@ fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (screen, tail) = data.split_at(lines * LINE);
-    let bitmap = Bitmap {
-        data: screen,
-        bytes_per_line: LINE,
-        lines,
-        bits: 1,
-    };
-    Ok((bitmap, tail))
+    Ok((bitmap(screen, LINE, 1), tail))
 }
 
-/// Graphics 8: 320 pixels per line, 2 luminances of one hue. A 7682-byte
-/// file stores background and foreground luminance after 192 lines.
-pub(super) fn decode_gr8(data: &[u8]) -> Result<Image, DecodeError> {
-    let (bitmap, tail) = lines(data)?;
-    let (background, foreground) = match (data.len(), tail) {
-        (7682, &[background, foreground]) => (background & 0x0e, foreground & 0x0e),
-        _ => (0x00, 0x0e),
-    };
-    Ok(bitmap.render(1, 1, |_, value| {
-        rgb(if value == 0 { background } else { foreground })
-    }))
-}
-
-/// Graphics 9: 80 pixels of 16 grey luminances.
-pub(super) fn decode_gr9(data: &[u8]) -> Result<Image, DecodeError> {
-    let (bitmap, _) = lines(data)?;
-    Ok(Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| rgb(value)))
-}
-
-/// Graphics 11: 80 pixels of 16 hues at luminance 6; hue 0 is black.
-pub(super) fn decode_g11(data: &[u8]) -> Result<Image, DecodeError> {
-    let (bitmap, _) = lines(data)?;
-    Ok(Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
-        if value == 0 {
-            0
-        } else {
-            register_rgb(value << 4 | 6)
-        }
-    }))
-}
-
-/// Graphics 10: 80 pixels indexing the 9 registers 704-712 stored after the screen.
-pub(super) fn decode_g10(data: &[u8]) -> Result<Image, DecodeError> {
-    let screen_len = data.len().checked_sub(9).ok_or(DecodeError::Unrecognized)?;
-    if screen_len % LINE != 0 {
-        return Err(DecodeError::Unrecognized);
+/// A bitmap of whole `bytes_per_line` lines; trailing bytes are ignored.
+fn bitmap(data: &[u8], bytes_per_line: usize, bits: u8) -> Bitmap<'_> {
+    Bitmap {
+        data,
+        bytes_per_line,
+        lines: data.len() / bytes_per_line,
+        bits,
     }
-    let (bitmap, registers) =
-        lines(&data[..screen_len]).map(|(bitmap, _)| (bitmap, &data[screen_len..]))?;
-    Ok(Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
-        register_rgb(registers[g10_register(value)])
-    }))
 }
 
-/// GTIA mode 10 maps values 9-11 to the background and 12-15 to playfield 0-3.
-fn g10_register(value: u8) -> usize {
+/// `data` if it is exactly `len` bytes long.
+fn exactly(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
+    if data.len() == len {
+        Ok(data)
+    } else {
+        Err(DecodeError::Unrecognized)
+    }
+}
+
+/// ANTIC mode F (Graphics 8): 1 bit per pixel, background and foreground.
+fn hires(bitmap: Bitmap<'_>, background: u32, foreground: u32) -> Image {
+    bitmap.render(
+        1,
+        1,
+        |_, value| {
+            if value == 0 { background } else { foreground }
+        },
+    )
+}
+
+/// 2 bits per pixel (Graphics 3, 7, 15) indexing background, playfield 0-2.
+fn four_color(bitmap: Bitmap<'_>, pixel_width: u32, pixel_height: u32, colors: [u8; 4]) -> Image {
+    Bitmap { bits: 2, ..bitmap }.render(pixel_width, pixel_height, |_, value| {
+        register_rgb(colors[usize::from(value)])
+    })
+}
+
+/// GTIA mode 9: 16 luminances of the background hue.
+fn gtia9(bitmap: Bitmap<'_>, background: u8) -> Image {
+    Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| rgb(background & 0xf0 | value))
+}
+
+/// GTIA mode 10: values index registers 704-712.
+fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
+    Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
+        register_rgb(registers[gtia10_register(value)])
+    })
+}
+
+/// Values 9-11 show the background, 12-15 playfield 0-3.
+fn gtia10_register(value: u8) -> usize {
     match value {
         0..=8 => usize::from(value),
         9..=11 => 8,
@@ -85,15 +101,138 @@ fn g10_register(value: u8) -> usize {
     }
 }
 
-/// Graphics 7: 160x96, 4 colours: screen then background and playfield 0-2.
-pub(super) fn decode_gr7(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != 3844 {
+/// GTIA mode 11: 16 hues at the background luminance; hue 0 is black.
+fn gtia11(bitmap: Bitmap<'_>, background: u8) -> Image {
+    Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
+        if value == 0 {
+            0
+        } else {
+            register_rgb(value << 4 | background & 0x0f)
+        }
+    })
+}
+
+/// Graphics 8: 320 pixels per line. Only a 7682-byte file stores colours:
+/// background and foreground luminance after 192 lines.
+pub(super) fn decode_gr8(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, tail) = lines(data)?;
+    let (background, foreground) = match (data.len(), tail) {
+        (7682, &[background, foreground]) => (background & 0x0e, foreground & 0x0e),
+        _ => (0x00, 0x0e),
+    };
+    Ok(hires(bitmap, rgb(background), rgb(foreground)))
+}
+
+/// AtariCAD drawing: 160 lines of Graphics 8.
+pub(super) fn decode_drg(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, _) = lines(exactly(data, 6400)?)?;
+    Ok(hires(bitmap, rgb(0x00), rgb(0x0e)))
+}
+
+/// Mad Designer: 512x256 mono, 64 bytes per line.
+pub(super) fn decode_mbg(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen = exactly(data, 16384)?;
+    Ok(hires(bitmap(screen, 64, 1), rgb(0x00), rgb(0x0e)))
+}
+
+/// Graphics 9: 80 pixels of 16 grey luminances.
+pub(super) fn decode_gr9(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, _) = lines(data)?;
+    Ok(gtia9(bitmap, 0x00))
+}
+
+/// Graphics 10: screen, then the 9 registers 704-712.
+pub(super) fn decode_g10(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen_len = data.len().checked_sub(9).ok_or(DecodeError::Unrecognized)?;
+    if screen_len % LINE != 0 {
         return Err(DecodeError::Unrecognized);
     }
-    let (bitmap, tail) = lines(data)?;
-    let colors = [tail[0], tail[1], tail[2], tail[3]];
-    Ok(Bitmap { bits: 2, ..bitmap }
-        .render(2, 2, |_, value| register_rgb(colors[usize::from(value)])))
+    let (screen, registers) = data.split_at(screen_len);
+    let (bitmap, _) = lines(screen)?;
+    let registers = registers
+        .try_into()
+        .map_err(|_| DecodeError::Unrecognized)?;
+    Ok(gtia10(bitmap, registers))
+}
+
+/// Graphics 11 at luminance 6.
+pub(super) fn decode_g11(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, _) = lines(data)?;
+    Ok(gtia11(bitmap, 0x06))
+}
+
+/// Graphics 7: 160x96, then background and playfield 0-2.
+pub(super) fn decode_gr7(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, tail) = lines(exactly(data, 3844)?)?;
+    Ok(four_color(
+        bitmap,
+        2,
+        2,
+        [tail[0], tail[1], tail[2], tail[3]],
+    ))
+}
+
+/// DrawIt: Graphics 7, then playfield 0-3 and background.
+pub(super) fn decode_dit(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, tail) = lines(exactly(data, 3845)?)?;
+    Ok(four_color(
+        bitmap,
+        2,
+        2,
+        [tail[4], tail[0], tail[1], tail[2]],
+    ))
+}
+
+/// Movie Maker background: Graphics 7, then background and playfield 0-2,
+/// then 12 unused bytes.
+pub(super) fn decode_bkg(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, tail) = lines(exactly(data, 3856)?)?;
+    Ok(four_color(
+        bitmap,
+        2,
+        2,
+        [tail[0], tail[1], tail[2], tail[3]],
+    ))
+}
+
+/// Magic Painter: playfield 0-2, background, an unknown byte, a rainbow
+/// flag, then a Graphics 7 screen lacking its last byte. The flag is 4 for
+/// fixed colours or 3 when playfield 2 cycles through all colours, starting
+/// at 0x10 and stepping once per line.
+pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3845)?;
+    let rainbow = match data[5] {
+        3 => true,
+        4 => false,
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    let mut screen = [0; 3840];
+    screen[..3839].copy_from_slice(&data[6..]);
+    let (bitmap, _) = lines(&screen)?;
+    let colors = [data[3], data[0], data[1], data[2]];
+    Ok(
+        Bitmap { bits: 2, ..bitmap }.render(2, 2, |line, value| match value {
+            3 if rainbow => register_rgb((0x10 + line) as u8),
+            _ => register_rgb(colors[usize::from(value)]),
+        }),
+    )
+}
+
+/// Graphics 3: 40x24 pixels, then background and playfield 0-2.
+pub(super) fn decode_gr3(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 244)?;
+    let colors = [data[240], data[241], data[242], data[243]];
+    Ok(four_color(bitmap(&data[..240], 10, 2), 8, 8, colors))
+}
+
+/// Standard Graphics 3: 40x24 pixels in the OS colours.
+pub(super) fn decode_sg3(data: &[u8]) -> Result<Image, DecodeError> {
+    Ok(four_color(
+        bitmap(exactly(data, 240)?, 10, 2),
+        8,
+        8,
+        OS_COLORS,
+    ))
 }
 
 /// Micro Illustrator / Graphics 15: 160 pixels, 4 colours. A 4-byte tail is
@@ -102,12 +241,41 @@ pub(super) fn decode_gr7(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_mic(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(data)?;
     let colors = match *tail {
-        [] | [_, _, _] => [0x00, 0x04, 0x08, 0x0c],
+        [] | [_, _, _] => GREY_COLORS,
         [background, pf0, pf1, pf2] | [pf0, pf1, pf2, background, _] => [background, pf0, pf1, pf2],
         _ => return Err(DecodeError::Unrecognized),
     };
-    Ok(Bitmap { bits: 2, ..bitmap }
-        .render(2, 1, |_, value| register_rgb(colors[usize::from(value)])))
+    Ok(four_color(bitmap, 2, 1, colors))
+}
+
+/// Sketch-PadDles: a bare Graphics 15 screen in the program's colours.
+pub(super) fn decode_skp(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, _) = lines(exactly(data, 7680)?)?;
+    Ok(four_color(bitmap, 2, 1, [0x26, 0x28, 0x00, 0x0c]))
+}
+
+/// AtariTools-800 graphic: OS graphics mode, registers 704-712, then 7680
+/// bytes of screen.
+pub(super) fn decode_agp(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 7690)?;
+    let (header, screen) = data.split_at(10);
+    let registers: &[u8; 9] = header[1..]
+        .try_into()
+        .map_err(|_| DecodeError::Unrecognized)?;
+    let [.., pf0, pf1, pf2, _, background] = *registers;
+    let (bitmap, _) = lines(screen)?;
+    match header[0] {
+        8 => Ok(hires(
+            bitmap,
+            register_rgb(pf2),
+            register_rgb(pf2 & 0xf0 | pf1 & 0x0f),
+        )),
+        9 => Ok(gtia9(bitmap, background)),
+        10 => Ok(gtia10(bitmap, registers)),
+        11 => Ok(gtia11(bitmap, background)),
+        15 => Ok(four_color(bitmap, 2, 1, [background, pf0, pf1, pf2])),
+        _ => Err(DecodeError::Unrecognized),
+    }
 }
 
 #[cfg(test)]
@@ -115,8 +283,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn g10_folds_registers() {
-        let mapped: [usize; 16] = core::array::from_fn(|v| g10_register(v as u8));
+    fn gtia10_folds_registers() {
+        let mapped: [usize; 16] = core::array::from_fn(|v| gtia10_register(v as u8));
         assert_eq!(mapped, [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 4, 5, 6, 7]);
     }
 
@@ -141,5 +309,6 @@ mod tests {
         assert!(decode_g10(&[0; 7690]).is_err());
         assert!(decode_g10(&[0; 9]).is_err());
         assert!(decode_gr7(&[0; 3840]).is_err());
+        assert!(decode_agp(&[0; 7690]).is_err());
     }
 }
