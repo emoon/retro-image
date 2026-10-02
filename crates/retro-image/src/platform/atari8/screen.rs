@@ -16,6 +16,9 @@
 //! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
 //! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
+//! - Visualizer PIC: ANTIC "Rapid Graphics Converter" article (about 31
+//!   sectors, 160x79, 4 colours); size and layout observed from `recoil2png`
+//!   output.
 //! - PSF: AtariAge "Print Shop graphics" thread and Just Solve "The Print
 //!   Shop" (572-byte raw 88x52 bitmap).
 //! - RAP: Just Solve "Vidig Paint" (7681 bytes = 7680 + 1).
@@ -235,6 +238,19 @@ pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
             _ => register_rgb(colors[usize::from(value)]),
         }),
     )
+}
+
+/// Visualizer: playfield 0-3 and background, then 79 Graphics 7 lines and
+/// 160 unused bytes.
+pub(super) fn decode_visualizer(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3325)?;
+    let colors = [data[4], data[0], data[1], data[2]];
+    Ok(four_color(
+        bitmap(&data[5..5 + 79 * LINE], LINE, 2),
+        2,
+        2,
+        colors,
+    ))
 }
 
 /// Graphics 3: 40x24 pixels, then background and playfield 0-2.

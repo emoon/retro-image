@@ -94,6 +94,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["pic"],
         koala::decode_pic,
     ),
+    Format::new(ATARI8, "Visualizer", &["pic"], screen::decode_visualizer),
     Format::new(ATARI8, "8x8 font", &["fnt"], font::decode_fnt),
     Format::new(
         ATARI8,
