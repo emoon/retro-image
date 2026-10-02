@@ -85,3 +85,25 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         _ => Err(DecodeError::Unrecognized),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn neochrome_master_ilbm_is_left_to_the_atari_st_decoder() {
+        // 1x1, one plane, uncompressed; FORM length 4 + 28 + 14 + 10 = 56.
+        let mut form = b"FORM\0\0\0\x38ILBM".to_vec();
+        form.extend_from_slice(
+            b"BMHD\0\0\0\x14\0\x01\0\x01\0\0\0\0\x01\0\0\0\0\0\x01\x01\0\x01\0\x01",
+        );
+        form.extend_from_slice(b"CMAP\0\0\0\x06\0\0\0\xff\xff\xff");
+        form.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
+        assert!(decode_iff(&form).is_ok());
+        let neochrome = [&form[..], b"RAST\0\0\0\0"].concat();
+        assert_eq!(
+            decode_iff(&neochrome).err(),
+            Some(DecodeError::Unrecognized)
+        );
+    }
+}
