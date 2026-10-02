@@ -47,6 +47,32 @@ pub(super) fn escape_rle(packed: &[u8], escape: u8, run: Run, len: usize) -> Opt
     Some(out)
 }
 
+/// Unpacks data packed backwards: `packed` is read from its last byte down,
+/// where `ESC count value` runs (count 0 = 256) and literal bytes fill the
+/// output from its end. Returns `len` bytes; any start not reached stays 0.
+pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<u8>> {
+    let mut out = alloc::vec![0; len];
+    let mut end = len;
+    let mut bytes = packed.iter().rev().copied();
+    while end > 0 {
+        let Some(byte) = bytes.next() else {
+            break;
+        };
+        if byte == escape {
+            let count = bytes.next()?;
+            let value = bytes.next()?;
+            let count = if count == 0 { 256 } else { usize::from(count) };
+            let start = end.saturating_sub(count);
+            out[start..end].fill(value);
+            end = start;
+        } else {
+            end -= 1;
+            out[end] = byte;
+        }
+    }
+    Some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

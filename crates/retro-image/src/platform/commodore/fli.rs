@@ -14,15 +14,19 @@
 //! | FLI Graph (BML) | CB "FLI Graph 2.2", GD FLI Graph |
 //! | AFLI-editor (AFL) | CB "AFLI-editor v2.0", GD AFLI |
 //! | Hires FLI Designer (HFC, HFD) | CB "Hires FLI" |
-//! | Hires Manager (HIM, unpacked) | CB "Hires Manager", GD HiManRaw |
+//! | Flip (FBI), FLI Graph packed | GD Flip <https://www.godot64.de/german/l_flipr.htm>, CB "FLI Graph 2.2" |
+//! | Hires Manager (HIM) | CB "Hires Manager", GD HiManRaw; for the packed form, the exclusive end address and literal lengths were checked against a sample that exists both packed and unpacked |
 //!
 //! Picture heights of Hires FLI Designer (112 lines) and Hires Manager
 //! (192 lines, starting at the second character row) observed from
 //! `recoil2png` output.
 
+use super::bitmap::with_header;
 use super::prg::Prg;
+use super::unpack::backward_rle;
 use super::vic2::{BITMAP_LEN, Background, Bitmap, FLI_BUG, Frame, SCREEN_LEN, Screens};
 use crate::{DecodeError, Image};
+use alloc::vec::Vec;
 
 /// Bytes of eight screen RAMs, 1024 apart.
 const SCREENS_LEN: usize = 7 * 1024 + SCREEN_LEN;
@@ -56,6 +60,10 @@ impl Fli {
         if !self.sizes.contains(&data.len()) {
             return Err(DecodeError::Unrecognized);
         }
+        self.decode_unchecked(data)
+    }
+
+    pub(super) fn decode_unchecked(&self, data: &[u8]) -> Result<Image, DecodeError> {
         self.frame(&Prg::new(data, self.load))
             .map(|frame| frame.skip_lines(self.skip).to_image(FLI_BUG))
             .ok_or(DecodeError::Unrecognized)
@@ -90,7 +98,7 @@ impl Fli {
 
 const FLI_DESIGNER: Fli = Fli {
     load: 0x3c00,
-    sizes: &[17409, 17410],
+    sizes: &[17218, 17409, 17410],
     bitmap: 0x6000,
     screens: 0x4000,
     color: Some(0x3c00),
@@ -135,8 +143,39 @@ pub(super) fn decode_fli_designer(data: &[u8]) -> Result<Image, DecodeError> {
     FLI_DESIGNER.decode(data)
 }
 
+/// Unpacks the backward-RLE files of Flip and FLI Graph: load `$38F0`,
+/// escape byte, end of packed data, end of unpacked data, zero padding to
+/// `$3900`, then data packed backwards that unpacks to `start..=end`.
+fn unpack_38f0(data: &[u8], start: u16) -> Result<Vec<u8>, DecodeError> {
+    let header = data.get(..18).ok_or(DecodeError::Unrecognized)?;
+    let packed_end = usize::from(u16::from_le_bytes([header[3], header[4]]));
+    let unpacked_end = u16::from_le_bytes([header[5], header[6]]);
+    if header[..2] != [0xf0, 0x38] || packed_end + 1 != 0x38f0 + data.len() - 2 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let len = usize::from(
+        unpacked_end
+            .checked_sub(start)
+            .ok_or(DecodeError::Unrecognized)?,
+    ) + 1;
+    let unpacked = backward_rle(&data[18..], header[2], len).ok_or(DecodeError::Unrecognized)?;
+    Ok(with_header(unpacked))
+}
+
+/// Flip (FLI Painter): FLI Designer layout, plain or packed.
+pub(super) fn decode_flip(data: &[u8]) -> Result<Image, DecodeError> {
+    if FLI_DESIGNER.sizes.contains(&data.len()) {
+        return FLI_DESIGNER.decode(data);
+    }
+    FLI_DESIGNER.decode_unchecked(&unpack_38f0(data, 0x3c00)?)
+}
+
+/// FLI Graph: plain, or packed like Flip.
 pub(super) fn decode_fli_graph(data: &[u8]) -> Result<Image, DecodeError> {
-    FLI_GRAPH.decode(data)
+    if FLI_GRAPH.sizes.contains(&data.len()) {
+        return FLI_GRAPH.decode(data);
+    }
+    FLI_GRAPH.decode_unchecked(&unpack_38f0(data, 0x3b00)?)
 }
 
 pub(super) fn decode_afli_editor(data: &[u8]) -> Result<Image, DecodeError> {
@@ -147,6 +186,55 @@ pub(super) fn decode_hires_fli_designer(data: &[u8]) -> Result<Image, DecodeErro
     HIRES_FLI_DESIGNER.decode(data)
 }
 
+/// Hires Manager: plain (`$FF` at `$4001`) or packed.
 pub(super) fn decode_hires_manager(data: &[u8]) -> Result<Image, DecodeError> {
-    HIRES_MANAGER.decode(data)
+    if HIRES_MANAGER.sizes.contains(&data.len()) {
+        return HIRES_MANAGER.decode(data);
+    }
+    HIRES_MANAGER.decode_unchecked(&unpack_hires_manager(data)?)
+}
+
+/// Packed Hires Manager: load `$4000`, end of packed data, end of unpacked
+/// data, then data packed backwards: `$00 count value` runs, and literal
+/// sequences `count+1 data...` (read backwards).
+fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
+    let header = data.get(..6).ok_or(DecodeError::Unrecognized)?;
+    let packed_end = usize::from(u16::from_le_bytes([header[2], header[3]]));
+    let unpacked_end = usize::from(u16::from_le_bytes([header[4], header[5]]));
+    if header[..2] != [0x00, 0x40]
+        || packed_end + 1 != 0x4000 + data.len() - 2
+        || !(0x4000..0x8000).contains(&unpacked_end)
+    {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut out = alloc::vec![0u8; 0x8000 - 0x4000];
+    // The stored end is exclusive.
+    let mut end = unpacked_end - 0x4000;
+    let packed = &data[6..];
+    let mut pos = packed.len();
+    let mut next = || {
+        pos = pos.checked_sub(1)?;
+        Some(packed[pos])
+    };
+    while end > 4 {
+        let Some(byte) = next() else {
+            break;
+        };
+        if byte == 0 {
+            let count = usize::from(next().ok_or(DecodeError::Unrecognized)?);
+            let value = next().ok_or(DecodeError::Unrecognized)?;
+            let start = end.saturating_sub(count);
+            out[start..end].fill(value);
+            end = start;
+        } else {
+            for _ in 0..usize::from(byte) - 1 {
+                let Some(value) = next() else {
+                    break;
+                };
+                end = end.checked_sub(1).ok_or(DecodeError::Unrecognized)?;
+                out[end] = value;
+            }
+        }
+    }
+    Ok(with_header(out))
 }

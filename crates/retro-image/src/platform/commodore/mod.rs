@@ -131,6 +131,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["bml", "flg", "fli"],
         fli::decode_fli_graph,
     ),
+    Format::new(C64, "Flip", &["fbi"], fli::decode_flip),
     Format::new(C64, "AFLI-editor", &["afl"], fli::decode_afli_editor),
     Format::new(
         C64,
@@ -146,6 +147,14 @@ pub(super) static FORMATS: &[Format] = &[
         "Hires-Interlace",
         &["hlf"],
         interlace::decode_hires_interlace,
+    ),
+    Format::new(C64, "Giga-CAD", &["gcd", "mon"], bitmap::decode_giga_cad),
+    Format::new(C64, "Paint Magic", &["pmg"], bitmap::decode_paint_magic),
+    Format::new(
+        C64,
+        "Hi-Pic Creator",
+        &["hpc"],
+        bitmap::decode_hi_pic_creator,
     ),
     Format::new(C64, "Gunpaint", &["gun", "ifl"], ifli::decode_gunpaint),
     Format::new(C64, "Funpaint II", &["fun", "fp2"], ifli::decode_funpaint),

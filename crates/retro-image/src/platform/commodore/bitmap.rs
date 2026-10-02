@@ -15,7 +15,8 @@
 //! | Wigmore Artist 64, Blazing Paddles, Vidcom 64, Image System multi | CB, BT, GD |
 //! | Advanced Art Studio, Saracen Paint, Paint Magic, Drazpaint | CB, GD |
 //! | Art Studio, Interpaint hires, Image System hires, Hi-Eddi, Doodle (DD, JJ) | CB, BT, GD |
-//! | Hires-Bitmap (mono) | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap |
+//! | Hires-Bitmap (mono), Gigapaint hires, Giga-CAD, Mono Magic | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap, GD format table <https://www.godot64.de/german/formats.htm>; colours observed from `recoil2png` output |
+//! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
 use super::unpack::{Run, escape_rle};
@@ -202,6 +203,39 @@ const DOODLE: Hires = Hires {
     screen: 0x5c00,
 };
 
+const HI_PIC_CREATOR: Hires = Hires {
+    load: 0x6000,
+    sizes: &[9003],
+    bitmap: 0x6000,
+    screen: 0x7f40,
+};
+
+pub(super) fn decode_hi_pic_creator(data: &[u8]) -> Result<Image, DecodeError> {
+    HI_PIC_CREATOR.decode(data)
+}
+
+/// Paint Magic: display code, bitmap, background, one byte filling the
+/// whole colour RAM, border, screen.
+pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 9332 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let prg = Prg::new(data, 0x3f8e);
+    let frame = (|| {
+        let color = [prg.byte(0x5f43)?; SCREEN_LEN];
+        let bitmap = Bitmap::multicolor(
+            prg.at(0x4000, BITMAP_LEN)?,
+            prg.at(0x6000, SCREEN_LEN)?,
+            &color,
+            prg.byte(0x5f40)?,
+        );
+        Frame::multicolor(&bitmap, HEIGHT)
+    })();
+    frame
+        .map(|f| f.to_image(0))
+        .ok_or(DecodeError::Unrecognized)
+}
+
 pub(super) fn decode_koala(data: &[u8]) -> Result<Image, DecodeError> {
     KOALA.decode(data)
 }
@@ -337,16 +371,21 @@ pub(super) fn decode_amica(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Hires-Bitmap: load address and a bare 8000-byte bitmap, white on black.
 pub(super) fn decode_mono(data: &[u8]) -> Result<Image, DecodeError> {
-    mono(data, 0x10)
+    mono(data, 8002, 0x10)
 }
 
 /// Gigapaint hires: as Hires-Bitmap but black on white.
 pub(super) fn decode_gigapaint_hires(data: &[u8]) -> Result<Image, DecodeError> {
-    mono(data, 0x01)
+    mono(data, 8002, 0x01)
 }
 
-fn mono(data: &[u8], colors: u8) -> Result<Image, DecodeError> {
-    if data.len() != 8002 {
+/// Giga-CAD / Mono Magic: load address and an 8192-byte hires bitmap.
+pub(super) fn decode_giga_cad(data: &[u8]) -> Result<Image, DecodeError> {
+    mono(data, 8194, 0x10)
+}
+
+fn mono(data: &[u8], len: usize, colors: u8) -> Result<Image, DecodeError> {
+    if data.len() != len {
         return Err(DecodeError::Unrecognized);
     }
     let screen = [colors; SCREEN_LEN];
