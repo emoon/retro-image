@@ -194,6 +194,22 @@ pub(super) fn planar_image(
     Some(image)
 }
 
+/// Renders a 1-bit bitmap of `row_len`-byte lines, set bits black.
+pub(super) fn mono_image(bitmap: &[u8], width: u32, height: u32, row_len: usize) -> Option<Image> {
+    if bitmap.len() < row_len * height as usize || row_len * 8 < width as usize {
+        return None;
+    }
+    let mut image = Image::new(width, height);
+    for y in 0..height {
+        let line = &bitmap[y as usize * row_len..];
+        for x in 0..width {
+            let bit = line[x as usize / 8] >> (7 - x % 8) & 1;
+            image.set(x, y, MONO_PALETTE[usize::from(bit)]);
+        }
+    }
+    Some(image)
+}
+
 /// Reorders bitplanes stored line by line, each line holding one complete
 /// row per plane (as in IFF bodies), into word-interleaved screen order.
 pub(super) fn line_planes_to_interleaved(
