@@ -341,15 +341,45 @@ pub(super) fn decode_graph_saurus(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let vram = match data.first() {
-        Some(0xfe) => Vram::new(bsave_body(data).ok_or(DecodeError::Unrecognized)?),
-        Some(0xfd) if data.len() > 7 => Vram::new(&unpack_graph_saurus(&data[7..])),
-        _ => return Err(DecodeError::Unrecognized),
-    };
+    let vram = graph_saurus_vram(data)?;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     // Graph Saurus pages show no sprites, except Screen 8 ones.
     let page = render_page(mode, &vram, &palette, mode == Bitmap::Graphic7)?;
     Ok(mode.output(page))
+}
+
+/// VRAM of a Graph Saurus page: `FE` and raw data, or `FD` and RLE.
+fn graph_saurus_vram(data: &[u8]) -> Result<Vram, DecodeError> {
+    match data.first() {
+        Some(0xfe) => Ok(Vram::new(
+            bsave_body(data).ok_or(DecodeError::Unrecognized)?,
+        )),
+        Some(0xfd) if data.len() > 7 => Ok(Vram::new(&unpack_graph_saurus(&data[7..]))),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// Interlaced Graph Saurus Screen 7 picture: page 0 (`SR0`, even lines),
+/// page 1 (companion `SR1`, odd lines) and the palette file `PL7`, which is
+/// required because it is what tells the screen mode. Laid out like an
+/// interlaced BSAVE pair; without `SR1`, page 0 is shown alone.
+pub(super) fn decode_graph_saurus_interlaced(
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
+    let mode = Bitmap::Graphic6;
+    let palette = palette_file(mode, companions).ok_or(DecodeError::Unrecognized)?;
+    let even = graph_saurus_vram(data)?;
+    let even_page = render_page(mode, &even, &palette, false)?;
+    let odd_page = companions
+        .get("sr1")
+        .and_then(|odd| graph_saurus_vram(&odd).ok())
+        .and_then(|odd| render_page(mode, &odd, &palette, false).ok())
+        .filter(|odd| odd.height() >= even_page.height());
+    Ok(match odd_page {
+        Some(odd_page) => interlace(mode, &even_page, &odd_page),
+        None => mode.output(even_page),
+    })
 }
 
 /// Graph Saurus RLE: a byte of 16 or more is a literal, 1-15 repeats the next
@@ -590,6 +620,24 @@ mod tests {
         data.extend([0, 0]);
         data.extend(core::iter::repeat_n(pixels, lines * 128));
         data
+    }
+
+    #[test]
+    fn interlaced_graph_saurus_needs_its_palette_file() {
+        // Two Screen 7 lines (256 bytes each) per page.
+        let page = |pixels: u8| {
+            let mut data = vec![0xfe, 0, 0, 0xff, 0x01, 0, 0];
+            data.extend(core::iter::repeat_n(pixels, 512));
+            data
+        };
+        let (even, odd) = (page(0x11), page(0x22));
+        let palette = [0u8; 32];
+        assert!(decode_graph_saurus_interlaced(&even, &Files(&[("sr1", &odd)])).is_err());
+        let both = Files(&[("sr1", &odd), ("pl7", &palette)]);
+        let image = decode_graph_saurus_interlaced(&even, &both).unwrap();
+        assert_eq!((image.width(), image.height()), (512, 4));
+        let alone = decode_graph_saurus_interlaced(&even, &Files(&[("pl7", &palette)])).unwrap();
+        assert_eq!((alone.width(), alone.height()), (512, 4));
     }
 
     #[test]
