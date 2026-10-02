@@ -2,6 +2,8 @@
 //!
 //! Sources are listed per submodule.
 
+pub(crate) use byte_run1::unpack as unpack_byte_run1;
+
 mod abk;
 mod byte_run1;
 mod deep;
