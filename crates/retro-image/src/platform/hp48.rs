@@ -132,18 +132,17 @@ fn render(grobs: &[Grob]) -> Option<Image> {
     if width > 0xffff {
         return None;
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut indices = alloc::vec![0u8; width * height];
     let mut left = 0;
     for grob in grobs {
-        for y in 0..height {
+        for y in 0..grob.height {
             for x in 0..grob.width {
-                let set = y < grob.height && grob.is_set(x, y);
-                image.set((left + x) as u32, y as u32, if set { 0 } else { WHITE });
+                indices[y * width + left + x] = u8::from(grob.is_set(x, y));
             }
         }
         left += grob.width;
     }
-    Some(image)
+    Image::from_indexed(width as u32, height as u32, &indices, &[WHITE, 0]).ok()
 }
 
 #[cfg(test)]

@@ -8,6 +8,8 @@
 //! - Optional 128-byte MacBinary header (name length at +1, file type at
 //!   +65): MacBinary specification, recognised by type `PNTG`.
 
+use alloc::vec::Vec;
+
 use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
@@ -28,7 +30,12 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (bitmap, _) = packbits::unpack(&data[HEADER_LEN..], WIDTH / 8 * HEIGHT)
         .ok_or(DecodeError::Unrecognized)?;
-    Ok(super::mono_image(&bitmap, WIDTH, HEIGHT, true))
+    // Most significant bit leftmost, set bit black.
+    let indices: Vec<u8> = bitmap
+        .iter()
+        .flat_map(|&b| (0..8).rev().map(move |i| b >> i & 1))
+        .collect();
+    Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &[0xffffff, 0])
 }
 
 fn is_mac_binary(data: &[u8]) -> bool {

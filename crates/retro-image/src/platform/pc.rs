@@ -17,6 +17,7 @@
 //!   `recoil2png` output.
 
 use alloc::vec;
+use alloc::vec::Vec;
 
 use crate::{DecodeError, Format, Image};
 
@@ -70,14 +71,15 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
         }
         _ => return Err(fail),
     };
-    let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let set = bitmap[y * row_len + x / 8] & (0x80 >> (x % 8)) != 0;
-            image.set(x as u32, y as u32, if set { 0xffffff } else { 0 });
-        }
-    }
-    Ok(image)
+    mono(&bitmap, width, height, row_len)
+}
+
+/// A 1-bit bitmap, most significant bit leftmost, set bit white.
+fn mono(bitmap: &[u8], width: usize, height: usize, row_len: usize) -> Result<Image, DecodeError> {
+    let indices: Vec<u8> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| bitmap[y * row_len + x / 8] >> (7 - x % 8) & 1))
+        .collect();
+    Image::from_indexed(width as u32, height as u32, &indices, &[0, 0xffffff])
 }
 
 /// `00 count value` is a run; any other byte `n` is followed by `n` literals.
@@ -129,21 +131,21 @@ fn decode_epa_cells(data: &[u8]) -> Result<Image, DecodeError> {
     if cells == 0 || data.len() < bitmaps + cells * CELL_HEIGHT {
         return Err(fail);
     }
-    let mut image = Image::new((columns * 8) as u32, (rows * CELL_HEIGHT) as u32);
-    for cell in 0..cells {
-        let attribute = data[2 + cell];
-        let (column, row) = (cell % columns, cell / columns);
-        for line in 0..CELL_HEIGHT {
-            let bits = data[bitmaps + cell * CELL_HEIGHT + line];
-            for bit in 0..8 {
-                let set = bits & (0x80 >> bit) != 0;
-                let index = if set { attribute & 15 } else { attribute >> 4 };
-                let (x, y) = (column * 8 + bit, row * CELL_HEIGHT + line);
-                image.set(x as u32, y as u32, CGA_PALETTE[usize::from(index)]);
+    let (width, height) = (columns * 8, rows * CELL_HEIGHT);
+    let indices: Vec<u8> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            let cell = y / CELL_HEIGHT * columns + x / 8;
+            let attribute = data[2 + cell];
+            let bits = data[bitmaps + cell * CELL_HEIGHT + y % CELL_HEIGHT];
+            if bits >> (7 - x % 8) & 1 != 0 {
+                attribute & 15
+            } else {
+                attribute >> 4
             }
-        }
-    }
-    Ok(image)
+        })
+        .collect();
+    Image::from_indexed(width as u32, height as u32, &indices, &CGA_PALETTE)
 }
 
 /// Version 2: width, height, bitmap, then "RGB " and the palette.
@@ -168,26 +170,25 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     };
     let scale = |v: u8| u32::from((v & 63) << 2 | (v & 63) >> 4);
-    let palette: alloc::vec::Vec<u32> = data[palette_start..palette_start + colors * 3]
+    let palette: Vec<u32> = data[palette_start..palette_start + colors * 3]
         .chunks_exact(3)
         .map(|c| scale(c[0]) << 16 | scale(c[1]) << 8 | scale(c[2]))
         .collect();
     let bitmap = &data[8..];
-    let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let index = if chunky {
-                usize::from(bitmap[y * width + x])
-            } else {
+    let indices: Vec<u8> = if chunky {
+        bitmap[..width * height].to_vec()
+    } else {
+        (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .map(|(x, y)| {
                 (0..4).fold(0, |v, plane| {
                     let byte = bitmap[(y * 4 + plane) * planar_row + x / 8];
-                    v | usize::from(byte >> (7 - x % 8) & 1) << plane
+                    v | (byte >> (7 - x % 8) & 1) << plane
                 })
-            };
-            image.set(x as u32, y as u32, palette[index]);
-        }
-    }
-    Ok(image)
+            })
+            .collect()
+    };
+    Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }
 
 fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
@@ -195,13 +196,5 @@ fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
     if data.is_empty() || !data.len().is_multiple_of(ROW_LEN) {
         return Err(DecodeError::Unrecognized);
     }
-    let (width, height) = (ROW_LEN * 8, data.len() / ROW_LEN);
-    let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let set = data[y * ROW_LEN + x / 8] & (0x80 >> (x % 8)) != 0;
-            image.set(x as u32, y as u32, if set { 0xffffff } else { 0 });
-        }
-    }
-    Ok(image)
+    mono(data, ROW_LEN * 8, data.len() / ROW_LEN, ROW_LEN)
 }

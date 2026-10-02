@@ -12,6 +12,8 @@
 //!   high-resolution screen: observed from `recoil2png` output. The 2.x
 //!   blue (`$3B67A2`, from Deark) is not used by any sample.
 
+use alloc::vec::Vec;
+
 use super::iff::{be16, be32};
 use crate::{DecodeError, Image};
 
@@ -46,16 +48,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let planes = data
         .get(start + 20..start + 20 + plane_len * depth)
         .ok_or(fail)?;
-    let mut image = Image::new(width as u32, height as u32 * 2);
-    for y in 0..height {
-        for x in 0..width {
-            let index = (0..depth).fold(0, |v, p| {
-                v | usize::from(planes[p * plane_len + y * row_len + x / 8] >> (7 - x % 8) & 1) << p
-            });
-            let color = palette[index];
-            image.set(x as u32, y as u32 * 2, color);
-            image.set(x as u32, y as u32 * 2 + 1, color);
-        }
-    }
-    Ok(image)
+    let indices: Vec<u8> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            (0..depth).fold(0, |v, p| {
+                v | (planes[p * plane_len + y * row_len + x / 8] >> (7 - x % 8) & 1) << p
+            })
+        })
+        .collect();
+    Ok(Image::from_indexed(width as u32, height as u32, &indices, &palette)?.scaled(1, 2))
 }

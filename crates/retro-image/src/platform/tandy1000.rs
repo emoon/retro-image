@@ -39,15 +39,8 @@ fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         unpack_runs(src, len).ok_or(DecodeError::Unrecognized)?
     };
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            let byte = pixels[(y * WIDTH + x) / 2];
-            let index = if x % 2 == 0 { byte >> 4 } else { byte & 15 };
-            image.set(x as u32, y as u32, PALETTE[usize::from(index)]);
-        }
-    }
-    Ok(image)
+    let indices: Vec<u8> = pixels.iter().flat_map(|&b| [b >> 4, b & 15]).collect();
+    Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &PALETTE)
 }
 
 /// (value, count) byte pairs that must fill exactly `len` bytes. Every

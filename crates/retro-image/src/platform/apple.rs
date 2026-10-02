@@ -53,18 +53,3 @@ fn decode_3200(data: &[u8]) -> Result<Image, DecodeError> {
         .or_else(|_| super_hires::decode_3201(data))
         .or_else(|_| super_hires::decode_screen(data))
 }
-
-/// A 1-bit bitmap, most significant bit leftmost, `width / 8` bytes per row.
-/// `set_is_black` picks which bit value is black.
-fn mono_image(bitmap: &[u8], width: usize, height: usize, set_is_black: bool) -> Image {
-    let mut image = Image::new(width as u32, height as u32);
-    let row_len = width / 8;
-    for y in 0..height {
-        for x in 0..width {
-            let set = bitmap[y * row_len + x / 8] & (0x80 >> (x % 8)) != 0;
-            let color = if set == set_is_black { 0 } else { 0xffffff };
-            image.set(x as u32, y as u32, color);
-        }
-    }
-    image
-}
