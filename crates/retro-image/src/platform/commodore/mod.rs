@@ -19,6 +19,7 @@ mod godot;
 mod ifli;
 mod interlace;
 mod loadstar;
+mod petscii;
 mod prg;
 mod printfox;
 mod sprites;
@@ -214,6 +215,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "SEUCK sprites", &["a"], sprites::decode_seuck),
     Format::new(C64, "Commodore Grafix", &["cgx"], cgx::decode_cgx),
     Format::new(C64, "CharPad", &["ctm"], charpad::decode_ctm),
+    Format::new(C64, "C64 OS screenshot", &["pet"], petscii::decode_c64os),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
