@@ -207,6 +207,25 @@ The best umbrella sources:
 
 ---
 
+## Implementation status after wave 2
+
+- **Content detection (`.signature()`):** IFF (incl. DEEP/TVPP), AMOS AmSp/AmIc/Pac.Pic.,
+  Workbench icons (magic `$E310` + version 1), APF, `.3201`, MacPaint in MacBinary (type `PNTG`),
+  MSP (`DanM`/`LinS`), Award AWBM, TIM, Psion PIC (`PIC` `$DC` `00`), GROB (`HPHP48-`, or text
+  starting with `GROB` / a `%%HP:` line), DeskMate PNT, CompuServe RLE. Not marked: memory dumps
+  and size-only formats (HGR, DHGR, Brooks, SHR dumps, HS2, HR, CoCo), Paintworks, bare MacPaint,
+  EPA v1, packed SHR.
+- **CompuServe RLE acceptance**, probed with `recoil2png` as a black box: run characters must be
+  `$20-$7F` up to an `ESC` or the end, and cover the whole picture (one pixel short only when an
+  `ESC` follows).
+- **Packed Super Hi-Res** ($C0/0001, [FTN](https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0001)):
+  the 32 KB screen through PackBytes; decoded from `.shr` when it unpacks to exactly 32 KB.
+- **3-plane Workbench icons:** 2.x pens, then dark grey, light grey, beige, pink (MagicWB; order
+  observed from `recoil2png`, beige from Deark).
+- **Still undecoded, no usable documentation found:** HAM-E (amiga.resource.cx describes only
+  the modes, not the cookie, palette lines or HAM encoding), DCTV, FLF, Apple II SPR, TRS-80
+  MagicDraw SHR, Image 72 FNT. RECOIL renders all of them; they need reverse engineering.
+
 ## Sample file sources (URLs only; nothing downloaded)
 
 - CompuServe RLE: [Brutman page](http://www.brutman.com/RLE/RLE_Graphics.html) (three zips: assorted RLEs, original 1987 BBS set, Walnut Creek CP/M set), [csrle repo](https://github.com/RevCurtisP/csrle) ("Assorted RLE Files.zip").
