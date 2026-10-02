@@ -22,6 +22,16 @@ pub(super) enum Run {
 /// literal bytes from `packed` until `len` bytes are produced or the input
 /// ends. Fails on a truncated run.
 pub(super) fn escape_rle(packed: &[u8], escape: u8, run: Run, len: usize) -> Option<Vec<u8>> {
+    escape_rle_counted(packed, escape, run, len).map(|(out, _)| out)
+}
+
+/// As [`escape_rle`], also returning how many bytes of `packed` were used.
+pub(super) fn escape_rle_counted(
+    packed: &[u8],
+    escape: u8,
+    run: Run,
+    len: usize,
+) -> Option<(Vec<u8>, usize)> {
     let mut out = Vec::with_capacity(len);
     let mut i = 0;
     while out.len() < len {
@@ -44,7 +54,7 @@ pub(super) fn escape_rle(packed: &[u8], escape: u8, run: Run, len: usize) -> Opt
         }
     }
     out.truncate(len);
-    Some(out)
+    Some((out, i))
 }
 
 /// Unpacks data packed backwards: `packed` is read from its last byte down,

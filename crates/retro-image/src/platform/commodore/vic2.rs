@@ -210,12 +210,18 @@ impl Frame {
 
     /// Converts to RGB, dropping the leftmost `crop` pixels.
     pub(super) fn to_image(&self, crop: usize) -> Image {
-        to_image(crop, self.height, |x, y| rgb(self.get(x, y)))
+        to_image(crop, WIDTH - crop, self.height, |x, y| rgb(self.get(x, y)))
+    }
+
+    /// Converts the leftmost `width` pixels to RGB.
+    pub(super) fn to_image_width(&self, width: usize) -> Image {
+        to_image(0, width.min(WIDTH), self.height, |x, y| rgb(self.get(x, y)))
     }
 
     /// Blends two interlace frames into one picture, dropping the leftmost `crop` pixels.
     pub(super) fn blend(&self, other: &Frame, crop: usize) -> Image {
-        to_image(crop, self.height.min(other.height), |x, y| {
+        let height = self.height.min(other.height);
+        to_image(crop, WIDTH - crop, height, |x, y| {
             mix(rgb(self.get(x, y)), rgb(other.get(x, y)))
         })
     }
@@ -226,8 +232,12 @@ pub(super) fn mix(a: u32, b: u32) -> u32 {
     ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1) + (a & b & 0x010101)
 }
 
-fn to_image(crop: usize, height: usize, pixel: impl Fn(usize, usize) -> u32) -> Image {
-    let width = WIDTH - crop;
+fn to_image(
+    crop: usize,
+    width: usize,
+    height: usize,
+    pixel: impl Fn(usize, usize) -> u32,
+) -> Image {
     let mut image = Image::new(width as u32, height as u32);
     for y in 0..height {
         for x in 0..width {

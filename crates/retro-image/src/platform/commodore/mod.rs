@@ -15,6 +15,7 @@ mod fli;
 mod godot;
 mod ifli;
 mod interlace;
+mod loadstar;
 mod prg;
 mod printfox;
 mod ted;
@@ -200,6 +201,7 @@ pub(super) static FORMATS: &[Format] = &[
         printfox::decode_star_painter,
     ),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
+    Format::new(C64, "Loadstar SHP", &["shp"], loadstar::decode_shp),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
