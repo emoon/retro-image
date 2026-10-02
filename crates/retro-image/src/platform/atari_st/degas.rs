@@ -60,3 +60,26 @@ pub(super) fn decode_pc(data: &[u8]) -> Result<Image, DecodeError> {
     .ok_or(DecodeError::Unrecognized)?;
     decode_screen(resolution, &bitmap, &words).ok_or(DecodeError::Unrecognized)
 }
+
+/// EZ-Art Professional: `EZ`, height word, palette, 4 unknown words, then
+/// low-resolution lines compressed like DEGAS Elite.
+/// Sources: <https://temlib.org/AtariForumWiki/index.php/EZ-Art_Professional_file_format>,
+/// <http://fileformats.archiveteam.org/wiki/EZ-Art_Professional> (height word).
+pub(super) fn decode_eza(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.get(..2) != Some(b"EZ") {
+        return Err(DecodeError::Unrecognized);
+    }
+    let height = u32::from(be16(data, 2).ok_or(DecodeError::Unrecognized)?);
+    if !(1..=640).contains(&height) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let words = palette_words(data, 4, 16).ok_or(DecodeError::Unrecognized)?;
+    let body = data.get(44..).ok_or(DecodeError::Unrecognized)?;
+    let (unpacked, _) =
+        unpack_bits(body, 160 * height as usize).ok_or(DecodeError::Unrecognized)?;
+    let bitmap =
+        line_planes_to_interleaved(&unpacked, 320, height, 4).ok_or(DecodeError::Unrecognized)?;
+    let palette = super::common::st_palette(&words);
+    super::common::planar_image(&bitmap, 320, height, 4, &palette, 1)
+        .ok_or(DecodeError::Unrecognized)
+}

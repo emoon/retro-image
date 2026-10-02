@@ -162,6 +162,60 @@ pub(super) fn decode_srt(data: &[u8]) -> Result<Image, DecodeError> {
     ))
 }
 
+/// Cyber Paint Cell: 128-byte header with palette and size, then a
+/// low-resolution bitmap of that size.
+pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
+    if be16(data, 0) != Some(0xffff) || be16(data, 2) != Some(0) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let width = be16(data, 58).ok_or(DecodeError::Unrecognized)?;
+    let height = be16(data, 60).ok_or(DecodeError::Unrecognized)?;
+    if !(1..=320).contains(&width) || !(1..=200).contains(&height) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let groups = u32::from(width).div_ceil(16);
+    let bitmap = data
+        .get(NEO_HEADER_LEN..)
+        .ok_or(DecodeError::Unrecognized)?;
+    let image = planar_image(
+        bitmap,
+        groups * 16,
+        height.into(),
+        4,
+        &st_palette(&words(data, 4)?),
+        1,
+    );
+    ok(image.map(|image| super::common::crop(&image, width.into(), height.into())))
+}
+
+/// DeskPic: `GF25`, colours, width, height, data size (longs), word-
+/// interleaved bitmap, then 256 VDI (0-1000) RGB triplets in pen order.
+pub(super) fn decode_gfb(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_gfb_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_gfb_inner(data: &[u8]) -> Option<Image> {
+    if data.get(..4)? != b"GF25" {
+        return None;
+    }
+    let planes = match super::common::be32(data, 4)? {
+        2 => 1,
+        4 => 2,
+        16 => 4,
+        256 => 8,
+        _ => return None,
+    };
+    let width = super::common::be32(data, 8)?;
+    let height = super::common::be32(data, 12)?;
+    let size = super::common::be32(data, 16)? as usize;
+    if width == 0 || width % 16 != 0 || height == 0 || height > 4096 || width > 4096 {
+        return None;
+    }
+    let bitmap = data.get(20..20usize.checked_add(size)?)?;
+    let palette = super::common::vdi_palette(data.get(20 + size..)?, 1 << planes)?;
+    planar_image(bitmap, width, height, planes, &palette, 1)
+}
+
 /// Sinbad Slideshow: low-resolution screen, palette, padding to 32768.
 pub(super) fn decode_ssb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 32768 {

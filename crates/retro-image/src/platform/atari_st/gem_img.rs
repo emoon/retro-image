@@ -11,7 +11,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, st_rgb};
+use super::common::{be16, st_rgb, vdi_level};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
@@ -116,11 +116,6 @@ fn pixel_scale(h: &Header) -> (usize, usize) {
     } else {
         (1, 1)
     }
-}
-
-/// VDI intensity (0-1000) to 8 bits.
-fn vdi_level(v: u16) -> u32 {
-    u32::from(v.min(1000)) * 255 / 1000
 }
 
 fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {

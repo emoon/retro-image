@@ -194,6 +194,58 @@ pub(super) fn planar_image(
     Some(image)
 }
 
+/// Copies the top-left `width` x `height` pixels of `image`.
+pub(super) fn crop(image: &Image, width: u32, height: u32) -> Image {
+    let mut out = Image::new(width, height);
+    let rgb = image.rgb();
+    for y in 0..height.min(image.height()) {
+        for x in 0..width.min(image.width()) {
+            let i = ((y * image.width() + x) * 3) as usize;
+            out.set(
+                x,
+                y,
+                u32::from_be_bytes([0, rgb[i], rgb[i + 1], rgb[i + 2]]),
+            );
+        }
+    }
+    out
+}
+
+/// VDI intensity (0-1000) to 8 bits, truncating (observed from
+/// `recoil2png` output).
+pub(super) fn vdi_level(v: u16) -> u32 {
+    u32::from(v.min(1000)) * 255 / 1000
+}
+
+/// VDI pen used for hardware palette index `index` of a `colors`-entry
+/// palette: pen 1 (black) is the last register and pens 2-15 are
+/// scrambled (the usual GEM VDI colour mapping; the 256-colour variant,
+/// where register 15 shows pen 255, is observed from `recoil2png` output).
+pub(super) fn vdi_pen(index: usize, colors: usize) -> usize {
+    const PENS_16: [usize; 16] = [0, 2, 3, 6, 4, 7, 5, 8, 9, 10, 11, 14, 12, 15, 13, 1];
+    match colors {
+        2 => index,
+        4 => [0, 2, 3, 1][index & 3],
+        16 => PENS_16[index & 15],
+        _ if index == colors - 1 => 1,
+        _ if index == 15 => colors - 1,
+        _ if index < 16 => PENS_16[index],
+        _ => index,
+    }
+}
+
+/// Reads `colors` VDI RGB triplets (pen order) and returns them in
+/// hardware index order.
+pub(super) fn vdi_palette(data: &[u8], colors: usize) -> Option<Vec<u32>> {
+    (0..colors)
+        .map(|index| {
+            let pen = vdi_pen(index, colors);
+            let c = |k: usize| be16(data, (pen * 3 + k) * 2).map(vdi_level);
+            Some(c(0)? << 16 | c(1)? << 8 | c(2)?)
+        })
+        .collect()
+}
+
 /// Renders a 1-bit bitmap of `row_len`-byte lines, set bits black.
 pub(super) fn mono_image(bitmap: &[u8], width: u32, height: u32, row_len: usize) -> Option<Image> {
     if bitmap.len() < row_len * height as usize || row_len * 8 < width as usize {
