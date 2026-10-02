@@ -43,7 +43,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Linux runs the x86_64 SIMD paths, macOS (arm64) the scalar fallback.
+        # Linux and Windows run the x86_64 SIMD paths, macOS (arm64) the
+        # scalar fallback.
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -53,18 +54,19 @@ jobs:
       # RECOIL's public sample set. The pictures are copyrighted, so they are
       # fetched here and never committed (see CLEANROOM.md). recoil2png isn't
       # installed, so the oracle test skips itself; robustness runs on them.
-      # Windows only runs the corpus-free tests.
       - name: Restore corpus
-        if: runner.os != 'Windows'
         id: corpus
         uses: actions/cache@v4
         with:
           path: corpus
           key: recoil-examples-v1
       - name: Fetch corpus
-        if: runner.os != 'Windows' && steps.corpus.outputs.cache-hit != 'true'
+        if: steps.corpus.outputs.cache-hit != 'true'
+        shell: bash
         run: |
           mkdir -p corpus && cd corpus
           curl -fsSL --retry 3 -o examples.zip https://recoil.sourceforge.net/examples.zip
-          unzip -q examples.zip && rm examples.zip
+          # Windows runners have 7-Zip but not always unzip.
+          if command -v unzip >/dev/null; then unzip -q examples.zip; else 7z x -y examples.zip >/dev/null; fi
+          rm examples.zip
       - run: cargo test --workspace
