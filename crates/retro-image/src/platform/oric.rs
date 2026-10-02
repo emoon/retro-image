@@ -22,7 +22,10 @@
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::new("Oric", "HIRES screen", &["hir", "hrs"], decode_hires),
+    // A tape image holding a whole HIRES screen is recognised by content.
+    // Character set blocks are not: most program tapes carry one, and a font
+    // sheet is not the picture of a tape.
+    Format::new("Oric", "HIRES screen", &["hir", "hrs"], decode_hires).signature(),
     Format::new("Oric", "Character set", &["chs"], decode_charset),
 ];
 

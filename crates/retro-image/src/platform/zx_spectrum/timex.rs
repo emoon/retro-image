@@ -42,7 +42,7 @@ pub(super) fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HIRES_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(draw_hires(data).into_image())
+    Ok(draw_hires(data).into_image().scaled(1, 2))
 }
 
 /// HRG: two hi-res screens shown as gigascreen.
@@ -51,18 +51,18 @@ pub(super) fn decode_hrg(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (first, second) = data.split_at(HIRES_LEN);
-    Ok(blend(&[draw_hires(first), draw_hires(second)]))
+    Ok(blend(&[draw_hires(first), draw_hires(second)]).scaled(1, 2))
 }
 
 /// One hi-res screen: 8-pixel columns alternate between the two bitmaps;
 /// the trailing port 0xFF byte selects the ink (bits 5-3), paper is its
-/// complement. Shown as 512x384 with each row doubled.
+/// complement. Callers show it as 512x384, each row doubled.
 fn draw_hires(data: &[u8]) -> Frame {
     let (bitmaps, port) = data.split_at(2 * BITMAP_LEN);
     let ink_index = (port[0] >> 3) & 7;
     let ink = rgb_bits(ink_index, 0xff);
     let paper = rgb_bits(7 - ink_index, 0xff);
-    let mut frame = Frame::new(2 * WIDTH, 2 * HEIGHT);
+    let mut frame = Frame::new(2 * WIDTH, HEIGHT);
     for y in 0..HEIGHT {
         for column in 0..2 * COLUMNS {
             let bitmap = &bitmaps[(column % 2) * BITMAP_LEN..];
@@ -73,8 +73,7 @@ fn draw_hires(data: &[u8]) -> Frame {
                 } else {
                     paper
                 };
-                frame.set(column * 8 + bit, 2 * y, color);
-                frame.set(column * 8 + bit, 2 * y + 1, color);
+                frame.set(column * 8 + bit, y, color);
             }
         }
     }
@@ -112,7 +111,7 @@ pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// GRB332 palette byte: 3-bit green and red widen by repeating their bits,
 /// 2-bit blue by multiplying by 0x55.
-fn grb332(value: u8) -> u32 {
+pub(super) fn grb332(value: u8) -> u32 {
     let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
     let green = widen3(value >> 5);
     let red = widen3((value >> 2) & 7);

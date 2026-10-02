@@ -10,9 +10,11 @@ mod border;
 mod chars;
 mod enhanced;
 mod multicolor;
+mod profi;
 mod screen;
 mod standard;
 mod timex;
+mod zx81;
 mod zxp;
 
 use crate::{DecodeError, Format, Image};
@@ -84,16 +86,20 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new("ZX Spectrum", "MultiArtist", &["mg1"], |data| {
         multicolor::decode_mgh(data, 1)
-    }),
+    })
+    .signature(),
     Format::new("ZX Spectrum", "MultiArtist", &["mg2"], |data| {
         multicolor::decode_mgh(data, 2)
-    }),
+    })
+    .signature(),
     Format::new("ZX Spectrum", "MultiArtist", &["mg4"], |data| {
         multicolor::decode_mgh(data, 4)
-    }),
+    })
+    .signature(),
     Format::new("ZX Spectrum", "MultiArtist", &["mg8"], |data| {
         multicolor::decode_mgh(data, 8)
-    }),
+    })
+    .signature(),
     Format::new("ZX Spectrum", "Border Screen", &["bsc"], border::decode_bsc),
     Format::new(
         "ZX Spectrum",
@@ -106,14 +112,16 @@ pub(super) static FORMATS: &[Format] = &[
         "Border Screen by Trefi",
         &["bsp"],
         border::decode_bsp,
-    ),
+    )
+    .signature(),
     Format::new(
         "ZX Spectrum",
         "Font",
         &["ch4", "ch6", "ch8"],
         chars::decode_font,
     ),
-    Format::new("ZX Spectrum", "CHR$", &["ch$"], chars::decode_chr),
+    Format::new("ZX Spectrum", "CHR$", &["ch$"], chars::decode_chr).signature(),
+    Format::new("ZX Spectrum", "Big font", &["chx"], chars::decode_chx).signature(),
     Format::new(
         "ZX Spectrum Next",
         "Layer 2 image",
@@ -125,6 +133,15 @@ pub(super) static FORMATS: &[Format] = &[
         "Speccy eXtended Graphics",
         &["sxg"],
         enhanced::decode_sxg,
-    ),
-    Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp),
+    )
+    .signature(),
+    Format::new(
+        "ZX Spectrum Profi",
+        "Profi screen",
+        &["grf"],
+        profi::decode_grf,
+    )
+    .signature(),
+    Format::new("ZX81", "Program with screen", &["p"], zx81::decode_p),
+    Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp).signature(),
 ];

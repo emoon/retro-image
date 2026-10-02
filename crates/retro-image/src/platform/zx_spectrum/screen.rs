@@ -50,32 +50,25 @@ pub(super) fn attribute_color(attribute: u8, ink: bool) -> u32 {
     color(index, attribute & 0x40 != 0)
 }
 
-/// One displayed frame of `0xRRGGBB` pixels; several frames shown in
-/// alternation (gigascreen, tricolor) are averaged into the final image.
-pub(super) struct Frame {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-}
+/// One displayed frame, addressed with `usize` coordinates; several frames
+/// shown in alternation (gigascreen) are blended into the final image.
+pub(super) struct Frame(Image);
 
 impl Frame {
     pub(super) fn new(width: usize, height: usize) -> Self {
-        Self {
-            width,
-            height,
-            pixels: alloc::vec![0; width * height],
-        }
+        Self(Image::new(width as u32, height as u32))
     }
 
     pub(super) fn set(&mut self, x: usize, y: usize, color: u32) {
-        self.pixels[y * self.width + x] = color;
+        self.0.set(x as u32, y as u32, color);
     }
 
     /// Fills a `width` x `height` rectangle.
     pub(super) fn fill(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
         for row in y..y + height {
-            let start = row * self.width + x;
-            self.pixels[start..start + width].fill(color);
+            for column in x..x + width {
+                self.set(column, row, color);
+            }
         }
     }
 
@@ -107,31 +100,15 @@ impl Frame {
     }
 
     pub(super) fn into_image(self) -> Image {
-        blend(&[self])
+        self.0
     }
 }
 
-/// Averages equally sized frames channel by channel (rounding down), the way
-/// alternating frames are shown (observed from `recoil2png` output).
+/// Blends frames shown in alternation (gigascreen): the per-channel
+/// average, rounded down (observed from `recoil2png` output).
 pub(super) fn blend(frames: &[Frame]) -> Image {
-    let (width, height) = (frames[0].width, frames[0].height);
-    let mut image = Image::new(width as u32, height as u32);
-    let count = frames.len() as u32;
-    for y in 0..height {
-        for x in 0..width {
-            let i = y * width + x;
-            let mut sum = [0u32; 3];
-            for frame in frames {
-                let [_, r, g, b] = frame.pixels[i].to_be_bytes();
-                sum[0] += u32::from(r);
-                sum[1] += u32::from(g);
-                sum[2] += u32::from(b);
-            }
-            let [r, g, b] = sum.map(|s| s / count);
-            image.set(x as u32, y as u32, r << 16 | g << 8 | b);
-        }
-    }
-    image
+    let images: Vec<&Image> = frames.iter().map(|frame| &frame.0).collect();
+    Image::blend(&images)
 }
 
 /// Draws a standard 6912-byte screen (bitmap then 32x24 attributes).
@@ -165,14 +142,5 @@ mod tests {
         assert_eq!(color(2, false), 0xcd0000);
         assert_eq!(color(4, true), 0x00ff00);
         assert_eq!(color(7, false), 0xcdcdcd);
-    }
-
-    #[test]
-    fn blend_averages_rounding_down() {
-        let mut a = Frame::new(1, 1);
-        let b = Frame::new(1, 1);
-        a.set(0, 0, 0xff_cd_01);
-        let image = blend(&[a, b]);
-        assert_eq!(image.rgb(), &[0x7f, 0x66, 0x00]);
     }
 }
