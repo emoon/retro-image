@@ -260,3 +260,19 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 - **NUFLIX Studio**: MIT ([github](https://github.com/cobbpg/nuflix-studio)).
 - **spritemate**: MIT, SPD ([github](https://github.com/Esshahn/spritemate)).
 - Closed-source viewers, mentioned only: XnView, Konvertor, Tom's Editor.
+
+## 7. Implementation notes (checked against samples and `recoil2png`)
+
+- Palette: Pepto 2001 for the VIC-II; TED (128 entries), VIC-20 and VDC RGBI levels were read from `recoil2png` output of synthetic files.
+- Output: multicolour pixels doubled to 320 wide; FLI drops the leftmost 24 pixels (296 wide); interlace frames are averaged per channel, the shifted frame moves one pixel right with black entering at the left.
+- Doodle: bitmap at `$6000` (BT is right, CB's `$7000` is wrong); `.jj` may end right after the bitmap.
+- Hires-Interlace (HLF): bitmap `$2000` pairs with screen `$4800`, bitmap `$6000` with screen `$4400`.
+- Hires Manager: shown from the second character row, 192 lines. Packed: the stored unpacked end is exclusive; literal byte `n` is followed by `n-1` bytes.
+- Gunpaint/Funpaint: background black; second frame shifted right. Pixel Perfect background from `$7F7F`.
+- BFLI: bottom 200 lines continue the video matrix/colour RAM/bitmap counters at 1000/8000, wrapping at 1024/8192 (linecrunch).
+- Loadstar old format: low 6 bits of the mode byte are the width in cells; the `$FF` byte sits between screen and colour chunks.
+- CharPad v5: 20-byte header (16-bit tile count), 16-bit tile cells and map, no cell attributes; flags bit 2 = all characters multicolour.
+- BASIC 8 `brus`: bitmap and colours packed separately with a literal `COLR` between them.
+- Plus/4 Botticelli: set/`01` pixels = high colour nibble + low luminance nibble, clear/`10` = low colour nibble + high luminance nibble, `00` = `$FF15`, `11` = `$FF16`.
+- VIC-20 MiniPaint: colour RAM packed two cells per byte, low nibble first, 20×12 cells of 8×16.
+- Not implemented (need reverse engineering or ROM data): FLI Profi sprites, packed ECI (ECP), CFLI, Dolphin Ed, Rainbow Painter, Picasso 64, Face Painter, Cheese, Hires Editor (HET), Centauri Logo Editor, Logo Painter 3, M.C.S., Interlace Hires Editor, SIF, Multi-Lace Editor, Star Painter font (ZS), Best Paint (VIC-20), Botticelli 128×64, PETSCII Editor and PETSCII BOT (need the C64 character ROM).

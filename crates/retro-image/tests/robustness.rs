@@ -3,12 +3,12 @@
 //! on stable with `cargo test`; deeper runs use `fuzz/` (cargo-fuzz).
 //!
 //! - Synthetic buffers go to every format (no corpus needed).
-//! - Corpus files (`$RETRO_IMAGE_CORPUS`, default `<workspace>/corpus`) go to
-//!   every format whole, then truncated and mutated to the formats that
+//! - Corpus files (see `common/mod.rs`) go to every format whole, then truncated and mutated to the formats that
 //!   claim their extension.
 
+mod common;
+
 use std::panic::{self, AssertUnwindSafe};
-use std::path::{Path, PathBuf};
 
 use retro_image::Format;
 
@@ -44,28 +44,21 @@ fn synthetic_inputs_do_not_panic() {
 
 #[test]
 fn mutated_corpus_files_do_not_panic() {
-    let corpus = std::env::var_os("RETRO_IMAGE_CORPUS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus"));
-    let Ok(entries) = std::fs::read_dir(&corpus) else {
-        eprintln!("skipping: no corpus at {}", corpus.display());
+    let Some(samples) = common::samples() else {
         return;
     };
-    let mut paths: Vec<PathBuf> = entries
-        .map(|e| e.unwrap().path())
-        .filter(|p| p.is_file())
-        .collect();
-    paths.sort();
 
     let mut failures = Vec::new();
     let mut rng = Rng(0x2545_f491_4f6c_dd1d);
-    for path in &paths {
-        let name = path.file_name().unwrap().to_string_lossy();
-        let data = std::fs::read(path).unwrap();
-        check(retro_image::formats(), &data, &name, &mut failures);
+    for sample in &samples {
+        let name = &sample.id;
+        let Ok(data) = std::fs::read(&sample.path) else {
+            continue; // removed while the test ran (e.g. by a sample collector)
+        };
+        check(retro_image::formats(), &data, name, &mut failures);
 
         let candidates: Vec<&Format> = retro_image::formats()
-            .filter(|f| f.matches_filename(&name))
+            .filter(|f| f.matches_filename(&sample.name))
             .collect();
         if candidates.is_empty() {
             continue;

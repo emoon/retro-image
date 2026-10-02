@@ -384,3 +384,15 @@ Hardware: 640×480 with 256 colours, or 320×240 at 32768 colours. No reference 
 - **MIF package / MIGVIEW sources** (Louthrax): licence unstated, avoid.
 - **Susie Pi plug-in** ([cetus.sakura.ne.jp](https://cetus.sakura.ne.jp/softlab/software/ifpi.html)): licence unknown, avoid.
 - **BitBuster** depacker sources (Team Bomba): "free to use", exact terms unverified. Confirm before reading.
+
+## 16. Implementation status (wave 1)
+
+Implemented, all corpus samples matching `recoil2png` (126 files):
+
+- MSX/MSX2/MSX2+ BSAVE dumps SC2/GRP, SC3, SC4, SC5/GE5, SC6, SC7/GE7, SC8/GE8/PIC, SCA/SCB, SCC/YJK, with sprites (`msx/screen.rs`, `msx/vdp.rs`).
+- Graph Saurus SR5-SR8, SRS (raw and RLE); BASIC COPY GL5-GL8/SH5-SH8, GLA/GLB/SHA/SHB, GLC/GLS/SHC.
+- Dynamic Publisher PCT, FNT, STP. G9B (V9990), including BitBuster (reverse engineered from samples).
+- Maki-chan MAG/MAX/MKI and Pi (`nec_pc/maki.rs`, `nec_pc/pi.rs`), Yanagisawa PIC (`sharp_x68000/pic.rs`), registered per machine.
+- PIC spec used: `pic_fmt.txt` from PIC_FMT (Vector), whose text allows free reproduction; `picl.c` in the same archive was not read.
+
+Skipped: MIG/MIF (undocumented VDP command stream), ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG, CMP (no layout docs; need reverse engineering), interlaced pairs and +PLx palettes (multi-file), SRI (no sample).

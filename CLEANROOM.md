@@ -31,7 +31,10 @@ Every decoder module states where its layout knowledge came from (links to docs,
 ## Sample files
 
 Sample images are copyrighted by their artists. They live in `corpus/` (git-ignored)
-and are never committed. Get RECOIL's sample set with:
+and are never committed. Tests search it recursively: RECOIL's sample set at the top
+level, files collected from public archives under `corpus/extra/<platform group>/`
+(each group has a `MANIFEST.tsv` recording where every file came from).
+Get RECOIL's sample set with:
 
 ```sh
 mkdir -p corpus && cd corpus

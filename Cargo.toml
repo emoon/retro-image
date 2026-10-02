@@ -10,3 +10,8 @@ license = "MIT"
 [workspace.dependencies]
 retro-image = { path = "crates/retro-image" }
 png = "0.18"
+
+# The corpus tests decode thousands of files many times over; optimise them
+# but keep overflow checks and debug assertions so arithmetic bugs still panic.
+[profile.test]
+opt-level = 3

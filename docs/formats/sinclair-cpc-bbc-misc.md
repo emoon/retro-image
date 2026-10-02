@@ -483,3 +483,30 @@ Not license-checked, so treat as tainted until checked:
 - xahmol/oricdemo2026
 - mfitzp/scrimage (no license file)
 - conv2SGX (no license; only its README was read)
+
+## 19. Findings from implementation (wave 1)
+
+Checked against corpus samples and `recoil2png` output (black box). These settle open questions above.
+
+- **Spectrum palette:** 0xCD normal, 0xFF bright. Mono 6144-byte SCR is white on black.
+- **Frame blending:** gigascreen frames (IMG, HLR, STL, MG*, BSP, CH$ bpc 18, HRG) are averaged per channel, rounded
+  down. Tricolor (`.3`, `.RGB`) is additive at 0xFF, not averaged.
+- **`.3` plane order** is blue, red, green; **`.RGB`** is red, green, blue.
+- **ATR** pattern is `55 AA` (the first row starts with paper).
+- **MC** has a linear bitmap and linear 8x1 attributes (zx-image is right). MLT has the interleaved bitmap.
+- **Border formats** (BSC, BMC4, BSP) render 384x304 with the screen at (64, 64); border colours are non-bright.
+- **Timex hi-res** uses bright colours and doubles rows to 512x384. **ULAplus** blue is the 2-bit value times 0x55.
+- **SXG** palette/bitmap offsets count from the end of their own field. Palette entries without bit 15 are 25-level
+  indices: `level * 255 / 24`, rounded down.
+- **NXI** RGB333 widens by bit repetition.
+- **SAM `SCREEN$`** files: screen memory (mode 2 attributes at offset 8192), 40-byte palette table, 4-byte line
+  interrupt records `(line, entry, colour, flash colour)` up to `FF`. Changes apply from `line + 1`. In mode 3
+  `SCREEN$` files, pixel values 1 and 2 map to CLUT entries 2 and 1 (SSX does not swap). Mode 3 and raw SSX
+  output rows are doubled (512x384). LCE is two mode 4 `SCREEN$` files interlaced to 512x384.
+- **BBC LdPic:** the address step stays constant; each pass starts one byte lower until offset 0.
+- **Oric** HRS/CHS samples carry an Oric tape header (`16 16 16 24`, 9 header bytes with big-endian end/start
+  addresses, zero-terminated name). CHS loads at 0xB500 (769 bytes).
+- **CPC HGB** is the standard line layout with 64-byte rows, rows doubled to 512x512. **SGX** levels map 4-bit
+  `8` to 0x80; greys are 0xAA/0x55.
+- **Electronika BK PIC:** 16384 bytes, lowest bit pair leftmost. **MC 0515 SCR:** 16000 bytes linear, MSB left,
+  rows doubled.

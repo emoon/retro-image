@@ -280,3 +280,26 @@ Permissive references confirmed:
 
 - **Mad Studio** (MIT): [github.com/Gury8/Mad-Studio](https://github.com/Gury8/Mad-Studio), Free Pascal source plus the formats PDF.
 - **monobit** (MIT): [github.com/robhagemans/monobit](https://github.com/robhagemans/monobit). It reads Daisy-Dot `.nlq/.nl2/.nl3/.nl4` and raw 8x8 fonts.
+
+## 6. Implementation notes (wave 1)
+
+Decoders live in `crates/retro-image/src/platform/atari8/`. Conventions observed from
+`recoil2png` output (black box, default PAL):
+
+- **Palette**: every channel is `clamp(base[hue] + 0x11 * luminance)`; the 16 per-hue bases
+  were read back from synthetic MIC files covering all 128 even colours, and the odd
+  luminances were confirmed with GR9 (greys) and APAC/TIP samples (hues). Outside GTIA
+  mode 9 the luminance bit 0 is ignored. GTIA mode 9 ORs the pixel into the background
+  register.
+- **Canvas**: 320 pixels wide for 40-byte modes (160-pixel modes drawn 2 wide, GTIA modes
+  4 wide); GR7 lines are drawn twice.
+- **Interlace**: two frames are shown as the per-channel average of their RGB values,
+  rounded down. APAC/CIN/TIP hue lines take the averaged luminance of their neighbours;
+  HIP/VZI/TIP frames sit 1 output pixel left/right of the 4-pixel grid.
+- **Defaults** when a file stores no colours: GR8 `00/0E`, GR15 greys `00 04 08 0C`,
+  OS colours `00 28 CA 94` (SG3, TL4), G11 luminance 6.
+
+Implemented: GR3, SG3, GR7, DIT, BKG, MGP, GR8, DRG, MBG, PSF, GR9, RAP, G10, G11, MIC,
+SKP, AGP, PIC (Koala, Visualizer), 256/AP2, APA/APC/PLM, AP3/APV/DGI/DGP/ESC/ILC/PZM, CIN,
+HIP, VZI, TIP, INP, INT, HCI/HR2, IST, MCP, MCPP, FNT, FN2, SIF, ACS, JGP, NLQ (Daisy-Dot II),
+SPR/MPL/MSL/TL4 (Mad Studio), DAP (VBXE), PGF/PGC (Portfolio).

@@ -1,7 +1,7 @@
 //! Compares our output with `recoil2png` (used as a black box) on every
 //! corpus file we can decode.
 //!
-//! - Corpus: `$RETRO_IMAGE_CORPUS`, default `<workspace>/corpus` (see CLEANROOM.md).
+//! - Corpus: see `common/mod.rs`.
 //! - Reference decoder: `$RECOIL2PNG`, default `recoil2png` on `PATH`.
 //! - `$RETRO_IMAGE_PLATFORMS`: optional comma-separated `Format::platform`
 //!   names; only formats of those platforms are tried.
@@ -9,6 +9,8 @@
 //! Skips (passes) when either is missing. RECOIL renders each file on its own,
 //! without its companion files. Reference PNGs are cached under the cargo
 //! target dir; delete it after upgrading RECOIL.
+
+mod common;
 
 use std::ffi::OsStr;
 use std::fs::File;
@@ -18,12 +20,8 @@ use std::process::Command;
 
 #[test]
 fn matches_recoil_on_corpus() {
-    let corpus = std::env::var_os("RETRO_IMAGE_CORPUS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus"));
     let recoil = std::env::var_os("RECOIL2PNG").unwrap_or_else(|| "recoil2png".into());
-    let Ok(entries) = std::fs::read_dir(&corpus) else {
-        eprintln!("skipping: no corpus at {}", corpus.display());
+    let Some(samples) = common::samples() else {
         return;
     };
     if Command::new(&recoil).arg("--help").output().is_err() {
@@ -34,53 +32,49 @@ fn matches_recoil_on_corpus() {
     let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle-single-file");
     std::fs::create_dir_all(cache.join("isolated")).unwrap();
 
-    let mut paths: Vec<PathBuf> = entries
-        .map(|e| e.unwrap().path())
-        .filter(|p| p.is_file())
-        .collect();
-    paths.sort();
     let mut matched = 0;
     let mut failures = Vec::new();
-    for path in &paths {
-        let name = path.file_name().unwrap().to_string_lossy();
-        let data = std::fs::read(path).unwrap();
+    for sample in &samples {
+        let id = &sample.id;
+        let Ok(data) = std::fs::read(&sample.path) else {
+            continue; // removed while the test ran (e.g. by a sample collector)
+        };
         let Some(ours) = retro_image::formats()
-            .filter(|f| f.matches_filename(&name) && platforms.selects(f.platform))
+            .filter(|f| f.matches_filename(&sample.name) && platforms.selects(f.platform))
             .find_map(|f| f.decode(&data).ok())
         else {
             continue; // not supported yet
         };
-        let Some(reference_path) = reference_png(&recoil, path, &cache) else {
-            failures.push(format!("{name}: we decode it but recoil2png rejects it"));
+        let Some(reference_path) = reference_png(&recoil, sample, &cache) else {
+            failures.push(format!("{id}: we decode it but recoil2png rejects it"));
             continue;
         };
         match compare(&ours, &read_png(&reference_path)) {
             Ok(()) => matched += 1,
-            Err(why) => failures.push(format!("{name}: {why}")),
+            Err(why) => failures.push(format!("{id}: {why}")),
         }
     }
     eprintln!(
         "oracle: {matched} matched, {} failed, {} corpus files",
         failures.len(),
-        paths.len()
+        samples.len()
     );
     assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
 }
 
-/// Renders `path` with recoil2png, caching the PNG in `cache`.
+/// Renders `sample` with recoil2png, caching the PNG in `cache`.
 ///
 /// recoil2png also reads companion files next to its input (e.g. `.S15`
 /// next to `.SC5`), which a single-buffer decoder can't see, so it runs on a
 /// lone copy of the file in `cache/isolated`. Returns `None` if RECOIL
 /// rejects the file.
-fn reference_png(recoil: &OsStr, path: &Path, cache: &Path) -> Option<PathBuf> {
-    let name = path.file_name().unwrap();
-    let png = cache.join(format!("{}.png", name.to_string_lossy()));
+fn reference_png(recoil: &OsStr, sample: &common::Sample, cache: &Path) -> Option<PathBuf> {
+    let png = cache.join(format!("{}.png", sample.id.replace('/', "__")));
     if png.exists() {
         return Some(png);
     }
-    let lone = cache.join("isolated").join(name);
-    std::fs::copy(path, &lone).unwrap();
+    let lone = cache.join("isolated").join(&sample.name);
+    std::fs::copy(&sample.path, &lone).unwrap();
     let status = Command::new(recoil)
         .arg("-o")
         .arg(&png)
