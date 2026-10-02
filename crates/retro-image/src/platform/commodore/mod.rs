@@ -297,6 +297,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "Centauri Logo-Editor", &["cle"], cle::decode_cle),
     Format::new(
         C64,
+        "Hires-Editor",
+        &["het"],
+        bitmap::decode_hires_editor,
+    ),
+    Format::new(
+        C64,
         "Dolphin Ed",
         &["dol", "bed"],
         bitmap::decode_dolphin_ed,
