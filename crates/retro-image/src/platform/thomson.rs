@@ -15,10 +15,9 @@ use crate::Format;
 const PLATFORM: &str = "Thomson MO/TO";
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::with_companions(PLATFORM, "MAP picture", &["map"], map::decode_map),
-    // The same files whatever their name: the binary file records, mode,
-    // size, packed banks and trailer are all checked.
-    Format::with_companions(PLATFORM, "MAP picture", &[], map::decode_map).signature(),
+    // The binary file records, mode, size, packed banks and trailer are all
+    // checked, so MAP pictures are also recognised under other names.
+    Format::with_companions(PLATFORM, "MAP picture", &["map"], map::decode_map).signature(),
     Format::with_companions(
         PLATFORM,
         "Graffiti bitmap 16",
