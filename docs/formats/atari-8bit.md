@@ -191,7 +191,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | RYS | Mamut | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Mamut) | 160x96, 4 colours. |
 | SG3 | Standard Graphics 3 | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Standard_Graphics_3_(Atari)), [AtariAge GR3 planner](https://atariage.com/forums/topic/225305-graphics-3-planner-early-beta-version/) | 40x24, 4 colours (GR3 = 240 bytes + colours?). |
 | SGE | Semi-Graphic logos Editor | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Semi-Graphic_logos_Editor) | 40x24 characters, mono. |
-| SHC | SAMAR Hi-res Interlace | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace), [AtariAge discussion](https://atariage.com/forums/topic/138640-640-x-200-x-2-color-mode-discussion/?tab=comments#comment-1675241) | Exactly 17920 bytes. 320x192 with a colour map, 2 frames. |
+| SHC | SAMAR Hi-res Interlace | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace), [AtariAge discussion](https://atariage.com/forums/topic/138640-640-x-200-x-2-color-mode-discussion/?tab=comments#comment-1675241) | Exactly 17920 bytes. 320x192 with a colour map, 2 frames (layout reverse engineered, see section 8). |
 | SHP | Blazing Paddles shape table | None | [Blazing Paddles manual (archive.org)](https://archive.org/details/BlazingPaddlesAtariSupplementManualBaudville), [Just Solve](http://justsolve.archiveteam.org/wiki/Blazing_Paddles) | Mono vector/shape table. |
 | SHP | Movie Maker shapes | Partial | [Just Solve Movie Maker](http://fileformats.archiveteam.org/wiki/Movie_Maker), [Wikipedia](https://en.wikipedia.org/wiki/Movie_Maker_(Reston_Publishing)) | 1024 or 4384 bytes. 160x96, 4 colours. |
 | SIF | Super-IRG Font | Spec | [SIFE.TXT](http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/Super%20IRG%20Font%20Editor/SIFE.TXT) | 2 × 1024-byte ANTIC 4 charsets, flipped per VBI (2048 bytes). Colours are not stored. Sample `ATARI.SIF` is in the same directory. |
@@ -329,7 +329,7 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
 - **Content detection** (`.signature()`): INT95a, TIP, NLQ, PGC. Not Koala (Rambrandt
   RM0-RM4 files start with a Koala header) and not JGP (a generic binary-load header).
 - **SFDN**: solved in wave 3 (section 8).
-- **Not attempted** (see section 8 for wave 3): G2F/MCH/VSC (the G2F container is undocumented and needs raster
+- **Not attempted** (MCH, G2F, SHC since done in wave 3, section 8): G2F/MCH/VSC (the G2F container is undocumented and needs raster
   and PMG emulation), SHC (the colour map is a list of mid-line register writes),
   Blazing Paddles CHR (proportional glyphs behind a pointer table), RastaConverter
   (no samples).
@@ -380,6 +380,13 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   flag and the bottom-half inverse map. RECOIL reads nothing else in the 140-300 KB
   that follow. All 13 corpus samples without VBXE attributes match, and 100 random
   synthetic G2F files render identically.
+- **SHC** (SAMAR Hires Interlace), `atari8/interlace.rs`. Exactly 17920 bytes: two
+  7680-byte Graphics 8 frames, then for each frame 1280 bytes with 6 colours per
+  scanline (192 × 6, the last 128 unused). Each colour is COLPF2 (the background) for
+  a fixed span of the scanline, i.e. mid-line register writes: frame 1 changes at
+  pixels 94, 166, 214, 262, 306, frame 2 at 46, 142, 190, 238, 286. Set pixels show the
+  background hue at luminance 0. Frames are averaged. Probed with hand-made files; all
+  8 corpus samples and 15 random files match `recoil2png`.
 - **Not done**: G2F with VBXE colour attributes (flag at end+146753 = 1: athena,
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed

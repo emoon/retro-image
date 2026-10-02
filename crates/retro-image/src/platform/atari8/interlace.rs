@@ -16,6 +16,16 @@
 //! - MCPP: Just Solve "Paradox"
 //!   (<http://fileformats.archiveteam.org/wiki/Paradox_(graphics)>; 8008
 //!   bytes, 160x100).
+//! - SHC: Just Solve "SAMAR Hires Interlace"
+//!   (<http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace>;
+//!   exactly 17920 bytes, 320x192, 2 frames with a colour map). The layout
+//!   was reverse engineered by black-box probing of `recoil2png` with
+//!   modified and hand-made files: two 7680-byte Graphics 8 frames, then
+//!   per frame 1280 bytes holding 6 colours for each of the 192 scanlines
+//!   (the last 128 unused). Each colour is the background (COLPF2) of a
+//!   fixed span of the scanline, a mid-line register change: frame 1
+//!   switches at pixels 94, 166, 214, 262 and 306, frame 2 at 46, 142, 190,
+//!   238 and 286. Set pixels show the background hue at luminance 0.
 //! - IST: Just Solve "Atari Interlaced Studio"
 //!   (<http://fileformats.archiveteam.org/wiki/Atari_Interlaced_Studio>;
 //!   exactly 17184 bytes, 160x200, 2 frames); the frame offsets and
@@ -168,6 +178,32 @@ fn color_sets(data: &[u8]) -> [[u8; 4]; 2] {
     [set(&data[..4]), set(&data[4..8])]
 }
 
+/// SAMAR Hires Interlace: two Graphics 8 frames, then each frame's 6
+/// background colours per scanline, changed at fixed pixels mid-line.
+pub(super) fn decode_shc(data: &[u8]) -> Result<Image, DecodeError> {
+    const SCREEN: usize = 7680;
+    const SPLITS: [[usize; 5]; 2] = [[94, 166, 214, 262, 306], [46, 142, 190, 238, 286]];
+    if data.len() != 17920 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let frame_image = |f: usize| {
+        let bitmap = &data[f * SCREEN..(f + 1) * SCREEN];
+        let colors = &data[2 * SCREEN + 1280 * f..];
+        let mut image = Image::new(320, 192);
+        for y in 0..192 {
+            for x in 0..320 {
+                let span = SPLITS[f].iter().filter(|&&split| x >= split).count();
+                let background = colors[6 * y + span];
+                let set = bitmap[40 * y + x / 8] >> (7 - x % 8) & 1 != 0;
+                let color = if set { background & 0xf0 } else { background };
+                image.set(x as u32, y as u32, register_rgb(color));
+            }
+        }
+        image
+    };
+    Ok(Image::blend(&[&frame_image(0), &frame_image(1)]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,6 +217,23 @@ mod tests {
         let image = decode_inp(&data).unwrap();
         assert_eq!(&image.rgb()[..3], &[0x77, 0x77, 0x77]);
         assert!(decode_inp(&data[..2 * FRAME + 3]).is_err());
+    }
+
+    #[test]
+    fn shc_changes_colour_mid_line() {
+        let mut data = vec![0u8; 17920];
+        data[0] = 0x80; // frame 1: pixel 0 set
+        for f in 0..2 {
+            let colors = 15360 + 1280 * f;
+            data[colors..colors + 6].copy_from_slice(&[0x0e, 0x0e, 0x0e, 0x0e, 0x0e, 0x0e]);
+        }
+        data[15360 + 1] = 0x00; // frame 1, second span (pixels 94-165): black
+        let image = decode_shc(&data).unwrap();
+        // Pixel 0: frame 1 hue 0 at luminance 0, frame 2 white.
+        assert_eq!(image.get(0, 0), 0x777777);
+        assert_eq!(image.get(93, 0), 0xeeeeee);
+        assert_eq!(image.get(94, 0), 0x777777);
+        assert!(decode_shc(&data[1..]).is_err());
     }
 
     #[test]

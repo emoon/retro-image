@@ -145,6 +145,12 @@ pub(super) static FORMATS: &[Format] = &[
         &["ist"],
         interlace::decode_ist,
     ),
+    Format::new(
+        ATARI8,
+        "SAMAR Hires Interlace",
+        &["shc"],
+        interlace::decode_shc,
+    ),
     Format::new(ATARI8, "McPainter", &["mcp"], interlace::decode_mcp),
     Format::new(ATARI8, "Paradox", &["mcpp"], interlace::decode_mcpp),
     Format::new(
