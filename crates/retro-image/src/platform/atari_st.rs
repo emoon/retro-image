@@ -25,6 +25,7 @@ mod simple;
 mod spectrum;
 mod tiny;
 mod tt;
+mod uimg;
 
 use crate::{DecodeError, Format, Image};
 
@@ -156,4 +157,14 @@ pub(super) static FORMATS: &[Format] = &[
     falcon("DelmPaint (640x480)", &["dph"], falcon_paint::decode_dph),
     falcon("RAG-D", &["rag"], falcon_paint::decode_rag),
     falcon("Music Compile", &["ragc"], falcon_paint::decode_ragc),
+    st(
+        "UIMG",
+        &["bp1", "bp2", "bp4", "c01", "c02", "c04"],
+        uimg::decode_uimg,
+    ),
+    falcon(
+        "UIMG",
+        &["bp6", "bp8", "c06", "c08", "c16", "c24", "c32"],
+        uimg::decode_uimg,
+    ),
 ];
