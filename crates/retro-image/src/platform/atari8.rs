@@ -14,6 +14,7 @@ mod palette;
 mod portfolio;
 mod rom_font;
 mod screen;
+mod sfdn;
 mod technicolor;
 mod text;
 mod tip;
@@ -79,6 +80,28 @@ pub(super) static FORMATS: &[Format] = &[
         apac::decode_interlaced,
     ),
     Format::new(ATARI8, "Champions' Interlace", &["cin"], apac::decode_cin),
+    Format::new(
+        ATARI8,
+        "Graphics 9 (SFDN)",
+        &["g9s", "sfd"],
+        sfdn::decode_g9s,
+    ),
+    Format::new(ATARI8, "Plama 256 (SFDN)", &["pls"], sfdn::decode_pls),
+    Format::new(
+        ATARI8,
+        "Any Point, Any Color (SFDN)",
+        &["aps"],
+        sfdn::decode_aps,
+    ),
+    Format::new(ATARI8, "Apac3 Linker-Viewer", &["app"], sfdn::decode_app),
+    Format::new(ATARI8, "APACVIEW (SFDN)", &["ils"], sfdn::decode_ils),
+    Format::new(ATARI8, "InterPainter (SFDN)", &["ins"], sfdn::decode_ins),
+    Format::new(
+        ATARI8,
+        "Hard Interlace Picture (SFDN)",
+        &["hps"],
+        sfdn::decode_hps,
+    ),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
     Format::with_companions(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),

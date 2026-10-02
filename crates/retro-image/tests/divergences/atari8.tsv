@@ -16,3 +16,8 @@ hostile/atari8/pigwa-forever/Technicolor_Dream/PIPE2/PIPE2.LUM +companions	320x2
 hostile/atari8/pigwa-forever/Technicolor_Dream/SLAB/SLAB.LUM	320x238	5ce8e2cb36cf671d	Packed Technicolor Dream (see comment above); reviewed: grey rendering of the slab picture.
 hostile/atari8/pigwa-forever/Technicolor_Dream/SLAB/SLAB.LUM +companions	320x238	b8a40c106c4812b5	Packed Technicolor Dream (see comment above), disk slack after the last run. Reviewed: isometric slab of sky and landscape.
 hostile/atari8/demozoo/380151/electricdawn40x28.scr	320x224	124a03a1ad894825	ATASCII-art compo screen of 28 Graphics 0 lines (1120 bytes; the file name says 40x28). RECOIL only takes 24 lines. Its first 960 bytes rendered by recoil2png are pixel-identical to our top 192 lines; the whole render is a coherent synthwave sunset over a grid, which needs all 28 lines.
+# SFDN-packed Graphics 9 from the MGV12 disk: the stream unpacks cleanly (every bit consumed) to 7684 bytes, i.e. a 7680-byte
+# GR9 screen plus 4 bytes (00 28 CA 00). RECOIL only takes 7680 for .SFD/.G9S. recoil2png given the unpacked 7684 bytes as
+# .GR9 renders pixels identical to ours.
+hostile/atari8/pigwa-forever/MGV12/GIRL1.SFD	320x192	14da0f110feb5c7d	SFDN GR9 with a 4-byte tail (see comment above); reviewed: coherent grey portrait of a woman beside a ruler.
+hostile/atari8/pigwa-forever/MGV12/GIRL2.SFD	320x192	c4a34e6d02c45395	SFDN GR9 with a 4-byte tail (see comment above); reviewed: coherent grey picture of a reclining figure.

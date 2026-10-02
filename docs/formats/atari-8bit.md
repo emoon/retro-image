@@ -86,7 +86,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | AP3, APV, DGI, DGP, ESC, ILC, PZM | 80x192 APAC-interlace family (Digi Paint, EscalPaint, Pryzm Artist, ...) | Partial | [Just Solve Digi Paint](http://fileformats.archiveteam.org/wiki/Digi_Paint), [AtariWiki File Suffix](https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix), [atari-owner modes](https://atari-owner.com/club/articles/atari-software-graphic-modes.17/) | 15360 or 15362 bytes (AP3: 15872). 2 frames of GR9/GR11, 256 colours. Uncompressed. Frame order unverified. |
 | APA, APC, PLM | 80x96 APAC | Partial | [Just Solve AP*](http://fileformats.archiveteam.org/wiki/AP*), [AtariWiki File Suffix](https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix) | APC = "80x96x256 noncompressed". 7680/7684/7720 bytes. GR9/GR11 lines alternate. |
 | APL | Atari Player Editor (Playsoft) | None | [Just Solve list](http://fileformats.archiveteam.org/wiki/Atari_graphics_formats), [SprEd thread](https://forums.atariage.com/topic/330217-spred-new-atari-sprite-editor/) | Multi-frame PMG animation. SprEd can load it. 48-line player height is the default. |
-| APP | Apac3 Linker-Viewer | Partial | [Just Solve Apac3 APP](http://fileformats.archiveteam.org/wiki/Apac3_APP) | Starts with ASCII `S101`. "SFDN" compressed, and the packer is undocumented. 80x192, 2 frames. |
+| APP | Apac3 Linker-Viewer | Partial | [Just Solve Apac3 APP](http://fileformats.archiveteam.org/wiki/Apac3_APP) | Starts with ASCII `S101`. "SFDN" compressed (packer reverse engineered, see section 8). 80x192, 2 frames. |
 | APS | Any Point, Any Color | Partial | [AtariWiki APAC](https://atariwiki.org/wiki/Wiki.jsp?page=APAC+Graphics+Mode) | 80x96 APAC, SFDN compressed (undocumented). |
 | ART | Ascii-Art Editor | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Ascii-Art_Editor), [atarionline.pl](https://atarionline.pl/v01/index.php?ct=utils&sub=2.%20Grafika&tg=Ascii-Art%20Editor) | Up to 64x24 characters, mono. |
 | ART | Artist by David Eaton | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Artist_(David_Eaton)) | 160x80, 4 colours. The extension is arbitrary. |
@@ -328,12 +328,25 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   load address; HIP as two 192-line binary-load frames.
 - **Content detection** (`.signature()`): INT95a, TIP, NLQ, PGC. Not Koala (Rambrandt
   RM0-RM4 files start with a Koala header) and not JGP (a generic binary-load header).
-- **SFDN** (APP/APS/G9S/HPS/ILS/INS/PLS/SFD), partly understood, not implemented:
-  `S101`, the unpacked length (little-endian), then a 16-entry table that is exactly
-  the frequency order of the nibble deltas (previous minus current, mod 16, in raster
-  order). The bitstream after it is not a plain prefix code of those ranks from
-  offset 22 (tested against SHPOON.G9S, whose pixels RECOIL shows).
+- **SFDN**: solved in wave 3 (section 8).
 - **Not attempted**: G2F/MCH/VSC (the G2F container is undocumented and needs raster
   and PMG emulation), SHC (the colour map is a list of mid-line register writes),
   Blazing Paddles CHR (proportional glyphs behind a pointer table), RastaConverter
   (no samples).
+
+## 8. Implementation notes (wave 3)
+
+- **SFDN** (APP/APS/G9S/HPS/ILS/INS/PLS/SFD), `atari8/sfdn.rs`. Reverse engineered by
+  feeding `recoil2png` hand-made `.G9S` files (GR9 shows each nibble as a grey):
+  `S101`, unpacked length (LE16), a 16-byte table of nibble deltas (most frequent
+  first; only the low nibble counts), then an MSB-first bitstream. The first nibble
+  is 4 raw bits; each next nibble is the previous minus `table[rank]` (mod 16), where
+  the rank is coded as `k` one bits, a zero, and one more bit: `rank = 2k + bit`
+  (`00`, `01`, `100`, `101`, `1100`, ... `111111101`). Eight ones in a row are
+  rejected. Nibbles fill bytes high nibble first. Each extension takes exactly one
+  unpacked length (probed): G9S/SFD 7680 (GR9), PLS 7680 (interleaved APAC), APS 7720
+  (interleaved APAC), APP 15872 and ILS 15360 (interlaced APAC), INS 16004
+  (InterPainter), HPS 16009 (HIP with registers). Every corpus sample consumes its
+  bitstream to the last byte and matches RECOIL. We also take G9S/SFD that unpack to
+  7684 bytes (the MGV12 disk's GIRL1/GIRL2; RECOIL rejects them). No `.signature()`:
+  the header doesn't say which picture format is inside (7680 bytes is GR9 or PLS).
