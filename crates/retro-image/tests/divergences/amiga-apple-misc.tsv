@@ -1,0 +1,2 @@
+# Divergences for amiga-apple-misc; see README.md.
+hostile/amiga-apple-misc/aminet-abkviewer/EHB64.abk	2048x63	79761f083246bea5	RECOIL rejects 6-plane AMOS sprite banks. 32 objects 64x63x6 parse exactly to EOF; 6 planes with a 32-entry palette = Extra Half-Brite (Amiga HRM, file named EHB64). Output reviewed: regular 64-colour bar test pattern.
