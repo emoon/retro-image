@@ -33,7 +33,7 @@ enum Level {
     Scalar,
     /// x86_64 baseline: `expand_plane`.
     Sse2,
-    /// SSSE3 and SSE4.1.
+    /// SSSE3 and SSE4.1: `palette_to_rgb`.
     Sse41,
     /// `expand_plane`.
     Avx2,
@@ -95,6 +95,10 @@ pub(crate) fn palette_to_rgb(indices: &[u8], table: &[u32; 256], out: &mut [u8])
 
 fn palette_to_rgb_at(level: Level, indices: &[u8], table: &[u32; 256], out: &mut [u8]) {
     assert_eq!(out.len(), indices.len() * 3, "RGB buffer size");
+    #[cfg(all(target_arch = "x86_64", not(miri)))]
+    if level > Level::Scalar {
+        return x86_64::palette_to_rgb(level, indices, table, out);
+    }
     let _ = level;
     scalar::palette_to_rgb(indices, table, out);
 }

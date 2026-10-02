@@ -160,6 +160,34 @@ fn expand_plane_avx512(plane: &[u8], bit: u32, out: &mut [u8]) -> usize {
     blocks.len() * 64
 }
 
+pub(super) fn palette_to_rgb(level: Level, indices: &[u8], table: &[u32; 256], out: &mut [u8]) {
+    let done = if level.min(detected()) >= Level::Sse41 {
+        // SAFETY: the CPU has SSSE3 and SSE4.1 (clamped above).
+        unsafe { palette_to_rgb_sse41(indices, table, out) }
+    } else {
+        0
+    };
+    scalar::palette_to_rgb(&indices[done..], table, &mut out[done * 3..]);
+}
+
+/// Returns the number of pixels done (a multiple of 4).
+#[target_feature(enable = "ssse3,sse4.1")]
+fn palette_to_rgb_sse41(indices: &[u8], table: &[u32; 256], out: &mut [u8]) -> usize {
+    // An entry is B, G, R, 0 in memory: pack R, G, B of four entries into
+    // 12 bytes, written as 8 + 4.
+    let rgb = _mm_setr_epi8(2, 1, 0, 6, 5, 4, 10, 9, 8, 14, 13, 12, -1, -1, -1, -1);
+    let (blocks, _) = out.as_chunks_mut::<12>();
+    let (groups, _) = indices.as_chunks::<4>();
+    for (pixels, group) in blocks.iter_mut().zip(groups) {
+        let [a, b, c, d] = group.map(|i| table[usize::from(i)] as i32);
+        let packed = _mm_shuffle_epi8(_mm_setr_epi32(a, b, c, d), rgb);
+        let (low, high) = pixels.split_at_mut(8);
+        low.copy_from_slice(&_mm_cvtsi128_si64(packed).to_le_bytes());
+        high.copy_from_slice(&_mm_extract_epi32::<2>(packed).to_le_bytes());
+    }
+    blocks.len() * 4
+}
+
 // Unaligned loads and stores of whole arrays: the array type proves the
 // bytes are there, and `loadu`/`storeu` need no alignment.
 
