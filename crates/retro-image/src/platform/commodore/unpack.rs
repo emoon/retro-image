@@ -14,10 +14,13 @@ pub(super) enum Run {
     ValueCount,
     /// `ESC count value`
     CountValue,
+    /// `ESC count-1 value`
+    CountMinusOneValue,
 }
 
-/// Unpacks `ESC a b` runs (count 0 = 256) and literal bytes from `packed`
-/// until `len` bytes are produced or the input ends. Fails on a truncated run.
+/// Unpacks `ESC a b` runs (count 0 = 256 unless stored minus one) and
+/// literal bytes from `packed` until `len` bytes are produced or the input
+/// ends. Fails on a truncated run.
 pub(super) fn escape_rle(packed: &[u8], escape: u8, run: Run, len: usize) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(len);
     let mut i = 0;
@@ -30,6 +33,7 @@ pub(super) fn escape_rle(packed: &[u8], escape: u8, run: Run, len: usize) -> Opt
             let (value, count) = match run {
                 Run::ValueCount => (a, b),
                 Run::CountValue => (b, a),
+                Run::CountMinusOneValue => (b, a.wrapping_add(1)),
             };
             let count = if count == 0 { 256 } else { usize::from(count) };
             out.extend(core::iter::repeat_n(value, count));

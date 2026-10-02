@@ -5,6 +5,7 @@
 
 mod bitmap;
 mod fli;
+mod ifli;
 mod interlace;
 mod prg;
 mod unpack;
@@ -146,4 +147,14 @@ pub(super) static FORMATS: &[Format] = &[
         &["hlf"],
         interlace::decode_hires_interlace,
     ),
+    Format::new(C64, "Gunpaint", &["gun", "ifl"], ifli::decode_gunpaint),
+    Format::new(C64, "Funpaint II", &["fun", "fp2"], ifli::decode_funpaint),
+    Format::new(C64, "Pixel Perfect", &["pp"], ifli::decode_pixel_perfect),
+    Format::new(
+        C64,
+        "Pixel Perfect (compressed)",
+        &["ppp"],
+        ifli::decode_pixel_perfect_packed,
+    ),
+    Format::new(C64, "ECI Graphic Editor", &["eci"], ifli::decode_eci),
 ];

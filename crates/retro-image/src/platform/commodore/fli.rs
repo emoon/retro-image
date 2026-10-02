@@ -35,11 +35,20 @@ pub(super) struct Fli {
     pub screens: u16,
     /// Colour RAM; `None` for hires (AFLI).
     pub color: Option<u16>,
-    /// Address of a 200-entry `$D021` table; black when `None`.
-    pub backgrounds: Option<u16>,
+    pub background: Bg,
     pub height: usize,
     /// Bitmap lines above the picture that are not shown.
     pub skip: usize,
+}
+
+/// Where a FLI picture's background colour (`$D021`) comes from.
+#[derive(Clone, Copy)]
+pub(super) enum Bg {
+    Black,
+    /// One byte at this address.
+    Byte(u16),
+    /// A table with one entry per line at this address.
+    Table(u16),
 }
 
 impl Fli {
@@ -57,9 +66,10 @@ impl Fli {
             data: prg.at(self.screens, SCREENS_LEN)?,
             stride: 1024,
         };
-        let background = match self.backgrounds {
-            Some(addr) => Background::PerLine(prg.at(addr, self.height)?),
-            None => Background::Fixed(0),
+        let background = match self.background {
+            Bg::Black => Background::Fixed(0),
+            Bg::Byte(addr) => Background::Fixed(prg.byte(addr)?),
+            Bg::Table(addr) => Background::PerLine(prg.at(addr, self.height)?),
         };
         let bitmap = Bitmap {
             bitmap: prg.at(self.bitmap, BITMAP_LEN)?,
@@ -84,14 +94,14 @@ const FLI_DESIGNER: Fli = Fli {
     bitmap: 0x6000,
     screens: 0x4000,
     color: Some(0x3c00),
-    backgrounds: None,
+    background: Bg::Black,
     height: 200,
     skip: 0,
 };
 const FLI_GRAPH: Fli = Fli {
     load: 0x3b00,
     sizes: &[17474],
-    backgrounds: Some(0x3b00),
+    background: Bg::Table(0x3b00),
     ..FLI_DESIGNER
 };
 const AFLI_EDITOR: Fli = Fli {
@@ -100,7 +110,7 @@ const AFLI_EDITOR: Fli = Fli {
     bitmap: 0x6000,
     screens: 0x4000,
     color: None,
-    backgrounds: None,
+    background: Bg::Black,
     height: 200,
     skip: 0,
 };
@@ -110,7 +120,7 @@ const HIRES_FLI_DESIGNER: Fli = Fli {
     bitmap: 0x4000,
     screens: 0x6000,
     color: None,
-    backgrounds: None,
+    background: Bg::Black,
     height: 112,
     skip: 0,
 };

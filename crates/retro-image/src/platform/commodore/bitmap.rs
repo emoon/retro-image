@@ -299,7 +299,7 @@ pub(super) fn decode_doodle(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Prepends a dummy load address so unpacked data can be read as a [`Prg`].
-fn with_header(unpacked: Vec<u8>) -> Vec<u8> {
+pub(super) fn with_header(unpacked: Vec<u8>) -> Vec<u8> {
     let mut data = Vec::with_capacity(unpacked.len() + 2);
     data.extend_from_slice(&[0, 0]);
     data.extend(unpacked);
