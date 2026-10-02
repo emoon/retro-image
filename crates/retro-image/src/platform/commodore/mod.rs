@@ -10,6 +10,7 @@
 //! was found by inspecting sample files and comparing with `recoil2png` output.
 
 mod bitmap;
+mod c128;
 mod fli;
 mod godot;
 mod ifli;
@@ -26,6 +27,7 @@ type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
 
 const C64: &str = "Commodore 64";
 const PLUS4: &str = "Commodore 16/116/Plus4";
+const C128: &str = "Commodore 128";
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new(
@@ -197,6 +199,8 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
+    Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm),
+    Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
