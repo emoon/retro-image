@@ -59,13 +59,13 @@ Amiga fonts. They fall back to the 8x16 CP437 font.
 | Ext | Format | Docs | Sources | Notes |
 |---|---|---|---|---|
 | ANS | ANSI art | **Spec** | ECMA-48, SAUCE, Deark `ansiart.c`, libansilove `ansi.c`, PabloDraw page | Viewer conventions (from Deark): LF also returns to column 0; bold and iCE blink brighten at write time, then reverse swaps; erased cells are grey-on-black spaces; `ESC[?33h` sets iCE; SGR 38/48;2, 90-97/100-107 and PabloDraw `t`; SAUCE width used for 40-2048. Height = lowest written row. Ours (ANSI.SYS-like, differs from Deark only in rare cases): cursor moves clamp to the screen, row/column 0 means 1, BEL is silent, BS moves left, TAB goes to the next multiple of 8, 1Ah ends the text, a lone ESC is dropped. Underline (SGR 4) isn't drawn: VGA colour text has none. |
-| BIN | Binary Text | **Partial** | SAUCE (DataType 5, width = 2 x FileType), Deark `bintext.c` | No header. Without SAUCE Deark assumes 160 columns. We accept only exact sizes: a SAUCE BinaryText record, 4000 bytes (one 80x25 screen; Deark gives 12.5 rows of 160) or a multiple of 320 bytes (160 columns). Powers of two (ROM dumps) never divide by 320. ACiDDraw quirk: FileType 1 with TInfo1 = half width. |
+| BIN | Binary Text | **Partial** | SAUCE (DataType 5, width = 2 x FileType), Deark `bintext.c` | No header. Without SAUCE Deark assumes 160 columns. `.bin` is too generic for that, so we accept a SAUCE BinaryText record (160 columns if it gives no width), or else exactly 4000 bytes (one 80x25 screen; Deark gives 12.5 rows of 160) where at least 95% of the characters are printable ASCII or B0h-DFh and at most 32 different attributes occur. All no-SAUCE samples pass that (99.8-100%, 8-21 attributes); random data has about 55% and 256. BIN files without SAUCE of other sizes are not decoded (4 dexvert samples). ACiDDraw quirk: FileType 1 with TInfo1 = half width. |
 | XB | XBin | **Spec** | XBin spec, Deark `bintext.c` | Magic `XBIN` 1Ah. Optional 6-bit palette, font (1-32 rows), row-wise RLE, non-blink flag. 512-character mode is rejected (the spec doesn't say how the attribute selects the second set; Deark and Moebius reject it too). |
 | ADF | ArtWorx Data Format | **Partial** | Deark `bintext.c` | Version byte 1, 64-entry 6-bit EGA palette (text colours are entries 0-5, 20, 7, 56-63), 8x16 font, then 80-column iCE BIN data. No magic, and `.adf` is also the Amiga disk image extension, so we require version 1, all palette bytes 0-63 (not all zero), and whole 160-byte rows. |
 | IDF | iCE Draw | **None** | libansilove `icedraw.c`, samples | Header `04 "1.4"`, x1, y1, x2, y2 (LE words, width = x2 + 1); pairs where char 1 starts a run (`01 xx count-word char attr`); 4096-byte font and 48-byte palette at the end; always iCE. libansilove ignores SAUCE (and so reads the record as palette) and hard-codes 80 columns for the height. |
 | TND | TundraDraw | **Partial** | libansilove `tundra.c`, SAUCE (1/8) | Header `18h "TUNDRA24"`; commands 1 (row, column BE32), 2/4/6 (char + 24-bit fg/bg/both as BE32 00RRGGBB). libansilove draws a SAUCE record as text. One sample labels itself FileType 7 but needs the TInfo1 width, so any Character record's width is used. |
-| PCB | PCBoard @-codes | **Partial** | libansilove `pcboard.c`, SAUCE (1/4) | `@X` + two hex digits (bg, fg), `@CLS@`. Other `@MACRO@`s are live BBS values; we show them as text. `.pcb` is also a circuit-board extension, so at least one `@X` code is required. |
-| AVT | Avatar | **Spec** | FSC-0025, FSC-0037, SAUCE (1/5) | AVT/0 commands (^L, ^Y, ^V^A-^V^H) are interpreted. AVT/0+ ones are skipped by their argument length. Unknown ^V commands (AVT/1, undocumented; e.g. dexvert `DEMO1.AVT`) make the file rejected. At least one Avatar code is required. |
+| PCB | PCBoard @-codes | **Partial** | libansilove `pcboard.c`, SAUCE (1/4) | `@X` + two hex digits (bg, fg), `@CLS@`. Other `@MACRO@`s are live BBS values; we show them as text. `.pcb` is also a circuit-board extension, so at least one `@X` code is required and at most 1 in 100 drawn characters may be a control character (the samples have none). |
+| AVT | Avatar | **Spec** | FSC-0025, FSC-0037, SAUCE (1/5) | AVT/0 commands (^L, ^Y, ^V^A-^V^H) are interpreted. AVT/0+ ones are skipped by their argument length. Unknown ^V commands (AVT/1, undocumented; e.g. dexvert `DEMO1.AVT`) make the file rejected. Also required: at least two complete ^V commands, at most 1 in 12 drawn characters a control character (samples: up to 1 in 16; binary data about 1 in 11), and at most 128 bytes after an EOF character that ends the text. |
 
 ## Not honoured
 
@@ -86,7 +86,13 @@ Amiga fonts. They fall back to the 8x16 CP437 font.
 ## Samples
 
 `corpus/extra/textmode/sembiance/` (dexvert sample set, <https://sembiance.com/fileFormatSamples/image/>):
-32 ANS, 14 BIN, 10 XB, 12 ADF, 7 IDF, 9 TND, 11 PCB, 20 AVT. The 16colo.rs site disallows
+32 ANS, 14 BIN, 10 XB, 12 ADF, 7 IDF, 9 TND, 11 PCB, 20 AVT. Not decoded: 4 BIN files without
+SAUCE (see BIN), `r5-XVOL1.BIN` (1280x15424, over the 16-megapixel limit every decoder here
+shares) and `DEMO1.AVT` (AVT/1).
+
+A false-positive check (throwaway script, 2026-10-02) fed 300 random buffers and 800 pieces of
+executables, libraries, gzip files and other-platform pictures (4000 bytes and up to 64 KiB) to
+the BIN, AVT, PCB and ADF decoders: none was accepted. The 16colo.rs site disallows
 crawling raw `.ANS`/`.ICE` files in its robots.txt, so nothing was fetched from it; its GitHub
 mirror (<https://github.com/sixteencolors/sixteencolors-archive>, packs by year) is a source
 for later work.

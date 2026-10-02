@@ -7,7 +7,7 @@
 //!   is twice the FileType; the ANSiFlags select non-blink mode and 9-pixel
 //!   letter spacing.
 //! - Deark `modules/bintext.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence): BIN without SAUCE is 160 columns wide; FileType 1 with a
+//!   licence): without a width, BIN is 160 columns wide; FileType 1 with a
 //!   TInfo1 means TInfo1 is half the width (written by ACiDDraw). ADF is a
 //!   version byte (1), a 64-entry 6-bit EGA palette of which entries 0-5,
 //!   20, 7 and 56-63 are the 16 text colours, an 8x16 font, then an
@@ -21,12 +21,14 @@
 //!   iCE Draw always uses non-blink colours.
 //! - Reverse engineered from samples: BIN files without SAUCE of 4000 bytes
 //!   are one 80x25 screen (`COMPUTER.BIN`, `LM_SCR1.BIN` from the dexvert
-//!   samples), not 12.5 rows of 160 columns; IDF's run count is a word
+//!   samples), not 12.5 rows of 160 columns as Deark assumes. Other BIN
+//!   files without SAUCE (Deark: 160 columns) are not accepted: their size
+//!   is all there is to go on, and `.bin` is too common. IDF's run count is a word
 //!   (`ICE-9605.IDF` decodes to exactly 200 rows of 80 cells); and IDF
 //!   files may carry SAUCE, which libansilove reads as part of the palette
 //!   (`SQ-FORCE.IDF`).
 
-// The BIN width rules and the ADF layout follow Deark `modules/bintext.c`,
+// The BinaryText width quirk and the ADF layout follow Deark `modules/bintext.c`,
 // under this licence:
 //
 // Copyright (C) 2016-2026 Jason Summers
@@ -89,24 +91,42 @@ use crate::{DecodeError, Image};
 /// One 80x25 screen of pairs.
 const SCREEN_LEN: usize = 80 * 25 * 2;
 
-/// Binary Text. The content must fit the width exactly unless a BinaryText
-/// SAUCE record vouches for it: `.bin` is a common extension.
+/// Binary Text. `.bin` is a very common extension, so without a BinaryText
+/// SAUCE record only a plausible 80x25 screen is accepted.
 pub(super) fn decode_bin(data: &[u8]) -> Result<Image, DecodeError> {
     let (pairs, sauce) = sauce::split(data);
     let sauce = sauce.filter(|s| s.data_type == BINARY_TEXT);
-    let sauce_width = sauce.map(|s| match (s.file_type, s.tinfo1) {
-        (1, half @ 1..) => usize::from(half) * 2,
-        (half, _) => usize::from(half) * 2,
-    });
-    let width = match sauce_width {
-        Some(width @ 1..) => width,
-        _ if pairs.len() == SCREEN_LEN => 80,
-        _ if !pairs.is_empty() && pairs.len() % 320 == 0 => 160,
+    let width = match sauce.map(|s| (s.file_type, s.tinfo1)) {
+        Some((1, half @ 1..)) => usize::from(half) * 2,
+        Some((half @ 1.., _)) => usize::from(half) * 2,
+        // A BinaryText record without a width: Deark's 160 columns.
+        Some(_) => 160,
+        _ if plausible_screen(pairs) => 80,
         _ => return Err(DecodeError::Unrecognized),
     };
     let ice = sauce.as_ref().is_some_and(|s| s.ice());
     let (cells, rows) = screen::attribute_cells(pairs, width, &PALETTE, ice)?;
     screen::render(&cells, width, rows, &sauce::style_of(sauce.as_ref()))
+}
+
+/// Whether `pairs` looks like one 80x25 text screen: at least 95% of the
+/// characters printable ASCII or CP437 shading and line drawing
+/// (B0h-DFh), and at most 32 different attributes. Real screens use a few
+/// colours; random data, code and compressed data spread over all 256.
+fn plausible_screen(pairs: &[u8]) -> bool {
+    if pairs.len() != SCREEN_LEN {
+        return false;
+    }
+    let art = |c: &u8| matches!(c, 0x20..=0x7e | 0xb0..=0xdf);
+    let printable = pairs.iter().step_by(2).filter(|c| art(c)).count();
+    let mut seen = [false; 256];
+    pairs
+        .iter()
+        .skip(1)
+        .step_by(2)
+        .for_each(|&a| seen[usize::from(a)] = true);
+    let attributes = seen.iter().filter(|&&s| s).count();
+    printable * 100 >= SCREEN_LEN / 2 * 95 && attributes <= 32
 }
 
 const ADF_PALETTE_LEN: usize = 64 * 3;
@@ -206,13 +226,26 @@ mod tests {
     use alloc::vec;
 
     #[test]
-    fn bin_width_comes_from_sauce_or_an_exact_size() {
-        let screen = vec![0u8; SCREEN_LEN];
+    fn bin_width_comes_from_sauce_or_a_plausible_screen() {
+        let mut screen = vec![0u8; SCREEN_LEN];
+        for (i, pair) in screen.chunks_exact_mut(2).enumerate() {
+            pair.copy_from_slice(&[b' ' + (i % 90) as u8, 0x07 + (i % 3) as u8 * 0x10]);
+        }
         assert_eq!(decode_bin(&screen).unwrap().width(), 80 * 8);
-        let wide = vec![0u8; 320 * 3];
-        let image = decode_bin(&wide).unwrap();
-        assert_eq!((image.width(), image.height()), (160 * 8, 3 * 16));
-        assert!(decode_bin(&[0u8; 1000]).is_err(), "no SAUCE, odd size");
+        assert!(decode_bin(&[0u8; SCREEN_LEN]).is_err(), "NUL characters");
+        let noise: Vec<u8> = (0..SCREEN_LEN as u32)
+            .map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8)
+            .collect();
+        assert!(decode_bin(&noise).is_err(), "pseudo-random bytes");
+        let mut colourful = screen.clone();
+        for (i, a) in colourful.iter_mut().skip(1).step_by(2).enumerate() {
+            *a = i as u8;
+        }
+        assert!(decode_bin(&colourful).is_err(), "too many attributes");
+        assert!(
+            decode_bin(&[0x20u8; 320 * 3]).is_err(),
+            "no SAUCE, not 80x25"
+        );
         assert!(decode_bin(&[]).is_err());
         // FileType 40: 80 columns; flags: iCE and 9 pixels.
         let data = with_sauce(&[b'A', 0x9e, b'B', 0x07], 5, 40, 0, 0x05, b"", &[]);
@@ -222,6 +255,9 @@ mod tests {
         // ACiDDraw: FileType 1 and the half width in TInfo1.
         let data = with_sauce(&[0; 320], 5, 1, 80, 0, b"", &[]);
         assert_eq!(decode_bin(&data).unwrap().width(), 160 * 8);
+        // A record of another type doesn't vouch for the data.
+        let data = with_sauce(&[0x20; 320], 1, 1, 80, 0, b"", &[]);
+        assert!(decode_bin(&data).is_err());
     }
 
     /// An ADF file: grey palette entry 7, blank font, `pairs`.

@@ -26,34 +26,55 @@ use crate::{DecodeError, Image};
 
 const AVATAR_FILE_TYPE: u8 = 5;
 const DEFAULT_ATTRIBUTE: u8 = 3;
+/// Most bytes accepted after the EOF character that ends the text.
+const MAX_TAIL: usize = 128;
 
-/// Decodes text with at least one Avatar command: the `.avt` extension
-/// is not exclusive to Avatar.
+/// Decodes Avatar text. The `.avt` extension isn't exclusive to Avatar, so
+/// the text must use at least two complete ^V commands, every ^V must be a
+/// known command, at most 1 in 12 drawn characters may be a control
+/// character (the samples have up to 1 in 16, arbitrary binary data about
+/// 1 in 11), and an EOF character may be followed by at most 128 bytes.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let (text, sauce) = sauce::split(data);
-    if !text.iter().any(|b| matches!(b, 0x0c | 0x16 | 0x19)) {
-        return Err(fail);
-    }
     let width = sauce
         .filter(|s| s.is_character(AVATAR_FILE_TYPE))
         .as_ref()
         .and_then(Sauce::width)
         .unwrap_or(80);
-    let mut avatar = Avatar {
-        terminal: Terminal::new(width).ok_or(fail)?,
-        attribute: DEFAULT_ATTRIBUTE,
-    };
+    let mut avatar = Avatar::new(Terminal::new(width).ok_or(fail)?);
     avatar.feed(text)?;
+    let tail = text.len() - avatar.end;
+    if avatar.commands < 2 || avatar.controls * 12 > avatar.glyphs || tail > MAX_TAIL {
+        return Err(fail);
+    }
     avatar.terminal.finish(&DEFAULT_STYLE)
 }
 
 struct Avatar {
     terminal: Terminal,
     attribute: u8,
+    /// Complete ^V commands seen.
+    commands: usize,
+    /// Characters drawn, and how many of them were control characters.
+    glyphs: usize,
+    controls: usize,
+    /// Where interpretation stopped.
+    end: usize,
 }
 
 impl Avatar {
+    fn new(terminal: Terminal) -> Self {
+        Self {
+            terminal,
+            attribute: DEFAULT_ATTRIBUTE,
+            commands: 0,
+            glyphs: 0,
+            controls: 0,
+            end: 0,
+        }
+    }
+
     fn cell(&self, glyph: u8) -> Cell {
         Cell::from_attribute(glyph, self.attribute, &PALETTE, false)
     }
@@ -82,7 +103,9 @@ impl Avatar {
                 }
                 0x16 => {
                     let Some(command) = arg(1) else { break };
-                    2 + self.command(command, &text[i + 2..])?
+                    let (used, complete) = self.command(command, &text[i + 2..])?;
+                    self.commands += usize::from(complete);
+                    2 + used
                 }
                 b'\r' => {
                     t.x = 0;
@@ -101,23 +124,26 @@ impl Avatar {
                     1
                 }
                 glyph => {
+                    self.glyphs += 1;
+                    self.controls += usize::from(glyph < 0x20);
                     let cell = self.cell(glyph);
                     self.terminal.put(cell);
                     1
                 }
             };
         }
+        self.end = i.min(text.len());
         Ok(())
     }
 
     /// Executes ^V `command` with the bytes after it; returns how many of
-    /// them it used.
-    fn command(&mut self, command: u8, args: &[u8]) -> Result<usize, DecodeError> {
+    /// them it used and whether all its arguments were there.
+    fn command(&mut self, command: u8, args: &[u8]) -> Result<(usize, bool), DecodeError> {
         let t = &mut self.terminal;
         let used = match command {
             1 => {
                 let Some(&attribute) = args.first() else {
-                    return Ok(args.len());
+                    return Ok((args.len(), false));
                 };
                 self.attribute = attribute & 0x7f;
                 1
@@ -151,7 +177,7 @@ impl Avatar {
             }
             8 => {
                 let [row, column, ..] = *args else {
-                    return Ok(args.len());
+                    return Ok((args.len(), false));
                 };
                 let at = |v: u8| usize::from(v.max(1) - 1);
                 t.move_to(at(column), at(row));
@@ -166,19 +192,17 @@ impl Avatar {
             25 => args.first().map_or(0, |&n| usize::from(n) + 2),
             _ => return Err(DecodeError::Unrecognized),
         };
-        Ok(used.min(args.len()))
+        Ok((used.min(args.len()), used <= args.len()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     fn run(text: &[u8]) -> Avatar {
-        let mut avatar = Avatar {
-            terminal: Terminal::new(80).unwrap(),
-            attribute: DEFAULT_ATTRIBUTE,
-        };
+        let mut avatar = Avatar::new(Terminal::new(80).unwrap());
         avatar.feed(text).unwrap();
         avatar
     }
@@ -222,7 +246,29 @@ mod tests {
         assert_eq!(t.get(2, 0).glyph, b'e');
         let mut avatar = run(b"");
         assert!(avatar.feed(b"\x16\x12").is_err(), "AVT/1 command");
+        assert_eq!(decode(b"\x0c\x16\x01\x0fhi\x16\x06!").unwrap().width(), 640);
+    }
+
+    #[test]
+    fn rejects_text_without_avatar_structure() {
         assert!(decode(b"no codes").is_err());
-        assert_eq!(decode(b"\x0chi").unwrap().width(), 640);
+        assert!(decode(b"\x0chi\x19x\x05").is_err(), "no ^V command");
+        assert!(decode(b"\x16\x01\x07hi").is_err(), "only one ^V command");
+        let tail = [&b"\x16\x01\x07hi\x16\x06!\x1a"[..], &[b'x'; 200]].concat();
+        assert!(decode(&tail).is_err(), "data after EOF");
+        assert!(decode(&tail[..tail.len() - 100]).is_ok());
+        assert!(decode(b"\x16\x01").is_err(), "attribute missing");
+        assert!(
+            decode(b"\x16\x01\x07\x16\x40x").is_err(),
+            "unknown ^V command"
+        );
+        let controls = b"\x16\x01\x07ab\x01\x02cd\x16\x06\x03\x04";
+        assert!(decode(controls).is_err(), "too many control characters");
+        // Pseudo-random bytes without 1Ah (end of text) or ^V.
+        let noise: Vec<u8> = (0..4096u32)
+            .map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8)
+            .filter(|&b| b != 0x1a && b != 0x16)
+            .collect();
+        assert!(decode(&[&b"\x16\x01\x07\x16\x06"[..], &noise[..]].concat()).is_err());
     }
 }

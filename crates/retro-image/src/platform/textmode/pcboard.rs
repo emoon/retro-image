@@ -57,8 +57,9 @@ fn color_code(text: &[u8]) -> Option<u8> {
     Some(digit(high)? << 4 | digit(low)?)
 }
 
-/// Decodes text with at least one `@X` code: `.pcb` is also used for
-/// circuit board layouts.
+/// Decodes text with at least one `@X` code and almost no control
+/// characters (at most 1 in 100 besides CR, LF and tab; the samples have
+/// none): `.pcb` is also used for circuit board layouts.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let (text, sauce) = sauce::split(data);
@@ -72,6 +73,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .unwrap_or(80);
     let mut terminal = Terminal::new(width).ok_or(fail)?;
     let mut attribute = 0x07;
+    let (mut drawn, mut controls) = (0usize, 0usize);
     let mut i = 0;
     while let Some(&byte) = text.get(i) {
         i += 1;
@@ -90,8 +92,15 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
                 terminal.clear();
                 i += 4;
             }
-            glyph => terminal.put(Cell::from_attribute(glyph, attribute, &PALETTE, false)),
+            glyph => {
+                drawn += 1;
+                controls += usize::from(glyph < 0x20 && glyph != b'\t');
+                terminal.put(Cell::from_attribute(glyph, attribute, &PALETTE, false));
+            }
         }
+    }
+    if controls * 100 > drawn {
+        return Err(fail);
     }
     terminal.finish(&DEFAULT_STYLE)
 }
@@ -119,5 +128,9 @@ mod tests {
         let lit = (8..16).any(|x| (16..32).any(|y| image.get(x, y) != PALETTE[0]));
         assert!(lit);
         assert!(decode(b"plain text").is_err(), "no colour code");
+        assert!(
+            decode(b"@X07\x01\x02\x03binary").is_err(),
+            "control characters"
+        );
     }
 }

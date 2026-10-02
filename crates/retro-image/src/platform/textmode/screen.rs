@@ -27,6 +27,11 @@ pub(super) const PALETTE: [u32; 16] = super::super::pc::CGA_PALETTE;
 /// sizes (huge widths, cursor jumps, long runs) from allocating gigabytes.
 pub(super) const MAX_CELLS: usize = 1 << 18;
 
+/// Most pixels a picture may have, as for the other platforms (see
+/// `atari_st/common.rs`): with tall fonts and 9-pixel cells the cell limit
+/// alone would allow about 75 million.
+const MAX_PIXELS: usize = 1 << 24;
+
 /// Most columns a picture may have.
 pub(super) const MAX_COLUMNS: usize = 2048;
 
@@ -79,11 +84,12 @@ pub(super) fn render(
     style: &Style,
 ) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
-    if width == 0 || rows == 0 || width > MAX_COLUMNS || width * rows > MAX_CELLS {
-        return Err(fail);
-    }
     let cell_width = if style.nine_pixels { 9 } else { 8 };
     let cell_height = style.font.height();
+    let cells_ok = width > 0 && rows > 0 && width <= MAX_COLUMNS && width * rows <= MAX_CELLS;
+    if !cells_ok || width * rows * cell_width * cell_height > MAX_PIXELS {
+        return Err(fail);
+    }
     let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32);
     for (i, cell) in cells.iter().take(width * rows).enumerate() {
         let (x0, y0) = ((i % width) * cell_width, (i / width) * cell_height);
@@ -279,6 +285,19 @@ mod tests {
         assert_eq!(image.get(17, 0), 0xffffff, "DBh is solid");
         assert_eq!(image.get(26, 1), 0, "B2h gets a background column");
         assert_eq!(image.get(35, 7), 0);
+    }
+
+    #[test]
+    fn render_caps_the_pixel_area() {
+        let big = Style {
+            font: Font::new(32, &[0; 32 * 256]).unwrap(),
+            nine_pixels: true,
+        };
+        // 80x200 cells of 9x32 pixels: 4.6 million pixels, fine; 1000 rows
+        // would be 23 million (10 million with an 8x16 font).
+        assert!(render(&[], 80, 200, &big).is_ok());
+        assert!(render(&[], 80, 1000, &big).is_err());
+        assert!(render(&[], 80, 1000, &STYLE).is_ok());
     }
 
     #[test]

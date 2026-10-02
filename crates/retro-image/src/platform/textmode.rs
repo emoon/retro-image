@@ -9,8 +9,9 @@
 //! Signatures are only claimed for real magic: XBin ("XBIN" 1Ah), iCE Draw
 //! ("\x04" "1.4" plus a valid palette) and TundraDraw ("\x18" "TUNDRA24").
 //! `.bin` and `.adf` are generic extensions, so those decoders accept only
-//! content that fits exactly (see [`binary`]); PCBoard and Avatar need at
-//! least one of their codes.
+//! a vouching SAUCE record or content that checks out (see [`binary`]);
+//! PCBoard and Avatar need real command structure and little else in the
+//! way of control characters.
 
 mod ansi;
 mod avatar;

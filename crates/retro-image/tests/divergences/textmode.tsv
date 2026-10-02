@@ -63,19 +63,14 @@ extra/textmode/sembiance/avatar/VIRUS.AVT	640x80	951e2cca268741ca	not in RECOIL 
 extra/textmode/sembiance/avatar/WEAPONS.AVT	640x240	073756a0a5e64d72	not in RECOIL or Deark; reviewed visually: game shop table (15 rows). AVT/0 per FSC-0025
 extra/textmode/sembiance/avatar/WELCOME.AVT	640x352	3ba20e19a65b08cd	not in RECOIL or Deark; reviewed visually: EZYCOM logo welcome screen. AVT/0 per FSC-0025
 extra/textmode/sembiance/avatar/test.avt	640x400	2ce02218fa9e416c	not in RECOIL or Deark; reviewed visually: rainbow ring logo, same picture as test.ans. AVT/0 per FSC-0025
-extra/textmode/sembiance/binaryText/2013 - 16 - TCF - 16 - Colors.bin	1280x3008	830c4178cf484567	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/COMPUTER.BIN	640x400	0dd1bef0d4d344e3	not in RECOIL; 4000 bytes without SAUCE is one 80x25 screen: matches Deark 1.7.3 given -opt char:width=80 pixel for pixel (Deark defaults to 160 columns and shows 12 of 12.5 rows)
 extra/textmode/sembiance/binaryText/LM_SCR1.BIN	640x400	14ea83f5457ee336	not in RECOIL; 4000 bytes without SAUCE is one 80x25 screen: matches Deark 1.7.3 given -opt char:width=80 pixel for pixel (Deark defaults to 160 columns and shows 12 of 12.5 rows)
 extra/textmode/sembiance/binaryText/PPE-ANSI.BIN	1280x416	026b8bc2549c675c	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/US-USED1.BIN	1280x960	4340d9a732b84db8	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
-extra/textmode/sembiance/binaryText/aOh-DeRidder.bin	1280x3264	4191a4a196c9726f	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/aoh-drseuss.bin	1280x6784	8e69250486fbed4d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
-extra/textmode/sembiance/binaryText/dy-reviv.bin	1280x4176	5600b3db8b90ef9d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/fil-412.bin	3600x4256	e4bb241957ee770d	not in RECOIL; SAUCE asks for 9-pixel letter spacing. Matches Deark 1.7.3 except the 9th column of B0h-B2h shade cells: Deark repeats the 8th column for B0h-DFh, the SAUCE spec and the VGA hardware only for C0h-DFh (checked: every differing pixel is column 8 of a B0h-B2h cell)
 extra/textmode/sembiance/binaryText/goo-metroid.bin	1280x2688	131d816f9dd2727d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/r5-B7+WC.bin	1280x1696	90810578ea9c0d1e	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
-extra/textmode/sembiance/binaryText/r5-XVOL1.BIN	1280x15424	c17f42cebb36c387	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
-extra/textmode/sembiance/binaryText/ra-cc.bin	1280x4448	bec1cbba72a4b014	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/binaryText/test.bin	640x400	2ce02218fa9e416c	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/iCEDraw/ICE-9605.IDF	640x3200	6d3a90e9a6344ba1	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: iCE logo over the staff list, custom font text legible. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
 extra/textmode/sembiance/iCEDraw/LS-ICE.IDF	640x3200	974cf8b8d7883fc9	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: green logo and skull with red eyes. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
