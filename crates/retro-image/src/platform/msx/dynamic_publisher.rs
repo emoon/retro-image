@@ -41,15 +41,15 @@ fn unpack(packed: &[u8], len: usize) -> Vec<u8> {
 }
 
 /// Black-on-white picture with doubled lines; `pixel(x, y)` tells if a dot is set.
-fn mono(width: usize, height: usize, pixel: impl Fn(usize, usize) -> bool) -> Image {
-    let mut image = Image::new(width as u32, (height * 2) as u32);
-    for y in 0..height * 2 {
-        for x in 0..width {
-            let colour = if pixel(x, y / 2) { BLACK } else { WHITE };
-            image.set(x as u32, y as u32, colour);
-        }
-    }
-    image
+fn mono(
+    width: usize,
+    height: usize,
+    pixel: impl Fn(usize, usize) -> bool,
+) -> Result<Image, DecodeError> {
+    let indices: Vec<u8> = (0..width * height)
+        .map(|i| u8::from(pixel(i % width, i / width)))
+        .collect();
+    Ok(Image::from_indexed(width as u32, height as u32, &indices, &[WHITE, BLACK])?.scaled(1, 2))
 }
 
 /// 512-wide picture of RLE-packed, nibble-swapped patterns at `offset`.
@@ -63,10 +63,10 @@ fn decode_packed(
         return Err(DecodeError::Unrecognized);
     }
     let patterns = unpack(&data[offset..], 64 * height);
-    Ok(mono(512, height, |x, y| {
+    mono(512, height, |x, y| {
         let byte = patterns[y * 64 + x / 8].rotate_left(4);
         byte & (0x80 >> (x % 8)) != 0
-    }))
+    })
 }
 
 /// 512x704 screen.
@@ -88,10 +88,10 @@ pub(super) fn decode_stp(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || pixels.len() < (width * height).div_ceil(4) {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(mono(width, height, |x, y| {
+    mono(width, height, |x, y| {
         let i = y * width + x;
         (pixels[i / 4] >> (6 - 2 * (i % 4))) & 3 != 0
-    }))
+    })
 }
 
 #[cfg(test)]

@@ -24,7 +24,6 @@
 //!   the extension `S12`; the MSX Photoshop Graphic Kit wrote a Screen 8 `PIC`
 //!   with its 7 header bytes zeroed (accepted only with exactly 212 lines).
 
-use alloc::vec;
 use alloc::vec::Vec;
 
 use super::vdp::{self, Palette, SpriteTables, Vram};
@@ -64,8 +63,11 @@ impl Bitmap {
     }
 
     /// Wide modes have half-height pixels, so lines are output twice.
-    fn doubles_lines(self) -> bool {
-        matches!(self, Self::Graphic5 | Self::Graphic6)
+    fn output(self, image: Image) -> Image {
+        match self {
+            Self::Graphic5 | Self::Graphic6 => image.scaled(1, 2),
+            _ => image,
+        }
     }
 
     fn default_palette(self) -> Palette {
@@ -101,51 +103,19 @@ impl Bitmap {
     }
 }
 
-/// Picture being built: one `0xRRGGBB` per pixel.
-struct Canvas {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-}
-
-impl Canvas {
-    fn new(width: usize, height: usize) -> Self {
-        Self {
-            width,
-            height,
-            pixels: vec![0; width * height],
-        }
-    }
-
-    fn set(&mut self, x: usize, y: usize, colour: u32) {
-        self.pixels[y * self.width + x] = colour;
-    }
-
-    fn into_image(self, double_lines: bool) -> Image {
-        let factor = if double_lines { 2 } else { 1 };
-        let mut image = Image::new(self.width as u32, (self.height * factor) as u32);
-        for (i, &colour) in self.pixels.iter().enumerate() {
-            let (x, y) = (i % self.width, i / self.width);
-            for copy in 0..factor {
-                image.set(x as u32, (y * factor + copy) as u32, colour);
-            }
-        }
-        image
-    }
-}
-
 /// Decodes `width` x `height` pixels packed back to back (no row padding).
-fn draw_packed(mode: Bitmap, packed: &[u8], canvas: &mut Canvas, palette: &Palette) {
+fn draw_packed(mode: Bitmap, packed: &[u8], image: &mut Image, palette: &Palette) {
     let byte = |i: usize| packed.get(i).copied().unwrap_or(0);
     let bpp = mode.bits_per_pixel();
-    for y in 0..canvas.height {
-        for x in 0..canvas.width {
-            let index = y * canvas.width + x;
+    let (width, height) = (image.width() as usize, image.height() as usize);
+    for y in 0..height {
+        for x in 0..width {
+            let index = y * width + x;
             let colour = match mode {
                 Bitmap::Graphic7 => vdp::graphic7(byte(index)),
                 Bitmap::Yae | Bitmap::Yjk => {
                     // Groups of four start at each row's first pixel.
-                    let group = y * canvas.width + (x & !3);
+                    let group = y * width + (x & !3);
                     let bytes = [
                         byte(group),
                         byte(group + 1),
@@ -161,30 +131,30 @@ fn draw_packed(mode: Bitmap, packed: &[u8], canvas: &mut Canvas, palette: &Palet
                     palette[value as usize]
                 }
             };
-            canvas.set(x, y, colour);
+            image.set(x as u32, y as u32, colour);
         }
     }
 }
 
 /// Overlays the sprites of a bitmap mode, 256 sprite pixels across the screen.
-fn draw_bitmap_sprites(mode: Bitmap, vram: &Vram, canvas: &mut Canvas, palette: &Palette) {
+fn draw_bitmap_sprites(mode: Bitmap, vram: &Vram, image: &mut Image, palette: &Palette) {
     let tables = mode.sprite_tables();
-    let scale = canvas.width / 256;
-    for y in 0..canvas.height {
+    let scale = image.width() / 256;
+    for y in 0..image.height() {
         let line = vdp::sprite_line(vram, tables, y as i32);
-        for (x, index) in line.iter().enumerate() {
-            let Some(index) = *index else { continue };
+        for (x, index) in (0u32..).zip(line) {
+            let Some(index) = index else { continue };
             let index = index as usize;
             match mode {
                 // Graphic 5 shows colour bits 3-2 on even and 1-0 on odd dots.
                 Bitmap::Graphic5 => {
-                    canvas.set(2 * x, y, palette[index >> 2]);
-                    canvas.set(2 * x + 1, y, palette[index & 3]);
+                    image.set(2 * x, y, palette[index >> 2]);
+                    image.set(2 * x + 1, y, palette[index & 3]);
                 }
-                Bitmap::Graphic7 => canvas.set(x, y, vdp::GRAPHIC7_SPRITE_PALETTE[index]),
+                Bitmap::Graphic7 => image.set(x, y, vdp::GRAPHIC7_SPRITE_PALETTE[index]),
                 _ => {
                     for dot in 0..scale {
-                        canvas.set(scale * x + dot, y, palette[index]);
+                        image.set(scale * x + dot, y, palette[index]);
                     }
                 }
             }
@@ -205,24 +175,24 @@ fn render_bitmap(mode: Bitmap, vram: &Vram, use_palette_table: bool) -> Result<I
         .filter(|_| use_palette_table)
         .and_then(|(address, count)| vram.palette(address, count))
         .unwrap_or_else(|| mode.default_palette());
-    let mut canvas = Canvas::new(width, height);
-    draw_packed(mode, vram.bytes(), &mut canvas, &palette);
+    let mut image = Image::new(width as u32, height as u32);
+    draw_packed(mode, vram.bytes(), &mut image, &palette);
     // Graph Saurus pages show no sprites, except Screen 8 ones.
     if use_palette_table || mode == Bitmap::Graphic7 {
-        draw_sprites_if_dumped(mode, vram, &mut canvas, &palette);
+        draw_sprites_if_dumped(mode, vram, &mut image, &palette);
     }
-    Ok(canvas.into_image(mode.doubles_lines()))
+    Ok(mode.output(image))
 }
 
 /// Draws sprites only for dumps of exactly 0x8000 (Screens 5/6) or 0xFAA0
 /// bytes (Screens 7-12), as observed from `recoil2png`.
-fn draw_sprites_if_dumped(mode: Bitmap, vram: &Vram, canvas: &mut Canvas, palette: &Palette) {
+fn draw_sprites_if_dumped(mode: Bitmap, vram: &Vram, image: &mut Image, palette: &Palette) {
     let full_dump = match mode {
         Bitmap::Graphic4 | Bitmap::Graphic5 => 0x8000,
         _ => 0xfaa0,
     };
     if vram.loaded() == full_dump {
-        draw_bitmap_sprites(mode, vram, canvas, palette);
+        draw_bitmap_sprites(mode, vram, image, palette);
     }
 }
 
@@ -311,9 +281,9 @@ pub(super) fn decode_copy(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeErro
     if pixels.len() < needed {
         return Err(DecodeError::Unrecognized);
     }
-    let mut canvas = Canvas::new(width, height);
-    draw_packed(mode, pixels, &mut canvas, &mode.default_palette());
-    Ok(canvas.into_image(mode.doubles_lines()))
+    let mut image = Image::new(width as u32, height as u32);
+    draw_packed(mode, pixels, &mut image, &mode.default_palette());
+    Ok(mode.output(image))
 }
 
 /// Pattern-based screens of the TMS9918 and V9938.
@@ -351,7 +321,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             vram.set(0x800 + i, (i / 128 * 32 + i % 32) as u8);
         }
     }
-    let mut canvas = Canvas::new(256, 192);
+    let mut image = Image::new(256, 192);
     for y in 0..192 {
         for x in 0..256 {
             let cell = y / 8 * 32 + x / 8;
@@ -372,7 +342,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
                     }
                 }
             };
-            canvas.set(x, y, palette[index as usize]);
+            image.set(x as u32, y as u32, palette[index as usize]);
         }
     }
     // Sprites are drawn for 16 KiB dumps (Screen 2/3) or at least 16 KiB
@@ -394,21 +364,22 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
                 colours: None,
             },
         };
-        for y in 0..192 {
+        for y in 0..192u32 {
             let line = vdp::sprite_line(&vram, tables, y as i32);
-            for (x, index) in line.iter().enumerate() {
-                if let Some(index) = *index {
-                    canvas.set(x, y, palette[index as usize]);
+            for (x, index) in (0u32..).zip(line) {
+                if let Some(index) = index {
+                    image.set(x, y, palette[index as usize]);
                 }
             }
         }
     }
-    Ok(canvas.into_image(false))
+    Ok(image)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn graph_saurus_rle() {

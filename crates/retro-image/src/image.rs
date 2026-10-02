@@ -55,10 +55,6 @@ impl Image {
     ///
     /// Fails if `indices` doesn't hold exactly `width * height` entries or
     /// an index is outside `palette`.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "adopted by platform decoders in the next wave")
-    )]
     pub(crate) fn from_indexed(
         width: u32,
         height: u32,

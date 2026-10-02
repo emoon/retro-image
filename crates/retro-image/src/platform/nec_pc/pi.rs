@@ -272,15 +272,13 @@ pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Im
         .chunks_exact(3)
         .map(|c| precision.rgb(c[0], c[1], c[2]))
         .collect();
-    let scale = 1 + header.doubles_height() as usize;
-    let mut image = Image::new(header.width as u32, (header.height * scale) as u32);
-    for y in 0..header.height * scale {
-        for x in 0..header.width {
-            let index = decoder.out[y / scale * header.width + x];
-            image.set(x as u32, y as u32, palette[index as usize]);
-        }
-    }
-    Ok(image)
+    let image = Image::from_indexed(
+        header.width as u32,
+        header.height as u32,
+        &decoder.out,
+        &palette,
+    )?;
+    Ok(image.scaled(1, 1 + u32::from(header.doubles_height())))
 }
 
 #[cfg(test)]
