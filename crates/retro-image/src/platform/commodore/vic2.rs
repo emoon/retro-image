@@ -242,11 +242,20 @@ impl Frame {
             .chunks_exact(WIDTH)
             .take(height)
             .flat_map(|row| &row[left..left + width])
-            .map(|&color| color & 15)
+            .copied()
             .collect();
-        Image::from_indexed(width as u32, height as u32, &indices, &PALETTE)
-            .unwrap_or_else(|_| unreachable!("indices are masked to the palette"))
+        image(width, height, indices)
     }
+}
+
+/// An image from one C64 colour per pixel (the high nibble is ignored).
+/// `colors` must hold `width * height` entries.
+pub(super) fn image(width: usize, height: usize, mut colors: Vec<u8>) -> Image {
+    debug_assert_eq!(colors.len(), width * height);
+    colors.resize(width * height, 0);
+    colors.iter_mut().for_each(|color| *color &= 15);
+    Image::from_indexed(width as u32, height as u32, &colors, &PALETTE)
+        .unwrap_or_else(|_| unreachable!("sized and masked to the palette above"))
 }
 
 #[cfg(test)]

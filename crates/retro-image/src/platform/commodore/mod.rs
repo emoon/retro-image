@@ -230,9 +230,23 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "Commodore Grafix", &["cgx"], cgx::decode_cgx).signature(),
     Format::new(C64, "CharPad", &["ctm"], charpad::decode_ctm).signature(),
     Format::new(C64, "C64 OS screenshot", &["pet"], petscii::decode_c64os).signature(),
+    Format::new(
+        C64,
+        "PETSCII Editor",
+        &["pet"],
+        petscii::decode_petscii_editor,
+    ),
+    Format::with_companions(
+        C64,
+        "PETSCII Editor (screen + colours)",
+        &["scr"],
+        petscii::decode_scr_col,
+    ),
+    Format::new(C64, "PETSCII BOT", &["pbot"], petscii::decode_pbot),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
+    Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
 ];
 
