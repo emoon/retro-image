@@ -1,16 +1,22 @@
 //! GTIA player/missile graphics and colour priority.
 //!
 //! Sources:
-//! - De Re Atari ch. 4 (player-missile graphics: HPOS, SIZE, GRAF and PRIOR
-//!   registers) and App. E (GTIA modes); Mapping the Atari (register
-//!   addresses).
+//! - De Re Atari ch. 4, player-missile graphics: HPOS, SIZE, GRAF and PRIOR
+//!   registers (<https://www.atariarchives.org/dere/chapt04.php>), and
+//!   App. E, GTIA modes (<https://www.atariarchives.org/dere/chaptE.php>);
+//!   Atari Player-Missile Graphics in BASIC ch. 2, pixel widths
+//!   (<https://www.atariarchives.org/pmgraphics/chapter2.php>); Altirra
+//!   Hardware Reference Manual, GTIA priority
+//!   (<https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf>).
 //! - The priority logic is the GTIA's: every colour register whose signal
 //!   survives the priority equations below is ORed into the output, which
 //!   is what makes conflicting PRIOR settings show mixed or black colours.
-//!   The equations were checked against `recoil2png` output for every PRIOR
-//!   value (0-63), every combination of the four players over background
-//!   and each playfield colour, and every missile combination with and
-//!   without the fifth-player bit.
+//!   The equations were checked by black-box probing of `recoil2png` with
+//!   hand-made Graph2Font MCH files: every PRIOR value (0-63), every
+//!   combination of the four players over background and each playfield
+//!   colour, and every missile combination with and without the
+//!   fifth-player bit. The output geometry (HPOS 0x2C at pixel 0, colour
+//!   clocks 2 pixels wide) was observed the same way.
 
 /// Player colour registers (COLPM0-3), playfield registers (COLPF0-3) and
 /// the background (COLBK).

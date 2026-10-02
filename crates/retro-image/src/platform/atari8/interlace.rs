@@ -1,17 +1,28 @@
 //! Pictures of two bitmap frames shown alternately (interlace).
 //!
 //! Sources:
-//! - INP: Just Solve "InterPainter", XL-Paint 1.9 MaX doc (16004 bytes),
-//!   atari-owner.com "Atari Software Graphic Modes" (frames flipped per VBI).
-//! - INT: Just Solve "INT95a" (signature, up to 160x239, 2 frames); the
-//!   header fields and frame layout observed from `recoil2png` output.
-//! - MCP: Just Solve "McPainter" (16008 bytes, 160x200, 2 frames).
-//! - MCPP: Just Solve "Paradox" (8008 bytes, 160x100).
-//! - IST: Just Solve "Atari Interlaced Studio" (exactly 17184 bytes,
-//!   160x200, 2 frames); the frame offsets and per-line colour tables are
-//!   observed from `recoil2png` output.
-//! - HCI: Just Solve "HCI" (exactly 16006 bytes, 2 frames); the frame modes
-//!   (Graphics 8 and 15) and colour layout observed from `recoil2png` output.
+//! - INP: Just Solve "InterPainter"
+//!   (<http://fileformats.archiveteam.org/wiki/InterPainter>), XL-Paint 1.9
+//!   MaX doc, 16004 bytes
+//!   (<http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/XL-Paint%201.9Max.txt>),
+//!   atari-owner.com "Atari Software Graphic Modes", frames flipped per VBI
+//!   (<https://atari-owner.com/club/articles/atari-software-graphic-modes.17/>).
+//! - INT: Just Solve "INT95a" (<http://fileformats.archiveteam.org/wiki/INT95a>;
+//!   signature, up to 160x239, 2 frames); the header fields and frame
+//!   layout observed from `recoil2png` output.
+//! - MCP: Just Solve "McPainter"
+//!   (<http://fileformats.archiveteam.org/wiki/McPainter>; 16008 bytes,
+//!   160x200, 2 frames).
+//! - MCPP: Just Solve "Paradox"
+//!   (<http://fileformats.archiveteam.org/wiki/Paradox_(graphics)>; 8008
+//!   bytes, 160x100).
+//! - IST: Just Solve "Atari Interlaced Studio"
+//!   (<http://fileformats.archiveteam.org/wiki/Atari_Interlaced_Studio>;
+//!   exactly 17184 bytes, 160x200, 2 frames); the frame offsets and
+//!   per-line colour tables are observed from `recoil2png` output.
+//! - HCI: Just Solve "HCI" (<http://fileformats.archiveteam.org/wiki/HCI>;
+//!   exactly 16006 bytes, 2 frames); the frame modes (Graphics 8 and 15)
+//!   and colour layout observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the frames are shown as the average
 //!   of their colours; INP keeps 4 colours after the frames (and RECOIL
 //!   accepts trailing data); MCP and MCPP store two colour sets (playfield

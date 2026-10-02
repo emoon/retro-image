@@ -1,38 +1,65 @@
 //! Raw screen dumps of the OS bitmap graphics modes.
 //!
 //! Sources:
-//! - Modes: De Re Atari ch. 2 and App. E; Mapping the Atari App. 15 (colour
-//!   registers 704-712).
-//! - GR7, GR8, GR9: Just Solve "GR*" and AtariWiki File Suffix (sizes).
+//! - Modes: De Re Atari ch. 2 (<https://www.atariarchives.org/dere/chapt02.php>)
+//!   and App. E (<https://www.atariarchives.org/dere/chaptE.php>); Mapping
+//!   the Atari App. 15, colour registers 704-712
+//!   (<https://www.atariarchives.org/mapping/appendix15.php>).
+//! - GR7, GR8, GR9: Just Solve "GR*" (<http://fileformats.archiveteam.org/wiki/GR*>)
+//!   and AtariWiki File Suffix
+//!   (<https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix>): sizes.
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
 //! - TXE (96 doubled GR9 lines) and ZM4 (64x64 greys drawn 4x4): sizes
 //!   and layouts observed from `recoil2png` output.
-//! - TX0 (Just Solve "Texture Maker0": 16x16, 16 colours) and WND (Blazing
-//!   Paddles window, up to 160x192, 4 colours): header, layout, the hue
-//!   OR and the window colours observed from `recoil2png` output.
+//! - TX0 (Just Solve "Texture Maker0",
+//!   <http://fileformats.archiveteam.org/wiki/Texture_Maker0>: 16x16, 16
+//!   colours) and WND (Blazing Paddles window, up to 160x192, 4 colours;
+//!   manual: <https://archive.org/details/BlazingPaddlesAtariSupplementManualBaudville>):
+//!   header, layout, the hue OR and the window colours observed from
+//!   `recoil2png` output.
 //! - G09: sizes (7680, 15360) and the two screens side by side: observed
 //!   from `recoil2png` output.
-//! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710; COL =
-//!   5 x 256 per-line colours). Which MIC sizes and COL sizes RECOIL pairs,
-//!   and the table order: observed from `recoil2png` output.
-//! - DRG: Just Solve "AtariCAD" (6400 bytes = 320x160 GR8).
-//! - MBG: Just Solve "Mad Designer" (16384 bytes = 512x256 mono).
-//! - SKP: Sketch-PadDles page (raw 7680-byte GR15 screen).
-//! - DIT: Just Solve "DrawIt" (3845 bytes = GR7 screen + 5 colours).
-//! - BKG: Just Solve "Movie Maker" (3856 bytes = GR7 screen + 16 bytes).
-//! - MGP: Just Solve "Magic Painter" (3845 bytes, starts `F4 0E 36 00`).
-//!   The `.PIC` variant without the rainbow flag (screen at offset 5) was
-//!   reverse engineered from a sample (dexvert `crumble.pic`).
-//! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
-//! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
-//! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
-//! - Visualizer PIC: ANTIC "Rapid Graphics Converter" article (about 31
-//!   sectors, 160x79, 4 colours); size and layout observed from `recoil2png`
-//!   output.
-//! - PSF: AtariAge "Print Shop graphics" thread and Just Solve "The Print
-//!   Shop" (572-byte raw 88x52 bitmap).
-//! - RAP: Just Solve "Vidig Paint" (7681 bytes = 7680 + 1).
+//! - MIC: Graph2Font manual (<https://g2f.atari8.info/instrukcja_eng.html>;
+//!   screen + colours 712, 708, 709, 710; COL = 5 x 256 per-line colours).
+//!   Which MIC sizes and COL sizes RECOIL pairs, and the table order:
+//!   observed from `recoil2png` output.
+//! - DRG: Just Solve "AtariCAD" (<http://fileformats.archiveteam.org/wiki/AtariCAD>;
+//!   6400 bytes = 320x160 GR8).
+//! - MBG: Just Solve "Mad Designer"
+//!   (<http://fileformats.archiveteam.org/wiki/Mad_Designer>; 16384 bytes =
+//!   512x256 mono).
+//! - SKP: Sketch-PadDles page (<https://www.vitoco.cl/atari/10liner/SKETCH/>;
+//!   raw 7680-byte GR15 screen).
+//! - DIT: Just Solve "DrawIt" (<http://fileformats.archiveteam.org/wiki/DrawIt_(Atari)>;
+//!   3845 bytes = GR7 screen + 5 colours).
+//! - BKG: Just Solve "Movie Maker" (<http://fileformats.archiveteam.org/wiki/Movie_Maker>;
+//!   3856 bytes = GR7 screen + 16 bytes).
+//! - MGP: Just Solve "Magic Painter"
+//!   (<http://fileformats.archiveteam.org/wiki/Magic_Painter>; 3845 bytes,
+//!   starts `F4 0E 36 00`). The `.PIC` variant without the rainbow flag
+//!   (screen at offset 5) was reverse engineered from a sample (dexvert
+//!   `crumble.pic`).
+//! - GR3: Mad Studio file formats PDF
+//!   (<https://raw.githubusercontent.com/Gury8/Mad-Studio/master/docs/mad-studio-file-formats.pdf>;
+//!   240 bytes + COLOR4, COLOR0-2).
+//! - SG3: Just Solve "Standard Graphics 3"
+//!   (<http://fileformats.archiveteam.org/wiki/Standard_Graphics_3_(Atari)>;
+//!   40x24, 4 colours).
+//! - AGP: Just Solve "AtariTools-800"
+//!   (<http://fileformats.archiveteam.org/wiki/AtariTools-800>; exactly 7690
+//!   bytes).
+//! - Visualizer PIC: ANTIC "Rapid Graphics Converter" article
+//!   (<https://www.atarimagazines.com/v4n7/rapidgraphicsconverter.html>;
+//!   about 31 sectors, 160x79, 4 colours); size and layout observed from
+//!   `recoil2png` output.
+//! - PSF: AtariAge "Print Shop graphics" thread
+//!   (<https://forums.atariage.com/topic/324752-print-shop-atari-related-graphics/>)
+//!   and Just Solve "The Print Shop"
+//!   (<http://justsolve.archiveteam.org/wiki/The_Print_Shop>; 572-byte raw
+//!   88x52 bitmap).
+//! - RAP: Just Solve "Vidig Paint" (<http://fileformats.archiveteam.org/wiki/Vidig_Paint>;
+//!   7681 bytes = 7680 + 1).
 //! - Observed from `recoil2png` output: accepted sizes, the 5-byte MIC tail,
 //!   the GR8 colour tail, default colours, the fixed GR9/G11 luminances, the
 //!   tail orders of DIT, BKG and MGP, the AGP header (mode, then

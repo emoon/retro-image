@@ -3,8 +3,10 @@
 //! Sources:
 //! - Mad Studio file formats PDF (MIT-licensed project),
 //!   <https://raw.githubusercontent.com/Gury8/Mad-Studio/master/docs/mad-studio-file-formats.pdf>.
-//! - Player/missile pixel widths: Atari Player-Missile Graphics in BASIC, ch. 2.
-//! - PLA/MIS (AtariTools-800 player and missile, Just Solve "AtariTools-800"):
+//! - Player/missile pixel widths: Atari Player-Missile Graphics in BASIC,
+//!   ch. 2 (<https://www.atariarchives.org/pmgraphics/chapter2.php>).
+//! - PLA/MIS (AtariTools-800 player and missile, Just Solve
+//!   "AtariTools-800", <http://fileformats.archiveteam.org/wiki/AtariTools-800>):
 //!   sizes, colour byte and bit order observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the fixed SPR/MSL heights, the MPL
 //!   variant with a 9-byte header (height, 4 X positions, 4 colours) that the

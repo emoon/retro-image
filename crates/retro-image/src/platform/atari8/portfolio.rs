@@ -4,7 +4,9 @@
 //! - PGC spec by Don Messerli (1991), <http://www.textfiles.com/programming/FORMATS/pgcspec.txt>:
 //!   magic `PG\x01`, then runs: index byte with bit 7 set repeats the next
 //!   byte (low 7 bits) times, otherwise copies (low 7 bits) literal bytes.
-//! - PGF: Just Solve "PGF (Portfolio Graphics)": 1920 bytes, 30 bytes per row.
+//! - PGF: Just Solve "PGF (Portfolio Graphics)"
+//!   (<http://fileformats.archiveteam.org/wiki/PGF_(Portfolio_Graphics)>):
+//!   1920 bytes, 30 bytes per row.
 //! - Colours (set bit = black on white): observed from `recoil2png` output.
 
 use super::antic::Bitmap;

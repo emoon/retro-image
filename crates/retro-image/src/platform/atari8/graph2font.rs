@@ -6,8 +6,12 @@
 //! exported pieces, not its own files.
 //!
 //! Sources:
-//! - G2F manual (<https://g2f.atari8.info/instrukcja_eng.html>) for the
-//!   program's model; De Re Atari and Mapping the Atari for the hardware.
+//! - G2F manual (<https://g2f.atari8.info/instrukcja_eng.html>) and Just
+//!   Solve "Graph2Font" (<http://fileformats.archiveteam.org/wiki/Graph2Font>)
+//!   for the program's model; De Re Atari ch. 2-4
+//!   (<https://www.atariarchives.org/dere/chapt02.php>,
+//!   <https://www.atariarchives.org/dere/chapt03.php>,
+//!   <https://www.atariarchives.org/dere/chapt04.php>) for the hardware.
 //! - MCH layout reverse engineered from samples and by black-box probing of
 //!   `recoil2png` with hand-made files (offsets for 40 columns; 48-column
 //!   files have 1440 cells, so everything after them moves by 2160):

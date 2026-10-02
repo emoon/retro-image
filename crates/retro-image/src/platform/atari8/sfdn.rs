@@ -3,8 +3,9 @@
 //! of a format decoded elsewhere in this module.
 //!
 //! Sources:
-//! - Just Solve "Apac3 APP" and "AP*" (the `S101` magic, the formats that
-//!   use it).
+//! - Just Solve "Apac3 APP" (<http://fileformats.archiveteam.org/wiki/Apac3_APP>)
+//!   and "AP*" (<http://fileformats.archiveteam.org/wiki/AP*>): the `S101`
+//!   magic and the formats that use it.
 //! - Reverse engineered from samples and by black-box probing of
 //!   `recoil2png` with hand-made files (no format documentation exists):
 //!
