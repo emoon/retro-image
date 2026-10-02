@@ -15,7 +15,7 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, mix, mix_images, palette_words,
+    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, palette_words,
     separate_planes_to_interleaved, st_rgb, uses_ste_bits, words,
 };
 use crate::{DecodeError, Image};
@@ -61,7 +61,7 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
         }
         image
     };
-    Ok(mix_images(&frame(0), &frame(1)))
+    Ok(Image::blend(&[&frame(0), &frame(1)]))
 }
 
 /// HighresMedium: 400 medium-resolution lines (pairs of alternating
@@ -74,27 +74,23 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let palettes = words(&data[64000..]);
     let ste = uses_ste_bits(palettes.iter().copied());
-    let line_image = |y: usize| -> Option<Vec<u32>> {
-        let line = &data[y * 160..][..160];
-        (0..640)
-            .map(|x| {
+    // Even and odd lines are two 640x200 fields shown alternately.
+    let field = |first: usize| -> Option<Image> {
+        let mut image = Image::new(640, 200);
+        for y in 0..200 {
+            let line_index = y * 2 + first;
+            let line = &data[line_index * 160..][..160];
+            for x in 0..640 {
                 let c = interleaved_index(line, x as u32, 2);
-                let index = hrm_index(x, c)?;
-                Some(st_rgb(*palettes.get(y * 35 + index)?, ste))
-            })
-            .collect()
-    };
-    let mut image = Image::new(640, 400);
-    for y in 0..200 {
-        let a = line_image(y * 2).ok_or(DecodeError::Unrecognized)?;
-        let b = line_image(y * 2 + 1).ok_or(DecodeError::Unrecognized)?;
-        for x in 0..640 {
-            let color = mix(a[x], b[x]);
-            image.set(x as u32, y as u32 * 2, color);
-            image.set(x as u32, y as u32 * 2 + 1, color);
+                let word = *palettes.get(line_index * 35 + hrm_index(x, c)?)?;
+                image.set(x as u32, y as u32, st_rgb(word, ste));
+            }
         }
-    }
-    Ok(image)
+        Some(image)
+    };
+    let even = field(0).ok_or(DecodeError::Unrecognized)?;
+    let odd = field(1).ok_or(DecodeError::Unrecognized)?;
+    Ok(Image::blend(&[&even, &odd]).scaled(1, 2))
 }
 
 /// Hans Wessels' `find_hrm_index`; `None` where it would be negative.
@@ -127,7 +123,7 @@ fn decode_p3c_inner(data: &[u8]) -> Option<Image> {
         let screen = super::crackart::unpack(packed, SCREEN_LEN)?;
         decode_screen(Resolution::Low, &screen, &words)
     };
-    Some(mix_images(&frame(first)?, &frame(second)?))
+    Some(Image::blend(&[&frame(first)?, &frame(second)?]))
 }
 
 /// Decimal digits ended by CR LF; returns the value and the next position.
@@ -157,5 +153,5 @@ pub(super) fn decode_pl4(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let a = frame(0).ok_or(DecodeError::Unrecognized)?;
     let b = frame(34 + SCREEN_LEN + 2).ok_or(DecodeError::Unrecognized)?;
-    Ok(mix_images(&a, &b))
+    Ok(Image::blend(&[&a, &b]))
 }

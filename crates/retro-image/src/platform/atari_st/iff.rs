@@ -94,10 +94,9 @@ fn decode(data: &[u8]) -> Option<Image> {
     } else {
         1
     };
-    // NEOchrome Master `RAST`: records of a line number and 16 palette
-    // words. The first record holds the palette from the top; later ones
-    // with a nonzero line take effect from that line on.
-    let line_palettes = rasters.and_then(|chunk| raster_palettes(chunk, h.height));
+    let line_palettes = rasters
+        .and_then(|chunk| super::rasters::line_palette_words(chunk, h.height))
+        .map(|words| super::rasters::line_colors(&words, true));
     let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32);
     for (y, line) in bitmap.chunks_exact(row_len * h.planes).enumerate() {
         for x in 0..h.width {
@@ -121,31 +120,4 @@ fn decode(data: &[u8]) -> Option<Image> {
 /// Whether `id` looks like an IFF chunk id (four printable ASCII bytes).
 fn is_chunk_id(id: &[u8]) -> bool {
     id.iter().all(|b| (b' '..=b'~').contains(b))
-}
-
-/// Expands `RAST` records into 16 colours per line.
-fn raster_palettes(chunk: &[u8], height: usize) -> Option<Vec<u32>> {
-    let records: Vec<(usize, Vec<u16>)> = chunk
-        .chunks_exact(34)
-        .map(|r| {
-            (
-                usize::from(u16::from_be_bytes([r[0], r[1]])),
-                super::common::words(&r[2..]),
-            )
-        })
-        .collect();
-    let (_, first) = records.first()?;
-    let mut current = first;
-    let mut words = Vec::with_capacity(height * 16);
-    for y in 0..height {
-        if let Some((_, palette)) = records[1..]
-            .iter()
-            .rev()
-            .find(|(line, _)| *line != 0 && *line == y)
-        {
-            current = palette;
-        }
-        words.extend_from_slice(current);
-    }
-    Some(super::common::st_palette(&words))
 }

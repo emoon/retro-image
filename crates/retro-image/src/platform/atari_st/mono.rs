@@ -133,14 +133,17 @@ fn decode_bld_inner(data: &[u8]) -> Option<Image> {
     mono_image(&bitmap, width as u32, height as u32, row_len)
 }
 
-/// DEGAS Elite 8x16 font: 128 (or 256) characters of 16 bytes, optionally
-/// followed by a flag word; shown as a sheet 32 characters wide.
+/// DEGAS Elite 8x16 font: 128 characters of 16 bytes and a flag word, or
+/// 256 characters with an optional flag word; shown as a sheet 32
+/// characters wide.
 /// Source: <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Font_file_format>;
 /// the 256-character size and the sheet layout are observed from
-/// `recoil2png` output.
+/// `recoil2png` output. 128 characters without the flag word (2048 bytes)
+/// are rejected like RECOIL does: that size is shared by 256-character PC
+/// 8x8 fonts.
 pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     let chars = match data.len() {
-        2048 | 2050 => 128,
+        2050 => 128,
         4096 | 4098 => 256,
         _ => return Err(DecodeError::Unrecognized),
     };

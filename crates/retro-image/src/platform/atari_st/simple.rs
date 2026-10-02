@@ -19,8 +19,9 @@
 
 use super::common::{
     Resolution, SCREEN_LEN, be16, decode_screen, palette_words, planar_image, st_palette,
+    vdi_palette,
 };
-use crate::{DecodeError, Image};
+use crate::{Companions, DecodeError, Image};
 
 const NEO_HEADER_LEN: usize = 128;
 const CANVAS_FLAG: u16 = 0xbabe;
@@ -35,7 +36,9 @@ fn words(data: &[u8], offset: usize) -> Result<alloc::vec::Vec<u16>, DecodeError
 }
 
 /// NEOchrome: flag word, resolution word, 16 palette words, ..., screen at 128.
-pub(super) fn decode_neo(data: &[u8]) -> Result<Image, DecodeError> {
+/// A NEOchrome Master `.RST` file next to a low-resolution picture adds
+/// rasters (see `rasters`).
+pub(super) fn decode_neo(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let flag = be16(data, 0).ok_or(DecodeError::Unrecognized)?;
     let words = words(data, 4)?;
     let bitmap = data
@@ -44,13 +47,36 @@ pub(super) fn decode_neo(data: &[u8]) -> Result<Image, DecodeError> {
     ok(match flag {
         0 if data.len() == NEO_HEADER_LEN + SCREEN_LEN => be16(data, 2)
             .and_then(Resolution::from_index)
-            .and_then(|resolution| decode_screen(resolution, bitmap, &words)),
+            .and_then(|resolution| {
+                super::rasters::with_rst(resolution, bitmap, companions)
+                    .or_else(|| decode_screen(resolution, bitmap, &words))
+            }),
         CANVAS_FLAG if data.len() == NEO_HEADER_LEN + 4 * SCREEN_LEN => {
             planar_image(bitmap, 640, 400, 4, &st_palette(&words), 1)
         }
         _ => None,
     })
 }
+
+/// C.O.L.R. Object Editor (`MUR`): a raw low-resolution screen whose
+/// palette is in the `.PAL` file next to it, 16 VDI RGB triplets (0-1000)
+/// in pen order. Source: <https://temlib.org/AtariForumWiki/index.php/C.O.L.R._Object_Editor_file_format>;
+/// the palette layout is derived from the sample file and `recoil2png`
+/// output. Without its palette the picture is rejected, as RECOIL does.
+pub(super) fn decode_mur(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+    let palette = companions
+        .get("pal")
+        .filter(|pal| pal.len() == MUR_PALETTE_LEN)
+        .and_then(|pal| vdi_palette(&pal, 16));
+    match palette {
+        Some(palette) if data.len() == SCREEN_LEN => {
+            ok(planar_image(data, 320, 200, 4, &palette, 1))
+        }
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+const MUR_PALETTE_LEN: usize = 16 * 3 * 2;
 
 /// Doodle: a raw 32000-byte high-resolution screen.
 pub(super) fn decode_doo(data: &[u8]) -> Result<Image, DecodeError> {

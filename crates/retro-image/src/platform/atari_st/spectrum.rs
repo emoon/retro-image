@@ -252,7 +252,8 @@ impl BackwardBits<'_> {
 
 /// The `SP` header: data and color map lengths.
 fn header(data: &[u8]) -> Option<(&[u8], &[u8])> {
-    if be16(data, 0)? != 0x5350 {
+    // `SP` and a reserved zero word.
+    if be32(data, 0)? != 0x5350_0000 {
         return None;
     }
     let data_len = be32(data, 4)? as usize;
