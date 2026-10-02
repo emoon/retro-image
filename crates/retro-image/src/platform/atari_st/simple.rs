@@ -79,6 +79,9 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
             ok(decode_screen(Resolution::Low, data, &words))
         }
         36864 => ok(decode_palette_master(data)),
+        // GFA Artist "1000 colours on": planes word, reserved word, screen,
+        // normal palette, 69 raster palettes, colour cycling tables.
+        34360 => ok(decode_gfa_artist_rasters(data)),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -104,6 +107,26 @@ fn decode_palette_master(data: &[u8]) -> Option<Image> {
             // Colour 0 is shared by all palettes.
             let word = if c == 0 { all[0] } else { palette[c] };
             image.set(x, y as u32, super::common::st_rgb(word, false));
+        }
+    }
+    Some(image)
+}
+
+/// Line `y` of a GFA Artist "1000 colours" picture uses palette
+/// `2 + ceil(y / 3)` of the 70 stored after the screen (the normal one
+/// first): derived from the sample file and `recoil2png` output.
+fn decode_gfa_artist_rasters(data: &[u8]) -> Option<Image> {
+    if be16(data, 0)? != 4 {
+        return None;
+    }
+    let palettes = super::common::words(data.get(32004..32004 + 70 * 32)?);
+    let mut image = Image::new(320, 200);
+    for y in 0..200usize {
+        let palette = &palettes[(2 + y.div_ceil(3)) * 16..][..16];
+        let line = &data[4 + y * 160..4 + (y + 1) * 160];
+        for x in 0..320 {
+            let c = super::common::interleaved_index(line, x, 4);
+            image.set(x, y as u32, super::common::st_rgb(palette[c], false));
         }
     }
     Some(image)
