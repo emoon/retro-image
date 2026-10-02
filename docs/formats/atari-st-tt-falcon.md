@@ -267,6 +267,40 @@ Permissive or non-GPL references that may be consulted:
 - Netpbm converters `pi1toppm`, `pi3topbm`, `pc1toppm`, `sputoppm`, `spctoppm` (per-file licenses; check each).
 - Licenses **not verified**: abydos (snisurset.net), wuimg (codeberg kaleido/wuimg) and ataripac2pbm. Check them before reading.
 
+## 7. Implementation notes (retro-image)
+
+Facts found while matching `recoil2png` output (black box) or reading sample files. The
+decoders live in `crates/retro-image/src/platform/atari_st/`.
+
+- Output conventions: 3-bit components are bit-replicated, a palette using any STE bit is
+  read as STE, medium resolution doubles lines, monochrome set bits are black. VDI levels
+  scale as `v * 255 / 1000` (truncated); VDI palettes are in pen order (register 15 shows
+  pen 255 in 256-colour mode). Two-screen formats (DUO, PCI, PL4, HRM, PCS, MPP, PBX 4096)
+  average the two screens per component.
+- GEM IMG: STTT files store whole planes one after another; others interleave plane rows
+  per line, and runs may cross line ends. Images without a palette use the default VDI
+  colours. 16/24/32-"plane" XIMG files are chunky; TIMG files are real bitplanes holding
+  R, G, B fields least significant bit first. FSNAP-style files contain `0, 0, n` records
+  whose meaning is still unknown.
+- Canvas CPT run offsets count 16-pixel units, not bytes. DuneGraph DC1 may stop after
+  the used planes. DelmPaint DPH has 10 blocks, all with lengths. MPP files hold 199 (273)
+  lines. Spectrum 512 Extended v2 match offsets are relative to the output position, and
+  the line count is what the unpacked data holds (at most 199 per screen).
+- Art Director: byte 32287 selects the palette shown. Palette Master: line palettes,
+  always 9-bit. GFA Artist 1000 colours: line `y` uses stored palette `2 + ceil(y / 3)`.
+  Spectrum 512 Enhanced (`5BIT`): the extra LSBs are bits 14-12, not 15-13.
+- Formats the survey rated None or Partial, decoded from sample files: KID (274 lines of
+  230 bytes, 224 used), Graphics Processor RLE (count byte, bit 7 = literal, units of one
+  byte per plane), D-GRAPH P3C (two CrackArt-packed screens sharing a palette, mixed),
+  ICDRAW IB3/IBI (64-byte header, 32x32 interleaved planes, default VDI colours),
+  ColorSTar mono OBJ (width-1, height-1, planes, word-aligned rows), Grafix GRX
+  uncompressed (256 VDI triplets at 36, data at 1586), Atari Image Manager IM/COL (square
+  byte planes; COL = I, R, G, B), PI5 320x240 and PI6 1280x960, Pablo Paint uncompressed.
+  NEOchrome Master writes its `RAST` chunk after the FORM, without a pad byte.
+- Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
+  screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files,
+  8-plane IMG without palette, and Canvas FUL.
+
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
 [recoil-examples]: http://recoil.sourceforge.net/examples.zip
