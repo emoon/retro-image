@@ -280,8 +280,15 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
 - GEM IMG: STTT files store whole planes one after another; others interleave plane rows
   per line, and runs may cross line ends. Images without a palette use the default VDI
   colours. 16/24/32-"plane" XIMG files are chunky; TIMG files are real bitplanes holding
-  R, G, B fields least significant bit first. FSNAP-style files contain `0, 0, n` records
-  whose meaning is still unknown.
+  R, G, B fields least significant bit first. FSNAP-style files (version 3) add two records:
+  `0, 0, n` inside a line copies `n + 1` bytes from the line above (`0, 0, $FF, n` at a
+  line start is still a line repeat), and a literal count of 0 means 256. 8-plane
+  pictures without a palette are inverted grey levels (`255 - index`); with no `XIMG`
+  header at all, the index is read with plane 0 as the most significant bit (black-box
+  tests moving the samples' rasters between the two headers). A 9-word header whose
+  last word is 3 marks chunky 24-bit blue, green, red pixels stored only as `$80, n`
+  records of `n` pixels (`BILD0005.IMG`; `recoil2png` ignores the planes and pattern
+  words and rejects any other record in such a file).
 - Canvas CPT run offsets count 16-pixel units, not bytes. DuneGraph DC1 may stop after
   the used planes. DelmPaint DPH has 10 blocks, all with lengths. MPP files hold 199 (273)
   lines. Spectrum 512 Extended v2 match offsets are relative to the output position, and
@@ -294,7 +301,8 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   byte per plane), D-GRAPH P3C (two CrackArt-packed screens sharing a palette, mixed),
   ICDRAW IB3/IBI (64-byte header, 32x32 interleaved planes, default VDI colours),
   ColorSTar mono OBJ (width-1, height-1, planes, word-aligned rows), Grafix GRX
-  uncompressed (256 VDI triplets at 36, data at 1586), Atari Image Manager IM/COL (square
+  (256 VDI triplets at 36; at 1572 a word, the unpacked size and two stream lengths; data
+  at 1586; rows padded to 16 pixels), Atari Image Manager IM/COL (square
   byte planes; COL = I, R, G, B), PI5 320x240 and PI6 1280x960, Pablo Paint uncompressed.
   NEOchrome Master writes its `RAST` chunk after the FORM, without a pad byte.
 - Content detection (`.signature()`) is on for formats with real magic bytes: CRG, GFB,
@@ -331,15 +339,17 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   next zero byte; `n≥3, v` = `n + 1` × `v`. The unpacked bytes fill 160 columns of 200
   bytes, top to bottom, in every resolution; a full screen needs no end marker, and
   trailing bytes and the length word are ignored.
+- Grafix compressed (word 28 = 1), found by flipping single bits of the samples' packed
+  data and watching which `recoil2png` pixels change: two LZW streams that unpack to the
+  first and second half of the data. Codes are read least significant bit first and start
+  at 9 bits; 0-255 are literals, 256 widens the codes by one bit, 257 clears the
+  dictionary (back to 9 bits), and new entries start at 258. The samples clear at 1023
+  entries, so codes never exceed 10 bits.
 - Still unsupported:
-  - Grafix compressed (word 28 = 1): the 14 bytes before the data hold the unpacked size
-    and the lengths of two streams of high-entropy, LZW-like bit-packed data. No
-    documentation was found; it needs a full reverse-engineering effort.
   - Pablo Paint compressed (type 29): no Atari sample exists. `proudnbeauty.ppp` and
     `glance .ppp` (from sembiance's pabloPaint set, moved to `extra/commodore/`) are
     Commodore 64 pictures (RECOIL renders them 296x200 with 120 colours; `.PPP` is also a
     C64 extension).
-  - FSNAP-style IMG files and 8-plane IMG without palette.
 
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
