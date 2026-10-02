@@ -3,6 +3,8 @@
 //!
 //! - Corpus: `$RETRO_IMAGE_CORPUS`, default `<workspace>/corpus` (see CLEANROOM.md).
 //! - Reference decoder: `$RECOIL2PNG`, default `recoil2png` on `PATH`.
+//! - `$RETRO_IMAGE_PLATFORMS`: optional comma-separated `Format::platform`
+//!   names; only formats of those platforms are tried.
 //!
 //! Skips (passes) when either is missing. Reference PNGs are cached under the
 //! cargo target dir; delete it after upgrading RECOIL.
@@ -26,6 +28,7 @@ fn matches_recoil_on_corpus() {
         eprintln!("skipping: cannot run {}", recoil.to_string_lossy());
         return;
     }
+    let platforms = PlatformFilter::from_env();
     let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle");
     std::fs::create_dir_all(&cache).unwrap();
 
@@ -38,7 +41,11 @@ fn matches_recoil_on_corpus() {
     let mut failures = Vec::new();
     for path in &paths {
         let name = path.file_name().unwrap().to_string_lossy();
-        let Ok(ours) = retro_image::decode(&name, &std::fs::read(path).unwrap()) else {
+        let data = std::fs::read(path).unwrap();
+        let Some(ours) = retro_image::formats()
+            .filter(|f| f.matches_filename(&name) && platforms.selects(f.platform))
+            .find_map(|f| f.decode(&data).ok())
+        else {
             continue; // not supported yet
         };
         let reference_path = cache.join(format!("{name}.png"));
@@ -65,6 +72,24 @@ fn matches_recoil_on_corpus() {
         paths.len()
     );
     assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
+}
+
+struct PlatformFilter(Option<Vec<String>>);
+
+impl PlatformFilter {
+    fn from_env() -> Self {
+        Self(
+            std::env::var("RETRO_IMAGE_PLATFORMS")
+                .ok()
+                .map(|list| list.split(',').map(|p| p.trim().to_owned()).collect()),
+        )
+    }
+
+    fn selects(&self, platform: &str) -> bool {
+        self.0
+            .as_ref()
+            .is_none_or(|list| list.iter().any(|p| p == platform))
+    }
 }
 
 struct Reference {

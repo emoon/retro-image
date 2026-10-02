@@ -28,17 +28,20 @@ impl Format {
     pub fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         (self.decoder)(data)
     }
+
+    /// Whether `filename`'s extension is one of this format's, case-insensitively.
+    pub fn matches_filename(&self, filename: &str) -> bool {
+        let ext = filename.rsplit_once('.').map_or("", |(_, ext)| ext);
+        self.extensions.iter().any(|e| e.eq_ignore_ascii_case(ext))
+    }
 }
 
 /// Every supported format.
-pub fn formats() -> &'static [Format] {
-    platform::FORMATS
+pub fn formats() -> impl Iterator<Item = &'static Format> {
+    platform::ALL.iter().flat_map(|formats| formats.iter())
 }
 
-/// Formats whose extensions match `filename`'s, case-insensitively.
+/// Formats whose extensions match `filename`'s.
 pub(crate) fn by_filename(filename: &str) -> impl Iterator<Item = &'static Format> + '_ {
-    let ext = filename.rsplit_once('.').map_or("", |(_, ext)| ext);
-    formats()
-        .iter()
-        .filter(move |f| f.extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)))
+    formats().filter(move |f| f.matches_filename(filename))
 }

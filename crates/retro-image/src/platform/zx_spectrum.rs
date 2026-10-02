@@ -1,4 +1,4 @@
-//! ZX Spectrum.
+//! ZX Spectrum family: Spectrum, Profi, ULAplus, ZX Evolution, Next, ZX81 and Timex.
 //!
 //! Sources:
 //! - Screen memory layout (bitmap interleave, attribute byte): ZX Spectrum
@@ -7,7 +7,12 @@
 
 use crate::{DecodeError, Format, Image};
 
-pub(super) const SCR: Format = Format::new("ZX Spectrum", "Screen dump", &["scr"], decode_scr);
+pub(super) static FORMATS: &[Format] = &[Format::new(
+    "ZX Spectrum",
+    "Screen dump",
+    &["scr"],
+    decode_scr,
+)];
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 192;
