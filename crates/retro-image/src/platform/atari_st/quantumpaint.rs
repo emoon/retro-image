@@ -10,8 +10,8 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, interleaved_index, palette_words, planar_image, st_palette,
-    st_rgb, unpack_bits, words,
+    Resolution, SCREEN_LEN, be16, decode_screen_by_line, interleaved_index, palette_words,
+    st_palette, st_rgb, unpack_bits, words,
 };
 use crate::{DecodeError, Image};
 
@@ -80,21 +80,11 @@ fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
         }
     }
     starts.sort_by_key(|(line, _)| *line);
-    let mut image = Image::new(resolution.width(), 200);
-    for y in 0..200 {
-        let palette = &starts
-            .iter()
-            .rev()
-            .find(|(line, _)| *line <= y)
-            .unwrap_or(&starts[0])
-            .1;
-        let line = &screen[y * 160..(y + 1) * 160];
-        let strip = planar_image(line, resolution.width(), 1, resolution.planes(), palette, 1)?;
-        for x in 0..resolution.width() {
-            image.set(x, y as u32, strip.get(x, 0));
-        }
-    }
-    Some(image.scaled(1, resolution.y_scale()))
+    decode_screen_by_line(resolution, screen, |y| {
+        let found = starts.iter().rev().find(|(line, _)| *line <= y);
+        let (_, palette) = found.or(starts.first())?;
+        Some(palette.clone())
+    })
 }
 
 /// 32 ST colours per line chosen by `find_pbx_index`, optionally

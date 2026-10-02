@@ -153,6 +153,26 @@ pub(super) fn decode_screen(resolution: Resolution, bitmap: &[u8], words: &[u16]
     )
 }
 
+/// Decodes a 32000-byte ST screen whose palette changes from line to line:
+/// `palette(y)` gives the colours of source line `y`.
+pub(super) fn decode_screen_by_line(
+    resolution: Resolution,
+    bitmap: &[u8],
+    mut palette: impl FnMut(usize) -> Option<Vec<u32>>,
+) -> Option<Image> {
+    let stride = SCREEN_LEN / resolution.height() as usize;
+    let lines = bitmap.get(..SCREEN_LEN)?.chunks_exact(stride);
+    let mut image = Image::new(resolution.width(), resolution.height());
+    for (y, line) in lines.enumerate() {
+        let colors = palette(y)?;
+        for x in 0..resolution.width() {
+            let index = interleaved_index(line, x, resolution.planes());
+            image.set(x, y as u32, *colors.get(index)?);
+        }
+    }
+    Some(image.scaled(1, resolution.y_scale()))
+}
+
 /// Palette index of pixel `x` on a word-interleaved line starting at `line`.
 pub(super) fn interleaved_index(line: &[u8], x: u32, planes: u32) -> usize {
     let group = (x / 16 * planes * 2) as usize;

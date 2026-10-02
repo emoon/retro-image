@@ -23,15 +23,17 @@ mod paintshop;
 mod paintworks;
 mod photochrome;
 mod quantumpaint;
+mod rasters;
 mod simple;
 mod spectrum;
 mod tiny;
 mod tt;
 mod uimg;
 
-use crate::{DecodeError, Format, Image};
+use crate::{Companions, DecodeError, Format, Image};
 
 type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
+type CompanionDecoder = fn(&[u8], &dyn Companions) -> Result<Image, DecodeError>;
 
 const fn tt(name: &'static str, extensions: &'static [&'static str], decoder: Decoder) -> Format {
     Format::new("Atari TT", name, extensions, decoder)
@@ -49,6 +51,15 @@ const fn st(name: &'static str, extensions: &'static [&'static str], decoder: De
     Format::new("Atari ST", name, extensions, decoder)
 }
 
+/// An ST format that reads companion files when they are available.
+const fn st_with(
+    name: &'static str,
+    extensions: &'static [&'static str],
+    decoder: CompanionDecoder,
+) -> Format {
+    Format::with_companions("Atari ST", name, extensions, decoder)
+}
+
 pub(super) static FORMATS: &[Format] = &[
     st("DEGAS", &["pi1", "pi2", "pi3", "suh"], degas::decode_pi),
     st(
@@ -57,7 +68,7 @@ pub(super) static FORMATS: &[Format] = &[
         degas::decode_pc,
     ),
     st("EZ-Art Professional", &["eza"], degas::decode_eza),
-    st("NEOchrome", &["neo"], simple::decode_neo),
+    st_with("NEOchrome", &["neo"], simple::decode_neo),
     st("NEOchrome Master", &["neo"], iff::decode_block),
     st("Doodle", &["doo"], simple::decode_doo),
     st(
@@ -118,7 +129,9 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     st("Public Painter", &["cmp"], mono::decode_cmp),
     st("Calamus Raster Graphic", &["crg"], mono::decode_crg).signature(),
-    st("Canvas compressed", &["cpt"], canvas::decode_cpt),
+    st_with("Canvas compressed", &["cpt"], canvas::decode_cpt),
+    st("Canvas full", &["ful"], canvas::decode_ful),
+    st_with("C.O.L.R. Object Editor", &["mur"], simple::decode_mur),
     st("DUO", &["du1", "duo"], duo::decode_duo),
     st("DUO (medium resolution)", &["du2"], duo::decode_du2),
     st("STAD", &["pac"], mono::decode_pac).signature(),
@@ -218,6 +231,40 @@ mod tests {
         let picture = b"B&W256\0\x02\0\x01\x00\xff";
         let image = crate::decode("picture.org", picture).unwrap();
         assert_eq!(image.rgb(), &[0, 0, 0, 0xff, 0xff, 0xff]);
+    }
+
+    /// Returns the same bytes for every extension.
+    struct Any(alloc::vec::Vec<u8>);
+
+    impl crate::Companions for Any {
+        fn get(&self, _extension: &str) -> Option<alloc::vec::Vec<u8>> {
+            Some(self.0.clone())
+        }
+    }
+
+    #[test]
+    fn malformed_companion_files_do_not_panic() {
+        let neo = alloc::vec![0u8; 128 + 32000];
+        // CPT: palette, low resolution, end of runs, then 8000 raw units.
+        let mut cpt = alloc::vec![0u8; 34];
+        cpt.extend_from_slice(&[0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        cpt.resize(cpt.len() + 32000, 0x55);
+        let mur = alloc::vec![0u8; 32000];
+        let mut seed = 1u32;
+        for len in (0..2400).step_by(7) {
+            let companion: alloc::vec::Vec<u8> = (0..len)
+                .map(|i| {
+                    seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12345);
+                    if i % 3 == 0 { 0xff } else { (seed >> 16) as u8 }
+                })
+                .collect();
+            let companions = Any(companion);
+            for (name, data) in [("x.neo", &neo), ("x.cpt", &cpt), ("x.mur", &mur)] {
+                for format in crate::candidates(name).filter(|f| f.uses_companions()) {
+                    let _ = format.decode_with(data, &companions);
+                }
+            }
+        }
     }
 
     #[test]

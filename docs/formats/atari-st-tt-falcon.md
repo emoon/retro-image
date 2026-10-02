@@ -308,9 +308,21 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   HAM-E ILBMs that it rejects), EZ-Art (only a 2-byte `EZ`), Music Compile (RAG-D claims
   the same container first), HRM and PCI (their unpacked form has no header) and every
   headerless or size-only format.
+- Companion files (black-box tests with `recoil2png`):
+  - Canvas `HBL`: 200 words, one per four lines (`$FFFF` = no change), 400 unused
+    bytes, then (used entries + 1) records of 16 VDI pens × 3 bytes (R, G, B; only the
+    low three bits count) from offset 800. Records are stored in reverse: the first used
+    entry selects the last record; the palette numbers in the table are ignored. The
+    record set from line 0 maps pens like 16 colours even in medium resolution (colour 3
+    = pen 6). High resolution ignores the HBL. `FUL` = HBL data + 608 bytes of animation
+    data + CPT data; RECOIL ignores a sibling `.HBL` for it.
+  - NEOchrome `RST` uses the same rules as the `RAST` chunk, ends at a `$FFFF` line, and
+    is always shown with 3-bit ST colours (unlike `RAST`, where STE bits switch to STE).
+  - `MUR` + `PAL`: the PAL holds 16 VDI triplets (0-1000, clamped) in pen order. RECOIL
+    rejects a `MUR` without its PAL, and so do we.
 - Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
-  screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files,
-  8-plane IMG without palette, and Canvas FUL.
+  screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files
+  and 8-plane IMG without palette.
 
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
