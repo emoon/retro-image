@@ -88,7 +88,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     } else {
         pixel_scale(&h)
     };
-    let mut image = Image::new((h.width * sx) as u32, (h.height * sy) as u32);
+    let mut image = Image::new(h.width as u32, h.height as u32);
     for y in 0..h.height {
         for x in 0..h.width {
             let mut index = 0;
@@ -105,14 +105,14 @@ fn decode(data: &[u8]) -> Option<Image> {
                 Some(bits) => timg_color(index, bits),
                 None => *palette.get(index)?,
             };
-            for dy in 0..sy {
-                for dx in 0..sx {
-                    image.set((x * sx + dx) as u32, (y * sy + dy) as u32, color);
-                }
-            }
+            image.set(x as u32, y as u32, color);
         }
     }
-    Some(image)
+    Some(if (sx, sy) == (1, 1) {
+        image
+    } else {
+        image.scaled(sx as u32, sy as u32)
+    })
 }
 
 /// TIMG: `TIMG`, a word (3) and the red, green and blue bit counts.

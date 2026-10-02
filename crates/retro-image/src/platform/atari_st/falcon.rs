@@ -50,18 +50,16 @@ pub(super) fn rgb565(word: u16) -> u32 {
 fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Option<Image> {
     check_size(width, height)?;
     let data = data.get(..width * height * 2)?;
-    let mut image = Image::new((width * x_scale) as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32);
     for (i, pixel) in data.chunks_exact(2).enumerate() {
         let color = rgb565(u16::from_be_bytes([pixel[0], pixel[1]]));
-        for dx in 0..x_scale {
-            image.set(
-                ((i % width) * x_scale + dx) as u32,
-                (i / width) as u32,
-                color,
-            );
-        }
+        image.set((i % width) as u32, (i / width) as u32, color);
     }
-    Some(image)
+    Some(if x_scale == 1 {
+        image
+    } else {
+        image.scaled(x_scale as u32, 1)
+    })
 }
 
 /// Renders one byte per pixel through `level` (grey from byte value).

@@ -8,7 +8,7 @@
 //! - Observed from `recoil2png` output: the two screens are averaged per
 //!   component (rounding down); medium resolution lines are doubled.
 
-use super::common::{mix_images, palette_words, planar_image, st_palette};
+use super::common::{palette_words, planar_image, st_palette};
 use crate::{DecodeError, Image};
 
 const SCREEN_LEN: usize = 56784;
@@ -55,5 +55,5 @@ fn decode(data: &[u8], colors: usize, width: u32, planes: u32, y_scale: u32) -> 
     let second = &first[SCREEN_LEN..];
     let a = planar_image(first, width, HEIGHT, planes, &palette, y_scale)?;
     let b = planar_image(second, width, HEIGHT, planes, &palette, y_scale)?;
-    Some(mix_images(&a, &b))
+    Some(Image::blend(&[&a, &b]))
 }

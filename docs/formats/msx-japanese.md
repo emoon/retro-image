@@ -397,14 +397,44 @@ Implemented, all corpus samples matching `recoil2png` (126 files):
 
 Skipped: MIG/MIF (undocumented VDP command stream), ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG, CMP (no layout docs; need reverse engineering), interlaced pairs and +PLx palettes (multi-file), SRI (no sample).
 
-### Layouts observed in hostile samples (not yet supported)
+## 17. Implementation status (wave 2)
 
-- **"ukp" packer** (MSX-FAN 03): `"ukp" 1A`, unpacked size LE32 at 0x0C, `0x20` at 0x10, escape
-  byte at 0x11, then RLE as `ESC value count` (count 0 = 256). Unpacks to exactly the stated size
-  in all three samples. Wraps other formats: CRUSADE → Graph Saurus SR7, DACYOU1 → SR5 saved
-  from VRAM page 1 (start 0x8000), TITLE.PIC → BASIC COPY Screen 7 (512x212). Needs a pre-decode
-  unpack layer; the palettes are in companion `.PLx` files.
+- Shared helpers adopted (`Image::from_indexed`, `scaled`, `set`/`get`); no output change.
+- Content detection (`.signature()`): MAG, MKI, Pi, PIC (every machine entry; only the saving
+  machine's entry accepts a file), G9B, Dynamic Publisher PCT and FNT. BSAVE dumps, Graph Saurus
+  pages and COPY files are not marked: their headers can't tell the screen mode apart.
+- Companion files, all checked against `recoil2png` given the same files plus synthesized edge
+  cases (`msx/screen.rs` lists the observed rules):
+  - `PL5`/`PL6`/`PL7`/`PLA` for Graph Saurus `SRx` and COPY `GLx`/`SHx` (bank 0 only; BSAVE dumps
+    ignore them; RECOIL ignores `PL8`).
+  - Interlaced `SCx` + `S15`/`S16`/`S17`/`S18`/`S1A`/`S1C`: even/odd lines, the even page's
+    palette, no sprites.
+  - `SR0` + `SR1` + `PL7` (interlaced Graph Saurus Screen 7, MSX-FAN): RECOIL rejects; divergence.
+- Dot Designer's Club `CMP` (+`PL5`): reverse engineered (`msx/dot_designer.rs`): header bytes
+  per line / lines / first XORed line, then per 64 bytes a group-flag byte, group masks and the
+  non-zero bytes; lines are XORed with the line above. Matches RECOIL on both samples.
+- MSX-FAN "ukp" packer (`msx/ukp.rs`), unwrapped before dump/Graph Saurus/COPY decoding; Graph
+  Saurus Screen 5/6 pages saved from page 1 (start 0x8000); palette files saved as a BSAVE of the
+  VRAM palette table. RECOIL rejects or misreads these samples; divergences recorded.
+
+Still skipped:
+
+- `TITLE.PIC` (MSX-FAN): ukp-packed BASIC COPY Screen 7 under a `.PIC` name; the `.PIC`
+  extension gives no way to know the inner format, so it isn't guessed from one sample.
+- **MIG** (14 RECOIL samples): `"MSXMIG"`, then the LE32 size of the rest. At 0x0D a LE16
+  matches the compressed length of the first block (sc2: 0x2660, nearly the whole file), and
+  0x0B a plausible LE16 unpacked length (0x4000, 0x3845). From 0x0F the G9B BitBuster variant
+  decodes a clean palette write for about 140 bytes, then fails on an extended match offset, so
+  this BitBuster version differs in its long offsets or lengths. No public spec exists.
+- MIF, Mapletown ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG: unchanged (no layout
+  docs; RECOIL decodes the corpus samples, so they are candidates for black-box reverse
+  engineering).
+
+### Layouts observed in hostile samples
+
+- **"ukp" packer** (MSX-FAN 03): now supported, see section 17.
 - **Sunrise Picture Disk CMP** (not T&E Dot Designer's Club CMP): no header, palette or mode; RLE
-  as `n v` = v repeated n times, `00 n` = n literal bytes.
+  as `n v` = v repeated n times, `00 n` = n literal bytes. RECOIL rejects these. (Sunrise's
+  `INTRO1.CMP` in `extra/` is a Dot Designer's Club file.)
 - **Punincess Maker `.MP`**: X68000 MAG variant with no machine name, header big-endian, machine
   byte unreliable (0x00/0xFF/0x68 seen). Supported when named `.MAG`.

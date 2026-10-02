@@ -292,10 +292,14 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
         }
         return Ok(image);
     }
+    if let Colour::Indexed(_) = header.colour {
+        // Indices have 4 or 8 bits, so they fit a byte.
+        let indices: Vec<u8> = values.iter().map(|&v| v as u8).collect();
+        return Image::from_indexed(width as u32, height as u32, &indices, &header.palette);
+    }
     let mut image = Image::new(width as u32, height as u32);
     for (i, &value) in values.iter().enumerate() {
         let colour = match header.colour {
-            Colour::Indexed(_) => header.palette.get(value as usize).copied().unwrap_or(0),
             Colour::X68000Rgb15 => x68000(value << 1),
             Colour::X68000Rgb16 => x68000(value),
             _ => {

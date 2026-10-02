@@ -303,3 +303,37 @@ Implemented: GR3, SG3, GR7, DIT, BKG, MGP, GR8, DRG, MBG, PSF, GR9, RAP, G10, G1
 SKP, AGP, PIC (Koala, Visualizer), 256/AP2, APA/APC/PLM, AP3/APV/DGI/DGP/ESC/ILC/PZM, CIN,
 HIP, VZI, TIP, INP, INT, HCI/HR2, IST, MCP, MCPP, FNT, FN2, SIF, ACS, JGP, NLQ (Daisy-Dot II),
 SPR/MPL/MSL/TL4 (Mad Studio), DAP (VBXE), PGF/PGC (Portfolio).
+
+## 7. Implementation notes (wave 2)
+
+New since wave 1 (all checked against `recoil2png` unless listed as a divergence in
+`crates/retro-image/tests/divergences/atari8.tsv`):
+
+- **ROM font**: text modes use the standard character set of the Atari XL/XE OS ROM
+  (rev. 2, `ATARIXL.ROM`, MD5 06daac977823773a3eea3422fd26a703, from archive.org's
+  `atari-8-bit-bios-files`), at $E000. `recoil2png` renders this set, not the
+  international one at $CC00. Embedded in `atari8/rom_font.rs`.
+- **Text formats**: GR0/ASC/SCR/SGE (960 screen codes; we also take 24-30 lines),
+  AN2, GR1, GR2, AN4, AN5 (Mad Studio PDF layouts), DLM (16 DOS directory entries, the
+  11 name bytes are ATASCII, converted to screen codes).
+- **Companion files**: MIC+COL (a 1024- or 1280-byte G2F `.COL` gives per-line colours,
+  table = pixel value, entry = line, but only for 240-line MIC files), LUM+COL
+  (Technicolor Dream: hue/luminance scanline pairs like TIP; the luminance alone in
+  greys). Technicolor Dream's own disk holds run-length packed LUM/COL files
+  ((value, count) pairs after the 6-byte header); the packed HAYWAIN pair unpacks to
+  RECOIL's sample byte for byte, so we unpack them too (RECOIL rejects them).
+- **Other new formats**: Daisy-Dot III NLQ (monobit's MIT reader; RECOIL rejects),
+  Magic Painter saved as `.PIC` (no rainbow flag, screen at offset 5), G09, TXE, ZM4,
+  TX0, WND, SXS (16x16 font), ODF (8x10 font), F80 (4x8 font), PLA, MIS; JGP at any
+  load address; HIP as two 192-line binary-load frames.
+- **Content detection** (`.signature()`): INT95a, TIP, NLQ, PGC. Not Koala (Rambrandt
+  RM0-RM4 files start with a Koala header) and not JGP (a generic binary-load header).
+- **SFDN** (APP/APS/G9S/HPS/ILS/INS/PLS/SFD), partly understood, not implemented:
+  `S101`, the unpacked length (little-endian), then a 16-entry table that is exactly
+  the frequency order of the nibble deltas (previous minus current, mod 16, in raster
+  order). The bitstream after it is not a plain prefix code of those ranks from
+  offset 22 (tested against SHPOON.G9S, whose pixels RECOIL shows).
+- **Not attempted**: G2F/MCH/VSC (the G2F container is undocumented and needs raster
+  and PMG emulation), SHC (the colour map is a list of mid-line register writes),
+  Blazing Paddles CHR (proportional glyphs behind a pointer table), RastaConverter
+  (no samples).

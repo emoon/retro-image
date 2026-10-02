@@ -13,7 +13,7 @@
 //!   4-7); mode 9 and hue pixels drawn 1 output pixel left of the grid,
 //!   mode 10 pixels 1 to the right; and the two frames mixed by averaging.
 
-use super::palette::{average, rgb};
+use super::palette::rgb;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
@@ -46,38 +46,28 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
             byte & 0x0f
         })
     };
-    let mut image = Image::new(out_width as u32, 2 * height as u32);
-    for line in 0..height {
-        for x in 0..out_width {
-            let left = Some(x + 1);
-            let right = x.checked_sub(1);
-            let hue = pixel(gtia11, line, left);
-            let luminances = |line: usize| {
-                let lum9 = pixel(gtia9, line, left).unwrap_or(0);
-                let lum10 = pixel(gtia10, line, right).map_or(0, gtia10_luminance);
-                [lum9, lum10]
-            };
-            let current = luminances(line);
-            let previous = line.checked_sub(1).map_or([0, 0], luminances);
-            let hue_scanline = current
-                .iter()
-                .zip(previous)
-                .map(|(&now, before)| match hue {
-                    Some(hue) => rgb((hue << 4) | ((now + before) / 2)),
-                    None => 0,
-                });
-            let hue = hue.unwrap_or(0);
-            let luminance_scanline = current.iter().map(|&now| rgb((hue << 4) | now));
-            let y = 2 * line as u32;
-            image.set(x as u32, y, hue_scanline.reduce(average).unwrap_or(0));
-            image.set(
-                x as u32,
-                y + 1,
-                luminance_scanline.reduce(average).unwrap_or(0),
-            );
+    // Frame 0 takes its luminance from mode 9, frame 1 from mode 10.
+    let luminance = |frame: usize, line: usize, x: usize| match frame {
+        0 => pixel(gtia9, line, Some(x + 1)).unwrap_or(0),
+        _ => pixel(gtia10, line, x.checked_sub(1)).map_or(0, gtia10_luminance),
+    };
+    let frames: [Image; 2] = core::array::from_fn(|frame| {
+        let mut image = Image::new(out_width as u32, 2 * height as u32);
+        for line in 0..height {
+            for x in 0..out_width {
+                let hue = pixel(gtia11, line, Some(x + 1));
+                let now = luminance(frame, line, x);
+                let before = line.checked_sub(1).map_or(0, |l| luminance(frame, l, x));
+                let hue_scanline = hue.map_or(0, |hue| rgb((hue << 4) | ((now + before) / 2)));
+                let luminance_scanline = rgb((hue.unwrap_or(0) << 4) | now);
+                let y = 2 * line as u32;
+                image.set(x as u32, y, hue_scanline);
+                image.set(x as u32, y + 1, luminance_scanline);
+            }
         }
-    }
-    Ok(image)
+        image
+    });
+    Ok(Image::blend(&[&frames[0], &frames[1]]))
 }
 
 /// Luminance of a GTIA mode 10 value with TIP's registers 0, 2, ..., 14, 0.
@@ -105,16 +95,18 @@ mod tests {
     #[test]
     fn mixes_scanline_pairs() {
         let image = decode_tip(&tip(0x99, 0x44, 0xff)).unwrap();
-        let at = |x: usize, y: usize| {
-            let i = (y * 320 + x) * 3;
-            [image.rgb()[i], image.rgb()[i + 1], image.rgb()[i + 2]]
-        };
         // Hue scanline: luminance (9 + 0) / 2 and (8 + 0) / 2 of hue 15.
-        assert_eq!(at(2, 0), [0x83, 0x38, 0x00]);
+        assert_eq!(image.get(2, 0), 0x833800);
         // Luminance scanline: hue 15 at luminances 9 and 8.
-        assert_eq!(at(2, 1), [0xcf, 0x84, 0x2b]);
+        assert_eq!(image.get(2, 1), 0xcf842b);
         // The rightmost pixel has no hue pixel on its hue scanline.
-        assert_eq!(at(319, 0), [0, 0, 0]);
+        assert_eq!(image.get(319, 0), 0);
+    }
+
+    #[test]
+    fn detected_by_content() {
+        let data = tip(0x99, 0x44, 0xff);
+        assert_eq!(crate::decode("x.dat", &data), decode_tip(&data));
     }
 
     #[test]

@@ -6,13 +6,24 @@
 //! - GR7, GR8, GR9: Just Solve "GR*" and AtariWiki File Suffix (sizes).
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
-//! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710).
+//! - TXE (96 doubled GR9 lines) and ZM4 (64x64 greys drawn 4x4): sizes
+//!   and layouts observed from `recoil2png` output.
+//! - TX0 (Just Solve "Texture Maker0": 16x16, 16 colours) and WND (Blazing
+//!   Paddles window, up to 160x192, 4 colours): header, layout, the hue
+//!   OR and the window colours observed from `recoil2png` output.
+//! - G09: sizes (7680, 15360) and the two screens side by side: observed
+//!   from `recoil2png` output.
+//! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710; COL =
+//!   5 x 256 per-line colours). Which MIC sizes and COL sizes RECOIL pairs,
+//!   and the table order: observed from `recoil2png` output.
 //! - DRG: Just Solve "AtariCAD" (6400 bytes = 320x160 GR8).
 //! - MBG: Just Solve "Mad Designer" (16384 bytes = 512x256 mono).
 //! - SKP: Sketch-PadDles page (raw 7680-byte GR15 screen).
 //! - DIT: Just Solve "DrawIt" (3845 bytes = GR7 screen + 5 colours).
 //! - BKG: Just Solve "Movie Maker" (3856 bytes = GR7 screen + 16 bytes).
 //! - MGP: Just Solve "Magic Painter" (3845 bytes, starts `F4 0E 36 00`).
+//!   The `.PIC` variant without the rainbow flag (screen at offset 5) was
+//!   reverse engineered from a sample (dexvert `crumble.pic`).
 //! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
 //! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
@@ -29,7 +40,7 @@
 
 use super::antic::Bitmap;
 use super::palette::{register_rgb, rgb};
-use crate::{DecodeError, Image};
+use crate::{Companions, DecodeError, Image};
 
 const LINE: usize = 40;
 const MAX_LINES: usize = 240;
@@ -163,6 +174,76 @@ pub(super) fn decode_gr9(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(gtia9(bitmap, 0x00))
 }
 
+/// Graphics 9 from a G09 file: one 192-line screen, or two shown side by
+/// side (left first).
+pub(super) fn decode_g09(data: &[u8]) -> Result<Image, DecodeError> {
+    match data.len() {
+        7680 => Ok(gtia9(bitmap(data, LINE, 4), 0x00)),
+        15360 => {
+            let (left, right) = data.split_at(7680);
+            let mut wide = alloc::vec::Vec::with_capacity(data.len());
+            for (l, r) in left.chunks_exact(LINE).zip(right.chunks_exact(LINE)) {
+                wide.extend_from_slice(l);
+                wide.extend_from_slice(r);
+            }
+            Ok(gtia9(bitmap(&wide, 2 * LINE, 4), 0x00))
+        }
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// TXE: 96 lines of Graphics 9 greys, each shown twice.
+pub(super) fn decode_txe(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen = exactly(data, 3840)?;
+    Ok(bitmap(screen, LINE, 4).render(4, 2, |_, value| rgb(value)))
+}
+
+/// Zoom 4: 64x64 greys, one nibble per pixel, drawn 4x4.
+pub(super) fn decode_zm4(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen = exactly(data, 2048)?;
+    Ok(bitmap(screen, 32, 4).render(4, 4, |_, value| rgb(value)))
+}
+
+/// Texture Maker0: 16x16 luminances (0-15), then the hue byte ORed into
+/// each, drawn 4x4.
+pub(super) fn decode_tx0(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 257)?;
+    let (pixels, &[hue]) = data.split_at(256) else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if pixels.iter().any(|&value| value > 15) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(16, 16);
+    for (i, &value) in pixels.iter().enumerate() {
+        image.set(i as u32 % 16, i as u32 / 16, rgb(hue | value));
+    }
+    Ok(image.scaled(4, 4))
+}
+
+/// Blazing Paddles window: width - 1 and height, then Graphics 15 lines
+/// of (width + 3) / 4 bytes, in a 3072-byte file.
+pub(super) fn decode_wnd(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3072)?;
+    let width = usize::from(data[0]) + 1;
+    let height = usize::from(data[1]);
+    let bytes_per_line = width.div_ceil(4);
+    let screen = data
+        .get(2..2 + bytes_per_line * height)
+        .filter(|_| height > 0)
+        .ok_or(DecodeError::Unrecognized)?;
+    let colors = [0x00, 0x46, 0x88, 0x0e];
+    let mut image = Image::new(width as u32, height as u32);
+    let bitmap = bitmap(screen, bytes_per_line, 2);
+    for y in 0..height {
+        for x in 0..width {
+            let color = register_rgb(colors[usize::from(bitmap.pixel(x, y))]);
+            image.set(x as u32, y as u32, color);
+        }
+    }
+    Ok(image.scaled(2, 1))
+}
+
 /// Graphics 10: screen, then the 9 registers 704-712.
 pub(super) fn decode_g10(data: &[u8]) -> Result<Image, DecodeError> {
     let screen_len = data.len().checked_sub(9).ok_or(DecodeError::Unrecognized)?;
@@ -240,6 +321,22 @@ pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
+/// Magic Painter picture saved as `.PIC`: playfield 0-2, background, an
+/// unused zero byte, then the whole Graphics 7 screen (no rainbow flag).
+pub(super) fn decode_mgp_pic(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3845)?;
+    if data[4] != 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (bitmap, _) = lines(&data[5..])?;
+    Ok(four_color(
+        bitmap,
+        2,
+        2,
+        [data[3], data[0], data[1], data[2]],
+    ))
+}
+
 /// Visualizer: playfield 0-3 and background, then 79 Graphics 7 lines and
 /// 160 unused bytes.
 pub(super) fn decode_visualizer(data: &[u8]) -> Result<Image, DecodeError> {
@@ -272,14 +369,26 @@ pub(super) fn decode_sg3(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Micro Illustrator / Graphics 15: 160 pixels, 4 colours. A 4-byte tail is
 /// background and playfield 0-2; a 5-byte tail is playfield 0-2, background
-/// and an unused byte; otherwise grey defaults apply.
-pub(super) fn decode_mic(data: &[u8]) -> Result<Image, DecodeError> {
+/// and an unused byte; otherwise grey defaults apply. A 240-line picture
+/// takes per-line colours from a Graph2Font `.COL` file of 1024 or 1280
+/// bytes when present: table `value` (background, playfield 0-2), entry
+/// `line`.
+pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(data)?;
     let colors = match *tail {
         [] | [_, _, _] => GREY_COLORS,
         [background, pf0, pf1, pf2] | [pf0, pf1, pf2, background, _] => [background, pf0, pf1, pf2],
         _ => return Err(DecodeError::Unrecognized),
     };
+    let tables = (bitmap.lines == 240)
+        .then(|| companions.get("col"))
+        .flatten()
+        .filter(|col| matches!(col.len(), 1024 | 1280));
+    if let Some(tables) = tables {
+        return Ok(Bitmap { bits: 2, ..bitmap }.render(2, 1, |line, value| {
+            register_rgb(tables[usize::from(value) * 256 + line])
+        }));
+    }
     Ok(four_color(bitmap, 2, 1, colors))
 }
 
@@ -328,13 +437,60 @@ mod tests {
         let mut data = [0u8; 44];
         data[0] = 0b0001_1011;
         data[40..].copy_from_slice(&[0x02, 0x14, 0x26, 0x38]);
-        let four = decode_mic(&data).unwrap();
+        let four = decode_mic(&data, &crate::NoCompanions).unwrap();
         assert_eq!(&four.rgb()[..3], &[0x22, 0x22, 0x22]);
         let mut five = [0u8; 45];
         five[..40].copy_from_slice(&data[..40]);
         five[40..].copy_from_slice(&[0x14, 0x26, 0x38, 0x02, 0xff]);
-        assert_eq!(decode_mic(&five).unwrap(), four);
-        assert_eq!(decode_mic(&[0; 41]), Err(DecodeError::Unrecognized));
+        assert_eq!(decode_mic(&five, &crate::NoCompanions).unwrap(), four);
+        assert_eq!(
+            decode_mic(&[0; 41], &crate::NoCompanions),
+            Err(DecodeError::Unrecognized)
+        );
+    }
+
+    struct Col(usize);
+
+    impl Companions for Col {
+        fn get(&self, extension: &str) -> Option<alloc::vec::Vec<u8>> {
+            // Table t, line y holds hue t + 1, luminance y.
+            let col = (0..self.0).map(|i| (((i / 256 + 1) << 4) | (i % 16)) as u8);
+            (extension == "col").then(|| col.collect())
+        }
+    }
+
+    #[test]
+    fn mic_col_gives_per_line_colours_to_240_lines() {
+        let mut data = [0u8; 9600];
+        data[2 * 40] = 0b1000_0000; // line 2, pixel 0: playfield 1
+        let image = decode_mic(&data, &Col(1280)).unwrap();
+        assert_eq!(image.get(0, 2), register_rgb(0x32));
+        assert_eq!(image.get(2, 2), register_rgb(0x12));
+        let greys = decode_mic(&data, &crate::NoCompanions).unwrap();
+        assert_eq!(decode_mic(&data, &Col(1000)).unwrap(), greys);
+        let short = decode_mic(&data[..7680], &Col(1024)).unwrap();
+        assert_eq!(short.get(2, 2), register_rgb(GREY_COLORS[0]));
+    }
+
+    #[test]
+    fn wnd_window_must_fit_the_file() {
+        let mut data = [0u8; 3072];
+        data[..2].copy_from_slice(&[0x59, 133]);
+        assert_eq!(decode_wnd(&data).unwrap().height(), 133);
+        data[1] = 134;
+        assert!(decode_wnd(&data).is_err());
+        data[1] = 0;
+        assert!(decode_wnd(&data).is_err());
+    }
+
+    #[test]
+    fn tx0_ors_hue_into_luminance() {
+        let mut data = [0u8; 257];
+        data[0] = 0x05;
+        data[256] = 0xa3;
+        assert_eq!(decode_tx0(&data).unwrap().get(3, 3), rgb(0xa7));
+        data[1] = 0x10;
+        assert!(decode_tx0(&data).is_err());
     }
 
     #[test]

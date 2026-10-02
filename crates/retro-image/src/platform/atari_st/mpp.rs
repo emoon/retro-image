@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be32, mix};
+use super::common::be32;
 use crate::{DecodeError, Image};
 
 struct Mode {
@@ -93,23 +93,11 @@ fn decode(data: &[u8]) -> Option<Image> {
     let skip = be32(data, 8)? as usize;
     let mut pos = 12usize.checked_add(skip)?;
     let first = frame(data, &mut pos, mode, bits)?;
-    let pixels = if flags & 4 != 0 {
-        let second = frame(data, &mut pos, mode, bits)?;
-        first
-            .iter()
-            .zip(&second)
-            .map(|(&a, &b)| mix(a, b))
-            .collect()
-    } else {
-        first
-    };
-    let mut image = Image::new(mode.width as u32, mode.height as u32);
-    for (y, line) in pixels.chunks_exact(mode.width).enumerate() {
-        for (x, &color) in line.iter().enumerate() {
-            image.set(x as u32, y as u32, color);
-        }
+    if flags & 4 == 0 {
+        return Some(first);
     }
-    Some(image)
+    let second = frame(data, &mut pos, mode, bits)?;
+    Some(Image::blend(&[&first, &second]))
 }
 
 /// Converts a packed palette entry of `bits` bits to `0xRRGGBB`.
@@ -145,7 +133,7 @@ fn color(c: u32, bits: usize) -> u32 {
 }
 
 /// Decodes one frame (palettes then bitmap) starting at `pos`.
-fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Vec<u32>> {
+fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Image> {
     let per_line = mode.colors - mode.fixed;
     let stored = per_line - if mode.border0 { 2 } else { 0 };
     let packed_len = (bits * stored * mode.height)
@@ -172,7 +160,7 @@ fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Vec<u
         }
     }
 
-    let mut pixels = Vec::with_capacity(mode.width * mode.height);
+    let mut image = Image::new(mode.width as u32, mode.height as u32);
     let mut palette = [0u32; 16];
     let line_len = mode.width / 2;
     for (y, line) in bitmap.chunks_exact(line_len).enumerate() {
@@ -189,10 +177,10 @@ fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Vec<u
                 next_c += 1;
             }
             let index = super::common::interleaved_index(line, x as u32, 4);
-            pixels.push(palette[index]);
+            image.set(x as u32, y as u32, palette[index]);
         }
     }
-    Some(pixels)
+    Some(image)
 }
 
 struct Bits<'a> {

@@ -9,4 +9,5 @@ use crate::Format;
 
 pub(super) static FORMATS: &[Format] = &[Format::new("FM Towns", "PIC", &["pic"], |d| {
     pic::decode_pic(d, Machine::FmTowns)
-})];
+})
+.signature()];

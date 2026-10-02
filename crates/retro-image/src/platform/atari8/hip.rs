@@ -11,12 +11,13 @@
 //!   Reference Manual (GTIA mode 10 half-pixel shift).
 //! - Observed from `recoil2png` output: the layouts (16000 bytes: mode 9 frame
 //!   then mode 10 frame; 16009 bytes: plus registers 704-712; 16012 bytes:
-//!   two DOS binary-load segments, mode 10 frame first), the default mode 10
+//!   two DOS binary-load segments, mode 10 frame first; 15372 bytes: the
+//!   same with 192-line frames), the default mode 10
 //!   registers (0, 0, 2, 4, ..., 14), the frames mixed by averaging, and the
 //!   placement: mode 9 pixels start 1 output pixel left of the 4-pixel grid,
 //!   mode 10 pixels 1 to the right, with black beyond the edges.
 
-use super::palette::{average, register_rgb, rgb};
+use super::palette::{register_rgb, rgb};
 use super::screen::gtia10_register;
 use crate::{DecodeError, Image};
 
@@ -32,14 +33,16 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
                 .map_err(|_| DecodeError::Unrecognized)?;
             (&data[..FRAME], &data[FRAME..2 * FRAME], registers)
         }
-        16012 => {
-            let first = binary_segment(data)?;
-            let second = binary_segment(&data[FRAME + 6..])?;
+        16012 | 15372 => {
+            let frame = data.len() / 2 - 6;
+            let first = binary_segment(data, frame)?;
+            let second = binary_segment(&data[frame + 6..], frame)?;
             (second, first, DEFAULT_REGISTERS)
         }
         _ => return Err(DecodeError::Unrecognized),
     };
     Ok(half_pixel_pair(
+        gtia9.len() / 40,
         |y, x| rgb(nibble(&gtia9[y * 40..], x)),
         |y, x| register_rgb(registers[gtia10_register(nibble(&gtia10[y * 40..], x))]),
     ))
@@ -53,33 +56,39 @@ pub(super) fn decode_vzi(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (first, second) = data.split_at(FRAME);
     Ok(half_pixel_pair(
+        200,
         |y, x| rgb(nibble(&second[y * 40..], x)),
         |y, x| rgb(nibble(&first[y * 40..], x)),
     ))
 }
 
-/// Mixes two 80x200 frames given as `color(line, pixel)`: `left`'s pixels
-/// start 1 output pixel left of the 4-pixel grid, `right`'s 1 pixel right.
+/// Mixes two frames of 80 x `lines` given as `color(line, pixel)`: `left`'s
+/// pixels start 1 output pixel left of the 4-pixel grid, `right`'s 1 pixel
+/// right.
 fn half_pixel_pair(
+    lines: usize,
     left: impl Fn(usize, usize) -> u32,
     right: impl Fn(usize, usize) -> u32,
 ) -> Image {
-    let mut image = Image::new(320, 200);
-    for y in 0..200 {
+    let mut left_frame = Image::new(320, lines as u32);
+    let mut right_frame = Image::new(320, lines as u32);
+    for y in 0..lines {
         for x in 0..320 {
-            let left = (x + 1 < 320).then(|| left(y, (x + 1) / 4));
-            let right = x.checked_sub(1).map(|x| right(y, x / 4));
-            let rgb = average(left.unwrap_or(0), right.unwrap_or(0));
-            image.set(x as u32, y as u32, rgb);
+            if x + 1 < 320 {
+                left_frame.set(x as u32, y as u32, left(y, (x + 1) / 4));
+            }
+            if let Some(x1) = x.checked_sub(1) {
+                right_frame.set(x as u32, y as u32, right(y, x1 / 4));
+            }
         }
     }
-    image
+    Image::blend(&[&left_frame, &right_frame])
 }
 
-/// The 8000 bytes of a DOS binary-load segment (`FF FF`, start, end).
-fn binary_segment(data: &[u8]) -> Result<&[u8], DecodeError> {
+/// The `len` bytes of a DOS binary-load segment (`FF FF`, start, end).
+fn binary_segment(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     match data {
-        [0xff, 0xff, _, _, _, _, rest @ ..] if rest.len() >= FRAME => Ok(&rest[..FRAME]),
+        [0xff, 0xff, _, _, _, _, rest @ ..] if rest.len() >= len => Ok(&rest[..len]),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -103,9 +112,9 @@ mod tests {
         let mut data = vec![0u8; 16000];
         data[0] = 0xf0; // mode 9 pixel 0: luminance 15
         let image = decode_hip(&data).unwrap();
-        let pixel = |x: usize| image.rgb()[x * 3];
+        let pixel = |x: u32| image.get(x, 0);
         // Mode 9 pixel 0 covers x = 0..=2 (one pixel left of the grid).
-        assert_eq!([pixel(0), pixel(2), pixel(3)], [0x7f, 0x7f, 0x00]);
+        assert_eq!([pixel(0), pixel(2), pixel(3)], [0x7f7f7f, 0x7f7f7f, 0]);
     }
 
     #[test]

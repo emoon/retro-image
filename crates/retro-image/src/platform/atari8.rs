@@ -12,7 +12,10 @@ mod koala;
 mod mad_studio;
 mod palette;
 mod portfolio;
+mod rom_font;
 mod screen;
+mod technicolor;
+mod text;
 mod tip;
 mod vbxe;
 
@@ -23,6 +26,18 @@ const VBXE: &str = "Atari 8-bit VBXE";
 const PORTFOLIO: &str = "Atari Portfolio";
 
 pub(super) static FORMATS: &[Format] = &[
+    Format::new(
+        ATARI8,
+        "Mad Studio Graphics 0",
+        &["gr0", "asc", "scr", "sge"],
+        text::decode_gr0,
+    ),
+    Format::new(ATARI8, "Mad Studio ANTIC 2", &["an2"], text::decode_an2),
+    Format::new(ATARI8, "Mad Studio Graphics 1", &["gr1"], text::decode_gr1),
+    Format::new(ATARI8, "Mad Studio Graphics 2", &["gr2"], text::decode_gr2),
+    Format::new(ATARI8, "Mad Studio ANTIC 4", &["an4"], text::decode_an4),
+    Format::new(ATARI8, "Mad Studio ANTIC 5", &["an5"], text::decode_an5),
+    Format::new(ATARI8, "Dir Logo Maker", &["dlm"], text::decode_dlm),
     Format::new(ATARI8, "Graphics 3", &["gr3"], screen::decode_gr3),
     Format::new(ATARI8, "Standard Graphics 3", &["sg3"], screen::decode_sg3),
     Format::new(ATARI8, "Graphics 7", &["gr7"], screen::decode_gr7),
@@ -39,6 +54,16 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Mad Designer", &["mbg"], screen::decode_mbg),
     Format::new(ATARI8, "Print Shop", &["psf"], screen::decode_psf),
     Format::new(ATARI8, "Graphics 9", &["gr9"], screen::decode_gr9),
+    Format::new(ATARI8, "Graphics 9 (G09)", &["g09"], screen::decode_g09),
+    Format::new(ATARI8, "TXE", &["txe"], screen::decode_txe),
+    Format::new(ATARI8, "Zoom 4", &["zm4"], screen::decode_zm4),
+    Format::new(ATARI8, "Texture Maker0", &["tx0"], screen::decode_tx0),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles window",
+        &["wnd"],
+        screen::decode_wnd,
+    ),
     Format::new(ATARI8, "Vidig Paint", &["rap"], screen::decode_rap),
     Format::new(ATARI8, "APAC 80x96", &["256", "ap2"], apac::decode_planar),
     Format::new(
@@ -56,18 +81,30 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Champions' Interlace", &["cin"], apac::decode_cin),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
-    Format::new(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
+    Format::with_companions(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
     Format::new(ATARI8, "Sketch-PadDles", &["skp"], screen::decode_skp),
+    Format::with_companions(
+        ATARI8,
+        "Technicolor Dream",
+        &["lum"],
+        technicolor::decode_lum,
+    ),
     Format::new(ATARI8, "Hard Interlace Picture", &["hip"], hip::decode_hip),
     Format::new(
         ATARI8,
         "Taquart Interlace Picture",
         &["tip"],
         tip::decode_tip,
-    ),
+    )
+    .signature(),
     Format::new(ATARI8, "VertiZontal Interlacing", &["vzi"], hip::decode_vzi),
-    Format::new(ATARI8, "InterPainter", &["inp"], interlace::decode_inp),
-    Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int),
+    Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int).signature(),
+    Format::new(
+        ATARI8,
+        "InterPainter",
+        &["inp", "int"],
+        interlace::decode_inp,
+    ),
     Format::new(
         ATARI8,
         "HCI interlace",
@@ -95,6 +132,7 @@ pub(super) static FORMATS: &[Format] = &[
         koala::decode_pic,
     ),
     Format::new(ATARI8, "Visualizer", &["pic"], screen::decode_visualizer),
+    Format::new(ATARI8, "Magic Painter", &["pic"], screen::decode_mgp_pic),
     Format::new(ATARI8, "8x8 font", &["fnt"], font::decode_fnt),
     Format::new(
         ATARI8,
@@ -127,7 +165,22 @@ pub(super) static FORMATS: &[Format] = &[
         mad_studio::decode_tl4,
     ),
     Format::new(ATARI8, "Super-IRG font", &["sif"], font::decode_sif),
-    Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq),
+    Format::new(ATARI8, "SXS font", &["sxs"], font::decode_sxs),
+    Format::new(ATARI8, "OD Font Editor", &["odf"], font::decode_odf),
+    Format::new(ATARI8, "The Last Word font", &["f80"], font::decode_f80),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 player",
+        &["pla"],
+        mad_studio::decode_pla,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 missile",
+        &["mis"],
+        mad_studio::decode_mis,
+    ),
+    Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq).signature(),
     Format::new(ATARI8, "AtariTools-800 font", &["acs"], font::decode_acs),
     Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
@@ -142,5 +195,6 @@ pub(super) static FORMATS: &[Format] = &[
         "Portfolio Graphics Compressed",
         &["pgc"],
         portfolio::decode_pgc,
-    ),
+    )
+    .signature(),
 ];

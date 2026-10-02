@@ -71,32 +71,41 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Image {
     image
 }
 
-/// SpritePad: `SPD` version 1 with a header, or headerless (3 colours).
+/// SpritePad `SPD` version 1: magic, sprite count minus one, animation
+/// count, the three shared colours, then the sprites.
 pub(super) fn decode_spd(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, sprites) = match data {
-        [
-            b'S',
-            b'P',
-            b'D',
-            1,
-            count,
-            _,
-            background,
-            multi1,
-            multi2,
-            rest @ ..,
-        ] => {
-            let len = (usize::from(*count) + 1) * 64;
-            (
-                [*background, *multi1, *multi2],
-                rest.get(..len).ok_or(DecodeError::Unrecognized)?,
-            )
-        }
-        [background, multi1, multi2, rest @ ..] if rest.len() % 64 == 0 => {
-            ([*background, *multi1, *multi2], rest)
-        }
-        _ => return Err(DecodeError::Unrecognized),
+    let [
+        b'S',
+        b'P',
+        b'D',
+        1,
+        count,
+        _,
+        background,
+        multi1,
+        multi2,
+        rest @ ..,
+    ] = data
+    else {
+        return Err(DecodeError::Unrecognized);
     };
+    let len = (usize::from(*count) + 1) * 64;
+    let sprites = rest.get(..len).ok_or(DecodeError::Unrecognized)?;
+    render_spd([*background, *multi1, *multi2], sprites)
+}
+
+/// Headerless SpritePad: the three shared colours, then the sprites.
+pub(super) fn decode_spd_raw(data: &[u8]) -> Result<Image, DecodeError> {
+    let [background, multi1, multi2, sprites @ ..] = data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if sprites.len() % 64 != 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    render_spd([*background, *multi1, *multi2], sprites)
+}
+
+fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
     if sprites.is_empty() || colors.iter().any(|&c| c > 15) {
         return Err(DecodeError::Unrecognized);
     }

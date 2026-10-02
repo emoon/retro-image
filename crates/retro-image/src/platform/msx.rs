@@ -3,9 +3,11 @@
 //! Sources are listed per submodule; see also `docs/formats/msx-japanese.md`.
 
 mod bitbuster;
+mod dot_designer;
 mod dynamic_publisher;
 mod g9b;
 mod screen;
+mod ukp;
 mod vdp;
 
 use screen::{Bitmap, Tiled};
@@ -25,86 +27,103 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("MSX2", "Screen 4", &["sc4"], |d| {
         screen::decode_tiled_dump(Tiled::Graphic3, d)
     }),
-    Format::new("MSX2", "Screen 5", &["sc5", "ge5"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Graphic4, d)
+    Format::with_companions("MSX2", "Screen 5", &["sc5", "ge5"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Graphic4, d, c)
     }),
-    Format::new("MSX2", "Screen 6", &["sc6"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Graphic5, d)
+    Format::with_companions("MSX2", "Screen 6", &["sc6"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Graphic5, d, c)
     }),
-    Format::new("MSX2", "Screen 7", &["sc7", "ge7"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Graphic6, d)
+    Format::with_companions("MSX2", "Screen 7", &["sc7", "ge7"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Graphic6, d, c)
     }),
-    Format::new("MSX2", "Screen 8", &["sc8", "ge8", "pic"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Graphic7, d)
+    Format::with_companions("MSX2", "Screen 8", &["sc8", "ge8", "pic"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Graphic7, d, c)
     }),
-    Format::new("MSX2+", "Screen 10/11", &["sca", "scb"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Yae, d)
+    Format::with_companions("MSX2+", "Screen 10/11", &["sca", "scb"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Yae, d, c)
     }),
-    Format::new("MSX2+", "Screen 12", &["scc", "yjk", "s12"], |d| {
-        screen::decode_bitmap_dump(Bitmap::Yjk, d)
+    Format::with_companions("MSX2+", "Screen 12", &["scc", "yjk", "s12"], |d, c| {
+        screen::decode_bitmap_dump(Bitmap::Yjk, d, c)
     }),
-    Format::new("MSX2", "Graph Saurus Screen 5", &["sr5"], |d| {
-        screen::decode_graph_saurus(Bitmap::Graphic4, d)
+    Format::with_companions("MSX2", "Graph Saurus Screen 5", &["sr5"], |d, c| {
+        screen::decode_graph_saurus(Bitmap::Graphic4, d, c)
     }),
-    Format::new("MSX2", "Graph Saurus Screen 6", &["sr6"], |d| {
-        screen::decode_graph_saurus(Bitmap::Graphic5, d)
+    Format::with_companions("MSX2", "Graph Saurus Screen 6", &["sr6"], |d, c| {
+        screen::decode_graph_saurus(Bitmap::Graphic5, d, c)
     }),
-    Format::new("MSX2", "Graph Saurus Screen 7", &["sr7"], |d| {
-        screen::decode_graph_saurus(Bitmap::Graphic6, d)
+    Format::with_companions("MSX2", "Graph Saurus Screen 7", &["sr7"], |d, c| {
+        screen::decode_graph_saurus(Bitmap::Graphic6, d, c)
     }),
-    Format::new("MSX2", "Graph Saurus Screen 8", &["sr8"], |d| {
-        screen::decode_graph_saurus(Bitmap::Graphic7, d)
+    Format::with_companions(
+        "MSX2",
+        "Graph Saurus Screen 7 interlaced",
+        &["sr0"],
+        screen::decode_graph_saurus_interlaced,
+    ),
+    Format::with_companions("MSX2", "Graph Saurus Screen 8", &["sr8"], |d, c| {
+        screen::decode_graph_saurus(Bitmap::Graphic7, d, c)
     }),
-    Format::new("MSX2+", "Graph Saurus Screen 12", &["srs"], |d| {
-        screen::decode_graph_saurus(Bitmap::Yjk, d)
+    Format::with_companions("MSX2+", "Graph Saurus Screen 12", &["srs"], |d, c| {
+        screen::decode_graph_saurus(Bitmap::Yjk, d, c)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 5", &["gl5", "sh5"], |d| {
-        screen::decode_copy(Bitmap::Graphic4, d)
+    Format::with_companions("MSX2", "BASIC COPY Screen 5", &["gl5", "sh5"], |d, c| {
+        screen::decode_copy(Bitmap::Graphic4, d, c)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 6", &["gl6", "sh6"], |d| {
-        screen::decode_copy(Bitmap::Graphic5, d)
+    Format::with_companions("MSX2", "BASIC COPY Screen 6", &["gl6", "sh6"], |d, c| {
+        screen::decode_copy(Bitmap::Graphic5, d, c)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 7", &["gl7", "sh7"], |d| {
-        screen::decode_copy(Bitmap::Graphic6, d)
+    Format::with_companions("MSX2", "BASIC COPY Screen 7", &["gl7", "sh7"], |d, c| {
+        screen::decode_copy(Bitmap::Graphic6, d, c)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 8", &["gl8", "sh8"], |d| {
-        screen::decode_copy(Bitmap::Graphic7, d)
+    Format::with_companions("MSX2", "BASIC COPY Screen 8", &["gl8", "sh8"], |d, c| {
+        screen::decode_copy(Bitmap::Graphic7, d, c)
     }),
-    Format::new(
+    Format::with_companions(
         "MSX2+",
         "BASIC COPY Screen 10/11",
         &["gla", "glb", "sha", "shb"],
-        |d| screen::decode_copy(Bitmap::Yae, d),
+        |d, c| screen::decode_copy(Bitmap::Yae, d, c),
     ),
-    Format::new(
+    Format::with_companions(
         "MSX2+",
         "BASIC COPY Screen 12",
         &["glc", "gls", "shc"],
-        |d| screen::decode_copy(Bitmap::Yjk, d),
+        |d, c| screen::decode_copy(Bitmap::Yjk, d, c),
     ),
     Format::new("MSX2", "Maki-chan Graphics", &["mag", "max"], |d| {
         maki::decode_mag(d, Machine::Msx)
-    }),
+    })
+    .signature(),
     Format::new("MSX2", "Maki-chan Graphics (MAKI01)", &["mki"], |d| {
         maki::decode_mki(d, Machine::Msx)
-    }),
-    Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
+    })
+    .signature(),
+    Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)).signature(),
     Format::new("MSX2", "PIC", &["pic"], |d| {
         super::sharp_x68000::pic::decode_pic(d, Machine::Msx)
-    }),
-    Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode),
+    })
+    .signature(),
+    Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode).signature(),
+    Format::with_companions(
+        "MSX2",
+        "Dot Designer's Club",
+        &["cmp"],
+        screen::decode_dot_designer,
+    ),
     Format::new(
         "MSX2",
         "Dynamic Publisher screen",
         &["pct"],
         dynamic_publisher::decode_pct,
-    ),
+    )
+    .signature(),
     Format::new(
         "MSX2",
         "Dynamic Publisher font",
         &["fnt"],
         dynamic_publisher::decode_fnt,
-    ),
+    )
+    .signature(),
     Format::new(
         "MSX2",
         "Dynamic Publisher stamp",

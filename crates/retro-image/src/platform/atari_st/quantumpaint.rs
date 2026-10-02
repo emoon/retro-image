@@ -10,8 +10,8 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, interleaved_index, mix, palette_words, planar_image, st_palette,
-    st_rgb, unpack_bits, words,
+    Resolution, SCREEN_LEN, be16, decode_screen_by_line, interleaved_index, palette_words,
+    st_palette, st_rgb, unpack_bits, words,
 };
 use crate::{DecodeError, Image};
 
@@ -80,49 +80,31 @@ fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
         }
     }
     starts.sort_by_key(|(line, _)| *line);
-    let mut image = Image::new(resolution.width(), 200 * resolution.y_scale());
-    for y in 0..200 {
-        let palette = &starts
-            .iter()
-            .rev()
-            .find(|(line, _)| *line <= y)
-            .unwrap_or(&starts[0])
-            .1;
-        let line = &screen[y * 160..(y + 1) * 160];
-        let strip = planar_image(
-            line,
-            resolution.width(),
-            1,
-            resolution.planes(),
-            palette,
-            resolution.y_scale(),
-        )?;
-        for (i, p) in strip.rgb().chunks_exact(3).enumerate() {
-            let x = i as u32 % resolution.width();
-            let dy = i as u32 / resolution.width();
-            let color = u32::from_be_bytes([0, p[0], p[1], p[2]]);
-            image.set(x, y as u32 * resolution.y_scale() + dy, color);
-        }
-    }
-    Some(image)
+    decode_screen_by_line(resolution, screen, |y| {
+        let found = starts.iter().rev().find(|(line, _)| *line <= y);
+        let (_, palette) = found.or(starts.first())?;
+        Some(palette.clone())
+    })
 }
 
 /// 32 ST colours per line chosen by `find_pbx_index`, optionally
 /// averaged with a second palette set.
 fn line_palettes(first: &[u8], second: Option<&[u8]>, screen: &[u8]) -> Option<Image> {
-    let first = words(first);
-    let second = second.map(words);
+    let first = line_palette_image(first, screen)?;
+    Some(match second {
+        None => first,
+        Some(second) => Image::blend(&[&first, &line_palette_image(second, screen)?]),
+    })
+}
+
+fn line_palette_image(palettes: &[u8], screen: &[u8]) -> Option<Image> {
+    let palettes = words(palettes);
     let mut image = Image::new(320, 200);
     for y in 0..200 {
         let line = &screen[y * 160..(y + 1) * 160];
         for x in 0..320 {
             let c = interleaved_index(line, x as u32, 4);
-            let i = y * 32 + palette_index(x, c);
-            let a = st_rgb(*first.get(i)?, false);
-            let color = match &second {
-                None => a,
-                Some(second) => mix(a, st_rgb(*second.get(i)?, false)),
-            };
+            let color = st_rgb(*palettes.get(y * 32 + palette_index(x, c))?, false);
             image.set(x as u32, y as u32, color);
         }
     }

@@ -10,7 +10,9 @@ use alloc::vec::Vec;
 /// Returns the unpacked bytes and the number of input bytes consumed, or
 /// `None` if the input ends first. A run that overshoots `len` is truncated.
 pub(crate) fn unpack(src: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
-    let mut out = Vec::with_capacity(len);
+    // At most 128 bytes out per 2 bytes in: don't let a corrupt `len` from a
+    // file header reserve more memory than the input could ever produce.
+    let mut out = Vec::with_capacity(len.min(src.len().saturating_mul(64)));
     let mut pos = 0;
     while out.len() < len {
         let n = *src.get(pos)? as i8;
@@ -43,6 +45,11 @@ mod tests {
         let (out, used) = unpack(&[2, 1, 2, 3, 0xfe, 9, 0x80, 0], 6).unwrap();
         assert_eq!(out, [1, 2, 3, 9, 9, 9]);
         assert_eq!(used, 6);
+    }
+
+    #[test]
+    fn huge_requested_length_fails_without_reserving_it() {
+        assert!(unpack(&[0xff, 1], usize::MAX).is_none());
     }
 
     #[test]
