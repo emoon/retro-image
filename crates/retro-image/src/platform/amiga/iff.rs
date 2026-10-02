@@ -34,7 +34,9 @@ pub(super) fn chunks(mut data: &[u8]) -> impl Iterator<Item = ([u8; 4], &[u8])> 
 
 /// The first chunk with `id`.
 pub(super) fn find<'a>(contents: &'a [u8], id: &[u8; 4]) -> Option<&'a [u8]> {
-    chunks(contents).find(|(i, _)| i == id).map(|(_, body)| body)
+    chunks(contents)
+        .find(|(i, _)| i == id)
+        .map(|(_, body)| body)
 }
 
 pub(super) fn be16(b: &[u8]) -> u16 {
@@ -51,7 +53,7 @@ mod tests {
 
     #[test]
     fn walks_padded_chunks() {
-        let data = b"FORM\0\0\0\x16ILBMAAAA\0\0\0\x01xpBBBB\0\0\0\x02yz";
+        let data = b"FORM\0\0\0\x18ILBMAAAA\0\0\0\x01xpBBBB\0\0\0\x02yz";
         let (kind, contents) = form(data).unwrap();
         assert_eq!(&kind, b"ILBM");
         let all: alloc::vec::Vec<_> = chunks(contents).collect();

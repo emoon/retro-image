@@ -14,9 +14,9 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use super::iff::{be16, be32, find};
 use super::multi_palette::LinePalettes;
 use super::{byte_run1, vdat};
-use super::iff::{be16, be32, find};
 use crate::{DecodeError, Image};
 
 const CAMG_LACE: u32 = 0x4;
@@ -81,24 +81,48 @@ pub(super) fn decode_acbm(contents: &[u8]) -> Result<Image, DecodeError> {
 fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Image, DecodeError> {
     let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
     let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
-    let camg = find(contents, b"CAMG")
-        .filter(|c| c.len() >= 4)
-        .map(be32);
-    let mut palette = find(contents, b"CMAP").map(Palette::from_cmap).unwrap_or_default();
+    let camg = find(contents, b"CAMG").filter(|c| c.len() >= 4).map(be32);
+    let mut palette = find(contents, b"CMAP")
+        .map(Palette::from_cmap)
+        .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
     let indices = match layout {
         Layout::Chunky => read_chunky(&header, body)?,
         _ => read_planar(&header, body, layout)?,
     };
+    if is_dctv_or_ham_e(&header, &indices) {
+        return Err(DecodeError::Unrecognized);
+    }
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
     let mut image = Image::new(header.width as u32, header.height as u32);
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
         if let Some(line_palettes) = &line_palettes {
             line_palettes.apply(y, &mut palette);
         }
-        mode.render_row(row, &palette, |x, color| image.set(x as u32, y as u32, color));
+        mode.render_row(row, &palette, |x, color| {
+            image.set(x as u32, y as u32, color)
+        });
     }
     Ok(scale(image, camg.unwrap_or(0)))
+}
+
+/// Whether the first row carries the DCTV signature or the HAM-E cookie.
+/// Both encode colours the plain bitmap does not show, so such files are
+/// left to decoders for those devices. Both markers were reverse engineered
+/// from samples.
+fn is_dctv_or_ham_e(header: &Header, indices: &[u32]) -> bool {
+    const DCTV: u64 = 0x0049_8728_de11_0bef;
+    const HAM_E: [u32; 14] = [10, 2, 15, 5, 8, 4, 13, 12, 6, 13, 11, 0, 7, 15];
+    let Some(row) = indices.get(..64) else {
+        return false;
+    };
+    let top = 1 << (header.planes.max(1) - 1);
+    let dctv = row.iter().all(|&v| v == 0 || v == top)
+        && row
+            .iter()
+            .fold(0u64, |bits, &v| bits << 1 | u64::from(v != 0))
+            == DCTV;
+    dctv || (header.planes == 4 && row[..14] == HAM_E)
 }
 
 /// Colour registers, as `0xRRGGBB`.
@@ -177,12 +201,17 @@ fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>,
     let stored_planes = header.planes + usize::from(header.masking == 1);
     let row_len = header.plane_row_len();
     let len = row_len * stored_planes * header.height;
+    // No compression expands a byte to more than 128 bytes (VDAT word runs
+    // can, but not in real files); this keeps corrupt sizes from allocating
+    // huge buffers.
+    if len > body.len().saturating_mul(128) {
+        return Err(DecodeError::Unrecognized);
+    }
     let data = match layout {
         // ABIT is never compressed, whatever BMHD says.
         Layout::Contiguous => body.get(..len).ok_or(DecodeError::Unrecognized)?.to_vec(),
-        _ if header.compression == 2 => {
-            vdat::unpack(body, stored_planes, row_len, header.height).ok_or(DecodeError::Unrecognized)?
-        }
+        _ if header.compression == 2 => vdat::unpack(body, stored_planes, row_len, header.height)
+            .ok_or(DecodeError::Unrecognized)?,
         _ => unpack_body(header, body, len)?,
     };
     let mut indices = vec![0u32; header.width * header.height];
@@ -208,6 +237,9 @@ fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let row_len = header.width + (header.width & 1);
+    if row_len * header.height > body.len().saturating_mul(128) {
+        return Err(DecodeError::Unrecognized);
+    }
     let data = unpack_body(header, body, row_len * header.height)?;
     Ok(data
         .chunks_exact(row_len)
@@ -300,7 +332,8 @@ impl Scale for Image {
         for y in 0..out.height() {
             for x in 0..out.width() {
                 let i = ((y / sy * self.width() + x / sx) * 3) as usize;
-                let color = u32::from(rgb[i]) << 16 | u32::from(rgb[i + 1]) << 8 | u32::from(rgb[i + 2]);
+                let color =
+                    u32::from(rgb[i]) << 16 | u32::from(rgb[i + 1]) << 8 | u32::from(rgb[i + 2]);
                 out.set(x, y, color);
             }
         }
