@@ -9,6 +9,7 @@ use screen::{Bitmap, Tiled};
 pub(super) use vdp::{level5, yjk_group};
 
 use super::nec_pc::maki::{self, Machine};
+use super::nec_pc::pi;
 use crate::Format;
 
 pub(super) static FORMATS: &[Format] = &[
@@ -75,4 +76,5 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("MSX2", "Maki-chan Graphics (MAKI01)", &["mki"], |d| {
         maki::decode_mki(d, Machine::Msx)
     }),
+    Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
 ];

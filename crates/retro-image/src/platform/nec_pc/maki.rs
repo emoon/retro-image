@@ -23,6 +23,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use super::precision::Precision;
 use crate::{DecodeError, Image};
 
 /// Computer a Maki-chan picture was saved on, as far as decoding is concerned.
@@ -49,45 +50,9 @@ fn le32(data: &[u8], offset: usize) -> Option<usize> {
     Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
 }
 
-/// Repeats the top `bits` bits of `v` to fill a byte.
-fn scale(v: u8, bits: u32) -> u32 {
-    let top = (v >> (8 - bits)) as u32;
-    let mut out = 0;
-    let mut filled = 0;
-    while filled < 8 {
-        out = out << bits | top;
-        filled += bits;
-    }
-    (out >> (filled - 8)) & 0xff
-}
-
-/// How a palette's 8-bit GRB triplets are reduced to the machine's precision.
-#[derive(Clone, Copy)]
-enum Precision {
-    Bits(u32),
-    Rgb565,
-    /// X68000 `GGGGGRRRRRBBBBBI`: 5 bits plus a shared intensity bit.
-    X68000,
-}
-
-impl Precision {
-    fn rgb(self, g: u8, r: u8, b: u8) -> u32 {
-        let (r, g, b) = match self {
-            Self::Bits(n) => (scale(r, n), scale(g, n), scale(b, n)),
-            Self::Rgb565 => (scale(r, 5), scale(g, 6), scale(b, 5)),
-            Self::X68000 => {
-                let intensity = (g >> 2) & 1;
-                let six = |c: u8| scale((c & 0xf8) | intensity << 2, 6);
-                (six(r), six(g), six(b))
-            }
-        };
-        r << 16 | g << 8 | b
-    }
-}
-
 fn read_palette(grb: &[u8], precision: Precision) -> Vec<u32> {
     grb.chunks_exact(3)
-        .map(|c| precision.rgb(c[0], c[1], c[2]))
+        .map(|c| precision.rgb(c[1], c[0], c[2]))
         .collect()
 }
 
@@ -447,16 +412,6 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn precision_scaling() {
-        assert_eq!(Precision::Bits(3).rgb(0x37, 0x37, 0x37), 0x242424);
-        assert_eq!(Precision::Bits(4).rgb(0x4f, 0x4f, 0x4f), 0x444444);
-        assert_eq!(Precision::Rgb565.rgb(0x37, 0x37, 0x37), 0x313431);
-        // X68000: intensity bit comes from green bit 2.
-        assert_eq!(Precision::X68000.rgb(0x04, 0xf8, 0x00), 0xff0404);
-        assert_eq!(Precision::X68000.rgb(0x00, 0xff, 0x7f), 0xfb0079);
-    }
 
     fn mag(
         machine: u8,
