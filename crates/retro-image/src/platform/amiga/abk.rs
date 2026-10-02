@@ -48,7 +48,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         });
     }
     let palette = data.get(pos..pos + 64).ok_or(fail)?;
-    let color = |i: usize| rgb12(be16(&palette[i * 2..i * 2 + 2]));
+    // 6-plane objects use Extra Half-Brite: colours 32-63 are colours 0-31
+    // with each 4-bit component halved (Amiga Hardware Reference Manual,
+    // "Extra Half Brite Mode"). RECOIL rejects such banks.
+    let color = |i: usize| {
+        let word = be16(&palette[i % 32 * 2..i % 32 * 2 + 2]);
+        rgb12(if i >= 32 { (word >> 1) & 0x777 } else { word })
+    };
     let width: usize = objects.iter().map(|o| o.width).sum();
     let height = objects.iter().map(|o| o.height).max().unwrap_or(0);
     if width == 0 || height == 0 || width > 0xffff {

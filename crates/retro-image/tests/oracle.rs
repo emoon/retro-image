@@ -12,7 +12,7 @@
 //!
 //! RECOIL is the baseline, not the definition of correct. Files where we
 //! deliberately differ (RECOIL crashes, rejects a valid file, or renders it
-//! wrongly) are listed in `tests/divergences.tsv` with the evidence and the
+//! wrongly) are listed in `tests/divergences/*.tsv` with the evidence and the
 //! fingerprint of our reviewed output, which is checked instead. Failure
 //! messages print our fingerprint so a reviewed output can be recorded.
 
@@ -85,7 +85,7 @@ fn matches_recoil_on_corpus() {
     assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
 }
 
-/// Size and FNV-1a hash of the pixels, as written in `divergences.tsv`.
+/// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`.
 fn fingerprint(image: &retro_image::Image) -> String {
     let hash = image.rgb().iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| {
         (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
@@ -93,13 +93,21 @@ fn fingerprint(image: &retro_image::Image) -> String {
     format!("{}x{} {hash:016x}", image.width(), image.height())
 }
 
-/// Corpus id -> expected fingerprint. Every entry must state its evidence.
+/// Corpus id -> expected fingerprint, from every `tests/divergences/*.tsv`.
+/// Every entry must state its evidence.
 fn load_divergences() -> HashMap<String, String> {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/divergences.tsv");
-    let text = std::fs::read_to_string(&path).unwrap();
-    text.lines()
-        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
-        .map(|line| {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/divergences");
+    let mut divergences = HashMap::new();
+    for entry in std::fs::read_dir(&dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "tsv") {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        for line in text.lines() {
+            if line.trim().is_empty() || line.starts_with('#') {
+                continue;
+            }
             let fields: Vec<&str> = line.split('\t').collect();
             let [id, size, hash, evidence] = fields[..] else {
                 panic!(
@@ -111,9 +119,11 @@ fn load_divergences() -> HashMap<String, String> {
                 !evidence.trim().is_empty(),
                 "{id}: divergence needs evidence"
             );
-            (id.to_owned(), format!("{size} {hash}"))
-        })
-        .collect()
+            let previous = divergences.insert(id.to_owned(), format!("{size} {hash}"));
+            assert!(previous.is_none(), "{id}: recorded twice");
+        }
+    }
+    divergences
 }
 
 /// Renders `sample` with recoil2png, caching the PNG in `cache`.
