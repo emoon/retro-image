@@ -194,4 +194,5 @@ pub(super) static FORMATS: &[Format] = &[
     falcon("Spooky Sprites RLE", &["tre"], falcon::decode_tre),
     falcon("ICDRAW icon", &["ibi", "ib3"], falcon::decode_icdraw),
     st("Fullscreen Construction Kit", &["kid"], duo::decode_kid),
+    st("D-GRAPH", &["p3c"], blend::decode_p3c),
 ];

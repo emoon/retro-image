@@ -1,5 +1,6 @@
 //! Two-screen pictures shown alternately so the eye blends them: Tobias
-//! Richter's overscan slideshow (`PCI`), HighresMedium (`HRM`) and PL4.
+//! Richter's overscan slideshow (`PCI`), HighresMedium (`HRM`), PL4 and
+//! D-GRAPH (`P3C`).
 //!
 //! Sources:
 //! - Overscan Interlaced: <https://temlib.org/AtariForumWiki/index.php/Overscan_Interlaced_file_format>
@@ -106,6 +107,37 @@ fn hrm_index(x: usize, c: usize) -> Option<usize> {
         _ => 2 + 4 * ((x - 48) / 80),
     };
     usize::try_from(index).ok()
+}
+
+/// D-GRAPH (`P3C`): an ASCII size line, a palette and a CrackArt-packed
+/// low-resolution screen, then a size line and a second packed screen
+/// sharing the palette. Derived from sample files and `recoil2png`
+/// output (the survey found no documentation).
+pub(super) fn decode_p3c(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_p3c_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_p3c_inner(data: &[u8]) -> Option<Image> {
+    let (len, pos) = decimal_line(data, 0)?;
+    let words = palette_words(data, pos, 16)?;
+    let first = data.get(pos + 32..(pos + 32).checked_add(len)?)?;
+    let (len2, pos2) = decimal_line(data, (pos + 32).checked_add(len)?)?;
+    let second = data.get(pos2..pos2.checked_add(len2)?)?;
+    let frame = |packed: &[u8]| {
+        let screen = super::crackart::unpack(packed, SCREEN_LEN)?;
+        decode_screen(Resolution::Low, &screen, &words)
+    };
+    Some(mix_images(&frame(first)?, &frame(second)?))
+}
+
+/// Decimal digits ended by CR LF; returns the value and the next position.
+fn decimal_line(data: &[u8], start: usize) -> Option<(usize, usize)> {
+    let end = start + data.get(start..)?.iter().position(|&b| b == b'\r')?;
+    let digits = core::str::from_utf8(data.get(start..end)?).ok()?;
+    if digits.is_empty() || data.get(end + 1) != Some(&b'\n') {
+        return None;
+    }
+    Some((digits.parse().ok()?, end + 2))
 }
 
 const PL4_LEN: usize = 64070;
