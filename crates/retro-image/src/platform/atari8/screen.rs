@@ -93,7 +93,7 @@ fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
 }
 
 /// Values 9-11 show the background, 12-15 playfield 0-3.
-fn gtia10_register(value: u8) -> usize {
+pub(super) fn gtia10_register(value: u8) -> usize {
     match value {
         0..=8 => usize::from(value),
         9..=11 => 8,
