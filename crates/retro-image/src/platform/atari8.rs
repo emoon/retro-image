@@ -1,7 +1,7 @@
 //! Atari 8-bit, including VBXE, and Atari Portfolio.
 //!
 //! This file only registers the formats. The documentation survey with
-//! every source per format is `docs/formats/atari-8bit.md`; each submodule
+//! every source per format is `docs/research/atari-8bit.md`; each submodule
 //! cites the sources of its own formats. The palette is in [`palette`];
 //! ANTIC/GTIA bitmap rendering in [`antic`].
 

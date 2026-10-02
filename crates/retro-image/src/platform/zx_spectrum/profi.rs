@@ -5,7 +5,7 @@
 //!   overview (Russian), Wayback Machine snapshot
 //!   <http://web.archive.org/web/20250924164348/https://speccy.info/Profi>
 //!   (the live site blocks automated fetches), see also
-//!   `docs/formats/sinclair-cpc-bbc-misc.md`; zx-image README (CC0),
+//!   `docs/research/sinclair-cpc-bbc-misc.md`; zx-image README (CC0),
 //!   <https://github.com/moroz1999/zx-image>, lists GRF as "hi-res 16 colors".
 //! - Layout, reverse engineered from the sample and `recoil2png` output:
 //!   a 128-byte header (width 512 and height 240 as u16, then fixed bytes;

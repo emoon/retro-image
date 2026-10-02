@@ -7,7 +7,7 @@
 //! - HGB is a 512x256 mode 2 screen (64 bytes per line): CPCrulez FutureOS
 //!   wallpaper page,
 //!   <https://cpcrulez.fr/GamesTest//applications_graphic-futureos_wallpaper_hgb.htm>
-//!   (more pages in `docs/formats/sinclair-cpc-bbc-misc.md`); shown white on
+//!   (more pages in `docs/research/sinclair-cpc-bbc-misc.md`); shown white on
 //!   black with rows doubled (observed from `recoil2png` output).
 
 use super::amsdos::strip_amsdos;

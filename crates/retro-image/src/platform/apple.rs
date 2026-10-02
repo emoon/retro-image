@@ -1,7 +1,7 @@
 //! Apple II, IIe, IIGS and Macintosh.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/formats/amiga-apple-misc.md`, which lists the extensions
+//! survey is `docs/research/amiga-apple-misc.md`, which lists the extensions
 //! of each layout. `decode_3200` here tries Brooks, then `.3201`, then the
 //! 32 KB screen dump for `.SH3`, `.3200` and `.SHR`; the layouts differ in
 //! size and header, so the order only matters for rejecting files. Brooks

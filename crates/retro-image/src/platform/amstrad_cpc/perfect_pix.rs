@@ -7,7 +7,7 @@
 //!   mode 0/1 frames: Perfect Pix manual (PDF on CPC-Power,
 //!   <https://www.cpc-power.com/extra_lire_fichier.php?extra=notice&fiche=13139&slot=1&part=B&type=.pdf>;
 //!   also in <https://archive.org/details/CPC-PerfectPix>), as summarised
-//!   in `docs/formats/sinclair-cpc-bbc-misc.md`.
+//!   in `docs/research/sinclair-cpc-bbc-misc.md`.
 //! - Byte layout (kind 3 = R, 4 = B0, 5 = B1; width in mode 1 pixels and
 //!   height as u16; the number of palette zones, then per zone its pens as
 //!   firmware colours followed by its line count, none after the last), the

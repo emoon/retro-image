@@ -1,7 +1,7 @@
 //! Amiga, including DCTV and HAM-E.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/formats/amiga-apple-misc.md`. This file dispatches IFF
+//! survey is `docs/research/amiga-apple-misc.md`. This file dispatches IFF
 //! pictures:
 //! - `FORM` kinds (ILBM, PBM, ACBM, DEEP/TVPP, ANIM): EA IFF 85 standard,
 //!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,

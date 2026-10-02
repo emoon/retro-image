@@ -2,7 +2,7 @@
 //! `SAVEP` and drawing programs, Graffiti pictures and PHO photos.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/formats/thomson.md`.
+//! survey is `docs/research/thomson.md`.
 
 mod graffiti;
 mod map;

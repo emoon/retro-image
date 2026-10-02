@@ -148,15 +148,13 @@ pub(super) fn decode_screen_by_line(
     bitmap: &[u8],
     mut palette: impl FnMut(usize) -> Option<Vec<u32>>,
 ) -> Option<Image> {
-    let stride = SCREEN_LEN / resolution.height() as usize;
-    let lines = bitmap.get(..SCREEN_LEN)?.chunks_exact(stride);
-    let mut image = Image::new(resolution.width(), resolution.height());
-    let mut indices = alloc::vec![0; resolution.width() as usize];
-    let mut scratch = Vec::new();
-    for (y, line) in lines.enumerate() {
+    let (width, height) = (resolution.width(), resolution.height());
+    let bitmap = bitmap.get(..SCREEN_LEN)?;
+    let indices = interleaved_indices(bitmap, width, height, resolution.planes());
+    let mut image = Image::new(width, height);
+    for (y, line) in indices.chunks_exact(width as usize).enumerate() {
         let colors = palette(y)?;
-        interleaved_line(line, resolution.planes(), &mut scratch, &mut indices);
-        for (x, &index) in indices.iter().enumerate() {
+        for (x, &index) in line.iter().enumerate() {
             image.set(x as u32, y as u32, *colors.get(usize::from(index))?);
         }
     }
@@ -176,22 +174,26 @@ pub(super) fn interleaved_index(line: &[u8], x: u32, planes: u32) -> usize {
     index
 }
 
-/// Palette indices of the first `out.len()` pixels (a multiple of 16) of a
-/// word-interleaved line of 1 to 8 `planes`. `scratch` is reused to hold
-/// the line regrouped plane by plane.
-fn interleaved_line(line: &[u8], planes: u32, scratch: &mut Vec<u8>, out: &mut [u8]) {
-    let (row, planes) = (out.len() / 8, planes as usize);
-    scratch.resize(row * planes, 0);
-    let line = &line[..row * planes];
-    for (group, words) in line.chunks_exact(planes * 2).enumerate() {
+/// Palette indices of a word-interleaved bitmap of `width` (a multiple
+/// of 16) by `height` pixels in 1 to 8 `planes`. Panics if `bitmap` is
+/// too short.
+fn interleaved_indices(bitmap: &[u8], width: u32, height: u32, planes: u32) -> Vec<u8> {
+    let pixels = width as usize * height as usize;
+    let (plane_len, planes) = (pixels / 8, planes as usize);
+    // Regrouped plane by plane, each plane is one bit stream covering the
+    // whole picture, so it takes a single `expand_plane` call.
+    let mut grouped = alloc::vec![0; plane_len * planes];
+    let bitmap = &bitmap[..grouped.len()];
+    for (group, words) in bitmap.chunks_exact(planes * 2).enumerate() {
         for (plane, word) in words.chunks_exact(2).enumerate() {
-            scratch[plane * row + group * 2..][..2].copy_from_slice(word);
+            grouped[plane * plane_len + group * 2..][..2].copy_from_slice(word);
         }
     }
-    out.fill(0);
-    for (plane, bits) in scratch.chunks_exact(row.max(1)).enumerate() {
-        simd::expand_plane(bits, plane as u32, out);
+    let mut indices = alloc::vec![0; pixels];
+    for (plane, bits) in grouped.chunks_exact(plane_len.max(1)).enumerate() {
+        simd::expand_plane(bits, plane as u32, &mut indices);
     }
+    indices
 }
 
 /// Renders word-interleaved bitplanes. `width` must be a multiple of 16.
@@ -209,15 +211,10 @@ pub(super) fn planar_image(
     if !width.is_multiple_of(16) || bitmap.len() < stride * height as usize {
         return None;
     }
-    let lines = bitmap.chunks_exact(stride.max(1)).take(height as usize);
     let indices = if (1..=8).contains(&planes) {
-        let mut indices = alloc::vec![0; width as usize * height as usize];
-        let mut scratch = Vec::new();
-        for (line, out) in lines.zip(indices.chunks_exact_mut((width as usize).max(1))) {
-            interleaved_line(line, planes, &mut scratch, out);
-        }
-        indices
+        interleaved_indices(bitmap, width, height, planes)
     } else {
+        let lines = bitmap.chunks_exact(stride.max(1)).take(height as usize);
         let mut indices = Vec::with_capacity(width as usize * height as usize);
         for line in lines {
             for x in 0..width {
