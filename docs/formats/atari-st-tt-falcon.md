@@ -284,11 +284,22 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   whose meaning is still unknown.
 - Canvas CPT run offsets count 16-pixel units, not bytes. DuneGraph DC1 may stop after
   the used planes. DelmPaint DPH has 10 blocks, all with lengths. MPP files hold 199 (273)
-  lines. Spectrum 512 Extended v2 match offsets are relative to the output position.
+  lines. Spectrum 512 Extended v2 match offsets are relative to the output position, and
+  the line count is what the unpacked data holds (at most 199 per screen).
+- Art Director: byte 32287 selects the palette shown. Palette Master: line palettes,
+  always 9-bit. GFA Artist 1000 colours: line `y` uses stored palette `2 + ceil(y / 3)`.
+  Spectrum 512 Enhanced (`5BIT`): the extra LSBs are bits 14-12, not 15-13.
+- Formats the survey rated None or Partial, decoded from sample files: KID (274 lines of
+  230 bytes, 224 used), Graphics Processor RLE (count byte, bit 7 = literal, units of one
+  byte per plane), D-GRAPH P3C (two CrackArt-packed screens sharing a palette, mixed),
+  ICDRAW IB3/IBI (64-byte header, 32x32 interleaved planes, default VDI colours),
+  ColorSTar mono OBJ (width-1, height-1, planes, word-aligned rows), Grafix GRX
+  uncompressed (256 VDI triplets at 36, data at 1586), Atari Image Manager IM/COL (square
+  byte planes; COL = I, R, G, B), PI5 320x240 and PI6 1280x960, Pablo Paint uncompressed.
+  NEOchrome Master writes its `RAST` chunk after the FORM, without a pad byte.
 - Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
-  screen), FSNAP-style IMG files, 8-plane IMG without palette, GFA Artist 1000-colour
-  mode, KID, NEOchrome Master IFF with `RAST`, ICDRAW, Pablo Paint, and Art Director files
-  whose display times are all zero.
+  screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files,
+  8-plane IMG without palette, and Canvas FUL.
 
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
