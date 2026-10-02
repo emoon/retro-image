@@ -13,6 +13,10 @@
 //! Observed from `recoil2png` output: header byte 8 is the ANTIC mode;
 //! 0x0E is Graphics 15, 0x0F is drawn as GTIA mode 9 with the background
 //! register. Other modes (text) are rejected here.
+//!
+//! Not marked as a signature format: Rambrandt (RM0-RM4) files start with
+//! the same Koala header followed by extra colour data, so content
+//! detection would misdecode them.
 
 use super::antic::Bitmap;
 use super::palette::register_rgb;

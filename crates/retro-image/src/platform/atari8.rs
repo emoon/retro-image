@@ -64,10 +64,16 @@ pub(super) static FORMATS: &[Format] = &[
         "Taquart Interlace Picture",
         &["tip"],
         tip::decode_tip,
-    ),
+    )
+    .signature(),
     Format::new(ATARI8, "VertiZontal Interlacing", &["vzi"], hip::decode_vzi),
-    Format::new(ATARI8, "InterPainter", &["inp"], interlace::decode_inp),
-    Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int),
+    Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int).signature(),
+    Format::new(
+        ATARI8,
+        "InterPainter",
+        &["inp", "int"],
+        interlace::decode_inp,
+    ),
     Format::new(
         ATARI8,
         "HCI interlace",
@@ -128,9 +134,9 @@ pub(super) static FORMATS: &[Format] = &[
         mad_studio::decode_tl4,
     ),
     Format::new(ATARI8, "Super-IRG font", &["sif"], font::decode_sif),
-    Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq),
+    Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq).signature(),
     Format::new(ATARI8, "AtariTools-800 font", &["acs"], font::decode_acs),
-    Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
+    Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp).signature(),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,
@@ -143,5 +149,6 @@ pub(super) static FORMATS: &[Format] = &[
         "Portfolio Graphics Compressed",
         &["pgc"],
         portfolio::decode_pgc,
-    ),
+    )
+    .signature(),
 ];

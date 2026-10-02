@@ -47,12 +47,12 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// INT95a: `INT95a`, width in bytes, height, `0F 2B`, the colour sets
-/// (background, playfield 0-2) of both frames, then both frames. Files
-/// without the signature are read as InterPainter.
+/// (background, playfield 0-2) of both frames, then both frames. (`.INT`
+/// files without the signature are InterPainter pictures.)
 pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
-    let Some(rest) = data.strip_prefix(b"INT95a") else {
-        return decode_inp(data);
-    };
+    let rest = data
+        .strip_prefix(b"INT95a")
+        .ok_or(DecodeError::Unrecognized)?;
     let [width, height, 0x0f, 0x2b, ref rest @ ..] = *rest else {
         return Err(DecodeError::Unrecognized);
     };
