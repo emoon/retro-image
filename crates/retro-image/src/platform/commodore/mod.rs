@@ -20,6 +20,7 @@ mod ifli;
 mod interlace;
 mod loadstar;
 mod logo;
+mod nufli;
 mod petscii;
 mod prg;
 mod printfox;
@@ -280,6 +281,7 @@ pub(super) static FORMATS: &[Format] = &[
         superhires::decode_shf,
     ),
     Format::new(C64, "SHF-XL Edit", &["shx"], superhires::decode_shx),
+    Format::new(C64, "NUFLI Editor", &["nuf"], nufli::decode_nufli),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
