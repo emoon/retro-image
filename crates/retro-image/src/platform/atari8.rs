@@ -7,6 +7,7 @@
 
 mod antic;
 mod apac;
+mod envision;
 mod font;
 mod graph2font;
 mod gtia;
@@ -258,4 +259,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Ludek Maker", &["ldm"], pmg::decode_ldm).signature(),
     Format::new(ATARI8, "Larka Edytor Obiektow", &["leo"], leo::decode_leo),
     Format::new(ATARI8, "PMG Designer", &["pmd"], pmg::decode_pmd).signature(),
+    Format::new(ATARI8, "Envision", &["map"], envision::decode_map),
+    Format::new(ATARI8, "EnvisionPC", &["map"], envision::decode_map_pc),
 ];
