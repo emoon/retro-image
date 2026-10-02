@@ -13,6 +13,7 @@ mod mad_studio;
 mod palette;
 mod portfolio;
 mod screen;
+mod technicolor;
 mod tip;
 mod vbxe;
 
@@ -56,8 +57,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Champions' Interlace", &["cin"], apac::decode_cin),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
-    Format::new(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
+    Format::with_companions(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
     Format::new(ATARI8, "Sketch-PadDles", &["skp"], screen::decode_skp),
+    Format::with_companions(
+        ATARI8,
+        "Technicolor Dream",
+        &["lum"],
+        technicolor::decode_lum,
+    ),
     Format::new(ATARI8, "Hard Interlace Picture", &["hip"], hip::decode_hip),
     Format::new(
         ATARI8,

@@ -16,15 +16,12 @@ pub(super) fn decode_dap(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != PIXELS + 768 {
         return Err(DecodeError::Unrecognized);
     }
-    let (pixels, palette) = data.split_at(PIXELS);
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
-    for (i, &index) in pixels.iter().enumerate() {
-        let index = usize::from(index);
-        let channel = |plane: usize| u32::from(palette[plane * 256 + index]);
-        let rgb = channel(0) << 16 | channel(1) << 8 | channel(2);
-        image.set((i % WIDTH) as u32, (i / WIDTH) as u32, rgb);
-    }
-    Ok(image)
+    let (pixels, planes) = data.split_at(PIXELS);
+    let palette: [u32; 256] = core::array::from_fn(|index| {
+        let channel = |plane: usize| u32::from(planes[plane * 256 + index]);
+        channel(0) << 16 | channel(1) << 8 | channel(2)
+    });
+    Image::from_indexed(WIDTH as u32, HEIGHT as u32, pixels, &palette)
 }
 
 #[cfg(test)]

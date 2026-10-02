@@ -6,7 +6,9 @@
 //! - GR7, GR8, GR9: Just Solve "GR*" and AtariWiki File Suffix (sizes).
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
-//! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710).
+//! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710; COL =
+//!   5 x 256 per-line colours). Which MIC sizes and COL sizes RECOIL pairs,
+//!   and the table order: observed from `recoil2png` output.
 //! - DRG: Just Solve "AtariCAD" (6400 bytes = 320x160 GR8).
 //! - MBG: Just Solve "Mad Designer" (16384 bytes = 512x256 mono).
 //! - SKP: Sketch-PadDles page (raw 7680-byte GR15 screen).
@@ -31,7 +33,7 @@
 
 use super::antic::Bitmap;
 use super::palette::{register_rgb, rgb};
-use crate::{DecodeError, Image};
+use crate::{Companions, DecodeError, Image};
 
 const LINE: usize = 40;
 const MAX_LINES: usize = 240;
@@ -290,14 +292,26 @@ pub(super) fn decode_sg3(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Micro Illustrator / Graphics 15: 160 pixels, 4 colours. A 4-byte tail is
 /// background and playfield 0-2; a 5-byte tail is playfield 0-2, background
-/// and an unused byte; otherwise grey defaults apply.
-pub(super) fn decode_mic(data: &[u8]) -> Result<Image, DecodeError> {
+/// and an unused byte; otherwise grey defaults apply. A 240-line picture
+/// takes per-line colours from a Graph2Font `.COL` file of 1024 or 1280
+/// bytes when present: table `value` (background, playfield 0-2), entry
+/// `line`.
+pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(data)?;
     let colors = match *tail {
         [] | [_, _, _] => GREY_COLORS,
         [background, pf0, pf1, pf2] | [pf0, pf1, pf2, background, _] => [background, pf0, pf1, pf2],
         _ => return Err(DecodeError::Unrecognized),
     };
+    let tables = (bitmap.lines == 240)
+        .then(|| companions.get("col"))
+        .flatten()
+        .filter(|col| matches!(col.len(), 1024 | 1280));
+    if let Some(tables) = tables {
+        return Ok(Bitmap { bits: 2, ..bitmap }.render(2, 1, |line, value| {
+            register_rgb(tables[usize::from(value) * 256 + line])
+        }));
+    }
     Ok(four_color(bitmap, 2, 1, colors))
 }
 
@@ -346,13 +360,39 @@ mod tests {
         let mut data = [0u8; 44];
         data[0] = 0b0001_1011;
         data[40..].copy_from_slice(&[0x02, 0x14, 0x26, 0x38]);
-        let four = decode_mic(&data).unwrap();
+        let four = decode_mic(&data, &crate::NoCompanions).unwrap();
         assert_eq!(&four.rgb()[..3], &[0x22, 0x22, 0x22]);
         let mut five = [0u8; 45];
         five[..40].copy_from_slice(&data[..40]);
         five[40..].copy_from_slice(&[0x14, 0x26, 0x38, 0x02, 0xff]);
-        assert_eq!(decode_mic(&five).unwrap(), four);
-        assert_eq!(decode_mic(&[0; 41]), Err(DecodeError::Unrecognized));
+        assert_eq!(decode_mic(&five, &crate::NoCompanions).unwrap(), four);
+        assert_eq!(
+            decode_mic(&[0; 41], &crate::NoCompanions),
+            Err(DecodeError::Unrecognized)
+        );
+    }
+
+    struct Col(usize);
+
+    impl Companions for Col {
+        fn get(&self, extension: &str) -> Option<alloc::vec::Vec<u8>> {
+            // Table t, line y holds hue t + 1, luminance y.
+            let col = (0..self.0).map(|i| (((i / 256 + 1) << 4) | (i % 16)) as u8);
+            (extension == "col").then(|| col.collect())
+        }
+    }
+
+    #[test]
+    fn mic_col_gives_per_line_colours_to_240_lines() {
+        let mut data = [0u8; 9600];
+        data[2 * 40] = 0b1000_0000; // line 2, pixel 0: playfield 1
+        let image = decode_mic(&data, &Col(1280)).unwrap();
+        assert_eq!(image.get(0, 2), register_rgb(0x32));
+        assert_eq!(image.get(2, 2), register_rgb(0x12));
+        let greys = decode_mic(&data, &crate::NoCompanions).unwrap();
+        assert_eq!(decode_mic(&data, &Col(1000)).unwrap(), greys);
+        let short = decode_mic(&data[..7680], &Col(1024)).unwrap();
+        assert_eq!(short.get(2, 2), register_rgb(GREY_COLORS[0]));
     }
 
     #[test]
