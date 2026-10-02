@@ -566,3 +566,8 @@ Checked against corpus samples and `recoil2png` output (black box, including han
   each ended by 0x76; RECOIL rejects any other size or a missing 0x76). `.ZP1` is the 768 codes as two hex digits
   each, either case; RECOIL ignores whatever follows them. Codes 0x40-0x7F and 0xC0-0xFF show the glyph of their
   low 6 bits (bit 7 inverse), black on white, 256x192.
+- **SevenuP SEV** (from the samples only; SevenuP's GPL code was not read): `Sev\0`, 2 bytes RECOIL ignores
+  (`00 08` in every sample), a u16 at 6 that must be 1, a u16 frame count at 8 (ignored; `n - 1` in the samples),
+  width and height in pixels at 10 and 12 (non-zero), then each frame's 8x8 cells row by row, 8 bitmap bytes then
+  the attribute. RECOIL shows the first frame only, cropped to the size when it isn't a multiple of 8; data past it
+  may be missing. Flash is ignored. Content detection: yes (magic plus the fixed u16).
