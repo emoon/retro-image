@@ -1,5 +1,5 @@
 //! MSX screen pictures: BSAVE VRAM dumps (`SC2`..`SCC`), Graph Saurus pages
-//! (`SR5`..`SR8`, `SRS`) and BASIC `COPY` files (`GL5`..`GLS`).
+//! (`SR5`..`SR8`, `SRS`) and BASIC `COPY` files (`GL5`..`GLS`, `SH5`..`SHC`).
 //!
 //! Sources:
 //! - BSAVE header (`FE`, start, end, exec) and `COPY ... TO "file"` layout
@@ -13,7 +13,8 @@
 //!   data (up to 212 lines); 512-wide modes are output with doubled lines; a
 //!   missing or all-zero palette table selects the default palette; Graph Saurus
 //!   pages ignore the palette table; Screen 3 dumps that stop before the name
-//!   table use the BASIC default name table.
+//!   table use the BASIC default name table; `SHx` files decode like `GLx`, and
+//!   `GLA`/`GLB`/`SHA`/`SHB` hold YAE pixels (synthesized files).
 
 use alloc::vec;
 use alloc::vec::Vec;

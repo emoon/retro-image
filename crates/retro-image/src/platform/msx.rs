@@ -58,21 +58,30 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("MSX2+", "Graph Saurus Screen 12", &["srs"], |d| {
         screen::decode_graph_saurus(Bitmap::Yjk, d)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 5", &["gl5"], |d| {
+    Format::new("MSX2", "BASIC COPY Screen 5", &["gl5", "sh5"], |d| {
         screen::decode_copy(Bitmap::Graphic4, d)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 6", &["gl6"], |d| {
+    Format::new("MSX2", "BASIC COPY Screen 6", &["gl6", "sh6"], |d| {
         screen::decode_copy(Bitmap::Graphic5, d)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 7", &["gl7"], |d| {
+    Format::new("MSX2", "BASIC COPY Screen 7", &["gl7", "sh7"], |d| {
         screen::decode_copy(Bitmap::Graphic6, d)
     }),
-    Format::new("MSX2", "BASIC COPY Screen 8", &["gl8"], |d| {
+    Format::new("MSX2", "BASIC COPY Screen 8", &["gl8", "sh8"], |d| {
         screen::decode_copy(Bitmap::Graphic7, d)
     }),
-    Format::new("MSX2+", "BASIC COPY Screen 12", &["glc", "gls"], |d| {
-        screen::decode_copy(Bitmap::Yjk, d)
-    }),
+    Format::new(
+        "MSX2+",
+        "BASIC COPY Screen 10/11",
+        &["gla", "glb", "sha", "shb"],
+        |d| screen::decode_copy(Bitmap::Yae, d),
+    ),
+    Format::new(
+        "MSX2+",
+        "BASIC COPY Screen 12",
+        &["glc", "gls", "shc"],
+        |d| screen::decode_copy(Bitmap::Yjk, d),
+    ),
     Format::new("MSX2", "Maki-chan Graphics", &["mag", "max"], |d| {
         maki::decode_mag(d, Machine::Msx)
     }),
