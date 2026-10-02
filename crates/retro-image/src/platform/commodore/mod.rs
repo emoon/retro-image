@@ -16,6 +16,7 @@ mod ifli;
 mod interlace;
 mod prg;
 mod printfox;
+mod ted;
 mod unpack;
 mod vic2;
 
@@ -24,6 +25,7 @@ use crate::{DecodeError, Format, Image};
 type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
 
 const C64: &str = "Commodore 64";
+const PLUS4: &str = "Commodore 16/116/Plus4";
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new(
@@ -194,6 +196,7 @@ pub(super) static FORMATS: &[Format] = &[
         printfox::decode_star_painter,
     ),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
+    Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
