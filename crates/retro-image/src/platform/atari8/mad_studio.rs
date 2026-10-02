@@ -10,6 +10,7 @@
 //!   and player priority, and the TL4 colours (OS defaults, playfield 3 = 0x46).
 
 use super::antic::{Bitmap, fill};
+use super::font::draw_multicolor_glyph;
 use super::palette::register_rgb;
 use super::screen::OS_COLORS;
 use crate::{DecodeError, Image};
@@ -116,20 +117,9 @@ pub(super) fn decode_tl4(data: &[u8]) -> Result<Image, DecodeError> {
     let mut image = Image::new(width as u32 * 8, height as u32 * 8);
     for (index, char) in chars.chunks_exact(9).enumerate() {
         let colors = [background, pf0, pf1, if char[8] != 0 { pf3 } else { pf2 }];
-        let glyph = Bitmap {
-            data: &char[..8],
-            bytes_per_line: 1,
-            lines: 8,
-            bits: 2,
-        };
-        let x0 = (index % width) as u32 * 8;
-        let y0 = (index / width) as u32 * 8;
-        for y in 0..8 {
-            for x in 0..4 {
-                let color = register_rgb(colors[usize::from(glyph.pixel(x, y))]);
-                fill(&mut image, x0 + x as u32 * 2, y0 + y as u32, 2, 1, color);
-            }
-        }
+        let x = (index % width) as u32 * 8;
+        let y = (index / width) as u32 * 8;
+        draw_multicolor_glyph(&mut image, x, y, &char[..8], colors);
     }
     Ok(image)
 }

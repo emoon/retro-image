@@ -6,10 +6,13 @@
 //! - FN2: Atari FontMaker page ("dual font", 2 x 1024 bytes); docs only.
 //!   Drawing the two fonts as halves of 8x16 characters: observed from
 //!   `recoil2png` output.
+//! - SIF: Super-IRG Font Editor doc SIFE.TXT by Bill Kendrick (two 1024-byte
+//!   ANTIC mode 4 charsets flipped every frame).
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
-//!   characters per row and the colours: observed from `recoil2png` output.
+//!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
+//!   two charsets mixed): observed from `recoil2png` output.
 
-use super::antic::fill;
+use super::antic::{Bitmap, fill, mix};
 use super::palette::register_rgb;
 use crate::{DecodeError, Image};
 
@@ -29,6 +32,48 @@ pub(super) fn decode_fn2(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
         2048 => Ok(sheet(&[&data[..1024], &data[1024..]])),
         _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// Super-IRG font: two ANTIC mode 4 charsets shown on alternate frames.
+pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2048 {
+        return Err(DecodeError::Unrecognized);
+    }
+    const COLORS: [u8; 4] = [0x00, 0x4c, 0xcc, 0x8c];
+    let charset = |font: &[u8]| {
+        let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32);
+        for (index, glyph) in font.chunks_exact(8).enumerate() {
+            let x = (index % CHARS_PER_ROW) as u32 * 8;
+            let y = (index / CHARS_PER_ROW) as u32 * 8;
+            draw_multicolor_glyph(&mut image, x, y, glyph, COLORS);
+        }
+        image
+    };
+    Ok(mix(&charset(&data[..1024]), &charset(&data[1024..])))
+}
+
+/// Draws an ANTIC mode 4 glyph (4x8 pixels of 2 bits, each 2 pixels wide)
+/// with its top-left corner at (`x`, `y`); `colors` are background and
+/// playfield 0-2.
+pub(super) fn draw_multicolor_glyph(
+    image: &mut Image,
+    x: u32,
+    y: u32,
+    glyph: &[u8],
+    colors: [u8; 4],
+) {
+    let bitmap = Bitmap {
+        data: glyph,
+        bytes_per_line: 1,
+        lines: 8,
+        bits: 2,
+    };
+    for row in 0..8 {
+        for column in 0..4 {
+            let color = register_rgb(colors[usize::from(bitmap.pixel(column, row))]);
+            fill(image, x + 2 * column as u32, y + row as u32, 2, 1, color);
+        }
     }
 }
 
