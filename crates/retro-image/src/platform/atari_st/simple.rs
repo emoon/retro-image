@@ -67,25 +67,46 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
         SCREEN_LEN => decode_doo(data),
         // GFA Artist: palette, then screen.
         32032 => decode_gfa_artist(data),
-        // Art Director: screen, 8 palettes, 8 display times, 248 unknown bytes.
+        // Art Director: screen, 8 palettes, 8 display times, 248 more bytes,
+        // of which the 24th (offset 32287) selects the palette shown
+        // (derived from sample files and `recoil2png` output).
         32512 => {
-            let times = &data[SCREEN_LEN + 256..SCREEN_LEN + 264];
-            // Which palette shows when no time is set is unknown; reject.
-            let palette = times
-                .iter()
-                .position(|&t| t != 0)
-                .ok_or(DecodeError::Unrecognized)?;
+            let palette = usize::from(data[SCREEN_LEN + 287]);
+            if palette >= 8 {
+                return Err(DecodeError::Unrecognized);
+            }
             let words = words(data, SCREEN_LEN + palette * 32)?;
             ok(decode_screen(Resolution::Low, data, &words))
         }
-        // Palette Master: 32768-byte screen area, then palettes; only the
-        // first palette is used.
-        36864 => {
-            let words = words(data, 32768)?;
-            ok(decode_screen(Resolution::Low, data, &words))
-        }
+        36864 => ok(decode_palette_master(data)),
         _ => Err(DecodeError::Unrecognized),
     }
+}
+
+/// Palette Master: 32768-byte screen area, then a 16-colour palette and
+/// records of a start line and colours 1-15, ended by line 0xFFFF. Colours
+/// are always 9-bit ST ones (observed from `recoil2png` output).
+fn decode_palette_master(data: &[u8]) -> Option<Image> {
+    let all = super::common::words(&data[32768..]);
+    let mut palettes: alloc::vec::Vec<(usize, &[u16])> = alloc::vec![(0, &all[..16])];
+    for record in all[16..].chunks_exact(16) {
+        if record[0] == 0xffff {
+            break;
+        }
+        palettes.push((usize::from(record[0]), record));
+    }
+    let mut image = Image::new(320, 200);
+    for y in 0..200 {
+        let (_, palette) = palettes.iter().rev().find(|(line, _)| *line <= y)?;
+        let line = &data[y * 160..(y + 1) * 160];
+        for x in 0..320 {
+            let c = super::common::interleaved_index(line, x, 4);
+            // Colour 0 is shared by all palettes.
+            let word = if c == 0 { all[0] } else { palette[c] };
+            image.set(x, y as u32, super::common::st_rgb(word, false));
+        }
+    }
+    Some(image)
 }
 
 fn decode_gfa_artist(data: &[u8]) -> Result<Image, DecodeError> {

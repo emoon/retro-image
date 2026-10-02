@@ -26,7 +26,9 @@ const SPU_LEN: usize = LINE_LEN + BITMAP_LEN + PALETTE_WORDS * 2;
 enum ColorDepth {
     /// ST or STE palette word, see [`st_rgb`].
     St { ste: bool },
-    /// 15-bit `5BIT` variant: the top three bits carry each component's LSB.
+    /// 15-bit `5BIT` variant: bits 14, 13 and 12 carry the red, green and
+    /// blue LSB (observed from `recoil2png` output; the AFW page shows them
+    /// one bit higher).
     Fifteen,
 }
 
@@ -39,7 +41,7 @@ fn color(word: u16, depth: ColorDepth) -> u32 {
                 let v = u32::from((nibble & 7) << 2 | (nibble >> 3 & 1) << 1 | (word >> low) & 1);
                 (v << 3) | (v >> 2)
             };
-            component(word >> 8, 15) << 16 | component(word >> 4, 14) << 8 | component(word, 13)
+            component(word >> 8, 14) << 16 | component(word >> 4, 13) << 8 | component(word, 12)
         }
     }
 }
@@ -410,6 +412,7 @@ mod tests {
     fn fifteen_bit_color() {
         // 0x777 = 11100 per component.
         assert_eq!(color(0x0777, ColorDepth::Fifteen), 0xe7e7e7);
-        assert_eq!(color(0xefff, ColorDepth::Fifteen), 0xffffff);
+        assert_eq!(color(0x7fff, ColorDepth::Fifteen), 0xffffff);
+        assert_eq!(color(0x4000, ColorDepth::Fifteen), 0x080000);
     }
 }
