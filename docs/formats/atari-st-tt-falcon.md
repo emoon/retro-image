@@ -300,7 +300,8 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   230 bytes, 224 used), Graphics Processor RLE (count byte, bit 7 = literal, units of one
   byte per plane), D-GRAPH P3C (two CrackArt-packed screens sharing a palette, mixed),
   ICDRAW IB3/IBI (64-byte header, 32x32 interleaved planes, default VDI colours),
-  ColorSTar mono OBJ (width-1, height-1, planes, word-aligned rows), Grafix GRX
+  ColorSTar OBJ (width-1, height-1, planes, word-aligned rows; colour objects are
+  preceded by 16 ST palette words as decimal CR LF text lines and have 4 interleaved planes), Grafix GRX
   (256 VDI triplets at 36; at 1572 a word, the unpacked size and two stream lengths; data
   at 1586; rows padded to 16 pixels), Atari Image Manager IM/COL (square
   byte planes; COL = I, R, G, B), PI5 320x240 and PI6 1280x960, Pablo Paint uncompressed.
@@ -339,6 +340,10 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   next zero byte; `n≥3, v` = `n + 1` × `v`. The unpacked bytes fill 160 columns of 200
   bytes, top to bottom, in every resolution; a full screen needs no end marker, and
   trailing bytes and the length word are ignored.
+- GDOS fonts (`recoil2png` black-box tests): the byte order follows the point size
+  (1-255 read little- or big-endian; the Motorola flag is ignored). The characters are
+  laid out as running text in lines 16 form heights wide, wrapping before a character
+  that would not fit; offset-table columns past the form are blank.
 - Grafix compressed (word 28 = 1), found by flipping single bits of the samples' packed
   data and watching which `recoil2png` pixels change: two LZW streams that unpack to the
   first and second half of the data. Codes are read least significant bit first and start
