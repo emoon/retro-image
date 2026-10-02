@@ -8,6 +8,8 @@
 //!   `recoil2png` output.
 //! - SIF: Super-IRG Font Editor doc SIFE.TXT by Bill Kendrick (two 1024-byte
 //!   ANTIC mode 4 charsets flipped every frame).
+//! - ACS: Just Solve "AtariTools-800" (4 colours). Size 1028, the colour
+//!   bytes and the 16-character rows: observed from `recoil2png` output.
 //! - JGP: Just Solve "Jet Graphics Planner" (exactly 2054 bytes, 4 colours).
 //!   The binary-load header, the two charsets stacked as 8x16 characters
 //!   and the grey colours: observed from `recoil2png` output.
@@ -55,6 +57,22 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
         image
     };
     Ok(mix(&charset(&data[..1024]), &charset(&data[1024..])))
+}
+
+/// AtariTools-800 font: background and playfield 0-2, then an ANTIC mode 4
+/// charset drawn 16 characters to a row.
+pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 1028 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (colors, charset) = data.split_at(4);
+    let colors = [colors[0], colors[1], colors[2], colors[3]];
+    let mut image = Image::new(128, 64);
+    for (index, glyph) in charset.chunks_exact(8).enumerate() {
+        let (x, y) = ((index % 16) as u32 * 8, (index / 16) as u32 * 8);
+        draw_multicolor_glyph(&mut image, x, y, glyph, colors);
+    }
+    Ok(image)
 }
 
 /// Jet Graphics Planner: a DOS binary-load header for $A000-$A7FF, then two
