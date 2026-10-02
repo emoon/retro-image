@@ -1,6 +1,6 @@
 # retro-image
 
-retro-image turns pictures from old computers into RGB. It reads 404 formats from 49
+retro-image turns pictures from old computers into RGB. It reads 461 formats from 49
 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum, Amstrad CPC, MSX, PC-98 and
 a long tail of rarer machines. The full list is in [docs/formats.md](docs/formats.md).
 

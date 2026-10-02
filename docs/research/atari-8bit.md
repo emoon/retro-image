@@ -392,7 +392,13 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
 
-## 9.x Wave 4: charset interlace
+## 9. Implementation notes (wave 4)
+
+The remaining Atari 8-bit formats that have corpus samples. Every format below matches
+`recoil2png` on all its samples unless a note says otherwise, and none needed a divergence
+entry.
+
+### 9.1 Charset interlace
 
 Module `atari8/ice.rs`. ICN, IMN, IPC, IP2, IRG, IR2 and DIN pictures plus part of
 the ICE font files, all reverse engineered from the corpus samples and by probing
@@ -425,11 +431,11 @@ the ICE font files, all reverse engineered from the corpus samples and by probin
   GR9, GR11, APAC fonts; 1027-1038 bytes, nine 32-pixel blocks); their combination
   rules were not worked out.
 
-## 9.x Wave 4: small and packed screens
+### 9.2 Small and packed screens
 
 Everything here was reverse engineered from the corpus samples and from hand-made files fed
 to `recoil2png` (black box); the modules `misc_screen.rs`, `packed.rs` and `text_art.rs` list the
-sources and layouts. All corpus samples match RECOIL; no divergences recorded.
+sources and layouts.
 
 - **Raw screens** (`misc_screen.rs`): TXS (6-byte `FF FF 00 06 FF 06` header, 256 grey levels
   0-15, 16x16 drawn 4x4), FGE (6 unchecked header bytes, 64x40 greys, 4x4), KFX 56x60 and CUT 96x99
@@ -460,14 +466,13 @@ sources and layouts. All corpus samples match RECOIL; no divergences recorded.
   depends on their value (only a handful of values give colours, the others give greys), which
   samples alone cannot explain; DRAGON.HPM (19203 bytes) is a different program's format.
 
-## 9.1 Wave 4: interlace and multi-frame bitmaps
+### 9.3 Interlace and multi-frame bitmaps
 
 IGE, ILD, ING, HR, MGA, BGP, CCI, RGB, RIP, RM2 and RM4. Every layout was found by
 reading the corpus samples and probing `recoil2png` with hand-made files (one register
 or one byte at a time, size scans, bit flips). The layouts are also in each module's doc
-comment (`interlace2.rs`, `colorview.rs`, `rip.rs`, `rambrandt.rs`). All corpus samples
-match `recoil2png`; no divergences recorded. Just Solve was unreachable while this was
-written, so none of its pages were read.
+comment (`interlace2.rs`, `colorview.rs`, `rip.rs`, `rambrandt.rs`). Just Solve was unreachable
+while this was written, so none of its pages were read.
 
 - **IGE** (`interlace2.rs`): exactly 6160 bytes. The binary-load header
   `FF FF F6 A3 FF BB` and `FF 5F` are checked, then 4 colour registers per frame (frame
@@ -484,8 +489,7 @@ written, so none of its pages were read.
   reverse of APA), 176 unread bytes.
 - **BGP**: `BUGBITER_APAC239I_PICTURE_V1.0`, `FF 50 EF`, 4 unread bytes, a 16-bit title
   length and the title, the plane size 9560 (`58 25`), then 239 luminance lines and 239
-  hue lines, drawn like interlaced APAC. `Scanlines`, `apac_80x96`, `deinterleave` and
-  `nibble` in `apac.rs` are now `pub(super)`.
+  hue lines, drawn like interlaced APAC.
 - **CCI** (packed CIN): `CIN 1.2 ` and four chunks. Each has a 16-bit length (counting
   the next field), a 16-bit field that is never read, and run-length tokens: below 0x80 a
   literal block of n + 1 bytes, from 0x80 one byte repeated n + 1 times. They unpack to
@@ -512,18 +516,17 @@ written, so none of its pages were read.
   for literals), then tokens of a flag bit followed by a literal, or by a distance symbol
   + 2 and a length symbol + 2. Found by probing with uniform tables, where the bit layout
   shows directly, and confirmed by decoding GOSTBUST byte for byte. A truncated stream
-  leaves the rest blank, like RECOIL. `hip.rs` gained a `width` argument on
-  `half_pixel_pair` and a `pub(super)` `nibble`. Modes `0f` (Graphics 8) and the other
-  mode bytes `recoil2png` accepts are not decoded; no sample uses them.
+  leaves the rest blank, like RECOIL. Modes `0f` (Graphics 8) and the other mode bytes
+  `recoil2png` accepts are not decoded; no sample uses them.
 - **RM2 / RM4** (`rambrandt.rs`): RM2 is exactly 8192 bytes: a Graphics 10 screen, the 9
   registers, 119 unread bytes and three 128-byte change tables. RM4 is a Koala file
   (Graphics 15) plus the 9 registers 464 bytes before the end and the same tables as the
   last 384 bytes. The tables hold line codes, register numbers and colours per pair of
-  lines; the module doc explains how line codes map to lines. `koala.rs` gained a `parse`
-  function and a `Pic` struct so RM4 can reuse the unpacker. RM0, RM1 and RM3 are not
-  done (no samples). The Koala PIC decoder is still not a content-detection format.
+  lines; the module doc explains how line codes map to lines. RM4 reuses the Koala
+  unpacker. RM0, RM1 and RM3 are not done (no samples). Koala PIC is still not detected
+  by content, since RM files start with a Koala header.
 
-## 9.1 Wave 4: bitmaps with per-line colours
+### 9.4 Bitmaps with per-line colours
 
 Everything here was reverse engineered from the corpus and from `recoil2png` run on
 hand-made files, so the layouts are what RECOIL reads and no more. Sources are cited in
@@ -606,12 +609,11 @@ identically too, except GED files whose PRIOR selects a GTIA mode.
     draws brush, pattern and fill shapes whose data and the exact fill algorithm are not
     documented for the Atari port; a guess would not match pixel for pixel.
 
-## 9.x Wave 4: player/missile graphics, shapes, fonts and maps
+### 9.5 Player/missile graphics, shapes, fonts and maps
 
 All layouts below were found by flipping or setting single bytes of corpus files and
-hand-made files and reading back what `recoil2png` changes (nothing from RECOIL's source). Every
-corpus sample matches the oracle and each decoder was also compared with `recoil2png` on
-random synthetic files (60 to 120 per format) until none differed.
+hand-made files and reading back what `recoil2png` changes. Each decoder was also compared
+with `recoil2png` on random synthetic files (60 to 400 per format) until none differed.
 
 - **4MI, 4PL, 4PM** (`atari8/pmg.rs`). The colours of players or missiles 0-3, then 240 lines
   of one byte per line for each player (8 pixels, bit 7 left), or one byte per line for the four
