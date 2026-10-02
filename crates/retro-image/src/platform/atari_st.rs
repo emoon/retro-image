@@ -6,6 +6,7 @@
 mod common;
 mod crackart;
 mod degas;
+mod gem_img;
 mod simple;
 mod spectrum;
 mod tiny;
@@ -39,4 +40,5 @@ pub(super) static FORMATS: &[Format] = &[
         spectrum::decode_spc,
     ),
     Format::new(ST, "Spectrum 512 smooshed", &["sps"], spectrum::decode_sps),
+    Format::new(ST, "GEM Bit Image", &["img", "ximg"], gem_img::decode_img),
 ];
