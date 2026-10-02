@@ -60,7 +60,12 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
             },
         })
         .collect();
-    let codes: alloc::vec::Vec<u8> = cells.chunks_exact(9).map(|cell| cell[0]).collect();
+    let codes: alloc::vec::Vec<u8> = cells
+        .as_chunks::<9>()
+        .0
+        .iter()
+        .map(|cell| cell[0])
+        .collect();
     let picture = Picture {
         columns,
         rows: [Row {
@@ -70,7 +75,12 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
         }; ROWS],
         split: codes.iter().any(|code| code & 0x40 != 0),
         codes,
-        glyphs: cells.chunks_exact(9).map(|cell| &cell[1..]).collect(),
+        glyphs: cells
+            .as_chunks::<9>()
+            .0
+            .iter()
+            .map(|cell| &cell[1..])
+            .collect(),
         antic4_inverse: true,
         vbxe: None,
         lines,

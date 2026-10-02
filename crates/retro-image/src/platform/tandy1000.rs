@@ -44,7 +44,8 @@ fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
 /// stream means a damaged file (e.g. a disk sector lost to zeros).
 fn unpack_runs(src: &[u8], len: usize) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(len);
-    let mut pairs = src.chunks_exact(2);
+    let (pairs, rest) = src.as_chunks::<2>();
+    let mut pairs = pairs.iter();
     while out.len() < len {
         let pair = pairs.next()?;
         let count = usize::from(pair[1]);
@@ -53,7 +54,7 @@ fn unpack_runs(src: &[u8], len: usize) -> Option<Vec<u8>> {
         }
         out.resize(out.len() + count, pair[0]);
     }
-    (pairs.len() == 0 && pairs.remainder().is_empty()).then_some(out)
+    (pairs.len() == 0 && rest.is_empty()).then_some(out)
 }
 
 #[cfg(test)]

@@ -172,8 +172,10 @@ fn decode_pix_inner(data: &[u8]) -> Option<Image> {
     };
     let palette: Vec<u32> = data
         .get(header_len..header_len + colors * 3)?
-        .chunks_exact(3)
-        .map(rgb)
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|p| rgb(p))
         .collect();
     let body = &data[header_len + colors * 3..];
     match (planes, kind) {

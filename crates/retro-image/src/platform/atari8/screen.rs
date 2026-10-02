@@ -214,7 +214,12 @@ pub(super) fn decode_g09(data: &[u8]) -> Result<Image, DecodeError> {
         15360 => {
             let (left, right) = data.split_at(7680);
             let mut wide = alloc::vec::Vec::with_capacity(data.len());
-            for (l, r) in left.chunks_exact(LINE).zip(right.chunks_exact(LINE)) {
+            for (l, r) in left
+                .as_chunks::<LINE>()
+                .0
+                .iter()
+                .zip(right.as_chunks::<LINE>().0)
+            {
                 wide.extend_from_slice(l);
                 wide.extend_from_slice(r);
             }

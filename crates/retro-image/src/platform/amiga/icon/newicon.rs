@@ -71,7 +71,9 @@ pub(super) fn decode(tool_types: &[&[u8]], background: u32) -> Result<Image, Dec
         unpack_line(lines.next().ok_or(fail)?, 8, colors * 3, &mut rgb)?;
     }
     let mut palette: Vec<u32> = rgb
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| c[0] << 16 | c[1] << 8 | c[2])
         .collect();
     palette.resize(MAX_COLORS, 0);

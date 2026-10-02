@@ -56,7 +56,7 @@ fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Optio
     check_size(width, height)?;
     let data = data.get(..width * height * 2)?;
     let mut image = Image::new(width as u32, height as u32);
-    for (i, pixel) in data.chunks_exact(2).enumerate() {
+    for (i, pixel) in data.as_chunks::<2>().0.iter().enumerate() {
         let color = rgb565(u16::from_be_bytes([pixel[0], pixel[1]]));
         image.set((i % width) as u32, (i / width) as u32, color);
     }
@@ -82,7 +82,9 @@ fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> 
 pub(super) fn videl_palette(data: &[u8]) -> Option<Vec<u32>> {
     let data = data.get(..1024)?;
     Some(
-        data.chunks_exact(4)
+        data.as_chunks::<4>()
+            .0
+            .iter()
             .map(|e| u32::from_be_bytes([0, e[0], e[1], e[3]]))
             .collect(),
     )

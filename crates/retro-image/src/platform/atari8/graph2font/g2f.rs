@@ -250,7 +250,7 @@ mod tests {
         let mut raw = vec![0; END + ROW_MODES + ROWS];
         raw[..3].copy_from_slice(&[40, 0, 0]);
         // All objects off.
-        for entry in raw[END - 6144..END - 2048].chunks_exact_mut(2) {
+        for entry in raw[END - 6144..END - 2048].as_chunks_mut::<2>().0 {
             entry.copy_from_slice(&[0x80, 0x80]);
         }
         raw[END + OPTIONS] = 2;

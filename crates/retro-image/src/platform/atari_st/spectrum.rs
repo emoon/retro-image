@@ -72,8 +72,10 @@ fn render_lines(bitmap: &[u8], palettes: &[u16], depth: ColorDepth, lines: usize
     let palettes = palettes.get(..lines * 48)?;
     let mut image = Image::new(320, lines as u32);
     for (y, (line, palette)) in bitmap
-        .chunks_exact(LINE_LEN)
-        .zip(palettes.chunks_exact(48))
+        .as_chunks::<LINE_LEN>()
+        .0
+        .iter()
+        .zip(palettes.as_chunks::<48>().0)
         .enumerate()
     {
         for x in 0..320 {

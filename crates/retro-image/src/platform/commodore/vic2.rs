@@ -198,7 +198,7 @@ impl Frame {
 
     /// Moves the picture one pixel right; `fill` enters at the left edge.
     pub(super) fn shift_right(mut self, fill: u8) -> Self {
-        for row in self.pixels.chunks_exact_mut(WIDTH) {
+        for row in self.pixels.as_chunks_mut::<WIDTH>().0 {
             row.copy_within(..WIDTH - 1, 1);
             row[0] = fill;
         }
@@ -207,7 +207,13 @@ impl Frame {
 
     /// Paints the leftmost `width` pixels of each line `y` in `color(y)`.
     pub(super) fn fill_left(&mut self, width: usize, color: impl Fn(usize) -> u8) {
-        for (y, row) in self.pixels.chunks_exact_mut(WIDTH).enumerate() {
+        for (y, row) in self
+            .pixels
+            .as_chunks_mut::<WIDTH>()
+            .0
+            .iter_mut()
+            .enumerate()
+        {
             row[..width].fill(color(y));
         }
     }
@@ -240,7 +246,9 @@ impl Frame {
     fn crop(&self, left: usize, width: usize, height: usize) -> Image {
         let indices: Vec<u8> = self
             .pixels
-            .chunks_exact(WIDTH)
+            .as_chunks::<WIDTH>()
+            .0
+            .iter()
             .take(height)
             .flat_map(|row| &row[left..left + width])
             .copied()

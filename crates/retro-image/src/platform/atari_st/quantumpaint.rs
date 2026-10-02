@@ -73,7 +73,7 @@ fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
         Resolution::Low
     };
     let mut starts: Vec<(usize, Vec<u32>)> = Vec::new();
-    for record in data.chunks_exact(48) {
+    for record in data.as_chunks::<48>().0 {
         let first_line = usize::from(be16(record, 32)?);
         let active = be16(record, 34)? != 0;
         if active || starts.is_empty() {

@@ -66,7 +66,7 @@ impl<'a> LinePalettes<'a> {
             } => {
                 let start = y / lines_per_table * colors * 2;
                 let table = &words[start..start + colors * 2];
-                for (i, word) in table.chunks_exact(2).enumerate() {
+                for (i, word) in table.as_chunks::<2>().0.iter().enumerate() {
                     palette.set(i, rgb12(u16::from_be_bytes([word[0], word[1]])));
                 }
             }
@@ -144,7 +144,9 @@ fn unpack_huffman(data: &[u8]) -> Option<Vec<u8>> {
     let tree_end = 8usize.checked_add(tree_len)?;
     let tree: Vec<i16> = data
         .get(8..tree_end)?
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|w| i16::from_be_bytes([w[0], w[1]]))
         .collect();
     let stream = &data[tree_end..];

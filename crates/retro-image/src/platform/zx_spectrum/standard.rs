@@ -53,7 +53,7 @@ pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * SCR_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let frames = data.chunks_exact(SCR_LEN).map(|scr| {
+    let frames = data.as_chunks::<SCR_LEN>().0.iter().map(|scr| {
         let mut frame = Frame::new(WIDTH, HEIGHT);
         draw_scr(&mut frame, 0, 0, scr);
         frame
@@ -91,7 +91,9 @@ pub(super) fn decode_hlr(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let pattern = &data[HLR_PATTERN..HLR_ATTRIBUTES];
     let frames = data[HLR_ATTRIBUTES..]
-        .chunks_exact(ATTRIBUTES_LEN)
+        .as_chunks::<ATTRIBUTES_LEN>()
+        .0
+        .iter()
         .map(|attributes| attribute_frame(attributes, 8, |_, y| pattern[y % 8]));
     Ok(blend(&frames.collect::<alloc::vec::Vec<_>>()))
 }
@@ -106,7 +108,9 @@ pub(super) fn decode_stl(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let frames = [0, 2].map(|first| {
         let attributes: alloc::vec::Vec<u8> = data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|group| [group[first], group[first + 1]])
             .collect();
         attribute_frame(&attributes, 4, |_, _| 0x0f)
@@ -153,7 +157,9 @@ fn decode_tricolor(data: &[u8], channels: [u32; 3]) -> Result<Image, DecodeError
         for x in 0..WIDTH {
             let offset = bitmap_offset(y) + x / 8;
             let color = data
-                .chunks_exact(BITMAP_LEN)
+                .as_chunks::<BITMAP_LEN>()
+                .0
+                .iter()
                 .zip(channels)
                 .filter(|(plane, _)| plane[offset] & (0x80 >> (x % 8)) != 0)
                 .fold(0, |color, (_, channel)| color | channel);

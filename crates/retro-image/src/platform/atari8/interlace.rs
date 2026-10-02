@@ -163,7 +163,7 @@ pub(super) fn decode_mcpp(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let sets = color_sets(&data[2 * HALF..]);
     let mut lines = [0u8; 2 * HALF];
-    for (i, line) in lines.chunks_exact_mut(40).enumerate() {
+    for (i, line) in lines.as_chunks_mut::<40>().0.iter_mut().enumerate() {
         let source = (i % 2) * HALF + (i / 2) * 40;
         line.copy_from_slice(&data[source..source + 40]);
     }

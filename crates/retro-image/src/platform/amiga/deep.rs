@@ -38,7 +38,9 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     // Element types; every element must be 8 bits deep.
     let count = be32(dpel, 0).ok_or(fail)? as usize;
     let elements: Vec<u16> = dpel[4..]
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .take(count)
         .map(|e| be16(e, 2).filter(|&depth| depth == 8).and(be16(e, 0)))
         .collect::<Option<_>>()
@@ -107,7 +109,10 @@ fn unpack_tvdc(
 ) -> Option<Vec<u8>> {
     let table_chunk = find(contents, b"TVDC")?;
     let mut table = [0i16; 16];
-    for (t, w) in table.iter_mut().zip(table_chunk.get(..32)?.chunks_exact(2)) {
+    for (t, w) in table
+        .iter_mut()
+        .zip(table_chunk.get(..32)?.as_chunks::<2>().0)
+    {
         *t = i16::from_be_bytes([w[0], w[1]]);
     }
     let mut out = vec![0u8; width * height * elements];

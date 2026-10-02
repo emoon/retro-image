@@ -151,7 +151,9 @@ mod tests {
     fn line_colors(image: &Image) -> Vec<u8> {
         image
             .rgb()
-            .chunks_exact(8 * 3)
+            .as_chunks::<{ 8 * 3 }>()
+            .0
+            .iter()
             .map(|line| if line[2] == 0xaa { 2 } else { 1 })
             .collect()
     }

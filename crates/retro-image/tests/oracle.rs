@@ -275,12 +275,16 @@ fn read_png(path: &Path) -> Reference {
     let rgb = match info.color_type {
         png::ColorType::Rgb => pixels.to_vec(),
         png::ColorType::Rgba => pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| [p[0], p[1], p[2]])
             .collect(),
         png::ColorType::Grayscale => pixels.iter().flat_map(|&v| [v, v, v]).collect(),
         png::ColorType::GrayscaleAlpha => pixels
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .flat_map(|p| [p[0], p[0], p[0]])
             .collect(),
         png::ColorType::Indexed => unreachable!("expanded by normalize_to_color8"),
@@ -304,8 +308,10 @@ fn compare(ours: &retro_image::Image, reference: &Reference) -> Result<(), Strin
     }
     let differing = ours
         .rgb()
-        .chunks_exact(3)
-        .zip(reference.rgb.chunks_exact(3))
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .zip(reference.rgb.as_chunks::<3>().0)
         .filter(|(a, b)| a != b)
         .count();
     match differing {

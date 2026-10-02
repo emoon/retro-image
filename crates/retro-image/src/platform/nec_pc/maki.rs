@@ -36,7 +36,9 @@ use crate::{DecodeError, Image};
 const MAX_PIXELS: usize = 1 << 22;
 
 fn read_palette(grb: &[u8], precision: Precision) -> Vec<u32> {
-    grb.chunks_exact(3)
+    grb.as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| precision.rgb(c[1], c[0], c[2]))
         .collect()
 }

@@ -84,7 +84,9 @@ fn decode(data: &[u8]) -> Option<Image> {
             }
             b"CMAP" => {
                 palette = chunk
-                    .chunks_exact(3)
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
                     .map(|c| {
                         let level = |v: u8| u32::from(v >> 4) * 0x11;
                         level(c[0]) << 16 | level(c[1]) << 8 | level(c[2])

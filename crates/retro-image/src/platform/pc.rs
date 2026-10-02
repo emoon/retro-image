@@ -64,7 +64,9 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
             let mut bitmap = vec![0u8; row_len * height];
             let mut pos = map_end;
             for (y, size) in map
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|w| usize::from(u16::from_le_bytes([w[0], w[1]])))
                 .enumerate()
             {
@@ -174,7 +176,9 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     };
     let palette: Vec<u32> = data[palette_start..palette_start + colors * 3]
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| vga_rgb([c[0], c[1], c[2]]))
         .collect();
     let bitmap = &data[8..];

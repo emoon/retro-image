@@ -128,7 +128,7 @@ mod scalar {
     }
 
     pub(super) fn palette_to_rgb(indices: &[u8], table: &[u32; 256], out: &mut [u8]) {
-        for (rgb, &index) in out.chunks_exact_mut(3).zip(indices) {
+        for (rgb, &index) in out.as_chunks_mut::<3>().0.iter_mut().zip(indices) {
             let [_, r, g, b] = table[usize::from(index)].to_be_bytes();
             rgb.copy_from_slice(&[r, g, b]);
         }

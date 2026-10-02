@@ -70,7 +70,7 @@ fn decode(data: &[u8], len: usize, base: usize) -> Result<Image, DecodeError> {
 /// table ends at a zero word or at the first pointer that leads nowhere.
 fn streams(data: &[u8], base: usize) -> Option<Vec<&[u8]>> {
     let mut streams = Vec::new();
-    for word in data.chunks_exact(2) {
+    for word in data.as_chunks::<2>().0 {
         let pointer = usize::from(u16::from_le_bytes([word[0], word[1]]));
         let stream = pointer
             .checked_sub(base)

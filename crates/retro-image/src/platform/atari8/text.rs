@@ -104,7 +104,12 @@ pub(super) fn decode_dlm(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let mut codes = [0u8; 16 * 11];
-    for (line, entry) in codes.chunks_exact_mut(11).zip(data.chunks_exact(16)) {
+    for (line, entry) in codes
+        .as_chunks_mut::<11>()
+        .0
+        .iter_mut()
+        .zip(data.as_chunks::<16>().0)
+    {
         for (code, &atascii) in line.iter_mut().zip(&entry[5..]) {
             *code = screen_code(atascii);
         }

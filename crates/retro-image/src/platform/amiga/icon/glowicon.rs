@@ -87,7 +87,9 @@ pub(super) fn decode(contents: &[u8], background: u32) -> Result<Image, DecodeEr
         (usize::from(colors) + 1) * 3,
     )?;
     let mut palette: Vec<u32> = rgb
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| u32::from(c[0]) << 16 | u32::from(c[1]) << 8 | u32::from(c[2]))
         .collect();
     palette.resize(256, 0);

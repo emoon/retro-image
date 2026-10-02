@@ -208,7 +208,7 @@ fn depack(stream: &[u8], raw_len: usize, bytes: bool, version2: bool) -> Option<
             picture_len = reader.read(16)? as usize * 8 + 8;
         }
         let start = raw_len.checked_sub(picture_len)?;
-        for group in out[start..].chunks_exact_mut(8) {
+        for group in out[start..].as_chunks_mut::<8>().0 {
             let mut planes = [0u16; 4];
             for j in (0..8).step_by(2) {
                 let mut word = u16::from_be_bytes([group[6 - j], group[7 - j]]);

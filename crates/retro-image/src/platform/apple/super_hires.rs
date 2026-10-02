@@ -47,7 +47,7 @@ struct Line<'a> {
 /// 16 colour words, optionally stored colour 15 first.
 fn read_palette(words: &[u8], reversed: bool) -> Palette {
     let mut palette = [0; 16];
-    for (i, word) in words.chunks_exact(2).take(16).enumerate() {
+    for (i, word) in words.as_chunks::<2>().0.iter().take(16).enumerate() {
         let w = u32::from(u16::from_le_bytes([word[0], word[1]]));
         let color = ((w & 0xf00) << 8 | (w & 0xf0) << 4 | (w & 0xf)) * 0x11;
         palette[if reversed { 15 - i } else { i }] = color;
@@ -132,8 +132,10 @@ pub(super) fn decode_packed_screen(data: &[u8]) -> Result<Image, DecodeError> {
 /// 320-mode pixels with one reversed palette per line.
 fn render_3200(pixels: &[u8], palettes: &[u8]) -> Result<Image, DecodeError> {
     let lines: Vec<Line> = pixels
-        .chunks_exact(LINE_LEN)
-        .zip(palettes.chunks_exact(32))
+        .as_chunks::<LINE_LEN>()
+        .0
+        .iter()
+        .zip(palettes.as_chunks::<32>().0)
         .map(|(pixels, palette)| Line {
             pixels,
             scb: 0,
@@ -181,7 +183,9 @@ pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let palette = read_palette(&data[..32], false);
     let lines: Vec<Line> = pixels
-        .chunks_exact(LINE_LEN)
+        .as_chunks::<LINE_LEN>()
+        .0
+        .iter()
         .take(height)
         .map(|pixels| Line {
             pixels,
@@ -239,7 +243,7 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
     };
 
     let mut unpacked = Vec::with_capacity(line_count);
-    for entry in directory.chunks_exact(4) {
+    for entry in directory.as_chunks::<4>().0 {
         let packed_len = usize::from(u16::from_le_bytes([entry[0], entry[1]]));
         // The 320/640 choice follows MasterMode. With MULTIPAL the per-line
         // mode is ignored: some such files hold garbage there (observed from

@@ -42,7 +42,7 @@ pub(super) fn decode_font(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let rows = FONT_LEN / 8 / SHEET_COLUMNS;
     let mut frame = Frame::new(SHEET_COLUMNS * 8, rows * 8);
-    for (index, glyph) in data.chunks_exact(8).enumerate() {
+    for (index, glyph) in data.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % SHEET_COLUMNS * 8, index / SHEET_COLUMNS * 8);
         draw_cell(&mut frame, left, top, glyph, 0xffffff, 0);
     }
@@ -157,7 +157,7 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
         .filter(|_| data.starts_with(b"CHX"))
         .ok_or(DecodeError::Unrecognized)?;
     let mut chars = Vec::new();
-    for (code, entry) in table.chunks_exact(2).enumerate() {
+    for (code, entry) in table.as_chunks::<2>().0.iter().enumerate() {
         let offset = usize::from(u16::from_le_bytes([entry[0], entry[1]]));
         if offset != 0 {
             chars.push(big_char(data, code, offset).ok_or(DecodeError::Unrecognized)?);

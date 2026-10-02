@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn bin_width_comes_from_sauce_or_a_plausible_screen() {
         let mut screen = vec![0u8; SCREEN_LEN];
-        for (i, pair) in screen.chunks_exact_mut(2).enumerate() {
+        for (i, pair) in screen.as_chunks_mut::<2>().0.iter_mut().enumerate() {
             pair.copy_from_slice(&[b' ' + (i % 90) as u8, 0x07 + (i % 3) as u8 * 0x10]);
         }
         assert_eq!(decode_bin(&screen).unwrap().width(), 80 * 8);
