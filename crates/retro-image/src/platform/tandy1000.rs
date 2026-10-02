@@ -37,15 +37,7 @@ fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = if src.len() == len {
         src.to_vec()
     } else {
-        let mut out = Vec::with_capacity(len);
-        for pair in src.chunks_exact(2) {
-            if out.len() >= len {
-                break;
-            }
-            out.resize(out.len() + usize::from(pair[1]), pair[0]);
-        }
-        out.resize(len, 0);
-        out
+        unpack_runs(src, len).ok_or(DecodeError::Unrecognized)?
     };
     let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
     for y in 0..HEIGHT {
@@ -56,4 +48,35 @@ fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+/// (value, count) byte pairs that must fill exactly `len` bytes. Every
+/// sample written by DeskMate does; a zero count or a short or overlong
+/// stream means a damaged file (e.g. a disk sector lost to zeros).
+fn unpack_runs(src: &[u8], len: usize) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(len);
+    let mut pairs = src.chunks_exact(2);
+    while out.len() < len {
+        let pair = pairs.next()?;
+        let count = usize::from(pair[1]);
+        if count == 0 || out.len() + count > len {
+            return None;
+        }
+        out.resize(out.len() + count, pair[0]);
+    }
+    (pairs.len() == 0 && pairs.remainder().is_empty()).then_some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn runs_must_fill_the_picture_exactly() {
+        assert_eq!(unpack_runs(&[7, 2, 9, 1], 3), Some(alloc::vec![7, 7, 9]));
+        assert_eq!(unpack_runs(&[7, 2], 3), None);
+        assert_eq!(unpack_runs(&[7, 4], 3), None);
+        assert_eq!(unpack_runs(&[7, 0, 7, 3], 3), None);
+        assert_eq!(unpack_runs(&[7, 3, 1, 1], 3), None);
+    }
 }
