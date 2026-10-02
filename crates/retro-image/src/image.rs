@@ -7,7 +7,7 @@
 
 use alloc::vec::Vec;
 
-use crate::DecodeError;
+use crate::{DecodeError, simd};
 
 /// Which bit of a byte in a 1-bit bitmap is the leftmost pixel.
 #[derive(Debug, Clone, Copy)]
@@ -75,17 +75,18 @@ impl Image {
         indices: &[u8],
         palette: &[u32],
     ) -> Result<Self, DecodeError> {
-        if indices.len() != width as usize * height as usize {
+        let outside = indices
+            .iter()
+            .max()
+            .is_some_and(|&max| usize::from(max) >= palette.len());
+        if indices.len() != width as usize * height as usize || outside {
             return Err(DecodeError::Unrecognized);
         }
-        let mut rgb = Vec::with_capacity(indices.len() * 3);
-        for &index in indices {
-            let color = *palette
-                .get(usize::from(index))
-                .ok_or(DecodeError::Unrecognized)?;
-            let [_, r, g, b] = color.to_be_bytes();
-            rgb.extend_from_slice(&[r, g, b]);
-        }
+        let mut table = [0; 256];
+        let used = palette.len().min(256);
+        table[..used].copy_from_slice(&palette[..used]);
+        let mut rgb = alloc::vec![0; indices.len() * 3];
+        simd::palette_to_rgb(indices, &table, &mut rgb);
         Ok(Self { width, height, rgb })
     }
 
@@ -108,30 +109,47 @@ impl Image {
         if !fits || row_len.saturating_mul(8) < width as usize {
             return Err(DecodeError::Unrecognized);
         }
-        let mut image = Self::new(width, height);
-        for y in 0..height {
-            let row = &bitmap[y as usize * row_len..];
-            for x in 0..width {
-                let shift = match order {
-                    BitOrder::MsbFirst => 7 - x % 8,
-                    BitOrder::LsbFirst => x % 8,
-                };
-                let bit = row[x as usize / 8] >> shift & 1;
-                image.set(x, y, colors[usize::from(bit)]);
-            }
+        let pixels = width as usize;
+        let mut indices = alloc::vec![0; pixels * height as usize];
+        let mut reversed = Vec::new();
+        for (y, out) in indices.chunks_exact_mut(pixels.max(1)).enumerate() {
+            let row = &bitmap[y * row_len..][..pixels.div_ceil(8)];
+            let row = match order {
+                BitOrder::MsbFirst => row,
+                BitOrder::LsbFirst => {
+                    reversed.clear();
+                    reversed.extend(row.iter().map(|b| b.reverse_bits()));
+                    &reversed
+                }
+            };
+            simd::expand_plane(row, 0, out);
         }
-        Ok(image)
+        Self::from_indexed(width, height, &indices, &colors)
     }
 
     /// Every pixel repeated `sx` times horizontally and `sy` times vertically.
     pub(crate) fn scaled(&self, sx: u32, sy: u32) -> Self {
-        let mut out = Self::new(self.width * sx, self.height * sy);
-        for y in 0..out.height {
-            for x in 0..out.width {
-                out.set(x, y, self.get(x / sx, y / sy));
+        let (width, height) = (self.width * sx, self.height * sy);
+        let out_row = width as usize * 3;
+        let mut rgb = Vec::with_capacity(out_row * height as usize);
+        if out_row > 0 && sy > 0 {
+            for row in self.rgb.chunks_exact(self.width as usize * 3) {
+                let start = rgb.len();
+                if sx == 1 {
+                    rgb.extend_from_slice(row);
+                } else {
+                    for pixel in row.chunks_exact(3) {
+                        for _ in 0..sx {
+                            rgb.extend_from_slice(pixel);
+                        }
+                    }
+                }
+                for _ in 1..sy {
+                    rgb.extend_from_within(start..start + out_row);
+                }
             }
         }
-        out
+        Self { width, height, rgb }
     }
 
     /// The per-channel average of equally sized frames, rounding down: how
@@ -146,16 +164,49 @@ impl Image {
                 .all(|f| (f.width, f.height) == (first.width, first.height)),
             "blended frames must have equal sizes"
         );
-        let count = frames.len() as u32;
-        let rgb = (0..first.rgb.len())
-            .map(|i| (frames.iter().map(|f| u32::from(f.rgb[i])).sum::<u32>() / count) as u8)
-            .collect();
+        let rgb = if let [a, b] = frames {
+            let mut rgb = alloc::vec![0; a.rgb.len()];
+            simd::average_floor(&a.rgb, &b.rgb, &mut rgb);
+            rgb
+        } else {
+            let count = frames.len() as u32;
+            (0..first.rgb.len())
+                .map(|i| (frames.iter().map(|f| u32::from(f.rgb[i])).sum::<u32>() / count) as u8)
+                .collect()
+        };
         Self {
             width: first.width,
             height: first.height,
             rgb,
         }
     }
+}
+
+/// Pixel values of one row of bitplanes: the `p`th row from `planes`
+/// (most significant bit first) gives bit `p` of each value. At most 32
+/// planes; `scratch` must be as long as `out`.
+pub(crate) fn planar_values<'a>(
+    planes: impl IntoIterator<Item = &'a [u8]>,
+    scratch: &mut [u8],
+    out: &mut [u32],
+) {
+    out.fill(0);
+    let mut planes = planes.into_iter();
+    for shift in [0, 8, 16, 24] {
+        scratch.fill(0);
+        let mut count = 0;
+        for (bit, plane) in planes.by_ref().take(8).enumerate() {
+            simd::expand_plane(plane, bit as u32, scratch);
+            count += 1;
+        }
+        for (value, &byte) in out.iter_mut().zip(&*scratch) {
+            *value |= u32::from(byte) << shift;
+        }
+        if count < 8 {
+            return;
+        }
+    }
+    assert!(planes.next().is_none(), "more than 32 planes");
 }
 
 #[cfg(test)]
@@ -218,5 +269,13 @@ mod tests {
         let c = Image::from_indexed(1, 1, &[0], &[0x030303]).unwrap();
         // (1+2+3)/3, (255+0+3)/3, (16+17+3)/3
         assert_eq!(Image::blend(&[&a, &b, &c]).get(0, 0), 0x02560c);
+    }
+
+    #[test]
+    fn planar_values_combines_up_to_32_planes() {
+        let planes: Vec<[u8; 1]> = (0..24).map(|p| [0x80 >> (p % 3)]).collect();
+        let mut out = [0; 3];
+        planar_values(planes.iter().map(|p| &p[..]), &mut [0; 3], &mut out);
+        assert_eq!(out, [0x24_9249, 0x49_2492, 0x92_4924]);
     }
 }

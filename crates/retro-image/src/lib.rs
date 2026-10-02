@@ -22,6 +22,7 @@ mod error;
 mod format;
 mod image;
 mod platform;
+mod simd;
 
 pub use error::DecodeError;
 pub use format::{Companions, Format, NoCompanions, candidates, formats};

@@ -19,6 +19,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
+use crate::image::planar_values;
 use crate::{DecodeError, Image};
 
 const CAMG_LACE: u32 = 0x4;
@@ -217,19 +218,16 @@ fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>,
         _ => unpack_body(header, body, len)?,
     };
     let mut indices = vec![0u32; header.width * header.height];
-    for y in 0..header.height {
-        for plane in 0..header.planes {
+    let mut scratch = vec![0; header.width];
+    for (y, pixels) in indices.chunks_exact_mut(header.width).enumerate() {
+        let planes = (0..header.planes).map(|plane| {
             let start = match layout {
                 Layout::Contiguous => (plane * header.height + y) * row_len,
                 _ => (y * stored_planes + plane) * row_len,
             };
-            let row = &data[start..start + row_len];
-            let pixels = &mut indices[y * header.width..(y + 1) * header.width];
-            for (x, pixel) in pixels.iter_mut().enumerate() {
-                let bit = (row[x / 8] >> (7 - x % 8)) & 1;
-                *pixel |= u32::from(bit) << plane;
-            }
-        }
+            &data[start..start + row_len]
+        });
+        planar_values(planes, &mut scratch, pixels);
     }
     Ok(indices)
 }
