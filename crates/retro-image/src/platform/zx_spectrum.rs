@@ -7,10 +7,13 @@
 //!   `recoil2png` output.
 
 mod border;
+mod chars;
+mod enhanced;
 mod multicolor;
 mod screen;
 mod standard;
 mod timex;
+mod zxp;
 
 use crate::Format;
 
@@ -89,4 +92,24 @@ pub(super) static FORMATS: &[Format] = &[
         &["bsp"],
         border::decode_bsp,
     ),
+    Format::new(
+        "ZX Spectrum",
+        "Font",
+        &["ch4", "ch6", "ch8"],
+        chars::decode_font,
+    ),
+    Format::new("ZX Spectrum", "CHR$", &["ch$"], chars::decode_chr),
+    Format::new(
+        "ZX Spectrum Next",
+        "Layer 2 image",
+        &["nxi"],
+        enhanced::decode_nxi,
+    ),
+    Format::new(
+        "ZX Evolution",
+        "Speccy eXtended Graphics",
+        &["sxg"],
+        enhanced::decode_sxg,
+    ),
+    Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp),
 ];
