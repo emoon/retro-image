@@ -68,11 +68,15 @@ impl Bitmap {
         }
     }
 
-    fn screen_width(self) -> usize {
+    pub(super) fn screen_width(self) -> usize {
         match self {
             Self::Graphic5 | Self::Graphic6 => 512,
             _ => 256,
         }
+    }
+
+    pub(super) fn bytes_per_line(self) -> usize {
+        self.screen_width() * self.bits_per_pixel() / 8
     }
 
     /// Wide modes have half-height pixels, so lines are output twice.
@@ -106,7 +110,7 @@ impl Bitmap {
         }
     }
 
-    fn default_palette(self) -> Palette {
+    pub(super) fn default_palette(self) -> Palette {
         match self {
             Self::Graphic5 => vdp::GRAPHIC5_PALETTE,
             _ => vdp::MSX2_PALETTE,
@@ -200,8 +204,7 @@ fn draw_bitmap_sprites(mode: Bitmap, vram: &Vram, image: &mut Image, palette: &P
 
 /// Complete lines in `vram`, up to 212.
 fn page_height(mode: Bitmap, vram: &Vram) -> usize {
-    let bytes_per_line = mode.screen_width() * mode.bits_per_pixel() / 8;
-    (vram.loaded() / bytes_per_line).min(212)
+    (vram.loaded() / mode.bytes_per_line()).min(212)
 }
 
 /// Renders one page of a bitmap-mode VRAM image, before line doubling.
@@ -221,6 +224,25 @@ fn render_page(
         draw_sprites_if_dumped(mode, vram, &mut image, palette);
     }
     Ok(image)
+}
+
+/// Renders the complete lines of `even`, interlaced with those of `odd`
+/// when given, without sprites.
+pub(super) fn render_bitmap(
+    mode: Bitmap,
+    even: &[u8],
+    odd: Option<&[u8]>,
+    palette: &Palette,
+) -> Result<Image, DecodeError> {
+    let even = render_page(mode, &Vram::new(even), palette, false)?;
+    Ok(match odd {
+        Some(odd) => interlace(
+            mode,
+            &even,
+            &render_page(mode, &Vram::new(odd), palette, false)?,
+        ),
+        None => mode.output(even),
+    })
 }
 
 /// Draws sprites only for dumps of exactly 0x8000 (Screens 5/6) or 0xFAA0
@@ -508,11 +530,26 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             _ => vdp::MSX1_PALETTE,
         });
     if mode == Tiled::Multicolour && vram.loaded() <= 0x800 {
-        // BASIC's name table: each pattern covers 4 character rows.
-        for i in 0..0x300 {
-            vram.set(0x800 + i, (i / 128 * 32 + i % 32) as u8);
-        }
+        set_basic_multicolour_names(&mut vram);
     }
+    // Sprites are drawn for 16 KiB dumps (Screen 2/3) or at least 16 KiB
+    // (Screen 4), as observed from `recoil2png`.
+    let with_sprites = match mode {
+        Tiled::Graphic3 => vram.loaded() >= 0x4000,
+        _ => vram.loaded() == 0x4000,
+    };
+    Ok(render_tiled(mode, &vram, &palette, with_sprites))
+}
+
+/// Writes BASIC's Screen 3 name table: each pattern covers 4 character rows.
+pub(super) fn set_basic_multicolour_names(vram: &mut Vram) {
+    for i in 0..0x300 {
+        vram.set(0x800 + i, (i / 128 * 32 + i % 32) as u8);
+    }
+}
+
+/// Renders a pattern-based screen from its standard VRAM tables.
+pub(super) fn render_tiled(mode: Tiled, vram: &Vram, palette: &Palette, sprites: bool) -> Image {
     let mut image = Image::new(256, 192);
     for y in 0..192 {
         for x in 0..256 {
@@ -537,13 +574,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             image.set(x as u32, y as u32, palette[index as usize]);
         }
     }
-    // Sprites are drawn for 16 KiB dumps (Screen 2/3) or at least 16 KiB
-    // (Screen 4), as observed from `recoil2png`.
-    let with_sprites = match mode {
-        Tiled::Graphic3 => vram.loaded() >= 0x4000,
-        _ => vram.loaded() == 0x4000,
-    };
-    if with_sprites {
+    if sprites {
         let tables = match mode {
             Tiled::Graphic3 => SpriteTables {
                 attributes: 0x1e00,
@@ -557,7 +588,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             },
         };
         for y in 0..192u32 {
-            let line = vdp::sprite_line(&vram, tables, y as i32);
+            let line = vdp::sprite_line(vram, tables, y as i32);
             for (x, index) in (0u32..).zip(line) {
                 if let Some(index) = index {
                     image.set(x, y, palette[index as usize]);
@@ -565,7 +596,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             }
         }
     }
-    Ok(image)
+    image
 }
 
 #[cfg(test)]

@@ -182,8 +182,8 @@ Search snippets from them are quoted in the Notes columns where they were used.
 | GL7 / SH7 + PL7 | BASIC COPY file, Screen 7 | **Partial** | as above | 4 bpp, 512 wide. |
 | GL8 / SH8 | BASIC COPY file, Screen 8 | **Partial** | as above | 8 bpp GGGRRRBB, no palette. |
 | MAG, MAX | Maki-chan Graphics | **Spec** | see section 2 | Machine code 0x03. The machine-dependent flag gives the MSX screen mode (YJK variants included). |
-| MIF | MSX Interchange Format (MIF package, Louthrax) | **None** | [msx.org MIF 2.2 thread](https://www.msx.org/forum/msx-talk/software/mif-package-22-released), [MSX FAQ suffixes](https://www.faq.msxnet.org/suffix.html) | GIF-like compressed format covering MSX1 to MSX2+ modes. No public layout doc. Viewer sources ship in the MIF package (licence unstated). |
-| MIG | MIG (MIF package / SofaRun) | **Partial** | [msx.org MIF 2.2 thread](https://www.msx.org/forum/msx-talk/software/mif-package-22-released), [MSXHub MIGVIEW](https://msxhub.com/MIGVIEW) | BitBuster-compressed stream of VDP operations (VRAM writes, palette writes, masked register writes) after a header naming the target VDP. Opcode encoding is undocumented. |
+| MIF | MSX Interchange Format (MIF package, Louthrax) | **None** | [msx.org MIF 2.2 thread](https://www.msx.org/forum/msx-talk/software/mif-package-22-released), [MSX FAQ suffixes](https://www.faq.msxnet.org/suffix.html) | GIF-like compressed format covering MSX1 to MSX2+ modes. No public layout doc. Viewer sources ship in the MIF package (licence unstated). Reverse engineered from samples, see section 18. |
+| MIG | MIG (MIF package / SofaRun) | **Partial** | [msx.org MIF 2.2 thread](https://www.msx.org/forum/msx-talk/software/mif-package-22-released), [MSXHub MIGVIEW](https://msxhub.com/MIGVIEW) | BitBuster-compressed stream of VDP operations (VRAM writes, palette writes, masked register writes) after a header naming the target VDP. Opcode encoding is undocumented; reverse engineered from samples, see section 18. |
 | PCT | Dynamic Publisher screen | **Spec** | [MarMSX pct_en](https://marmsx.msxall.com/projetos/sketch/pct_en.php), [msx.org thread](https://www.msx.org/forum/msx-talk/software/dynamic-publisher-file-formats-structure) | 384-byte header starting `"DYNAMIC PUBLISHER SCREEN"`, data at 0x180. 512×704 mono. RLE: counter MSB=1 means repeat the next byte (n+1) times; MSB=0 means (n+1) literal bytes. Runs break at line end. Nibbles are swapped; 1 = black. |
 | PI | Pi | **Spec** | see section 2 | Same format as PC-98. |
 | PIC | YPIC | **None** | — | Nothing found. The .PIC extension clashes with Screen 8 dumps; tell them apart by the BSAVE `FE` header. |
@@ -421,12 +421,8 @@ Still skipped:
 
 - `TITLE.PIC` (MSX-FAN): ukp-packed BASIC COPY Screen 7 under a `.PIC` name; the `.PIC`
   extension gives no way to know the inner format, so it isn't guessed from one sample.
-- **MIG** (14 RECOIL samples): `"MSXMIG"`, then the LE32 size of the rest. At 0x0D a LE16
-  matches the compressed length of the first block (sc2: 0x2660, nearly the whole file), and
-  0x0B a plausible LE16 unpacked length (0x4000, 0x3845). From 0x0F the G9B BitBuster variant
-  decodes a clean palette write for about 140 bytes, then fails on an extended match offset, so
-  this BitBuster version differs in its long offsets or lengths. No public spec exists.
-- MIF, Mapletown ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG: unchanged (no layout
+- **MIG**: done in wave 3, see section 18.
+- MIF (done in wave 3), Mapletown ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG: unchanged (no layout
   docs; RECOIL decodes the corpus samples, so they are candidates for black-box reverse
   engineering).
 
@@ -438,3 +434,59 @@ Still skipped:
   `INTRO1.CMP` in `extra/` is a Dot Designer's Club file.)
 - **Punincess Maker `.MP`**: X68000 MAG variant with no machine name, header big-endian, machine
   byte unreliable (0x00/0xFF/0x68 seen). Supported when named `.MAG`.
+
+## 18. Implementation status (wave 3)
+
+Both MIF package formats are implemented by black-box reverse engineering of the 14 + 14
+RECOIL samples (every sample pixel-identical to `recoil2png`). The MIF package and MIGVIEW
+sources were not read.
+
+- **MIG** (`msx/mig.rs`, content-detected): `"MSXMIG"`, LE32 length of the rest of the file
+  (from offset 6), a machine byte (0 MSX1, 1 MSX2, 2 MSX2+), then blocks of LE16 unpacked
+  size, LE16 packed size and BitBuster data, ended by an unpacked size of 0 (the last two
+  bytes). Each block unpacks on its own to exactly its size. This BitBuster differs from the
+  G9B one: the offset byte (plus 4 bits when bit 7 is set) comes before the length, and the
+  length is plain Elias gamma (n 1 bits, a 0, then n bits), not interleaved. The unpacked
+  blocks are one command stream: `00 n` + n × (register, value, mask); `01 first n` + n
+  palette entries; `02` + LE24 VRAM address + LE24 length + bytes; `FF` end. The picture is
+  then rendered from the VDP state: mode from R#0/R#1 (M1-M5) and R#25 (YJK/YAE), 192/212
+  lines from R#9 LN, page from R#2, and R#9 EO selects interlace (even field: page with the
+  low page bit clear). Screen 3 files write only the 0x600-byte pattern table, so the BASIC
+  name table is assumed.
+- **MIF** (`msx/mif.rs`, content-detected): a mode byte (low nibble 0-5 = Screens 5, 6, 7,
+  8, 10/11, 12; 8 = Screen 2; 9 = Screen 3; bit 4 = interlaced, Screens 5-12 only), an
+  ignored byte (RECOIL output unchanged by any value), 16 palette entries (not for Screens
+  8 and 12; the palette is re-sorted relative to the same picture's MIG), then an LZW
+  stream, MSB-first: `1` + literal byte, or `0` + a code of bit-length(entries + 2) bits.
+  Codes below the entry count are dictionary strings, the count itself is the KwKwK case,
+  count + 1 restarts the dictionary (seen when it reaches 4094 entries) and count + 2 ends
+  the stream. Every token after the first since a restart adds previous string + first byte
+  of the current one. Unpacked sizes are exact: 212 lines per bitmap page (interlaced
+  pictures hold 424 lines in display order), 0x3800 for Screen 2, 0x600 for Screen 3. RECOIL
+  rejects a byte appended or removed, so the end code must fall in the last byte.
+- Shared rendering moved into `screen.rs` (`render_bitmap`, `render_tiled`,
+  `set_basic_multicolour_names`) so dumps, MIG and MIF draw pages the same way.
+
+Not done in wave 3 (no layout docs; archiveteam pages unreachable from here), with what black-box
+probing of `recoil2png` established so far:
+
+- **Mapletown ML1** (`GIRL.ML1`, `Win8Draw20151202_ml1.ml1`, both 160x100): `"100" 1A`, date and
+  time bytes (year - 1900, month, day, hour, minute, second), BE16 x1, y1, x2, y2 (0, 0, 159, 99),
+  then text fields (name at 0x12, machine at 0x20, software at 0x30, Shift-JIS title at 0x40);
+  RECOIL ignores the date and text. The bit stream starts at 0x60, MSB first. Colours are
+  10-bit base-9 numbers (R × 81 + G × 9 + B, each level 0-8 shown as level × 255 / 8); values
+  of 729 or more are rejected. The first bit selects the palette form: `0` then 128 colours
+  (Win8Draw; one more bit before them); `1` then 8 bits of count - 1 and that many (7-bit index,
+  colour) pairs (GIRL: 27 pairs, indices 0-31). The pixels that follow are not a raster:
+  single bit flips recolour whole regions or move a region's edge one line at a time, which
+  looks like region / edge-chain coding. Not decoded further.
+- **MX1** (5 samples) is a text wrapping of ML1: `"@@@ name.ml1 by author : title (n lines) @@@"`
+  CRLF, then printable-ASCII lines. **NL3** (2 samples) is a different text format. Neither was
+  started, since they depend on ML1.
+- **Q4 / XLD4** (TOM093.Q4 plus 8 in `extra/`): LE16 file size at 8 (RECOIL rejects a
+  mismatch), `"MAJYO"` at 11, bytes 0-7 and 0x0A ignored, LE16 fields at 0x10/0x12/0x14 (only
+  0x10-0x11 change the output), `44 67 41` at 0x16. From about 0x19, 4-bit colour components
+  sit in a packed palette (single bit flips recolour one colour), then an entropy-coded pixel
+  stream. Not decoded further.
+- **ZIM** (`lockonstar.zim`, 640x400): `"FORMAT-A"`, `"PC9801"` at 0x16, the file name twice and
+  `"Z'sSTAFF KID98"` at 0x6A. Not started.
