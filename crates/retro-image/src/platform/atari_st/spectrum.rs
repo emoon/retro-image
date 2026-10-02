@@ -161,7 +161,7 @@ fn decode_spx_inner(data: &[u8]) -> Option<Image> {
     };
     let palettes = words(&palettes);
     let lines = max_lines
-        .min(bitmap.len() / LINE_LEN - 1)
+        .min((bitmap.len() / LINE_LEN).checked_sub(1)?)
         .min(palettes.len() / 48);
     if lines == 0 {
         return None;
