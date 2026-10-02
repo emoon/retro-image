@@ -102,7 +102,8 @@ pub(super) static FORMATS: &[Format] = &[
         "Drazpaint (compressed)",
         &["drz", "drp"],
         bitmap::decode_drazpaint_packed,
-    ),
+    )
+    .signature(),
     Format::new(
         C64,
         "Art Studio",
@@ -163,6 +164,13 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "Hires Manager", &["him"], fli::decode_hires_manager),
     Format::new(C64, "Drazlace", &["drl", "dlp"], interlace::decode_drazlace),
+    Format::new(
+        C64,
+        "Drazlace (compressed)",
+        &["drl", "dlp"],
+        interlace::decode_drazlace_packed,
+    )
+    .signature(),
     Format::new(C64, "True Paint", &["mci"], interlace::decode_true_paint),
     Format::new(
         C64,
@@ -179,7 +187,7 @@ pub(super) static FORMATS: &[Format] = &[
         bitmap::decode_hi_pic_creator,
     ),
     Format::new(C64, "Gunpaint", &["gun", "ifl"], ifli::decode_gunpaint),
-    Format::new(C64, "Funpaint II", &["fun", "fp2"], ifli::decode_funpaint),
+    Format::new(C64, "Funpaint II", &["fun", "fp2"], ifli::decode_funpaint).signature(),
     Format::new(C64, "Pixel Perfect", &["pp"], ifli::decode_pixel_perfect),
     Format::new(
         C64,
@@ -196,8 +204,8 @@ pub(super) static FORMATS: &[Format] = &[
         &["mil"],
         bitmap::decode_micro_illustrator,
     ),
-    Format::new(C64, "GoDot 4Bit", &["4bt"], godot::decode_4bt),
-    Format::new(C64, "GoDot 4Bit clip", &["clp"], godot::decode_clp),
+    Format::new(C64, "GoDot 4Bit", &["4bt"], godot::decode_4bt).signature(),
+    Format::new(C64, "GoDot 4Bit clip", &["clp"], godot::decode_clp).signature(),
     Format::new(C64, "Printfox screen", &["bs"], printfox::decode_bs),
     Format::new(C64, "Printfox large picture", &["gb"], printfox::decode_gb),
     Format::new(C64, "Pagefox", &["pg"], printfox::decode_pg),
@@ -211,15 +219,21 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "Loadstar SHP", &["shp"], loadstar::decode_shp),
     Format::new(C64, "Character set", &["64c"], charset::decode_font),
     Format::new(C64, "SEUCK font", &["g"], charset::decode_seuck_font),
-    Format::new(C64, "SpritePad", &["spd"], sprites::decode_spd),
+    Format::new(C64, "SpritePad", &["spd"], sprites::decode_spd).signature(),
+    Format::new(
+        C64,
+        "SpritePad (headerless)",
+        &["spd"],
+        sprites::decode_spd_raw,
+    ),
     Format::new(C64, "SEUCK sprites", &["a"], sprites::decode_seuck),
-    Format::new(C64, "Commodore Grafix", &["cgx"], cgx::decode_cgx),
-    Format::new(C64, "CharPad", &["ctm"], charpad::decode_ctm),
-    Format::new(C64, "C64 OS screenshot", &["pet"], petscii::decode_c64os),
+    Format::new(C64, "Commodore Grafix", &["cgx"], cgx::decode_cgx).signature(),
+    Format::new(C64, "CharPad", &["ctm"], charpad::decode_ctm).signature(),
+    Format::new(C64, "C64 OS screenshot", &["pet"], petscii::decode_c64os).signature(),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
-    Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm),
+    Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
-    Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus),
+    Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
