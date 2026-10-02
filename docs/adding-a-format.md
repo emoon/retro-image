@@ -27,7 +27,11 @@
      and `codec::packbits`.
    - Platform names (`Format::platform`) follow RECOIL's format list, e.g. `"Atari ST"`,
      `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
-3. Start the module doc comment with the sources the layout came from.
+3. Start every file's `//!` doc comment with the documents its implementation is based on,
+   with links (use a Wayback Machine URL when the live page is gone). Where knowledge
+   came from reverse engineering, say so and name the samples or the `recoil2png`
+   probing. Submodules don't inherit their parent's sources; registry files point at
+   their `docs/formats/` survey.
 4. Add unit tests for the tricky parts (memory layout, unpacking, palette).
 5. Run the oracle against RECOIL:
    `RETRO_IMAGE_PLATFORMS="Atari ST" cargo test -p retro-image --test oracle -- --nocapture`
