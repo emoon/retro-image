@@ -459,3 +459,66 @@ sources and layouts. All corpus samples match RECOIL; no divergences recorded.
   into 7680 bytes of Graphics 15 data, but the colours come from the bytes after it in a way that
   depends on their value (only a handful of values give colours, the others give greys), which
   samples alone cannot explain; DRAGON.HPM (19203 bytes) is a different program's format.
+
+## 9.1 Wave 4: interlace and multi-frame bitmaps
+
+IGE, ILD, ING, HR, MGA, BGP, CCI, RGB, RIP, RM2 and RM4. Every layout was found by
+reading the corpus samples and probing `recoil2png` with hand-made files (one register
+or one byte at a time, size scans, bit flips). The layouts are also in each module's doc
+comment (`interlace2.rs`, `colorview.rs`, `rip.rs`, `rambrandt.rs`). All corpus samples
+match `recoil2png`; no divergences recorded. Just Solve was unreachable while this was
+written, so none of its pages were read.
+
+- **IGE** (`interlace2.rs`): exactly 6160 bytes. The binary-load header
+  `FF FF F6 A3 FF BB` and `FF 5F` are checked, then 4 colour registers per frame (frame
+  1, frame 2, indexed by pixel value), then two 128x96 two-bit frames (32 bytes per
+  line), drawn 2 wide and averaged.
+- **ILD**: exactly 8195 bytes, no header. Two 128x128 two-bit frames in greys 0, 6, 2, 10
+  (by pixel value), 2 wide, averaged. The last 3 bytes are not read.
+- **ING**: two 160x200 frames, then 4 shared colour registers. Anything after is ignored
+  (the sample has a screen-code text there).
+- **HR** (Atari): exactly 16384 bytes, two 1-bit frames of 256 lines x 32 bytes, 239 lines
+  shown, averaged into black, grey and white. No corpus sample: the `.hr` files in the
+  corpus are TRS-80. The size and layout come from probing alone.
+- **MGA**: exactly 7856 bytes; 80x96 APAC with alternating luminance and hue lines (the
+  reverse of APA), 176 unread bytes.
+- **BGP**: `BUGBITER_APAC239I_PICTURE_V1.0`, `FF 50 EF`, 4 unread bytes, a 16-bit title
+  length and the title, the plane size 9560 (`58 25`), then 239 luminance lines and 239
+  hue lines, drawn like interlaced APAC. `Scanlines`, `apac_80x96`, `deinterleave` and
+  `nibble` in `apac.rs` are now `pub(super)`.
+- **CCI** (packed CIN): `CIN 1.2 ` and four chunks. Each has a 16-bit length (counting
+  the next field), a 16-bit field that is never read, and run-length tokens: below 0x80 a
+  literal block of n + 1 bytes, from 0x80 one byte repeated n + 1 times. They unpack to
+  the 16384-byte CIN: the Graphics 15 columns of even lines (3840 bytes), of odd lines
+  (3840), the hue plane by column (7680) and the per-line colour tables (1024). Found by
+  unpacking SUNV2.CCI and matching it to THESUNV2.CIN. `recoil2png` only accepts the
+  1024-byte table variant and ignores data after the fourth chunk.
+- **RGB** (ColorViewSquash, `colorview.rs`): `RGB1`, title length and title, mode 9 or 15,
+  width in 4-pixel units (even, 2-80), height (1-192), the byte 1. The picture is a
+  column-major list of pixels, each three 4-bit values (one per frame), stored as a
+  nibble stream: tokens 1-7 repeat a triple 2-8 times, `0 N` repeats it N + 8 times, 9-15
+  hold 1-7 literal triples, `8 N` holds N + 7. The frames use the hues 3, 12 and 7. Mode 9
+  takes the value as luminance, mode 15 reads two 2-bit pixels per value (colours 0, 4, 10
+  and 14 of the hue, value 0 black). The screen colour is the average of the three frames.
+  Missing data is an error.
+- **RIP** (`rip.rs`): header `RIP`, 4 version bytes, a mode byte, 16-bit big-endian fields
+  (0/1, header length that is not read, width in units, height, title length), `T:`, the
+  title, a tab, `CM:` and 9 colour registers. Modes: `0e` one Graphics 15 frame, `1e` two
+  averaged, `10` two frames whose register sets swap on every line, `20` HIP with the
+  frames swapped (mode 10 first), `30` mode 10 with per-line-pair colour tables (8 bytes
+  per two lines after the frames) plus a mode 9 frame. The data is packed when it starts
+  with `PCK`. The packer is LZ77 with Huffman codes: 13 unread bytes, three canonical
+  Huffman tables of 4-bit lengths (64 symbols for match lengths, 256 for distances, 256
+  for literals), then tokens of a flag bit followed by a literal, or by a distance symbol
+  + 2 and a length symbol + 2. Found by probing with uniform tables, where the bit layout
+  shows directly, and confirmed by decoding GOSTBUST byte for byte. A truncated stream
+  leaves the rest blank, like RECOIL. `hip.rs` gained a `width` argument on
+  `half_pixel_pair` and a `pub(super)` `nibble`. Modes `0f` (Graphics 8) and the other
+  mode bytes `recoil2png` accepts are not decoded; no sample uses them.
+- **RM2 / RM4** (`rambrandt.rs`): RM2 is exactly 8192 bytes: a Graphics 10 screen, the 9
+  registers, 119 unread bytes and three 128-byte change tables. RM4 is a Koala file
+  (Graphics 15) plus the 9 registers 464 bytes before the end and the same tables as the
+  last 384 bytes. The tables hold line codes, register numbers and colours per pair of
+  lines; the module doc explains how line codes map to lines. `koala.rs` gained a `parse`
+  function and a `Pic` struct so RM4 can reuse the unpacker. RM0, RM1 and RM3 are not
+  done (no samples). The Koala PIC decoder is still not a content-detection format.

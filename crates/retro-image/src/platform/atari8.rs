@@ -7,6 +7,7 @@
 
 mod antic;
 mod apac;
+mod colorview;
 mod font;
 mod graph2font;
 mod gtia;
@@ -14,12 +15,15 @@ mod hip;
 mod ice;
 mod inflate;
 mod interlace;
+mod interlace2;
 mod koala;
 mod mad_studio;
 mod misc_screen;
 mod packed;
 mod palette;
 mod portfolio;
+mod rambrandt;
+mod rip;
 mod rom_font;
 mod screen;
 mod sfdn;
@@ -300,5 +304,42 @@ pub(super) static FORMATS: &[Format] = &[
         "Ascii-Art Editor",
         &["art"],
         text_art::decode_ascii_art,
+    ),
+    // Wave 4: interlace and multi-frame bitmaps
+    Format::new(
+        ATARI8,
+        "Interlace Graphics Editor",
+        &["ige"],
+        interlace2::decode_ige,
+    ),
+    Format::new(
+        ATARI8,
+        "Interlace Logo Designer",
+        &["ild"],
+        interlace2::decode_ild,
+    ),
+    Format::new(ATARI8, "ING 15", &["ing"], interlace2::decode_ing),
+    Format::new(ATARI8, "Atari HR", &["hr"], interlace2::decode_hr),
+    Format::new(ATARI8, "MegaColor 80x96", &["mga"], interlace2::decode_mga),
+    Format::new(
+        ATARI8,
+        "Bugbiter APAC239i",
+        &["bgp"],
+        interlace2::decode_bgp,
+    ),
+    Format::new(
+        ATARI8,
+        "Champions' Interlace (packed)",
+        &["cci"],
+        interlace2::decode_cci,
+    ),
+    Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
+    Format::new(ATARI8, "Rocky Interlace Picture", &["rip"], rip::decode_rip),
+    Format::new(ATARI8, "Rambrandt GTIA 10", &["rm2"], rambrandt::decode_rm2),
+    Format::new(
+        ATARI8,
+        "Rambrandt Graphics 15",
+        &["rm4"],
+        rambrandt::decode_rm4,
     ),
 ];

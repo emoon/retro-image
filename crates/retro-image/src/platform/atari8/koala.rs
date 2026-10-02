@@ -28,11 +28,20 @@ const LINE: usize = 40;
 const LINES: usize = 192;
 const HEADER_MIN: usize = 18;
 /// Graphics 15 (4 colours).
-const ANTIC_E: u8 = 0x0e;
+pub(super) const ANTIC_E: u8 = 0x0e;
 /// Shown as GTIA mode 9 (16 luminances).
 const ANTIC_F: u8 = 0x0f;
 
-pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
+/// A decoded Koala file: the 40 x 192 byte screen, the ANTIC mode byte and
+/// the colours 708-712 of the header.
+pub(super) struct Pic {
+    pub screen: [u8; LINE * LINES],
+    pub mode: u8,
+    pub colors: [u8; 5],
+}
+
+/// Reads the header and unpacks the screen.
+pub(super) fn parse(data: &[u8]) -> Result<Pic, DecodeError> {
     if data.len() < HEADER_MIN || data[..4] != [0xff, 0x80, 0xc9, 0xc7] {
         return Err(DecodeError::Unrecognized);
     }
@@ -50,16 +59,25 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
         1 | 2 => unpack(body, &mut screen, &positions)?,
         _ => return Err(DecodeError::Unrecognized),
     }
+    Ok(Pic {
+        screen,
+        mode: data[8],
+        colors: [data[13], data[14], data[15], data[16], data[17]],
+    })
+}
+
+pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
+    let pic = parse(data)?;
     let bitmap = Bitmap {
-        data: &screen,
+        data: &pic.screen,
         bytes_per_line: LINE,
         lines: LINES,
         bits: 2,
     };
-    let background = data[17];
-    match data[8] {
+    let background = pic.colors[4];
+    match pic.mode {
         ANTIC_E => {
-            let colors = [background, data[13], data[14], data[15]];
+            let colors = [background, pic.colors[0], pic.colors[1], pic.colors[2]];
             Ok(bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)])))
         }
         ANTIC_F => Ok(gtia9(bitmap, background)),
