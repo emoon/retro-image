@@ -47,7 +47,8 @@ const REGISTERS: [u8; 4] = [0x18, 0x17, 0x16, 0x1a];
 
 pub(super) fn decode_fwa(data: &[u8]) -> Result<Image, DecodeError> {
     let handler_len = le16(data, TRAILER).map(usize::from);
-    if !data.starts_with(&[0xfe, 0xfe]) || handler_len != data.len().checked_sub(HANDLERS) {
+    let expected = data.len().checked_sub(HANDLERS);
+    if !data.starts_with(&[0xfe, 0xfe]) || handler_len.is_none() || handler_len != expected {
         return Err(DecodeError::Unrecognized);
     }
     let interrupts = interrupt_lines(data).ok_or(DecodeError::Unrecognized)?;

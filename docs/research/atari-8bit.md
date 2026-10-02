@@ -391,3 +391,86 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
+
+## 9.1 Wave 4: bitmaps with per-line colours
+
+Everything here was reverse engineered from the corpus and from `recoil2png` run on
+hand-made files, so the layouts are what RECOIL reads and no more. Sources are cited in
+each module (`xl_paint.rs`, `cpi.rs`, `hcm.rs`, `fwa.rs`, `mcs.rs`, `ged.rs`). All corpus
+samples of these formats match `recoil2png`: XLP 8, MAX 7, RAW 8, CPI 5, HCM 2, FWA 8,
+MCS 5, GED 8. Random files that change colours, tables, objects or packed data render
+identically too, except GED files whose PRIOR selects a GTIA mode.
+
+- **XLP, MAX, RAW** (XL-Paint, `xl_paint.rs`). A picture is two 2-bit frames shown
+  alternately, so the output averages them. RAW is `XLPB`, 7680 + 7680 bytes of
+  row-major frame data, then two colour sets (playfield 0-2, background); lines
+  alternate which set each frame uses. MAX is `XLPM`, nine 192-byte tables (the doc's
+  193 is wrong), then packed data. Tables 4-7 give the background and playfield 0-2
+  colours of stored frame 0 (a luminance frame in practice) and tables 0-3 those of
+  stored frame 1 (the hue frame); table 8 is ignored. The BIRD and GOLDENB samples exist
+  as both MAX and RAW and render identically, which pinned the layout: RAW line `y` of
+  frame `f` is stored frame `(f + y) % 2`. The packer (shared with XLP) is byte-oriented:
+  `00-3F` copies that many bytes, `40` copies the number in the next byte, `80-BF` repeats
+  the next byte `n & 3F` times, `C0-FF` repeats the byte after a 14-bit count, `41-7F` is
+  invalid. The output is column-major: for each of 40 columns, the lines of stored frame 0
+  then those of frame 1. XLP is 4 colours (playfield 0-2, background) shared by both
+  frames; the line count is 200 when the data unpacks to 16000 or more bytes, 192 for
+  15360 or more, and rejected below that. An `XLPC` prefix forces 192 lines and RECOIL then
+  tolerates bad or missing data (we do the same for the obvious cases only). A literal cut
+  short by the end of the data counts in full. STAIRS.XLP relies on that. RECOIL's exact
+  handling of other malformed streams (e.g. `50` as the last byte) is not reproduced.
+- **CPI** (Marco Pixel Editor, `cpi.rs`). A byte equal to the one before it takes a count
+  byte `n` and stands for `n + 1` copies; other bytes are literals. The data must unpack to
+  at least 7936 bytes (`31 * 256`, so every sample ends in `00 00 FE` + one more byte);
+  the first 7680 are 160x192 at 2 bits per pixel, and pixel values 0-3 show the greys
+  `00 0C 08 04`. Nothing else in the file matters.
+- **HCM** (Hard Color Map, `hcm.rs`). `HCMA 38 01`, a mode byte (0 or 2), colours
+  background, A, B, PF0-2, eight 256-byte tables of 192 lines at offset 48, a 128x192
+  2-bit bitmap at 2064. Each 4-pixel column of a line is marked A and/or B by table bits
+  (they behave like quad-width players and missiles; the layouts of the two modes differ,
+  see the module). The pixels are drawn over A/B with the GTIA priority rules; mode 0 is
+  PRIOR 0 with B acting as player 2, mode 2 is PRIOR `24`.
+- **FWA** (Fun with Art, `fwa.rs`). A memory image: `FE FE`, four colours, a fixed display
+  list (192 mode E lines in two chunks, any line may carry the DLI bit), unread viewer
+  code, the screen, a 16-bit length, then one DLI handler (6502 code `PHA TXA PHA`,
+  `LDA #c`, `STA WSYNC`, `STA reg` and more `LDA`/`STA` pairs, `JSR $06CA`) per DLI line.
+  RECOIL only accepts that exact code shape and it parses to the end of the file, so we do
+  too. The registers the n-th handler writes take effect from the line after the n-th DLI
+  line. advert.fwa in the hostile set is truncated (6000 bytes) and rejected by both.
+- **MCS** (`mcs.rs`). Exactly 10185 bytes: COLPM0-3, COLPF0-3, COLBK, eight character
+  sets of 128 characters (one per three character rows), a 40x24 screen, and 128 bytes
+  each for the missiles and players 0-3 (two scanlines per byte). The characters are
+  ANTIC 4 (bit 7 of a code: `11` pixels use playfield 3). The objects sit at x = 80 * n
+  (players 64 pixels wide) and 80 * n + 64 (missiles, 16 pixels) behind the playfield. The
+  last 400 bytes are never read.
+- **GED** (`ged.rs`). Binary-load header `FF FF 30 53 4F 7F`, then per line a GTIA
+  register number and value (the DLI's write, applied before the line; `$D000 +` the low 5
+  bits), eight per-line colour tables for playfield 0-2 whose later entries take over at
+  fixed pixels that depend on a timing byte (the table in the module), 1280 bytes of
+  player/missile data and 16 initial registers (note the sizes byte lists player 0 in its
+  high bits and the missiles are placed one after the other), then the screen. The writes
+  can change any GTIA register, so we run a small GTIA model with the shared priority and
+  object code. A PRIOR value with bits 6-7 (GTIA modes) is rejected: RECOIL draws them,
+  but no sample uses one and the rendering isn't worked out.
+- **Not done**:
+  - **A4R**: the corpus decodes (RECOIL shows 320x256 GR9 greys) but the packer is
+    unsolved. What is known: a 5-byte header `b0 b1 00 90 4f` (`b1` needs bits 7 and 3, `00`
+    and `90`/`4F` are checked loosely: `4D`-`50` are accepted), then a stream ending in
+    `01 00`; literals are single bytes and map one to one to output bytes, `01 nn` appears
+    to give a run of `nn + 4` bytes of `FF`, and many bytes are neither (`FA`, `E1`, `06`,
+    `1E`, the periodic `EB`). The header's first byte changes which later bytes are
+    literals. RECOIL's output (the unpacked bytes) can be recovered from its image, but
+    no consistent token grammar fits.
+  - **PGR** (PowerGraphics): a memory image from `$8206` whose header (`FF FF 06 82
+    end`) must match the file size; bytes 6-7 give the address of an event stream after
+    the screen; `PowerGFX` at offset 8; a display list at `$8210` (blank lines, mode E/F
+    lines with `LMS $8800/$9000/$A000`, `JVB $8210`; output row = display list line; lines
+    after it are black; mode F lines of 32 bytes give a 256-pixel picture, mode E lines
+    of 40 bytes 160). Without its events a picture is a two-colour drawing; the events
+    (`1C` = nothing, `reg+flags value` pairs such as `A2 68` and `AF F0`, which look
+    like HPOSP2/HPOSP3 and GRAFP2 writes) paint the colours with players, like GED. Not
+    worked out.
+  - **SPC** (Graphics Magician Picture Painter, Atari version): `LE16 length`, then a
+    command stream (`80 x y` start, `A0 x y` line, `60 n` pattern, `E0 x y` fill, ...). RECOIL
+    draws brush, pattern and fill shapes whose data and the exact fill algorithm are not
+    documented for the Atari port; a guess would not match pixel for pixel.
