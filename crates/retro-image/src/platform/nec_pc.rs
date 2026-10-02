@@ -7,6 +7,7 @@
 pub(super) mod maki;
 pub(super) mod pi;
 mod precision;
+mod zim;
 
 use crate::Format;
 
@@ -60,4 +61,6 @@ pub(super) static FORMATS: &[Format] = &[
         super::sharp_x68000::pic::decode_pic(d, Machine::Pc88Va)
     })
     .signature(),
+    // Wave 5: Japanese
+    Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
 ];
