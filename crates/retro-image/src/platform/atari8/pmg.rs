@@ -113,7 +113,7 @@ pub(super) fn decode_4mi(data: &[u8]) -> Result<Image, DecodeError> {
 /// Draws players 0-3 side by side, one `CELL` apart, in the colours of
 /// `colors`; each has `PM_LINES` lines in `players`.
 fn draw_players(sheet: &mut Sheet, colors: &[u8], players: &[u8]) {
-    for (player, memory) in players.chunks_exact(PM_LINES).enumerate() {
+    for (player, memory) in players.as_chunks::<PM_LINES>().0.iter().enumerate() {
         for (y, &bits) in memory.iter().enumerate() {
             sheet.draw_player(player * CELL, y, bits, colors[player]);
         }

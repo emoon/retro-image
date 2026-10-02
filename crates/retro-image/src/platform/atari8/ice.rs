@@ -93,7 +93,7 @@ impl Frame {
         let mut out = [0; 8];
         match self {
             Self::Antic4(colors) => {
-                for (x, pair) in out.chunks_exact_mut(2).enumerate() {
+                for (x, pair) in out.as_chunks_mut::<2>().0.iter_mut().enumerate() {
                     let value = usize::from(bits >> (6 - 2 * x) & 3);
                     let index = if value == 3 && code & 0x80 != 0 {
                         4
@@ -116,7 +116,7 @@ impl Frame {
                 }
             }
             Self::Gtia(colors) => {
-                for (x, quad) in out.chunks_exact_mut(4).enumerate() {
+                for (x, quad) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
                     quad.fill(colors[usize::from(bits >> (4 - 4 * x) & 15)]);
                 }
             }
