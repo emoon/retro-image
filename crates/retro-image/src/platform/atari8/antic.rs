@@ -4,6 +4,7 @@
 //! the output scaling (a 320-pixel-wide canvas, so 160-pixel modes are drawn
 //! 2 pixels wide and GTIA modes 4 pixels wide) is observed from `recoil2png` output.
 
+use super::palette::average;
 use crate::Image;
 
 /// Packed bitmap: `lines` rows of `bytes_per_line` bytes, `bits` (1, 2 or 4)
@@ -55,6 +56,22 @@ impl Bitmap<'_> {
         }
         image
     }
+}
+
+/// Two interlaced frames of equal size shown as one picture: the average
+/// of their colours.
+pub(super) fn mix(a: &Image, b: &Image) -> Image {
+    let mut image = Image::new(a.width(), a.height());
+    let pixels = a.rgb().chunks_exact(3).zip(b.rgb().chunks_exact(3));
+    for (i, (pa, pb)) in pixels.enumerate() {
+        let rgb = average(packed(pa), packed(pb));
+        image.set(i as u32 % a.width(), i as u32 / a.width(), rgb);
+    }
+    image
+}
+
+fn packed(rgb: &[u8]) -> u32 {
+    u32::from(rgb[0]) << 16 | u32::from(rgb[1]) << 8 | u32::from(rgb[2])
 }
 
 /// Fills a `width` x `height` block at (`x`, `y`).

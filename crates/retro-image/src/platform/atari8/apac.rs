@@ -12,7 +12,7 @@
 //!   pictures show both line parities, one per frame, and are drawn as the
 //!   average (rounded down) of the two frames' RGB values.
 
-use super::palette::rgb;
+use super::palette::{average, rgb};
 use crate::{DecodeError, Image};
 
 const LINE: usize = 40;
@@ -128,22 +128,9 @@ impl Apac<'_> {
     }
 }
 
-/// Per-channel average, rounded down.
-fn average(a: u32, b: u32) -> u32 {
-    // Halve each channel, then add back the carry of both low bits.
-    ((a >> 1) & 0x7f7f7f) + ((b >> 1) & 0x7f7f7f) + (a & b & 0x010101)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn average_rounds_down_per_channel() {
-        assert_eq!(average(0x004400, 0x111111), 0x082a08);
-        assert_eq!(average(0xffffff, 0xffffff), 0xffffff);
-        assert_eq!(average(0x010101, 0x000000), 0x000000);
-    }
 
     #[test]
     fn hue_line_averages_luminance_neighbours() {

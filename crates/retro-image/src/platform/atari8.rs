@@ -6,6 +6,7 @@
 mod antic;
 mod apac;
 mod font;
+mod interlace;
 mod koala;
 mod mad_studio;
 mod palette;
@@ -52,6 +53,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
     Format::new(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
     Format::new(ATARI8, "Sketch-PadDles", &["skp"], screen::decode_skp),
+    Format::new(ATARI8, "InterPainter", &["inp"], interlace::decode_inp),
+    Format::new(ATARI8, "McPainter", &["mcp"], interlace::decode_mcp),
+    Format::new(ATARI8, "Paradox", &["mcpp"], interlace::decode_mcpp),
     Format::new(
         ATARI8,
         "AtariTools-800 graphic",
