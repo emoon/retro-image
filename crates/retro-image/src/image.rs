@@ -35,10 +35,12 @@ impl Image {
         }
     }
 
+    /// Width in pixels.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Height in pixels.
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -48,6 +50,7 @@ impl Image {
         &self.rgb
     }
 
+    /// Takes the pixel data, 3 bytes (R, G, B) per pixel.
     pub fn into_rgb(self) -> Vec<u8> {
         self.rgb
     }

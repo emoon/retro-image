@@ -2,16 +2,21 @@
 
 retro-image turns pictures from old computers into RGB. It reads 461 formats from 49
 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum, Amstrad CPC, MSX, PC-98 and
-a long tail of rarer machines. The full list is in [docs/formats.md](docs/formats.md).
+a long tail of rarer machines. The full list is in [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 
 The project was inspired by [RECOIL](https://recoil.sourceforge.net), and the tests
 compare our output with RECOIL's. None of RECOIL's code was used, though. The decoders
 were written from public documentation, permissively licensed code, and sample files
-taken apart by hand. [docs/sources.md](docs/sources.md) says where they came from.
+taken apart by hand. [docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md) says where they came from.
 
 ## Library
 
 The crate is `no_std` with `alloc`, has no dependencies and only ever sees byte slices.
+
+```toml
+[dependencies]
+retro-image = "0.0.1"
+```
 
 ```rust
 let data = std::fs::read("PICTURE.PI1")?;
@@ -28,7 +33,7 @@ keep their colours in a second file, like a `.SCR` with a `.PAL`; pass it in wit
 ## Command line
 
 ```sh
-cargo install --path crates/retro-image-cli
+cargo install retro-image-cli
 retro-image PICTURE.PI1                  # writes PICTURE.PI1.png
 retro-image --list-formats
 ```
@@ -43,10 +48,10 @@ update-mime-database ~/.local/share/mime
 
 ## Documentation
 
-- [Supported formats](docs/formats.md)
-- [Sources](docs/sources.md)
-- [Development](docs/development.md): building, testing and adding a format
+- [Supported formats](https://github.com/emoon/retro-image/blob/main/docs/formats.md)
+- [Sources](https://github.com/emoon/retro-image/blob/main/docs/sources.md)
+- [Development](https://github.com/emoon/retro-image/blob/main/docs/development.md): building, testing and adding a format
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/emoon/retro-image/blob/main/LICENSE).

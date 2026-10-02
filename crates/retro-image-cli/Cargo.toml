@@ -4,6 +4,13 @@ description = "Convert retro computer images to PNG"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+# Code only: the corpus tests need copyrighted samples that are never shipped.
+include = ["/src/**", "/LICENSE", "/README.md"]
+keywords = ["retro", "image", "png", "thumbnailer", "atari"]
+categories = ["command-line-utilities", "multimedia::images"]
 
 [[bin]]
 name = "retro-image"

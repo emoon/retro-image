@@ -3,12 +3,16 @@ resolver = "3"
 members = ["crates/retro-image", "crates/retro-image-cli"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
+# Safe `__cpuid` in the x86_64 SIMD dispatch needs 1.94.
+rust-version = "1.94"
 license = "MIT"
+repository = "https://github.com/emoon/retro-image"
+readme = "README.md"
 
 [workspace.dependencies]
-retro-image = { path = "crates/retro-image" }
+retro-image = { path = "crates/retro-image", version = "0.0.1" }
 png = "0.18"
 
 # The corpus tests decode thousands of files many times over; optimise them
