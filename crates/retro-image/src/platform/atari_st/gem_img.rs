@@ -191,17 +191,7 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
     }
     // One extra word (seen as 0 or 1) still means no palette.
     if extra.len() <= 2 && h.planes <= 4 {
-        // No palette: the default GEM VDI colours, in pen order (observed
-        // from `recoil2png` output).
-        const DEFAULT_PENS: [u32; 16] = [
-            0xffffff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0x00ffff, 0xffff00, 0xff00ff,
-            0xaaaaaa, 0x555555, 0xaa0000, 0x00aa00, 0x0000aa, 0x00aaaa, 0xaaaa00, 0xaa00aa,
-        ];
-        return Some(
-            (0..colors)
-                .map(|index| DEFAULT_PENS[super::common::vdi_pen(index, colors)])
-                .collect(),
-        );
+        return Some(super::common::default_vdi_palette(colors));
     }
     if extra.len() >= 6 + colors * 6 && &extra[..4] == b"XIMG" && be16(extra, 4)? == 0 {
         return (0..colors)

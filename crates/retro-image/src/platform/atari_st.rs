@@ -192,4 +192,5 @@ pub(super) static FORMATS: &[Format] = &[
     st("DEGAS Elite icon", &["icn"], mono::decode_icn),
     tt("DEGAS (TT high resolution)", &["pi6"], tt::decode_pi6),
     falcon("Spooky Sprites RLE", &["tre"], falcon::decode_tre),
+    falcon("ICDRAW icon", &["ibi", "ib3"], falcon::decode_icdraw),
 ];

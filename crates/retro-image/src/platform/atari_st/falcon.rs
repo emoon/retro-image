@@ -302,6 +302,30 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
     Some(image)
 }
 
+/// ICDRAW icons (`IBI` one icon, `IB3` three): `ICBI`/`ICB3` header of 64
+/// bytes with the size and plane count, then the (first) icon as 32x32
+/// word-interleaved planes in the default VDI colours. Sources: survey
+/// notes (`docs/formats/atari-st-tt-falcon.md`); the layout is derived from
+/// sample files and `recoil2png` output.
+pub(super) fn decode_icdraw(data: &[u8]) -> Result<Image, DecodeError> {
+    match data.get(..4) {
+        Some(b"ICBI" | b"ICB3") => {}
+        _ => return Err(DecodeError::Unrecognized),
+    }
+    if (be16(data, 8), be16(data, 10), be16(data, 12)) != (Some(32), Some(32), Some(4)) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let palette = super::common::default_vdi_palette(16);
+    ok(planar_image(
+        data.get(64..).unwrap_or(&[]),
+        32,
+        32,
+        4,
+        &palette,
+        1,
+    ))
+}
+
 /// Falcon True Color: raw 384x240 RGB565.
 pub(super) fn decode_ftc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 384 * 240 * 2 {

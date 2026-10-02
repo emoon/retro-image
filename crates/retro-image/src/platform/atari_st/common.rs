@@ -274,6 +274,18 @@ pub(super) fn vdi_pen(index: usize, colors: usize) -> usize {
     }
 }
 
+/// The default GEM VDI colours for a palette of up to 16 `colors`, in
+/// hardware register order (observed from `recoil2png` output).
+pub(super) fn default_vdi_palette(colors: usize) -> Vec<u32> {
+    const PENS: [u32; 16] = [
+        0xffffff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0x00ffff, 0xffff00, 0xff00ff, 0xaaaaaa,
+        0x555555, 0xaa0000, 0x00aa00, 0x0000aa, 0x00aaaa, 0xaaaa00, 0xaa00aa,
+    ];
+    (0..colors.min(16))
+        .map(|index| PENS[vdi_pen(index, colors)])
+        .collect()
+}
+
 /// Reads `colors` VDI RGB triplets (pen order) and returns them in
 /// hardware index order.
 pub(super) fn vdi_palette(data: &[u8], colors: usize) -> Option<Vec<u32>> {
