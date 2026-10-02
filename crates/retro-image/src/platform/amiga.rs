@@ -16,6 +16,7 @@
 mod abk;
 mod dctv;
 mod deep;
+mod ham_e;
 mod icon;
 mod iff;
 mod ilbm;
@@ -50,6 +51,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
     // Wave 5: Amiga and misc
     Format::new("Amiga DCTV", "DCTV", &["dct", "dctv"], decode_dctv),
+    Format::new("Amiga HAM-E", "HAM-E", &["iff"], decode_ham_e),
 ];
 
 /// AMOS sprite, icon or picture bank.
@@ -61,6 +63,14 @@ fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_dctv(data: &[u8]) -> Result<Image, DecodeError> {
     match iff::form(data) {
         Some((kind, contents)) if &kind == b"ILBM" => dctv::decode(contents),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// HAM-E pictures: an ILBM that starts with a HAM-E palette line.
+fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
+    match iff::form(data) {
+        Some((kind, contents)) if &kind == b"ILBM" => ham_e::decode(contents),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -78,7 +88,9 @@ fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     match kind {
-        b"ILBM" => ilbm::decode_ilbm(contents).or_else(|_| dctv::decode(contents)),
+        b"ILBM" => ilbm::decode_ilbm(contents)
+            .or_else(|_| dctv::decode(contents))
+            .or_else(|_| ham_e::decode(contents)),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),

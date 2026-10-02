@@ -30,11 +30,8 @@
 
 use alloc::vec::Vec;
 
-use super::ilbm::read_ilbm;
+use super::ilbm::{CAMG_HIRES, CAMG_LACE, read_ilbm};
 use crate::{DecodeError, Image};
-
-const CAMG_LACE: u32 = 0x4;
-const CAMG_HIRES: u32 = 0x8000;
 
 /// The top-plane bit pattern of the signature, one bit per pixel, most
 /// significant bit first.

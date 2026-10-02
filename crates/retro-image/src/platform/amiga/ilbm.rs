@@ -21,10 +21,10 @@ use crate::codec::packbits;
 use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
-const CAMG_LACE: u32 = 0x4;
+pub(super) const CAMG_LACE: u32 = 0x4;
 const CAMG_EHB: u32 = 0x80;
-const CAMG_HAM: u32 = 0x800;
-const CAMG_HIRES: u32 = 0x8000;
+pub(super) const CAMG_HAM: u32 = 0x800;
+pub(super) const CAMG_HIRES: u32 = 0x8000;
 
 /// Fields of the BMHD chunk we use.
 pub(super) struct Header {
@@ -150,11 +150,9 @@ impl Bitmap {
 
     /// Whether the first row starts with the HAM-E cookie. Both this and DCTV
     /// encode colours the plain bitmap does not show, so such files are left
-    /// to decoders for those devices. The marker was reverse engineered from
-    /// samples.
+    /// to decoders for those devices.
     fn is_ham_e(&self) -> bool {
-        const HAM_E: [u32; 14] = [10, 2, 15, 5, 8, 4, 13, 12, 6, 13, 11, 0, 7, 15];
-        self.header.planes == 4 && self.row(0).is_some_and(|row| row.starts_with(&HAM_E))
+        self.header.planes == 4 && self.row(0).is_some_and(super::ham_e::is_palette_line)
     }
 }
 
@@ -331,7 +329,7 @@ impl Mode {
 }
 
 /// Hold-and-modify: control 0 takes `base`, 1 sets blue, 2 red, 3 green.
-fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
+pub(super) fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
     match control {
         0 => base,
         1 => (held & 0xffff00) | component,
