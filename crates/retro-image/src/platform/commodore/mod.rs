@@ -20,6 +20,7 @@ mod printfox;
 mod ted;
 mod unpack;
 mod vic2;
+mod vic20;
 
 use crate::{DecodeError, Format, Image};
 
@@ -28,6 +29,7 @@ type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
 const C64: &str = "Commodore 64";
 const PLUS4: &str = "Commodore 16/116/Plus4";
 const C128: &str = "Commodore 128";
+const VIC20: &str = "Commodore VIC-20";
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new(
@@ -200,6 +202,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm),
+    Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus),
 ];
 

@@ -72,7 +72,8 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
     let columns = usize::from(header[12]);
     let height = usize::from(u16::from_le_bytes([header[13], header[14]]));
     let attribute_rows = height.div_ceil(2 * cell_height) * 2;
-    if columns == 0 || height == 0 {
+    // The bitmap must fit in the VDC's 64K.
+    if columns == 0 || height == 0 || columns * height > 0x10000 {
         return Err(DecodeError::Unrecognized);
     }
     let packed = &data[18..];
