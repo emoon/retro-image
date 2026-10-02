@@ -83,9 +83,42 @@ pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<
     Some(out)
 }
 
+/// As [`backward_rle`], but only when `packed` unpacks to exactly `len`
+/// bytes: every byte used, the start reached, no run overflowing it.
+pub(super) fn backward_rle_exact(packed: &[u8], escape: u8, len: usize) -> Option<Vec<u8>> {
+    let mut out = alloc::vec![0; len];
+    let mut end = len;
+    let mut bytes = packed.iter().rev().copied();
+    while let Some(byte) = bytes.next() {
+        if byte == escape {
+            let count = bytes.next()?;
+            let value = bytes.next()?;
+            let count = if count == 0 { 256 } else { usize::from(count) };
+            let start = end.checked_sub(count)?;
+            out[start..end].fill(value);
+            end = start;
+        } else {
+            end = end.checked_sub(1)?;
+            out[end] = byte;
+        }
+    }
+    (end == 0).then_some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn backward_exact_needs_exact_length() {
+        let packed = [5, 3, 0xfe, 9];
+        assert_eq!(
+            backward_rle_exact(&packed, 0xfe, 4),
+            Some(alloc::vec![5, 5, 5, 9])
+        );
+        assert_eq!(backward_rle_exact(&packed, 0xfe, 5), None);
+        assert_eq!(backward_rle_exact(&packed, 0xfe, 3), None);
+    }
 
     #[test]
     fn expands_runs_and_literals() {

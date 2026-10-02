@@ -24,6 +24,7 @@ mod petscii;
 mod prg;
 mod printfox;
 mod sprites;
+mod superhires;
 mod ted;
 mod unpack;
 mod vic2;
@@ -260,6 +261,18 @@ pub(super) static FORMATS: &[Format] = &[
         petscii::decode_scr_col,
     ),
     Format::new(C64, "PETSCII BOT", &["pbot"], petscii::decode_pbot),
+    Format::new(
+        C64,
+        "Super Hires Interlace Editor",
+        &["shi"],
+        superhires::decode_shi,
+    ),
+    Format::new(
+        C64,
+        "Super Hires Interlace FLI Editor",
+        &["sif"],
+        superhires::decode_sif,
+    ),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
