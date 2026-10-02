@@ -60,9 +60,14 @@ fn palette_index(x: usize, c: usize) -> usize {
 
 /// Renders 199 interleaved lines with 48 palette words per line.
 fn render(bitmap: &[u8], palettes: &[u16], depth: ColorDepth) -> Option<Image> {
-    let bitmap = bitmap.get(..BITMAP_LEN)?;
-    let palettes = palettes.get(..PALETTE_WORDS)?;
-    let mut image = Image::new(320, LINES as u32);
+    render_lines(bitmap, palettes, depth, LINES)
+}
+
+/// Renders `lines` interleaved lines with 48 palette words per line.
+fn render_lines(bitmap: &[u8], palettes: &[u16], depth: ColorDepth, lines: usize) -> Option<Image> {
+    let bitmap = bitmap.get(..lines * LINE_LEN)?;
+    let palettes = palettes.get(..lines * 48)?;
+    let mut image = Image::new(320, lines as u32);
     for (y, (line, palette)) in bitmap
         .chunks_exact(LINE_LEN)
         .zip(palettes.chunks_exact(48))
@@ -100,6 +105,140 @@ pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {
         st_depth(&palettes)
     };
     render(&data[LINE_LEN..], &palettes, depth).ok_or(DecodeError::Unrecognized)
+}
+
+/// Spectrum 512 Extended: `SPX`, version, two compression flags, screen
+/// count, author and description strings, data sizes, then a blank line,
+/// `screens * 199` lines and their palettes (unpacked, each part packed
+/// with Pack-Ice, or version 2's backward LZ packer over both).
+pub(super) fn decode_spx(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_spx_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_spx_inner(data: &[u8]) -> Option<Image> {
+    if data.get(..3)? != b"SPX" {
+        return None;
+    }
+    let version = *data.get(3)?;
+    let packed = (*data.get(4)?, *data.get(5)?) != (0, 0);
+    let lines = usize::from(*data.get(6)?) * LINES;
+    if lines == 0 {
+        return None;
+    }
+    // Skip the two NUL-terminated strings.
+    let mut pos = 10;
+    for _ in 0..2 {
+        pos += data.get(pos..)?.iter().position(|&b| b == 0)? + 1;
+    }
+    let gfx_len = be32(data, pos)? as usize;
+    let palette_len = be32(data, pos + 4)? as usize;
+    let body = data.get(pos + 8..)?;
+    let (bitmap, palettes) = match (version, packed) {
+        (2, true) => {
+            let unpacked = unpack_spx2(body)?;
+            let split = unpacked.len().checked_sub(lines * 96)?;
+            let (bitmap, palettes) = unpacked.split_at(split);
+            (bitmap.to_vec(), palettes.to_vec())
+        }
+        (1, _) | (_, false) => {
+            // Each part may be packed with Pack-Ice on its own.
+            let part = |data: &[u8], packed: u8| {
+                if packed != 0 {
+                    super::pack_ice::unpack(data)
+                } else {
+                    Some(data.to_vec())
+                }
+            };
+            let bitmap = part(body.get(..gfx_len)?, data[4])?;
+            let palettes = body.get(gfx_len..gfx_len.checked_add(palette_len)?)?;
+            (bitmap, part(palettes, data[5])?)
+        }
+        _ => return None,
+    };
+    let palettes = words(&palettes);
+    render_lines(
+        bitmap.get(LINE_LEN..)?,
+        &palettes,
+        st_depth(&palettes),
+        lines,
+    )
+}
+
+/// SPX version 2 packer, per the Spectrum 512 Extended page: unpacked and
+/// packed sizes, then a bit stream read backwards a long at a time (most
+/// significant bit first) that fills the output from its end: `0` =
+/// literals (count, bytes) normally followed by a match, `1` = match
+/// (offset, length - 3). Counts and offsets are 4, 8, 12 or 16 bits, as
+/// given by a 2-bit prefix. Match offsets are relative to the current
+/// output position: derived from sample files.
+fn unpack_spx2(data: &[u8]) -> Option<Vec<u8>> {
+    let unpacked_len = be32(data, 0)? as usize;
+    let packed_len = be32(data, 4)? as usize;
+    let packed = data.get(8..8usize.checked_add(packed_len)?)?;
+    // Bound the allocation: a match of at most 37 bits yields up to 65538
+    // bytes.
+    if unpacked_len > packed.len().saturating_mul(16384) || unpacked_len > 1 << 26 {
+        return None;
+    }
+    let mut bits = BackwardBits {
+        data: packed,
+        pos: packed.len(),
+        buffer: 0,
+        left: 0,
+    };
+    let mut out = alloc::vec![0u8; unpacked_len];
+    let mut dst = unpacked_len;
+    let mut after_literals = false;
+    while dst > 0 {
+        let is_match = after_literals || bits.read(1)? == 1;
+        after_literals = false;
+        if is_match {
+            let offset = bits.read_sized()? as usize;
+            let count = bits.read_sized()? as usize + 3;
+            for _ in 0..count {
+                dst = dst.checked_sub(1)?;
+                out[dst] = *out.get(dst + offset)?;
+            }
+        } else {
+            let count = bits.read_sized()?;
+            for _ in 0..count {
+                dst = dst.checked_sub(1)?;
+                out[dst] = bits.read(8)? as u8;
+            }
+            after_literals = count != 0xffff;
+        }
+    }
+    Some(out)
+}
+
+struct BackwardBits<'a> {
+    data: &'a [u8],
+    pos: usize,
+    buffer: u32,
+    left: u32,
+}
+
+impl BackwardBits<'_> {
+    fn read(&mut self, count: u32) -> Option<u32> {
+        let mut value = 0;
+        for _ in 0..count {
+            if self.left == 0 {
+                self.pos = self.pos.checked_sub(4)?;
+                self.buffer = be32(self.data, self.pos)?;
+                self.left = 32;
+            }
+            value = value << 1 | self.buffer >> 31;
+            self.buffer <<= 1;
+            self.left -= 1;
+        }
+        Some(value)
+    }
+
+    /// A 2-bit size prefix n, then a 4 * (n + 1)-bit value.
+    fn read_sized(&mut self) -> Option<u32> {
+        let size = 4 * (self.read(2)? + 1);
+        self.read(size)
+    }
 }
 
 /// The `SP` header: data and color map lengths.

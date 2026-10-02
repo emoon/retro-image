@@ -9,7 +9,7 @@
 //!   (16-word palettes, as the 64070-byte total requires)
 //! - Observed from `recoil2png` output: the two screens are averaged per
 //!   component; HighresMedium's 400 lines pair up into 200 doubled lines.
-//!   Only already unpacked `PCI`/`HRM` files are supported (no Pack-Ice).
+//!   `PCI` and `HRM` files may be packed with Pack-Ice.
 
 use alloc::vec::Vec;
 
@@ -38,6 +38,16 @@ fn average(a: &Image, b: &Image) -> Image {
     image
 }
 
+/// Unpacks Pack-Ice data; `None` if `data` is not packed.
+fn unpack_ice(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
+    if !super::pack_ice::is_packed(data) {
+        return Ok(None);
+    }
+    super::pack_ice::unpack(data)
+        .map(Some)
+        .ok_or(DecodeError::Unrecognized)
+}
+
 fn words(data: &[u8]) -> Vec<u16> {
     data.chunks_exact(2)
         .map(|w| u16::from_be_bytes([w[0], w[1]]))
@@ -52,6 +62,8 @@ const PCI_PALETTE_LEN: usize = PCI_HEIGHT * 32;
 /// Two 352x278 screens (separate plane blocks), then a 16-colour palette
 /// per line for each.
 pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = unpack_ice(data)?;
+    let data = unpacked.as_deref().unwrap_or(data);
     if data.len() != 2 * (PCI_SCREEN_LEN + PCI_PALETTE_LEN) {
         return Err(DecodeError::Unrecognized);
     }
@@ -79,6 +91,8 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
 /// HighresMedium: 400 medium-resolution lines (pairs of alternating
 /// lines), 35 palette words per line chosen by `find_hrm_index`.
 pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = unpack_ice(data)?;
+    let data = unpacked.as_deref().unwrap_or(data);
     if data.len() != 64000 + 28000 {
         return Err(DecodeError::Unrecognized);
     }

@@ -17,6 +17,7 @@ mod gem_img;
 mod lz4;
 mod mono;
 mod mpp;
+mod pack_ice;
 mod paintshop;
 mod paintworks;
 mod photochrome;
@@ -99,6 +100,7 @@ pub(super) static FORMATS: &[Format] = &[
     st("Spectrum 512", &["spu"], spectrum::decode_spu),
     st("Spectrum 512 compressed", &["spc"], spectrum::decode_spc),
     st("Spectrum 512 smooshed", &["sps"], spectrum::decode_sps),
+    st("Spectrum 512 extended", &["spx"], spectrum::decode_spx),
     st("GEM Bit Image", &["img", "ximg"], gem_img::decode_img),
     st("Multi Palette Picture", &["mpp"], mpp::decode_mpp),
     st(
