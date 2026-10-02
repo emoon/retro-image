@@ -15,6 +15,7 @@ mod godot;
 mod ifli;
 mod interlace;
 mod prg;
+mod printfox;
 mod unpack;
 mod vic2;
 
@@ -183,6 +184,15 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "GoDot 4Bit", &["4bt"], godot::decode_4bt),
     Format::new(C64, "GoDot 4Bit clip", &["clp"], godot::decode_clp),
+    Format::new(C64, "Printfox screen", &["bs"], printfox::decode_bs),
+    Format::new(C64, "Printfox large picture", &["gb"], printfox::decode_gb),
+    Format::new(C64, "Pagefox", &["pg"], printfox::decode_pg),
+    Format::new(
+        C64,
+        "Star Painter",
+        &["gr", "cs"],
+        printfox::decode_star_painter,
+    ),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
 ];
 
