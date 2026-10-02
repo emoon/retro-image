@@ -13,6 +13,8 @@
 //! - DIT: Just Solve "DrawIt" (3845 bytes = GR7 screen + 5 colours).
 //! - BKG: Just Solve "Movie Maker" (3856 bytes = GR7 screen + 16 bytes).
 //! - MGP: Just Solve "Magic Painter" (3845 bytes, starts `F4 0E 36 00`).
+//!   The `.PIC` variant without the rainbow flag (screen at offset 5) was
+//!   reverse engineered from a sample (dexvert `crumble.pic`).
 //! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
 //! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
@@ -238,6 +240,22 @@ pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
             _ => register_rgb(colors[usize::from(value)]),
         }),
     )
+}
+
+/// Magic Painter picture saved as `.PIC`: playfield 0-2, background, an
+/// unused zero byte, then the whole Graphics 7 screen (no rainbow flag).
+pub(super) fn decode_mgp_pic(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3845)?;
+    if data[4] != 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (bitmap, _) = lines(&data[5..])?;
+    Ok(four_color(
+        bitmap,
+        2,
+        2,
+        [data[3], data[0], data[1], data[2]],
+    ))
 }
 
 /// Visualizer: playfield 0-3 and background, then 79 Graphics 7 lines and

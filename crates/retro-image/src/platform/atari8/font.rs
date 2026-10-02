@@ -16,7 +16,10 @@
 //! - NLQ: Just Solve "Daisy-Dot font" and the Daisy-Dot II reader of
 //!   monobit (MIT, <https://github.com/robhagemans/monobit>): signature,
 //!   per character a width and two passes of column bytes. The 20x16 cell
-//!   sheet: observed from `recoil2png` output.
+//!   sheet: observed from `recoil2png` output. Daisy-Dot III (`3` 0x9B,
+//!   variable widths, optional 32-dot characters, 3-byte trailer) from the
+//!   same monobit reader; RECOIL rejects it, so its sheet (32x16 or 32x32
+//!   cells) is our own extension of the Daisy-Dot II one.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
@@ -25,6 +28,7 @@ use super::antic::{Bitmap, fill};
 use super::palette::register_rgb;
 use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
+use alloc::vec::Vec;
 
 const CHARS_PER_ROW: usize = 32;
 
@@ -103,18 +107,29 @@ pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Daisy-Dot II NLQ printer font: signature, then for characters 32-124
-/// except 96 and 123: width, the even rows' column bytes,
+/// Characters stored in Daisy-Dot fonts: 32-124 except 96 and 123.
+fn daisy_dot_codes() -> impl Iterator<Item = u32> {
+    (32..125).filter(|&code| code != 96 && code != 123)
+}
+
+/// Daisy-Dot NLQ printer font, version II or III.
+pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
+    if let Some(glyphs) = data.strip_prefix(b"DAISY-DOT NLQ FONT\x9b") {
+        decode_daisy_dot2(glyphs)
+    } else if let Some(glyphs) = data.strip_prefix(b"3\x9b") {
+        decode_daisy_dot3(glyphs)
+    } else {
+        Err(DecodeError::Unrecognized)
+    }
+}
+
+/// Daisy-Dot II: for each character a width, the even rows' column bytes,
 /// the odd rows' column bytes and a 0x9B separator. Characters are 16 dots
 /// tall and drawn in 20x16 cells, 16 to a row, by character code from 32.
-pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
+fn decode_daisy_dot2(mut glyphs: &[u8]) -> Result<Image, DecodeError> {
     const CELL_WIDTH: u32 = 20;
-    let mut glyphs = data
-        .strip_prefix(b"DAISY-DOT NLQ FONT\x9b")
-        .ok_or(DecodeError::Unrecognized)?;
-    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     let mut image = Image::new(16 * CELL_WIDTH, 96);
-    for code in (32..125).filter(|&code| code != 96 && code != 123) {
+    for code in daisy_dot_codes() {
         let (&width, rest) = glyphs.split_first().ok_or(DecodeError::Unrecognized)?;
         let width = usize::from(width);
         let (glyph, rest) = rest
@@ -127,23 +142,71 @@ pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
             return Err(DecodeError::Unrecognized);
         }
         glyphs = rest;
-        let (even, odd) = glyph.split_at(width);
-        let x0 = (code - 32) % 16 * CELL_WIDTH;
-        let y0 = (code - 32) / 16 * 16;
-        for (column, (&even, &odd)) in even.iter().zip(odd).enumerate() {
-            for bit in 0..8 {
-                for (row, bits) in [(2 * bit, even), (2 * bit + 1, odd)] {
-                    let set = bits & (0x80 >> bit) != 0;
-                    let color = if set { foreground } else { background };
-                    image.set(x0 + column as u32, y0 + row, color);
-                }
-            }
-        }
+        let (x, y) = ((code - 32) % 16 * CELL_WIDTH, (code - 32) / 16 * 16);
+        draw_dot_passes(&mut image, x, y, glyph);
     }
     if glyphs.is_empty() {
         Ok(image)
     } else {
         Err(DecodeError::Unrecognized)
+    }
+}
+
+/// Daisy-Dot III: no space glyph; for each other character a byte of
+/// width (1-32) plus 64 if the character is 32 dots tall, then one or two
+/// 16-dot bands of passes like Daisy-Dot II, without separators; then the
+/// height, underline row and space width. Drawn like Daisy-Dot II in 32-dot
+/// wide cells, 16 or (if any character is tall) 32 dots high.
+fn decode_daisy_dot3(data: &[u8]) -> Result<Image, DecodeError> {
+    const CELL_WIDTH: u32 = 32;
+    let mut glyphs = Vec::new();
+    let mut rest = data;
+    for code in daisy_dot_codes().skip(1) {
+        let (&size, after) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (bands, width) = (usize::from(size >> 6) + 1, usize::from(size & 0x3f));
+        if bands > 2 || !(1..=CELL_WIDTH as usize).contains(&width) {
+            return Err(DecodeError::Unrecognized);
+        }
+        let (glyph, after) = after
+            .split_at_checked(2 * width * bands)
+            .ok_or(DecodeError::Unrecognized)?;
+        glyphs.push((code, width, glyph));
+        rest = after;
+    }
+    if rest.len() != 3 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let tall = glyphs
+        .iter()
+        .any(|&(_, width, glyph)| glyph.len() > 2 * width);
+    let cell_height = if tall { 32 } else { 16 };
+    let mut image = Image::new(16 * CELL_WIDTH, 6 * cell_height);
+    for (code, width, glyph) in glyphs {
+        let (x, y) = (
+            (code - 32) % 16 * CELL_WIDTH,
+            (code - 32) / 16 * cell_height,
+        );
+        for (band, passes) in glyph.chunks_exact(2 * width).enumerate() {
+            draw_dot_passes(&mut image, x, y + 16 * band as u32, passes);
+        }
+    }
+    Ok(image)
+}
+
+/// Draws a 16-dot band of a Daisy-Dot glyph at (`x`, `y`): `passes` holds
+/// one column byte per column for the even rows, then as many for the odd
+/// rows; bit 7 is the top. Set dots are white on black.
+fn draw_dot_passes(image: &mut Image, x: u32, y: u32, passes: &[u8]) {
+    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
+    let (even, odd) = passes.split_at(passes.len() / 2);
+    for (column, (&even, &odd)) in even.iter().zip(odd).enumerate() {
+        for bit in 0..8 {
+            for (row, bits) in [(2 * bit, even), (2 * bit + 1, odd)] {
+                let set = bits & (0x80 >> bit) != 0;
+                let color = if set { foreground } else { background };
+                image.set(x + column as u32, y + row, color);
+            }
+        }
     }
 }
 
@@ -217,6 +280,25 @@ mod tests {
         let image = decode_fnt(&data).unwrap();
         assert_eq!((image.width(), image.height()), (256, 32));
         assert_eq!(image.get(8, 8), 0xeeeeee);
+    }
+
+    #[test]
+    fn daisy_dot3_draws_tall_glyphs_in_two_bands() {
+        let mut data = alloc::vec![b'3', 0x9b];
+        // '!' is 1 dot wide and 32 tall: top band rows 0 and 1, bottom row 1.
+        data.extend_from_slice(&[0x41, 0x80, 0x80, 0x00, 0x80]);
+        for _ in daisy_dot_codes().skip(2) {
+            data.extend_from_slice(&[0x01, 0x00, 0x00]);
+        }
+        data.extend_from_slice(&[31, 24, 8]);
+        let image = decode_nlq(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (512, 192));
+        let lit = |y| image.get(32, y) == 0xeeeeee;
+        assert_eq!(
+            [lit(0), lit(1), lit(2), lit(16), lit(17)],
+            [true, true, false, false, true]
+        );
+        assert!(decode_nlq(&data[..data.len() - 1]).is_err());
     }
 
     #[test]
