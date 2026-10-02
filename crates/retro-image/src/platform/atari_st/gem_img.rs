@@ -7,7 +7,8 @@
 //! - Atari Compendium appendix C:
 //!   <http://cd.textfiles.com/ataricompendium/BOOK/HTML/APPENDC.HTM>
 //! - Observed from `recoil2png` output: VDI intensities (0-1000) are
-//!   scaled as `v * 255 / 1000`, truncated; monochrome set bits are black.
+//!   scaled as `v * 255 / 1000`, truncated; monochrome set bits are black;
+//!   16, 24 and 32-"plane" pictures hold chunky RGB565, RGB and xRGB pixels.
 
 use alloc::vec::Vec;
 
@@ -49,7 +50,7 @@ fn header(data: &[u8]) -> Option<Header> {
         || header.header_len < 16
         || header.header_len > data.len()
         || !(1..=8).contains(&header.pattern_len)
-        || !(1..=8).contains(&header.planes)
+        || !matches!(header.planes, 1..=8 | 16 | 24 | 32)
         || header.width == 0
         || header.height == 0
         || header.width * header.height > MAX_PIXELS
@@ -83,6 +84,26 @@ fn decode(data: &[u8]) -> Option<Image> {
     };
     let (sx, sy) = pixel_scale(&h);
     let mut image = Image::new((h.width * sx) as u32, (h.height * sy) as u32);
+    if h.planes > 8 {
+        // True colour lines are chunky: RGB565 words, RGB or xRGB pixels.
+        let bytes = h.planes / 8;
+        for y in 0..h.height {
+            let line = &bitmap[y * row_len * h.planes..];
+            for x in 0..h.width {
+                let p = &line[x * bytes..][..bytes];
+                let color = match bytes {
+                    2 => super::falcon::rgb565(u16::from_be_bytes([p[0], p[1]])),
+                    _ => u32::from_be_bytes([0, p[bytes - 3], p[bytes - 2], p[bytes - 1]]),
+                };
+                for dy in 0..sy {
+                    for dx in 0..sx {
+                        image.set((x * sx + dx) as u32, (y * sy + dy) as u32, color);
+                    }
+                }
+            }
+        }
+        return Some(image);
+    }
     for y in 0..h.height {
         for x in 0..h.width {
             let mut index = 0;
@@ -119,11 +140,28 @@ fn pixel_scale(h: &Header) -> (usize, usize) {
 }
 
 fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
-    let colors = 1usize << h.planes;
     let extra = &data[16..h.header_len];
+    if h.planes > 8 {
+        // True colour: no palette, at most an empty XIMG one.
+        return (extra.is_empty() || extra == b"XIMG\0\0").then(Vec::new);
+    }
+    let colors = 1usize << h.planes;
     if h.planes == 1 {
         // Longer monochrome headers belong to other, unsupported dialects.
         return extra.is_empty().then(|| alloc::vec![0xffffff, 0x000000]);
+    }
+    if extra.is_empty() && h.planes <= 4 {
+        // No palette: the default GEM VDI colours, in pen order (observed
+        // from `recoil2png` output).
+        const DEFAULT_PENS: [u32; 16] = [
+            0xffffff, 0x000000, 0xff0000, 0x00ff00, 0x0000ff, 0x00ffff, 0xffff00, 0xff00ff,
+            0xaaaaaa, 0x555555, 0xaa0000, 0x00aa00, 0x0000aa, 0x00aaaa, 0xaaaa00, 0xaa00aa,
+        ];
+        return Some(
+            (0..colors)
+                .map(|index| DEFAULT_PENS[super::common::vdi_pen(index, colors)])
+                .collect(),
+        );
     }
     if extra.len() >= 6 + colors * 6 && &extra[..4] == b"XIMG" && be16(extra, 4)? == 0 {
         return (0..colors)
