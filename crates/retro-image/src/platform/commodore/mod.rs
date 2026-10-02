@@ -20,6 +20,7 @@ mod emc;
 mod flf;
 mod fli;
 mod godot;
+mod hcb;
 mod ifli;
 mod interlace;
 mod loadstar;
@@ -355,6 +356,9 @@ pub(super) static FORMATS: &[Format] = &[
         &["mwi", "mwin"],
         mwin::decode_mwin,
     ),
+    // Wave 6: C64 FLI Editor + HCB
+    Format::new(C64, "FLI Editor", &["fed"], fli::decode_fed),
+    Format::new(C64, "HCB-editor", &["hcb"], hcb::decode_hcb),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
