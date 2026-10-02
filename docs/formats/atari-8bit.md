@@ -156,7 +156,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | MAP | EnvisionPC | Partial | [EnvisionPC manual](http://ftp.pigwa.net/stuff/collections/holmes%20cd/Holmes%202/PC%20Atari%20Programming%20Utils/EnvisionPC%20V0.5/envision.txt), [EnvisionPC page](http://ftp.pigwa.net/stuff/collections/holmes%20cd/Holmes%202/PC%20Atari%20Programming%20Utils/EnvisionPC%20V0.5/index.html) | ANTIC mode (1), width (2, LE), height (2, LE), PF0-PF4 (5), "...", map (w×h), font (1024). The "..." gap is unexplained. The zip includes C source (licence unstated). |
 | MAX | XL-Paint MAX | Partial | [XL-Paint doc](http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/XL-Paint%201.9Max.txt), [Just Solve](http://fileformats.archiveteam.org/wiki/XL-Paint) | `XLPM`, then 8 × 193-byte per-line tables (colour 0-3, luminance 0-3), then a 193-byte palette table, then compressed data (packer undocumented). 160x192, 2 frames. |
 | MBG | Mad Designer | Hardware-only | [Just Solve](http://fileformats.archiveteam.org/wiki/Mad_Designer), [gury.atari8.info](http://gury.atari8.info/software/1330.php) | Exactly 16384 bytes = 512x256 mono bitmap (64 bytes/line). |
-| MCH | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html) | Up to 336x240. Layout not published. |
+| MCH | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html) | Up to 336x240. Layout not published; reverse engineered, see section 8. |
 | MCP | McPainter | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/McPainter), [McPainter page](http://east.atari8.info/mcp/index.htm) | Exactly 16008 bytes (2 × 8000 + 8 colours?). 160x200, 16 colours, 2 frames. |
 | MCPP | Paradox | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Paradox_(graphics)), [Demozoo](https://demozoo.org/productions/111562/) | Exactly 8008 bytes. 160x100, 16 colours. |
 | MCS | MCS | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/MCS) | Exactly 10185 bytes. 160x192, 9 colours. |
@@ -350,3 +350,17 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   bitstream to the last byte and matches RECOIL. We also take G9S/SFD that unpack to
   7684 bytes (the MGV12 disk's GIRL1/GIRL2; RECOIL rejects them). No `.signature()`:
   the header doesn't say which picture format is inside (7680 bytes is GR9 or PLS).
+- **MCH** (Graph2Font), `atari8/graph2font.rs` with the GTIA logic in `atari8/gtia.rs`.
+  Exactly 30833 bytes (40 columns) or 32993 (48). 30 rows of 9-byte cells (code byte,
+  then the 8 bytes shown), then 20 per-scanline tables of 240 bytes (COLBK, COLPF0-3,
+  COLPM0-3, HPOSP0-3, HPOSM0-3, SIZEP0-3 packed, SIZEM, PRIOR), GRAFM per scanline,
+  and 4 × 256 bytes of player memory (scanline y at byte 16 + y). The rest (13856
+  bytes, then a 113-byte tail) has no effect in RECOIL. The first code byte's low 6
+  bits are the mode: 01 ANTIC 2, 05 ANTIC 4, 09/19/29 ANTIC 2 + GTIA 9/10/11. The
+  picture is 336x240. RECOIL emulates GTIA: the priority equations ORing every
+  surviving colour register (checked for all 64 PRIOR values), PRIOR bits 6-7 ORed
+  into the header's GTIA mode per scanline, GTIA 10 delayed 2 pixels, and so on (the
+  module doc lists every rule). 150 random synthetic MCH files render identically to
+  `recoil2png`. Mode 07 (RastaConverter conversions made with G2F's `rc2mch`) is
+  rejected by RECOIL; it probably uses the ignored region for mid-line register
+  changes, and is not decoded.

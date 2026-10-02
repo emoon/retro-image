@@ -6,6 +6,8 @@
 mod antic;
 mod apac;
 mod font;
+mod graph2font;
+mod gtia;
 mod hip;
 mod interlace;
 mod koala;
@@ -206,6 +208,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq).signature(),
     Format::new(ATARI8, "AtariTools-800 font", &["acs"], font::decode_acs),
     Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
+    Format::new(ATARI8, "Graph2Font", &["mch"], graph2font::decode_mch),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,
