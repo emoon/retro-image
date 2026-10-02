@@ -35,7 +35,7 @@ enum Level {
     Sse2,
     /// SSSE3 and SSE4.1: `palette_to_rgb`.
     Sse41,
-    /// `expand_plane`.
+    /// `expand_plane`, `average_floor`.
     Avx2,
     /// AVX-512 F and BW: `expand_plane`.
     Avx512,
@@ -115,6 +115,10 @@ fn average_floor_at(level: Level, a: &[u8], b: &[u8], out: &mut [u8]) {
         a.len() == out.len() && b.len() == out.len(),
         "slice lengths"
     );
+    #[cfg(all(target_arch = "x86_64", not(miri)))]
+    if level > Level::Scalar {
+        return x86_64::average_floor(level, a, b, out);
+    }
     let _ = level;
     scalar::average_floor(a, b, out);
 }

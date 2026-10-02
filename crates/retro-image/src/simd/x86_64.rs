@@ -188,6 +188,33 @@ fn palette_to_rgb_sse41(indices: &[u8], table: &[u32; 256], out: &mut [u8]) -> u
     blocks.len() * 4
 }
 
+pub(super) fn average_floor(level: Level, a: &[u8], b: &[u8], out: &mut [u8]) {
+    let done = if level.min(detected()) >= Level::Avx2 {
+        // SAFETY: the CPU has AVX2 (clamped above).
+        unsafe { average_floor_avx2(a, b, out) }
+    } else {
+        0
+    };
+    scalar::average_floor(&a[done..], &b[done..], &mut out[done..]);
+}
+
+/// Returns the number of bytes done (a multiple of 32).
+#[target_feature(enable = "avx2")]
+fn average_floor_avx2(a: &[u8], b: &[u8], out: &mut [u8]) -> usize {
+    // `avg` rounds up, (a + b + 1) / 2; subtracting the low bit of a ^ b
+    // (set exactly when a + b is odd) rounds down instead.
+    let one = _mm256_set1_epi8(1);
+    let (blocks, _) = out.as_chunks_mut::<32>();
+    let (a, _) = a.as_chunks::<32>();
+    let (b, _) = b.as_chunks::<32>();
+    for ((o, a), b) in blocks.iter_mut().zip(a).zip(b) {
+        let (a, b) = (load32(a), load32(b));
+        let odd = _mm256_and_si256(_mm256_xor_si256(a, b), one);
+        store32(o, _mm256_sub_epi8(_mm256_avg_epu8(a, b), odd));
+    }
+    blocks.len() * 32
+}
+
 // Unaligned loads and stores of whole arrays: the array type proves the
 // bytes are there, and `loadu`/`storeu` need no alignment.
 
