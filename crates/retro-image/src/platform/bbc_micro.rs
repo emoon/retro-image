@@ -29,7 +29,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("BBC Micro", "Mode 5 screen", &["bb5"], |data| {
         decode(data, &MODE5)
     }),
-    Format::new("BBC Micro", "LdPic", &["bbg"], decode_ldpic),
+    Format::new("BBC Micro", "LdPic", &["bbg"], decode_ldpic).signature(),
 ];
 
 struct Mode {
@@ -138,6 +138,10 @@ fn physical_color(physical: u8) -> u32 {
 /// ...) with the same step, until offset 0 has been done. The spec's
 /// wording suggests the step shrinks too, but the sample only decodes
 /// fully with a constant step.
+///
+/// The stream must end in the file's last byte, as in every sample: with
+/// the header checks, this makes random data fail, so LdPic is also
+/// recognised by content.
 fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
     let mut bits = BitReader { data, position: 0 };
     let value_bits = bits.read(8)?;
@@ -179,6 +183,9 @@ fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
                 address = passes - 1;
             }
         }
+    }
+    if bits.position.div_ceil(8) != data.len() {
+        return Err(DecodeError::Unrecognized);
     }
     Ok(render(&screen, mode, &palette))
 }
