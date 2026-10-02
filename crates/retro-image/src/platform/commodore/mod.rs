@@ -83,6 +83,7 @@ pub(super) static FORMATS: &[Format] = &[
         bitmap::decode_blazing_paddles,
     ),
     Format::new(C64, "Vidcom 64", &["vid"], bitmap::decode_vidcom),
+    Format::new(C64, "Picasso 64", &["p64"], bitmap::decode_picasso_64),
     Format::new(
         C64,
         "Image System (multicolor)",
@@ -219,6 +220,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "Loadstar SHP", &["shp"], loadstar::decode_shp),
     Format::new(C64, "Character set", &["64c"], charset::decode_font),
     Format::new(C64, "SEUCK font", &["g"], charset::decode_seuck_font),
+    Format::new(
+        C64,
+        "Star Painter font",
+        &["zs"],
+        charset::decode_star_painter_font,
+    ),
     Format::new(C64, "SpritePad", &["spd"], sprites::decode_spd).signature(),
     Format::new(
         C64,
@@ -246,6 +253,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
+    Format::new(VIC20, "Best Paint", &["bp"], vic20::decode_best_paint),
     Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
 ];
