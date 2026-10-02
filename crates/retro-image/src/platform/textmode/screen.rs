@@ -8,22 +8,20 @@
 //!   blink bit (blinking foreground, or with non-blink "iCE colour" the
 //!   high-intensity background), and the 9-pixel letter spacing in which the
 //!   VGA repeats the 8th glyph column for characters C0h-DFh only.
-//! - The 16 colours of the IBM CGA/EGA/VGA text palette: as in `pc.rs`
-//!   (observed from `recoil2png` output), and the default palette of the
-//!   XBin specification
+//! - The 16 colours of the IBM CGA/EGA/VGA text palette and the 6-bit DAC
+//!   scaling: shared with `pc.rs` (observed from `recoil2png` output); the
+//!   palette is also the default of the XBin specification
 //!   (<https://web.archive.org/web/20120204063040/http://www.acid.org/info/xbin/x_spec.htm>).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
+use super::super::pc::vga_rgb;
 use super::font::Font;
 use crate::{DecodeError, Image};
 
 /// The 16 colours of the IBM CGA/EGA/VGA text palette, by attribute value.
-pub(super) const PALETTE: [u32; 16] = [
-    0x000000, 0x0000aa, 0x00aa00, 0x00aaaa, 0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa, 0x555555,
-    0x5555ff, 0x55ff55, 0x55ffff, 0xff5555, 0xff55ff, 0xffff55, 0xffffff,
-];
+pub(super) const PALETTE: [u32; 16] = super::super::pc::CGA_PALETTE;
 
 /// Most cells a picture may have: 80 columns by 3276 rows. Keeps hostile
 /// sizes (huge widths, cursor jumps, long runs) from allocating gigabytes.
@@ -233,13 +231,12 @@ pub(super) fn attribute_cells(
 /// A palette of 16 VGA DAC entries, 3 bytes (red, green, blue) of 0-63
 /// each, scaled to 8 bits; `None` if a value exceeds 63.
 pub(super) fn vga_palette(rgb: &[u8]) -> Option<[u32; 16]> {
-    let scale = |v: u8| u32::from(v << 2 | v >> 4);
     let mut palette = [0; 16];
     for (color, c) in palette.iter_mut().zip(rgb.chunks_exact(3)) {
         if c.iter().any(|&v| v > 63) {
             return None;
         }
-        *color = scale(c[0]) << 16 | scale(c[1]) << 8 | scale(c[2]);
+        *color = vga_rgb([c[0], c[1], c[2]]);
     }
     (rgb.len() >= 48).then_some(palette)
 }
