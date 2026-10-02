@@ -1,10 +1,12 @@
-//! Graphics 15 pictures of two frames shown alternately (interlace).
+//! Pictures of two bitmap frames shown alternately (interlace).
 //!
 //! Sources:
 //! - INP: Just Solve "InterPainter", XL-Paint 1.9 MaX doc (16004 bytes),
 //!   atari-owner.com "Atari Software Graphic Modes" (frames flipped per VBI).
 //! - MCP: Just Solve "McPainter" (16008 bytes, 160x200, 2 frames).
 //! - MCPP: Just Solve "Paradox" (8008 bytes, 160x100).
+//! - HCI: Just Solve "HCI" (exactly 16006 bytes, 2 frames); the frame modes
+//!   (Graphics 8 and 15) and colour layout observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the frames are shown as the average
 //!   of their colours; INP keeps 4 colours after the frames (and RECOIL
 //!   accepts trailing data); MCP and MCPP store two colour sets (playfield
@@ -37,6 +39,31 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
         &frame(data, 200).render(2, 1, color),
         &frame(&data[FRAME..], 200).render(2, 1, color),
     ))
+}
+
+/// HCI: a 320x200 Graphics 8 frame and a 160x200 Graphics 15 frame, then
+/// the Graphics 8 background and foreground luminance, then the Graphics 15
+/// background and playfield 0-2.
+pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2 * FRAME + 6 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let colors = &data[2 * FRAME..];
+    let background = register_rgb(colors[0]);
+    let foreground = register_rgb(colors[0] & 0xf0 | colors[1] & 0x0f);
+    let hires = Bitmap {
+        bits: 1,
+        ..frame(data, 200)
+    }
+    .render(
+        1,
+        1,
+        |_, value| if value == 0 { background } else { foreground },
+    );
+    let multicolor = frame(&data[FRAME..], 200).render(2, 1, |_, value| {
+        register_rgb(colors[2 + usize::from(value)])
+    });
+    Ok(mix(&hires, &multicolor))
 }
 
 /// McPainter: two 160x200 frames, then two colour sets. On even lines the
