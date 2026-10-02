@@ -237,7 +237,7 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
-    // Wave 4: player/missile graphics
+    // Wave 4: player/missile graphics, shapes, fonts and maps
     Format::new(
         ATARI8,
         "AtariTools-800 4 missiles",
@@ -268,7 +268,6 @@ pub(super) static FORMATS: &[Format] = &[
         &["shp"],
         shapes::decode_movie_maker,
     ),
-    // Wave 4: Graph2Font VBXE
     Format::new(
         VBXE,
         "Graph2Font VBXE",
