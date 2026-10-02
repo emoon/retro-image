@@ -52,7 +52,9 @@ fn mutated_corpus_files_do_not_panic() {
     let mut rng = Rng(0x2545_f491_4f6c_dd1d);
     for sample in &samples {
         let name = &sample.id;
-        let data = std::fs::read(&sample.path).unwrap();
+        let Ok(data) = std::fs::read(&sample.path) else {
+            continue; // removed while the test ran (e.g. by a sample collector)
+        };
         check(retro_image::formats(), &data, name, &mut failures);
 
         let candidates: Vec<&Format> = retro_image::formats()

@@ -36,7 +36,9 @@ fn matches_recoil_on_corpus() {
     let mut failures = Vec::new();
     for sample in &samples {
         let id = &sample.id;
-        let data = std::fs::read(&sample.path).unwrap();
+        let Ok(data) = std::fs::read(&sample.path) else {
+            continue; // removed while the test ran (e.g. by a sample collector)
+        };
         let Some(ours) = retro_image::formats()
             .filter(|f| f.matches_filename(&sample.name) && platforms.selects(f.platform))
             .find_map(|f| f.decode(&data).ok())
