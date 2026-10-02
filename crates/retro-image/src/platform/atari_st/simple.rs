@@ -309,15 +309,40 @@ fn decode_graphics_processor_inner(data: &[u8]) -> Option<Image> {
     }
 }
 
-/// Atari Image Manager `IM`: raw 256x256 8-bit grey (observed from
-/// `recoil2png` output).
+/// Side of an Atari Image Manager picture holding `planes` byte planes in
+/// `len` bytes: 128 or 256.
+fn image_manager_side(len: usize, planes: usize) -> Result<usize, DecodeError> {
+    [128, 256]
+        .into_iter()
+        .find(|side| side * side * planes == len)
+        .ok_or(DecodeError::Unrecognized)
+}
+
+/// Atari Image Manager `IM`: a square 8-bit grey plane (derived from
+/// sample files and `recoil2png` output).
 pub(super) fn decode_im(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != 256 * 256 {
-        return Err(DecodeError::Unrecognized);
-    }
-    let mut image = Image::new(256, 256);
+    let side = image_manager_side(data.len(), 1)?;
+    let mut image = Image::new(side as u32, side as u32);
     for (i, &v) in data.iter().enumerate() {
-        image.set(i as u32 % 256, i as u32 / 256, u32::from(v) * 0x010101);
+        image.set(
+            (i % side) as u32,
+            (i / side) as u32,
+            u32::from(v) * 0x010101,
+        );
+    }
+    Ok(image)
+}
+
+/// Atari Image Manager `COL`: four square byte planes, the last three
+/// being red, green and blue (derived from sample files and `recoil2png`
+/// output).
+pub(super) fn decode_aim_col(data: &[u8]) -> Result<Image, DecodeError> {
+    let side = image_manager_side(data.len(), 4)?;
+    let n = side * side;
+    let mut image = Image::new(side as u32, side as u32);
+    for i in 0..n {
+        let color = u32::from_be_bytes([0, data[n + i], data[2 * n + i], data[3 * n + i]]);
+        image.set((i % side) as u32, (i / side) as u32, color);
     }
     Ok(image)
 }

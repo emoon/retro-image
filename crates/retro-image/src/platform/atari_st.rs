@@ -195,4 +195,9 @@ pub(super) static FORMATS: &[Format] = &[
     falcon("ICDRAW icon", &["ibi", "ib3"], falcon::decode_icdraw),
     st("Fullscreen Construction Kit", &["kid"], duo::decode_kid),
     st("D-GRAPH", &["p3c"], blend::decode_p3c),
+    st(
+        "Atari Image Manager (colour)",
+        &["col"],
+        simple::decode_aim_col,
+    ),
 ];
