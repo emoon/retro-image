@@ -57,6 +57,13 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Graphics 9 (G09)", &["g09"], screen::decode_g09),
     Format::new(ATARI8, "TXE", &["txe"], screen::decode_txe),
     Format::new(ATARI8, "Zoom 4", &["zm4"], screen::decode_zm4),
+    Format::new(ATARI8, "Texture Maker0", &["tx0"], screen::decode_tx0),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles window",
+        &["wnd"],
+        screen::decode_wnd,
+    ),
     Format::new(ATARI8, "Vidig Paint", &["rap"], screen::decode_rap),
     Format::new(ATARI8, "APAC 80x96", &["256", "ap2"], apac::decode_planar),
     Format::new(

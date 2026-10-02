@@ -8,6 +8,9 @@
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
 //! - TXE (96 doubled GR9 lines) and ZM4 (64x64 greys drawn 4x4): sizes
 //!   and layouts observed from `recoil2png` output.
+//! - TX0 (Just Solve "Texture Maker0": 16x16, 16 colours) and WND (Blazing
+//!   Paddles window, up to 160x192, 4 colours): header, layout, the hue
+//!   OR and the window colours observed from `recoil2png` output.
 //! - G09: sizes (7680, 15360) and the two screens side by side: observed
 //!   from `recoil2png` output.
 //! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710; COL =
@@ -199,6 +202,46 @@ pub(super) fn decode_txe(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_zm4(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 2048)?;
     Ok(bitmap(screen, 32, 4).render(4, 4, |_, value| rgb(value)))
+}
+
+/// Texture Maker0: 16x16 luminances (0-15), then the hue byte ORed into
+/// each, drawn 4x4.
+pub(super) fn decode_tx0(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 257)?;
+    let (pixels, &[hue]) = data.split_at(256) else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if pixels.iter().any(|&value| value > 15) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(16, 16);
+    for (i, &value) in pixels.iter().enumerate() {
+        image.set(i as u32 % 16, i as u32 / 16, rgb(hue | value));
+    }
+    Ok(image.scaled(4, 4))
+}
+
+/// Blazing Paddles window: width - 1 and height, then Graphics 15 lines
+/// of (width + 3) / 4 bytes, in a 3072-byte file.
+pub(super) fn decode_wnd(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = exactly(data, 3072)?;
+    let width = usize::from(data[0]) + 1;
+    let height = usize::from(data[1]);
+    let bytes_per_line = width.div_ceil(4);
+    let screen = data
+        .get(2..2 + bytes_per_line * height)
+        .filter(|_| height > 0)
+        .ok_or(DecodeError::Unrecognized)?;
+    let colors = [0x00, 0x46, 0x88, 0x0e];
+    let mut image = Image::new(width as u32, height as u32);
+    let bitmap = bitmap(screen, bytes_per_line, 2);
+    for y in 0..height {
+        for x in 0..width {
+            let color = register_rgb(colors[usize::from(bitmap.pixel(x, y))]);
+            image.set(x as u32, y as u32, color);
+        }
+    }
+    Ok(image.scaled(2, 1))
 }
 
 /// Graphics 10: screen, then the 9 registers 704-712.
@@ -427,6 +470,27 @@ mod tests {
         assert_eq!(decode_mic(&data, &Col(1000)).unwrap(), greys);
         let short = decode_mic(&data[..7680], &Col(1024)).unwrap();
         assert_eq!(short.get(2, 2), register_rgb(GREY_COLORS[0]));
+    }
+
+    #[test]
+    fn wnd_window_must_fit_the_file() {
+        let mut data = [0u8; 3072];
+        data[..2].copy_from_slice(&[0x59, 133]);
+        assert_eq!(decode_wnd(&data).unwrap().height(), 133);
+        data[1] = 134;
+        assert!(decode_wnd(&data).is_err());
+        data[1] = 0;
+        assert!(decode_wnd(&data).is_err());
+    }
+
+    #[test]
+    fn tx0_ors_hue_into_luminance() {
+        let mut data = [0u8; 257];
+        data[0] = 0x05;
+        data[256] = 0xa3;
+        assert_eq!(decode_tx0(&data).unwrap().get(3, 3), rgb(0xa7));
+        data[1] = 0x10;
+        assert!(decode_tx0(&data).is_err());
     }
 
     #[test]
