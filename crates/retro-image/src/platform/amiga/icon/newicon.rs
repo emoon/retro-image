@@ -101,24 +101,24 @@ fn unpack_line(
 ) -> Result<(), DecodeError> {
     let mut acc = 0;
     let mut len = 0;
-    let mut push = |bit: u32| {
-        acc = acc << 1 | bit;
-        len += 1;
-        if len == bits {
-            if out.len() < limit {
-                out.push(acc);
-            }
-            (acc, len) = (0, 0);
-        }
-    };
     for &c in line {
-        match c {
-            0x20..=0x6f | 0xa1..=0xd0 => {
-                let value = if c <= 0x6f { c - 0x20 } else { c - 0xa1 + 0x50 };
-                (0..7).rev().for_each(|i| push(u32::from(value >> i & 1)));
-            }
-            0xd1..=0xff => (0..7 * u32::from(c - 0xd0)).for_each(|_| push(0)),
+        // A value character holds 7 bits; a run character 1-47 times 7 zeros.
+        let (value, count) = match c {
+            0x20..=0x6f => (u32::from(c - 0x20), 7),
+            0xa1..=0xd0 => (u32::from(c - 0xa1 + 0x50), 7),
+            0xd1..=0xff => (0, 7 * u32::from(c - 0xd0)),
             _ => return Err(DecodeError::Unrecognized),
+        };
+        for i in (0..count).rev() {
+            if out.len() == limit {
+                return Ok(());
+            }
+            acc = acc << 1 | value.checked_shr(i).unwrap_or(0) & 1;
+            len += 1;
+            if len == bits {
+                out.push(acc);
+                (acc, len) = (0, 0);
+            }
         }
     }
     Ok(())
