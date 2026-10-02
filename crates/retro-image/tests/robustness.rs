@@ -3,8 +3,10 @@
 //! on stable with `cargo test`; deeper runs use `fuzz/` (cargo-fuzz).
 //!
 //! - Synthetic buffers go to every format (no corpus needed).
-//! - Corpus files (see `common/mod.rs`) go to every format whole, then truncated and mutated to the formats that
-//!   claim their extension.
+//! - Corpus files (see `common/mod.rs`) go to every format whole, then
+//!   truncated and mutated to the formats that claim their extension.
+//!
+//! Kept small so `cargo test` stays quick; cargo-fuzz does the deep search.
 
 mod common;
 
@@ -12,10 +14,10 @@ use std::panic::{self, AssertUnwindSafe};
 
 use retro_image::Format;
 
-const MUTATIONS_PER_FILE: usize = 64;
+const MUTATIONS_PER_FILE: usize = 32;
 /// Every prefix up to this length is tried; longer files are sampled.
-const ALL_PREFIXES_UP_TO: usize = 1024;
-const SAMPLED_PREFIXES: usize = 1024;
+const ALL_PREFIXES_UP_TO: usize = 256;
+const SAMPLED_PREFIXES: usize = 256;
 
 #[test]
 fn synthetic_inputs_do_not_panic() {
@@ -47,47 +49,62 @@ fn mutated_corpus_files_do_not_panic() {
     let Some(samples) = common::samples() else {
         return;
     };
-
-    let mut failures = Vec::new();
-    let mut rng = Rng(0x2545_f491_4f6c_dd1d);
-    for sample in &samples {
-        let name = &sample.id;
-        let Ok(data) = std::fs::read(&sample.path) else {
-            continue; // removed while the test ran (e.g. by a sample collector)
-        };
-        check(retro_image::formats(), &data, name, &mut failures);
-
-        let candidates: Vec<&Format> = retro_image::formats()
-            .filter(|f| f.matches_filename(&sample.name))
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+    let chunk_len = samples.len().div_ceil(threads).max(1);
+    let failures: Vec<String> = std::thread::scope(|scope| {
+        let workers: Vec<_> = samples
+            .chunks(chunk_len)
+            .map(|chunk| scope.spawn(|| chunk.iter().flat_map(check_sample).collect::<Vec<_>>()))
             .collect();
-        if candidates.is_empty() {
-            continue;
-        }
-        for len in prefix_lengths(data.len()) {
-            check(
-                candidates.iter().copied(),
-                &data[..len],
-                &format!("{name} truncated to {len}"),
-                &mut failures,
-            );
-        }
-        for i in 0..MUTATIONS_PER_FILE {
-            let mut mutated = data.clone();
-            if !mutated.is_empty() {
-                for _ in 0..=rng.below(8) {
-                    let pos = rng.below(mutated.len());
-                    mutated[pos] = rng.byte();
-                }
-            }
-            check(
-                candidates.iter().copied(),
-                &mutated,
-                &format!("{name} mutation {i}"),
-                &mut failures,
-            );
-        }
-    }
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
+    });
     report(failures);
+}
+
+/// Feeds one corpus file, whole, truncated and mutated, to the decoders.
+fn check_sample(sample: &common::Sample) -> Vec<String> {
+    let mut failures = Vec::new();
+    let name = &sample.id;
+    let Ok(data) = std::fs::read(&sample.path) else {
+        return failures; // removed while the test ran (e.g. by a sample collector)
+    };
+    check(retro_image::formats(), &data, name, &mut failures);
+
+    let candidates: Vec<&Format> = retro_image::formats()
+        .filter(|f| f.matches_filename(&sample.name))
+        .collect();
+    if candidates.is_empty() {
+        return failures;
+    }
+    for len in prefix_lengths(data.len()) {
+        check(
+            candidates.iter().copied(),
+            &data[..len],
+            &format!("{name} truncated to {len}"),
+            &mut failures,
+        );
+    }
+    // Seeded per file so results don't depend on thread scheduling.
+    let mut rng = Rng::seeded(name);
+    for i in 0..MUTATIONS_PER_FILE {
+        let mut mutated = data.clone();
+        if !mutated.is_empty() {
+            for _ in 0..=rng.below(8) {
+                let pos = rng.below(mutated.len());
+                mutated[pos] = rng.byte();
+            }
+        }
+        check(
+            candidates.iter().copied(),
+            &mutated,
+            &format!("{name} mutation {i}"),
+            &mut failures,
+        );
+    }
+    failures
 }
 
 fn prefix_lengths(len: usize) -> impl Iterator<Item = usize> {
@@ -136,6 +153,14 @@ fn report(failures: Vec<String>) {
 struct Rng(u64);
 
 impl Rng {
+    /// FNV-1a of `text`; never zero, which xorshift can't leave.
+    fn seeded(text: &str) -> Self {
+        let hash = text.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        });
+        Self(hash | 1)
+    }
+
     fn next(&mut self) -> u64 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
