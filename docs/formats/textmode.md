@@ -87,8 +87,11 @@ Amiga fonts. They fall back to the 8x16 CP437 font.
 
 `corpus/extra/textmode/sembiance/` (dexvert sample set, <https://sembiance.com/fileFormatSamples/image/>):
 32 ANS, 14 BIN, 10 XB, 12 ADF, 7 IDF, 9 TND, 11 PCB, 20 AVT. Not decoded: 4 BIN files without
-SAUCE (see BIN), `r5-XVOL1.BIN` (1280x15424, over the 16-megapixel limit every decoder here
-shares) and `DEMO1.AVT` (AVT/1).
+SAUCE (see BIN) and `DEMO1.AVT` (AVT/1).
+
+Pictures taller than 2^24 pixels (the limit every decoder here shares) are cropped to the top
+rows of cells that fit, at full width: `r5-XVOL1.BIN` (160x964 cells, 1280x15424) decodes as its
+first 819 rows. Widths over 2048 columns are rejected; up to that a row always fits.
 
 A false-positive check (throwaway script, 2026-10-02) fed 300 random buffers and 800 pieces of
 executables, libraries, gzip files and other-platform pictures (4000 bytes and up to 64 KiB) to
