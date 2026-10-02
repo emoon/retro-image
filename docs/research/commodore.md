@@ -374,7 +374,7 @@ gives a byte-to-pixel map without any decoder source.
   - Probed layouts not yet needed: the `$0F00-$12FF` area (code in `.mui`, zero in `.mup`)
     does not affect pixels.
 
-### Wave 6: NUFLI packed
+## Wave 6: NUFLI packed
 
 **NUFLI Editor (compressed) (`.nup`): done.** The 5 corpus samples match `recoil2png`, and so
 do the other 8 `.nup` files on the same two disks (13 in all, every `.NUP` in the CSDb dump).
@@ -393,3 +393,10 @@ do the other 8 `.nup` files on the same two disks (13 in all, every `.NUP` in th
   a stream one literal short with the start left zero. We are stricter: the stream has to fill
   the memory exactly, with no bytes left over and no run crossing the start
   (`backward_rle_filled`). Every real file passes, and random `.nup` files stay out.
+
+## Wave 6: FLI Editor and HCB
+
+Both reverse engineered with `recoil2png` as a black box; every corpus sample matches pixel for pixel, no divergences recorded.
+
+- **FLI Editor (`.fed`, 4 samples).** 17665 bytes, load `$3B00`: this is exactly the FLI Graph memory map (per-line background table at `$3B00`, colour RAM `$3C00`, eight screen RAMs from `$4000`, bitmap `$6000`), 296x200 with the three FLI-bug columns cut. It reuses the FLI Graph renderer and accepts only that size. Ten more 17665-byte FLI pictures (Morbid Art 3 and LCPpic disks, copied as `.fed`) also match `recoil2png`.
+- **HCB-editor (`.hcb`, 2 samples).** 12148 bytes, load `$5000`, found by flipping bytes and by writing single bytes into a synthetic file with a fixed bitmap. Two screen RAMs at `$5800` (lines 0-3 of each character row) and `$5C00` (lines 4-7), multicolour bitmap at `$6000`, then 50 background colours at `$7F40`, one per four lines. Pair `01` is the screen high nibble, `10` and `11` both its low nibble; there is no colour RAM. `$5000-$57FF` (non-zero in the samples) changes nothing; no other bytes exist. The picture is 296x200 (left 24 pixels cut). The name probably means "half colour bitmap" (colour changes every 4 lines). Only 2 samples; `recoil2png` accepts only 12148 bytes.

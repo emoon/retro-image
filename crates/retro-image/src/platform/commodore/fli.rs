@@ -333,3 +333,12 @@ fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
     }
     Ok(with_header(out))
 }
+
+/// FLI Editor: FLI Graph memory map with a fixed 17665-byte size
+/// (reverse engineered from samples, compared against `recoil2png`).
+pub(super) fn decode_fed(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 17665 {
+        return Err(DecodeError::Unrecognized);
+    }
+    FLI_GRAPH.decode(data)
+}
