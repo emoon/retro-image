@@ -11,8 +11,8 @@ mod vdp;
 use screen::{Bitmap, Tiled};
 pub(super) use vdp::{level5, yjk_group};
 
-use super::nec_pc::maki::{self, Machine};
 use super::nec_pc::pi;
+use super::nec_pc::{Machine, maki};
 use crate::Format;
 
 pub(super) static FORMATS: &[Format] = &[
@@ -80,6 +80,9 @@ pub(super) static FORMATS: &[Format] = &[
         maki::decode_mki(d, Machine::Msx)
     }),
     Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
+    Format::new("MSX2", "PIC", &["pic"], |d| {
+        super::sharp_x68000::pic::decode_pic(d, Machine::Msx)
+    }),
     Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode),
     Format::new(
         "MSX2",

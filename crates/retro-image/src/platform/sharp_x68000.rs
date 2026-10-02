@@ -1,10 +1,14 @@
 //! Sharp X68000.
 //!
 //! Maki-chan and Pi pictures saved on the X68000 are decoded by the shared
-//! modules `nec_pc::maki` and `nec_pc::pi`, which list their sources.
+//! modules `nec_pc::maki` and `nec_pc::pi`; PIC, whose home is the X68000, is
+//! decoded here and shared with the FM Towns, PC-88 VA and MSX modules. Each
+//! module lists its sources.
 
-use super::nec_pc::maki::{self, Machine};
+pub(super) mod pic;
+
 use super::nec_pc::pi;
+use super::nec_pc::{Machine, maki};
 use crate::Format;
 
 pub(super) static FORMATS: &[Format] = &[
@@ -19,5 +23,8 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new("Sharp X68000", "Pi", &["pi"], |d| {
         pi::decode_pi(d, Machine::X68000)
+    }),
+    Format::new("Sharp X68000", "PIC", &["pic"], |d| {
+        pic::decode_pic(d, Machine::X68000)
     }),
 ];

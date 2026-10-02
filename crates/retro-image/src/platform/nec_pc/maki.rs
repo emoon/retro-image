@@ -23,19 +23,9 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use super::Machine;
 use super::precision::Precision;
 use crate::{DecodeError, Image};
-
-/// Computer a Maki-chan picture was saved on, as far as decoding is concerned.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(in crate::platform) enum Machine {
-    Msx,
-    Pc80,
-    Pc88,
-    Pc88Va,
-    Pc98,
-    X68000,
-}
 
 /// Largest picture accepted, in output pixels.
 const MAX_PIXELS: usize = 1 << 24;

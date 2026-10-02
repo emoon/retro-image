@@ -7,9 +7,20 @@ pub(super) mod maki;
 pub(super) mod pi;
 mod precision;
 
-use maki::Machine;
-
 use crate::Format;
+
+/// Computer a Japanese cross-platform picture (MAG, MKI, Pi, PIC) was saved
+/// on; each platform module registers the formats for its own machines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Machine {
+    Msx,
+    Pc80,
+    Pc88,
+    Pc88Va,
+    Pc98,
+    X68000,
+    FmTowns,
+}
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NEC PC-80", "Maki-chan Graphics", &["mag"], |d| {
@@ -35,5 +46,8 @@ pub(super) static FORMATS: &[Format] = &[
     }),
     Format::new("NEC PC-98", "Pi", &["pi"], |d| {
         pi::decode_pi(d, Machine::Pc98)
+    }),
+    Format::new("NEC PC-88 VA", "PIC", &["pic"], |d| {
+        super::sharp_x68000::pic::decode_pic(d, Machine::Pc88Va)
     }),
 ];

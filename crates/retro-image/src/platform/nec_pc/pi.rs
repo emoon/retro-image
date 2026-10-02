@@ -16,7 +16,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::maki::Machine;
+use super::Machine;
 use super::precision::Precision;
 use crate::{DecodeError, Image};
 
