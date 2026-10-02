@@ -112,7 +112,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | FWA | Fun with Art | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Fun_with_Art), [ANTIC: Rapid Graphics Converter](https://www.atarimagazines.com/v4n7/rapidgraphicsconverter.html) | "Slightly longer than 62 sectors" = GR15 screen plus per-line colours (DLI). 160x192, 128 colours. |
 | G10 | Graphics 10 | Partial | [Just Solve GR*](http://fileformats.archiveteam.org/wiki/GR*), [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | 7689 bytes = 7680 + 9 colour registers (704-712). Up to 80x240. |
 | G11 | Graphics 11 | Hardware-only | [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | Raw GTIA mode 11 dump. Up to 80x240. Height from size/40. |
-| G2F | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html), [G2F site](http://g2f.atari8.info/) | Starts with `G2FZLIB` (zlib container). The components (FNT/SCR/TAB/COL/PMG) are documented, but the container layout is not. Up to 336x240. |
+| G2F | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html), [G2F site](http://g2f.atari8.info/) | Starts with `G2FZLIB` (zlib container). The components (FNT/SCR/TAB/COL/PMG) are documented, but the container layout is not (reverse engineered, see section 8). Up to 336x240. |
 | G9S, SFD | Graphics 9 (SFDN compressed) | Partial | [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | GR9 data is documented. The SFDN packer is not. |
 | GED | GED | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/GED) | 11302 bytes, starts `FF FF` (DOS binary-load header). 160x200, 128 colours (per-line colours). |
 | GHG | Gephard Hires Graphics | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Gephard_Hires_Graphics) | Up to 320x200 mono. |
@@ -329,7 +329,7 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
 - **Content detection** (`.signature()`): INT95a, TIP, NLQ, PGC. Not Koala (Rambrandt
   RM0-RM4 files start with a Koala header) and not JGP (a generic binary-load header).
 - **SFDN**: solved in wave 3 (section 8).
-- **Not attempted**: G2F/MCH/VSC (the G2F container is undocumented and needs raster
+- **Not attempted** (see section 8 for wave 3): G2F/MCH/VSC (the G2F container is undocumented and needs raster
   and PMG emulation), SHC (the colour map is a list of mid-line register writes),
   Blazing Paddles CHR (proportional glyphs behind a pointer table), RastaConverter
   (no samples).
@@ -350,7 +350,7 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   bitstream to the last byte and matches RECOIL. We also take G9S/SFD that unpack to
   7684 bytes (the MGV12 disk's GIRL1/GIRL2; RECOIL rejects them). No `.signature()`:
   the header doesn't say which picture format is inside (7680 bytes is GR9 or PLS).
-- **MCH** (Graph2Font), `atari8/graph2font.rs` with the GTIA logic in `atari8/gtia.rs`.
+- **MCH** (Graph2Font), `atari8/graph2font/mch.rs`; renderer in `atari8/graph2font.rs`, GTIA logic in `atari8/gtia.rs`.
   Exactly 30833 bytes (40 columns) or 32993 (48). 30 rows of 9-byte cells (code byte,
   then the 8 bytes shown), then 20 per-scanline tables of 240 bytes (COLBK, COLPF0-3,
   COLPM0-3, HPOSP0-3, HPOSM0-3, SIZEP0-3 packed, SIZEM, PRIOR), GRAFM per scanline,
@@ -364,3 +364,23 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   `recoil2png`. Mode 07 (RastaConverter conversions made with G2F's `rc2mch`) is
   rejected by RECOIL; it probably uses the ignored region for mid-line register
   changes, and is not decoded.
+- **G2F** (Graph2Font), `atari8/graph2font/g2f.rs`, with a clean-room zlib/DEFLATE
+  decoder written from RFC 1950/1951 in `atari8/inflate.rs` (nothing else in the crate
+  needs it yet; it can move to `codec` if something does). `G2FZLIB`, then a zlib
+  stream of the editor's memory (160-330 KB inflated). Susanne's G2F and MCH render
+  identically in RECOIL, so the MCH tables could be located inside the G2F; the rest
+  came from probing RECOIL with modified, recompressed files. The full layout is in
+  the module doc. Highlights: width and font count in the header, screen codes, the
+  fonts, one font per row, 256-byte colour tables, 512-byte per-object (X, size)
+  tables for P0, M0, P1, M1, ... whose size-byte flags give each scanline's PRIOR
+  (player 0's flags pick 4/2/1/8/0; player 1's give the fifth player and multicolour
+  bits), player memory with missile graphics in the top bits of its second half, and
+  at fixed offsets after that: options (split inverse, ANTIC 4 inverse colour), 30
+  row modes (ANTIC 2, ANTIC 4, GTIA 9/10/11 picked by header byte 1, blank), a VBXE
+  flag and the bottom-half inverse map. RECOIL reads nothing else in the 140-300 KB
+  that follow. All 13 corpus samples without VBXE attributes match, and 100 random
+  synthetic G2F files render identically.
+- **Not done**: G2F with VBXE colour attributes (flag at end+146753 = 1: athena,
+  sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
+  from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
+  by extension, can't fetch).
