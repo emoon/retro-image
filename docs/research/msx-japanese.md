@@ -517,3 +517,54 @@ Machine instead. They add little layout information:
   *recollections vol.3* collection and the SMC-NETWORKS Toyohashi node CG library. The page also
   says ML1, like MAG, came from the PC-communications (BBS) world, so a Japanese ML1
   description may exist in BBS-era archives.
+
+## Wave 5: Japanese
+
+NEC PC-98 / PC-88 formats that had samples but no decoder. All four decoders below were found by
+black-box probing of `recoil2png` (mutated and synthesised copies kept outside the corpus) and are
+pixel-identical to it on every sample. No RECOIL or GPL source was read. The only prose read was
+emk's ZIM page (no layout in it, its script was not read) and Toda Takashi's ArtMaster page (no
+layout either, only that the palette is HSV).
+
+- **ZIM** (`nec_pc/zim.rs`, signature `FORMAT-A`, 1 sample): 640x400, 16 colours. Palette of 4-byte
+  entries (blue, red, green, unused; full 8-bit values) at 0x218, a skipped table (count at 0x258),
+  then one block per line: width 640, x 0, y, size, 320, and `size - 2` bytes. A packed line is a
+  3-level bitmap tree (1 byte, then up to 8 bytes, then up to 64 leaf bytes) saying which of 320 delta
+  bytes are literals. Deltas are cumulatively XORed with the byte 4 before, then each byte is XORed
+  with the one before it, over the whole 320-byte line; the result is the 4 bit planes (80 bytes each,
+  plane 3 first). Not understood: 0x216 (zero draws a black picture in RECOIL, so we refuse it), the
+  skipped table's contents, the rest of the text header, widths other than 640. RECOIL pads missing
+  lines and takes the height from 0x206; we require all blocks.
+- **EBD** (`nec_pc/ebd.rs`, 1 sample): 16 x (R, G, B) nibbles (x17; > 15 is rejected), then four
+  whole-picture bit planes (plane 0 first, MSB first). 640 wide, height from the file size (any
+  multiple of 320 bytes after the 48-byte palette). Not content-detected.
+- **ArtMaster88 IMG** (`nec_pc/artmaster88.rs`, signature `SS_SIF    0.00`, 1 sample): the file is
+  `_REMSM4.IMG`. `"I"` at 0x10, `"BBRG"` at 0x12 (other letters select other modes that were not
+  decoded: the picture changes), 640 and 200 at 0x18/0x1A. At 0x28 two records that each begin with
+  their own length; the pixel data starts after the second. Three RLE bit planes, blue, red, green
+  (`XX XX n`: n copies, 0 = 256), drawn at 640x400 by doubling lines. The two records (brush/pattern
+  tables and the HSV palette) don't change the picture in RECOIL. Bytes after the green plane are
+  ignored.
+- **DaVinci IMG** (`nec_pc/davinci.rs`, no magic, 1 sample): `REMSM3.IMG`, which RECOIL names DaVinci.
+  A stream of control bytes: bit 7 set repeats the next (blue, red, green) byte triple `c & 0x7f` times,
+  otherwise `c` triples follow; 80 x 200 triples, then exactly 35 trailing bytes whose content RECOIL
+  ignores (any other tail length is rejected). Because it has no signature it is only tried for
+  `.img` and demands the exact stream length, so GEM IMG and other `.img` files are not claimed
+  (checked with the full oracle).
+
+### Q4 / XLD4: skipped
+
+Header notes from wave 3 still hold (`MAJYO` at 11, size at 8). New this wave:
+
+- RECOIL refuses a truncated file unless most of the stream is present: with the size field patched,
+  files cut below 54451 bytes of 58352 are rejected, and from there the picture is correct up to
+  about row 374, so the pixels come in raster order (about 14.5 bytes a line).
+- Replacing everything after 0x19, 0x31 or 0x40 with 0x00, 0xFF or 0x55 is rejected, so the decoder
+  validates its input (probably that the stream ends exactly).
+- A flipped bit in the pixel stream changes pixels only for a bounded span of lines after it (about
+  40 to 75 lines, e.g. a flip at 0x1000 changes lines 33-74, one at 0x8000 lines 227-299), not the
+  rest of the picture. Flips in 0x1c-0x38 recolour or scramble the whole picture, so the packed
+  palette part is not fixed width: single flips at 0x20 and 0x31 change only 4 and 40 pixels.
+- Nothing about the entropy model (Huffman, arithmetic or LZ) has been found. A next attempt could
+  start from the other 8 samples in `corpus/extra/msx-japanese/kawaii-dake-na-no/` (same header,
+  different sizes) and from synthetic streams, once the stream end rule is known.
