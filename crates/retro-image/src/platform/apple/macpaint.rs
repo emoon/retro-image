@@ -8,7 +8,7 @@
 //! - Optional 128-byte MacBinary header (name length at +1, file type at
 //!   +65): MacBinary specification, recognised by type `PNTG`.
 
-use crate::platform::amiga::unpack_byte_run1;
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 const WIDTH: usize = 576;
@@ -26,7 +26,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() <= HEADER_LEN || data[..3] != [0, 0, 0] || data[3] > 3 {
         return Err(DecodeError::Unrecognized);
     }
-    let (bitmap, _) = unpack_byte_run1(&data[HEADER_LEN..], WIDTH / 8 * HEIGHT)
+    let (bitmap, _) = packbits::unpack(&data[HEADER_LEN..], WIDTH / 8 * HEIGHT)
         .ok_or(DecodeError::Unrecognized)?;
     Ok(super::mono_image(&bitmap, WIDTH, HEIGHT, true))
 }

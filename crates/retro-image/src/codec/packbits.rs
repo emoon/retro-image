@@ -1,4 +1,4 @@
-//! ByteRun1, also known as Apple PackBits.
+//! PackBits (Apple), also known as ByteRun1 (Amiga IFF).
 //!
 //! Source: ILBM spec, Appendix C/D
 //! (<https://wiki.amigaos.net/wiki/ILBM_IFF_Interleaved_Bitmap>).

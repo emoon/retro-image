@@ -12,6 +12,7 @@
 
 extern crate alloc;
 
+mod codec;
 mod error;
 mod format;
 mod image;

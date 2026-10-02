@@ -16,7 +16,8 @@ use alloc::vec::Vec;
 
 use super::iff::{be16, be32, find};
 use super::multi_palette::LinePalettes;
-use super::{byte_run1, vdat};
+use super::vdat;
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 const CAMG_LACE: u32 = 0x4;
@@ -186,7 +187,7 @@ fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, Deco
             .get(..len)
             .map(<[u8]>::to_vec)
             .ok_or(DecodeError::Unrecognized),
-        1 => byte_run1::unpack(body, len)
+        1 => packbits::unpack(body, len)
             .map(|(out, _)| out)
             .ok_or(DecodeError::Unrecognized),
         _ => Err(DecodeError::Unrecognized),
@@ -318,25 +319,5 @@ fn scale(image: Image, camg: u32) -> Image {
         (false, true) => image.scaled(2, 1),
         (true, false) => image.scaled(1, 2),
         _ => image,
-    }
-}
-
-trait Scale {
-    fn scaled(&self, sx: u32, sy: u32) -> Image;
-}
-
-impl Scale for Image {
-    fn scaled(&self, sx: u32, sy: u32) -> Image {
-        let mut out = Image::new(self.width() * sx, self.height() * sy);
-        let rgb = self.rgb();
-        for y in 0..out.height() {
-            for x in 0..out.width() {
-                let i = ((y / sy * self.width() + x / sx) * 3) as usize;
-                let color =
-                    u32::from(rgb[i]) << 16 | u32::from(rgb[i + 1]) << 8 | u32::from(rgb[i + 2]);
-                out.set(x, y, color);
-            }
-        }
-        out
     }
 }

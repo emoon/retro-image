@@ -221,12 +221,7 @@ pub(super) fn mix(a: u32, b: u32) -> u32 {
 
 /// Mixes two images of the same size, see [`mix`].
 pub(super) fn mix_images(a: &Image, b: &Image) -> Image {
-    let mut image = Image::new(a.width(), a.height());
-    for i in 0..(a.width() * a.height()) as usize {
-        let (x, y) = (i as u32 % a.width(), i as u32 / a.width());
-        image.set(x, y, mix(pixel(a, i), pixel(b, i)));
-    }
-    image
+    Image::blend(&[a, b])
 }
 
 /// Doubles every pixel horizontally.
