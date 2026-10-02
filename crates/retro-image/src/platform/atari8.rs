@@ -19,6 +19,7 @@ mod koala;
 mod mad_studio;
 mod palette;
 mod portfolio;
+mod rambrandt;
 mod rip;
 mod rom_font;
 mod screen;
@@ -266,4 +267,11 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
     Format::new(ATARI8, "Rocky Interlace Picture", &["rip"], rip::decode_rip),
+    Format::new(ATARI8, "Rambrandt GTIA 10", &["rm2"], rambrandt::decode_rm2),
+    Format::new(
+        ATARI8,
+        "Rambrandt Graphics 15",
+        &["rm4"],
+        rambrandt::decode_rm4,
+    ),
 ];

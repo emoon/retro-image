@@ -278,7 +278,7 @@ mod tests {
         // Lengths 1, 2, 3, 3: codes 0, 10, 110, 111.
         let code = Code::new([1u8, 2, 3, 3].into_iter());
         let mut bits = Bits {
-            data: &[0b0_10_110_11, 0b1000_0000],
+            data: &[0b0101_1011, 0b1000_0000],
             position: 0,
         };
         let symbols: Vec<u16> = (0..4).filter_map(|_| code.read(&mut bits)).collect();

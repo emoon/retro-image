@@ -258,6 +258,18 @@ mod tests {
     }
 
     #[test]
+    fn cci_unpacks_literals_and_runs() {
+        assert_eq!(
+            unpack(&[0x01, 0xaa, 0xbb, 0x82, 0x55], 5).unwrap(),
+            [0xaa, 0xbb, 0x55, 0x55, 0x55]
+        );
+        // Extra bytes of the last run are dropped; missing ones are an error.
+        assert_eq!(unpack(&[0x85, 0x01], 2).unwrap(), [1, 1]);
+        assert!(unpack(&[0x02, 0x01], 3).is_err());
+        assert!(decode_cci(b"CIN 1.2 ").is_err());
+    }
+
+    #[test]
     fn bgp_needs_plane_size() {
         let mut data = b"BUGBITER_APAC239I_PICTURE_V1.0\xff\x50\xef\0\0\0\0\x02\0hi".to_vec();
         data.extend_from_slice(&[0x58, 0x25]);
