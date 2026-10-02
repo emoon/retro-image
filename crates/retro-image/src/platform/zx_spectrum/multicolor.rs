@@ -74,7 +74,7 @@ const MG1_OUTER_LEN: usize = HEIGHT / 8 * 16;
 /// MultiArtist (`MGH` header): two bitmaps and two attribute sets shown as
 /// gigascreen. The header's mode byte gives the attribute cell height.
 pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeError> {
-    let header_ok = data.len() >= MGH_HEADER_LEN
+    let header_ok = data.len() >= MGH_BITMAPS
         && data.starts_with(b"MGH")
         && data[3] == 1
         && data[4] == cell_height;
