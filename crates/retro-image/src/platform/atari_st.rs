@@ -228,6 +228,8 @@ pub(super) static FORMATS: &[Format] = &[
     st("ColorSTar object", &["obj"], mono::decode_obj),
     st("Grafix", &["grx"], grafix::decode_grx).signature(),
     st("Imagic", &["ic1", "ic2", "ic3"], imagic::decode_ic).signature(),
+    // Wave 5: Amiga and misc
+    falcon("TrueColor IMG", &["timg"], gem_img::decode_img),
 ];
 
 #[cfg(test)]
