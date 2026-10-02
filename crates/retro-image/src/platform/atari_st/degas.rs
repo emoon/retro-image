@@ -19,6 +19,10 @@ const ELITE_LEN: usize = HEADER_LEN + SCREEN_LEN + 32;
 
 /// Uncompressed DEGAS: resolution word, 16 palette words, screen.
 pub(super) fn decode_pi(data: &[u8]) -> Result<Image, DecodeError> {
+    // Compressed DEGAS Elite pictures are sometimes saved as `PI?`.
+    if be16(data, 0).is_some_and(|word| word & 0x8000 != 0) {
+        return decode_pc(data);
+    }
     let resolution = be16(data, 0)
         .and_then(Resolution::from_index)
         .ok_or(DecodeError::Unrecognized)?;
