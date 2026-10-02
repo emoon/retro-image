@@ -1,6 +1,7 @@
 //! Monochrome formats: Public Painter (`CMP`), STAD (`PAC`), MegaPaint
-//! (`BLD`), DEGAS Elite fonts (`FNT`) and brushes (`BRU`), and Calamus
-//! Raster Graphic (`CRG`).
+//! (`BLD`), DEGAS Elite fonts (`FNT`), brushes (`BRU`) and icons (`ICN`),
+//! Picworks (`CP3`), ColorSTar objects (`OBJ`) and Calamus Raster Graphic
+//! (`CRG`). Further sources are given per decoder.
 //!
 //! Sources:
 //! - STAD: <https://temlib.org/AtariForumWiki/index.php/STAD_file_format>
@@ -251,6 +252,22 @@ fn parse_hex(token: &str) -> Option<usize> {
     usize::from_str_radix(digits, 16)
         .ok()
         .filter(|&v| v <= 0xffff)
+}
+
+/// ColorSTar / MonoSTar object (monochrome only): width - 1, height - 1,
+/// plane count (1), then word-aligned rows. Derived from sample files and
+/// `recoil2png` output (the survey found no documentation).
+pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
+    let word = |i: usize| super::common::be16(data, i).map(usize::from);
+    let (width, height, planes) = match (word(0), word(2), word(4)) {
+        (Some(w), Some(h), Some(p)) => (w + 1, h + 1, p),
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    let row_len = width.div_ceil(16) * 2;
+    if planes != 1 || data.len() != 6 + row_len * height {
+        return Err(DecodeError::Unrecognized);
+    }
+    mono_image(&data[6..], width as u32, height as u32, row_len).ok_or(DecodeError::Unrecognized)
 }
 
 /// Calamus Raster Graphic: 42-byte header, byte RLE.
