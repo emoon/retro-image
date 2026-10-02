@@ -1,0 +1,23 @@
+[package]
+name = "retro-image-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+retro-image = { path = "../crates/retro-image" }
+
+# Separate workspace: needs nightly, kept out of the main build.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "decode"
+path = "fuzz_targets/decode.rs"
+test = false
+doc = false
+bench = false

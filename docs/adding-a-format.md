@@ -18,6 +18,11 @@
 5. Run the oracle against RECOIL:
    `RETRO_IMAGE_PLATFORMS="Atari ST" cargo test -p retro-image --test oracle -- --nocapture`
 6. `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo test --workspace`.
+   `cargo test` includes `tests/robustness.rs`, which feeds truncated and mutated
+   corpus files to your decoder and fails on any panic.
+7. For new decoders with packers or variable-length headers, also fuzz for a few minutes:
+   `cargo +nightly fuzz run decode fuzz/corpus/decode corpus -- -max_total_time=300`
+   (see [fuzz/README.md](../fuzz/README.md)).
 
 Not supported yet: formats that need several files (e.g. `MIC+COL`). They need an API for
 companion files, which hasn't been designed.
