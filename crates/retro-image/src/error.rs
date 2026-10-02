@@ -2,8 +2,8 @@ use core::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecodeError {
-    /// No supported format uses the file's extension.
-    UnknownExtension,
+    /// No format uses the file's extension, and none recognised its content.
+    UnknownFormat,
     /// Formats with this extension exist, but none accepted the data.
     Unrecognized,
 }
@@ -11,7 +11,7 @@ pub enum DecodeError {
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownExtension => f.write_str("unknown file extension"),
+            Self::UnknownFormat => f.write_str("unknown file format"),
             Self::Unrecognized => f.write_str("data does not match any format for this extension"),
         }
     }

@@ -18,19 +18,32 @@ mod image;
 mod platform;
 
 pub use error::DecodeError;
-pub use format::{Format, formats};
+pub use format::{Companions, Format, NoCompanions, candidates, formats};
 pub use image::Image;
 
-/// Decodes `data`, choosing the format from the extension of `filename`.
-///
-/// Several formats can share an extension; each candidate is tried in turn
-/// and the first one that accepts the data wins.
+/// Decodes `data` on its own. See [`decode_with`].
 pub fn decode(filename: &str, data: &[u8]) -> Result<Image, DecodeError> {
-    let mut candidates = format::by_filename(filename).peekable();
-    if candidates.peek().is_none() {
-        return Err(DecodeError::UnknownExtension);
-    }
-    candidates
-        .find_map(|format| format.decode(data).ok())
-        .ok_or(DecodeError::Unrecognized)
+    decode_with(filename, data, &NoCompanions)
+}
+
+/// Decodes `data`, choosing the format from `filename` and the content.
+///
+/// The formats from [`candidates`] are tried in turn (extension matches
+/// first, then formats recognised by signature) and the first one that
+/// accepts the data wins. Formats that use companion files read them from
+/// `companions`.
+pub fn decode_with(
+    filename: &str,
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
+    candidates(filename)
+        .find_map(|format| format.decode_with(data, companions).ok())
+        .ok_or_else(|| {
+            if formats().any(|f| f.matches_filename(filename)) {
+                DecodeError::Unrecognized
+            } else {
+                DecodeError::UnknownFormat
+            }
+        })
 }

@@ -4,6 +4,9 @@
 //! searched recursively: RECOIL's sample set at the top level, collected
 //! samples under `extra/<platform group>/`.
 
+// Each test binary uses a different subset of these helpers.
+#![allow(dead_code)]
+
 use std::path::{Path, PathBuf};
 
 pub struct Sample {
@@ -12,6 +15,45 @@ pub struct Sample {
     pub id: String,
     /// File name only; decoders choose formats by its extension.
     pub name: String,
+}
+
+impl Sample {
+    /// Other files in the same directory with the same name before the
+    /// extension (case-insensitive): candidates for companion files.
+    pub fn siblings(&self) -> Vec<PathBuf> {
+        let Some(stem) = self.path.file_stem().and_then(|s| s.to_str()) else {
+            return Vec::new();
+        };
+        let Ok(entries) = std::fs::read_dir(self.path.parent().unwrap()) else {
+            return Vec::new();
+        };
+        let mut siblings: Vec<PathBuf> = entries
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+            .filter(|p| p.is_file() && *p != self.path)
+            .filter(|p| {
+                p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| s.eq_ignore_ascii_case(stem))
+            })
+            .collect();
+        siblings.sort();
+        siblings
+    }
+}
+
+/// Companion files taken from a list of sibling paths.
+pub struct SiblingFiles<'a>(pub &'a [PathBuf]);
+
+impl retro_image::Companions for SiblingFiles<'_> {
+    fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        let path = self.0.iter().find(|p| {
+            p.extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case(extension))
+        })?;
+        std::fs::read(path).ok()
+    }
 }
 
 /// All corpus files, sorted by `id`, or `None` if there is no corpus.

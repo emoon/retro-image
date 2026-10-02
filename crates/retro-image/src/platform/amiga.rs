@@ -18,12 +18,14 @@ use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Interleaved Bitmap", &["lbm", "ilbm"], decode_iff),
+    // Content detection for every IFF picture: `FORM` + a known kind.
     Format::new(
         "Amiga",
         "Interchange File Format",
         &["iff", "256"],
         decode_iff,
-    ),
+    )
+    .signature(),
     Format::new("Amiga", "Amiga Continuous Bitmap", &["acbm"], decode_iff),
     Format::new("Amiga", "Hold-And-Modify 6", &["ham", "ham6"], decode_iff),
     Format::new("Amiga", "Hold-And-Modify 8", &["ham8"], decode_iff),

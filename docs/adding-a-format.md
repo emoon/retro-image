@@ -11,6 +11,16 @@
      wrong sizes or truncated data. Never panic on bad input: check lengths before indexing.
    - Several formats share extensions. Validate size or magic bytes tightly so a decoder
      doesn't claim another format's files.
+   - If the decoder checks a reliable signature (magic bytes, or a header validated so
+     strictly that random data can't pass), chain `.signature()` on the `Format`. It is
+     then also tried for files with other or no extensions (content detection). Never
+     mark headerless memory dumps or formats recognised only by size.
+   - Formats with companion files (e.g. `MIC`+`COL`, `SCR`+`PAL`) register with
+     `Format::with_companions` and get a `&dyn Companions` to fetch siblings by
+     extension. The main file must still decode alone where the format allows (e.g.
+     with a default palette): callers such as sandboxed thumbnailers only have one file.
+     The oracle checks both: the file alone, and with its siblings against RECOIL
+     given the same files (`<id> +companions` in divergence files).
    - Platform names (`Format::platform`) follow RECOIL's format list, e.g. `"Atari ST"`,
      `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
 3. Start the module doc comment with the sources the layout came from.

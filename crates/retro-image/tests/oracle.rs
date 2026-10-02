@@ -19,7 +19,7 @@
 mod common;
 
 use std::collections::HashMap;
-use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -38,51 +38,131 @@ fn matches_recoil_on_corpus() {
     }
     let platforms = PlatformFilter::from_env();
     let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle-single-file");
-    std::fs::create_dir_all(cache.join("isolated")).unwrap();
+    std::fs::create_dir_all(&cache).unwrap();
+    let mut oracle = Oracle {
+        recoil,
+        cache,
+        divergences: load_divergences(),
+        matched: 0,
+        diverged: 0,
+        failures: Vec::new(),
+    };
 
-    let divergences = load_divergences();
-    let mut matched = 0;
-    let mut diverged = 0;
-    let mut failures = Vec::new();
     for sample in &samples {
-        let id = &sample.id;
         let Ok(data) = std::fs::read(&sample.path) else {
             continue; // removed while the test ran (e.g. by a sample collector)
         };
-        let Some(ours) = retro_image::formats()
-            .filter(|f| f.matches_filename(&sample.name) && platforms.selects(f.platform))
-            .find_map(|f| f.decode(&data).ok())
+        // Same order as `retro_image::decode`: extension, then signature.
+        let Some((format, ours)) = retro_image::candidates(&sample.name)
+            .filter(|f| platforms.selects(f.platform))
+            .find_map(|f| f.decode(&data).ok().map(|image| (f, image)))
         else {
             continue; // not supported yet
         };
-        let fingerprint = fingerprint(&ours);
-        if let Some(expected) = divergences.get(id.as_str()) {
-            if fingerprint == *expected {
-                diverged += 1;
-            } else {
-                failures.push(format!(
-                    "{id}: differs from recorded divergence {expected} (ours: {fingerprint})"
-                ));
+        oracle.check(&sample.id, &ours, &[sample.path.as_path()]);
+
+        // Formats with companion files are also checked with them present,
+        // against RECOIL given the same files.
+        let siblings = sample.siblings();
+        if format.uses_companions() && !siblings.is_empty() {
+            let companions = common::SiblingFiles(&siblings);
+            let id = format!("{} +companions", sample.id);
+            match format.decode_with(&data, &companions) {
+                Ok(ours) => {
+                    let mut inputs = vec![sample.path.as_path()];
+                    inputs.extend(siblings.iter().map(PathBuf::as_path));
+                    oracle.check(&id, &ours, &inputs);
+                }
+                Err(_) => oracle
+                    .failures
+                    .push(format!("{id}: rejected with companions")),
             }
-            continue;
-        }
-        let Some(reference_path) = reference_png(&recoil, sample, &cache) else {
-            failures.push(format!(
-                "{id}: we decode it but recoil2png rejects it (ours: {fingerprint})"
-            ));
-            continue;
-        };
-        match compare(&ours, &read_png(&reference_path)) {
-            Ok(()) => matched += 1,
-            Err(why) => failures.push(format!("{id}: {why} (ours: {fingerprint})")),
         }
     }
     eprintln!(
-        "oracle: {matched} matched, {diverged} recorded divergences, {} failed, {} corpus files",
-        failures.len(),
+        "oracle: {} matched, {} recorded divergences, {} failed, {} corpus files",
+        oracle.matched,
+        oracle.diverged,
+        oracle.failures.len(),
         samples.len()
     );
-    assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
+    assert!(
+        oracle.failures.is_empty(),
+        "mismatches:\n{}",
+        oracle.failures.join("\n")
+    );
+}
+
+struct Oracle {
+    recoil: OsString,
+    cache: PathBuf,
+    divergences: HashMap<String, String>,
+    matched: usize,
+    diverged: usize,
+    failures: Vec<String>,
+}
+
+impl Oracle {
+    /// Checks our decode of `inputs` (main file first, then companions)
+    /// against the recorded divergence for `id`, or else against RECOIL.
+    fn check(&mut self, id: &str, ours: &retro_image::Image, inputs: &[&Path]) {
+        let fingerprint = fingerprint(ours);
+        if let Some(expected) = self.divergences.get(id) {
+            if fingerprint == *expected {
+                self.diverged += 1;
+            } else {
+                self.failures.push(format!(
+                    "{id}: differs from recorded divergence {expected} (ours: {fingerprint})"
+                ));
+            }
+            return;
+        }
+        let Some(reference) = self.reference_png(id, inputs) else {
+            self.failures.push(format!(
+                "{id}: we decode it but recoil2png rejects it (ours: {fingerprint})"
+            ));
+            return;
+        };
+        match compare(ours, &read_png(&reference)) {
+            Ok(()) => self.matched += 1,
+            Err(why) => self
+                .failures
+                .push(format!("{id}: {why} (ours: {fingerprint})")),
+        }
+    }
+
+    /// Renders `inputs[0]` with recoil2png, caching the PNG under `id`.
+    ///
+    /// recoil2png also reads companion files next to its input (e.g. `.S15`
+    /// next to `.SC5`), so it runs on copies of exactly `inputs` in an
+    /// otherwise empty directory. Returns `None` if RECOIL rejects the file.
+    fn reference_png(&self, id: &str, inputs: &[&Path]) -> Option<PathBuf> {
+        let png = self
+            .cache
+            .join(format!("{}.png", id.replace('/', "__").replace(' ', "_")));
+        if png.exists() {
+            return Some(png);
+        }
+        let isolated = self.cache.join("isolated");
+        let _ = std::fs::remove_dir_all(&isolated);
+        std::fs::create_dir_all(&isolated).unwrap();
+        for input in inputs {
+            std::fs::copy(input, isolated.join(input.file_name().unwrap())).unwrap();
+        }
+        let main = isolated.join(inputs[0].file_name().unwrap());
+        let mut child = Command::new(&self.recoil)
+            .arg("-o")
+            .arg(&png)
+            .arg(&main)
+            .spawn()
+            .unwrap();
+        let succeeded = wait_with_timeout(&mut child, RECOIL_TIMEOUT);
+        std::fs::remove_dir_all(&isolated).unwrap();
+        if !succeeded {
+            let _ = std::fs::remove_file(&png); // don't cache partial output
+        }
+        succeeded.then_some(png)
+    }
 }
 
 /// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`.
@@ -124,33 +204,6 @@ fn load_divergences() -> HashMap<String, String> {
         }
     }
     divergences
-}
-
-/// Renders `sample` with recoil2png, caching the PNG in `cache`.
-///
-/// recoil2png also reads companion files next to its input (e.g. `.S15`
-/// next to `.SC5`), which a single-buffer decoder can't see, so it runs on a
-/// lone copy of the file in `cache/isolated`. Returns `None` if RECOIL
-/// rejects the file.
-fn reference_png(recoil: &OsStr, sample: &common::Sample, cache: &Path) -> Option<PathBuf> {
-    let png = cache.join(format!("{}.png", sample.id.replace('/', "__")));
-    if png.exists() {
-        return Some(png);
-    }
-    let lone = cache.join("isolated").join(&sample.name);
-    std::fs::copy(&sample.path, &lone).unwrap();
-    let mut child = Command::new(recoil)
-        .arg("-o")
-        .arg(&png)
-        .arg(&lone)
-        .spawn()
-        .unwrap();
-    let succeeded = wait_with_timeout(&mut child, RECOIL_TIMEOUT);
-    std::fs::remove_file(&lone).unwrap();
-    if !succeeded {
-        let _ = std::fs::remove_file(&png); // don't cache partial output
-    }
-    succeeded.then_some(png)
 }
 
 /// RECOIL can misbehave on hostile input; treat a hang as a rejection.
