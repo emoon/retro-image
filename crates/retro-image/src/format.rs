@@ -133,15 +133,21 @@ mod tests {
 
     #[test]
     fn candidates_put_extension_matches_before_signature_formats() {
-        let names: Vec<&str> = candidates("picture.iff").map(|f| f.name).collect();
-        assert_eq!(names.first(), Some(&"Interchange File Format"));
-        assert_eq!(
-            names.len(),
-            1,
-            "no other format claims .iff or has a signature yet"
+        let ordered: Vec<&Format> = candidates("picture.iff").collect();
+        let first_signature_only = ordered
+            .iter()
+            .position(|f| !f.matches_filename("picture.iff"))
+            .unwrap_or(ordered.len());
+        assert!(first_signature_only > 0, "IFF matches by extension");
+        assert!(
+            ordered[first_signature_only..]
+                .iter()
+                .all(|f| f.has_signature() && !f.matches_filename("picture.iff")),
+            "after the extension matches come only signature formats"
         );
         let by_content: Vec<&str> = candidates("picture.xyz").map(|f| f.name).collect();
-        assert_eq!(by_content, ["Interchange File Format"]);
+        assert!(by_content.contains(&"Interchange File Format"));
+        assert!(candidates("picture.xyz").all(Format::has_signature));
     }
 
     #[test]
