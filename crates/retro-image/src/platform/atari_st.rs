@@ -17,6 +17,8 @@ mod mono;
 mod mpp;
 mod paintshop;
 mod paintworks;
+mod photochrome;
+mod quantumpaint;
 mod simple;
 mod spectrum;
 mod tiny;
@@ -107,6 +109,8 @@ pub(super) static FORMATS: &[Format] = &[
     st("DUO", &["du1", "duo"], duo::decode_duo),
     st("DUO (medium resolution)", &["du2"], duo::decode_du2),
     st("STAD", &["pac"], mono::decode_pac),
+    st("PhotoChrome", &["pcs"], photochrome::decode_pcs),
+    st("QuantumPaint", &["pbx"], quantumpaint::decode_pbx),
     st("MegaPaint", &["bld"], mono::decode_bld),
     st(
         "Paintworks",

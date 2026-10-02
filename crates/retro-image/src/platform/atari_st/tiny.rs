@@ -29,14 +29,24 @@ fn decode(data: &[u8]) -> Option<Image> {
     pos += 4;
     let control = data.get(pos..pos + control_len)?;
     let values = data.get(pos + control_len..pos + control_len + data_len)?;
-    let columns = unpack(control, values)?;
+    let columns: Vec<u8> = unpack(control, values)?
+        .iter()
+        .flat_map(|word| word.to_be_bytes())
+        .collect();
+    decode_screen(resolution, &from_columns(&columns)?, &words)
+}
+
+/// Reorders a 32000-byte screen stored as four sets of word columns
+/// (also used by QuantumPaint) into normal screen order.
+pub(super) fn from_columns(columns: &[u8]) -> Option<Vec<u8>> {
+    let columns = columns.get(..SCREEN_LEN)?;
     let mut bitmap = alloc::vec![0u8; SCREEN_LEN];
-    for (i, word) in columns.iter().enumerate() {
+    for (i, word) in columns.chunks_exact(2).enumerate() {
         let (y, column) = column_position(i);
         let offset = (y * 80 + column) * 2;
-        bitmap[offset..offset + 2].copy_from_slice(&word.to_be_bytes());
+        bitmap[offset..offset + 2].copy_from_slice(word);
     }
-    decode_screen(resolution, &bitmap, &words)
+    Some(bitmap)
 }
 
 /// Screen line and word column of the `i`-th unpacked word: four sets of
