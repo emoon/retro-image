@@ -10,7 +10,8 @@ RECOIL_FORMATS_HTML is a saved copy of https://recoil.sourceforge.net/formats.ht
 A RECOIL row counts as covered when one of our formats on the same platform
 claims one of its extensions. Where RECOIL has more rows than we have formats
 for an extension on a platform, the rows are marked "check": the extension is
-taken but we may not decode every variant.
+taken but we may not decode every variant. Our formats with no extension
+on a RECOIL row of the same platform are listed as beyond RECOIL.
 """
 
 import collections
@@ -89,7 +90,13 @@ def main():
     print(f"- Covered: {counts['yes']}")
     print(f"- Extension taken, variant not confirmed (\"check\"): {counts['check']}")
     print(f"- Not covered: {counts['no']}")
-    print(f"- Our registry entries: {len(ours)}\n")
+    beyond = [
+        (platform, name, exts)
+        for platform, name, exts in ours
+        if not any((platform, e) in rows_per_ext for e in exts)
+    ]
+    print(f"- Our registry entries: {len(ours)}")
+    print(f"- Beyond RECOIL: {len(beyond)}\n")
     print("A row is covered when one of our formats on the same platform claims one")
     print("of its extensions; \"check\" means RECOIL lists more variants for that")
     print("extension than we register.\n")
@@ -111,6 +118,15 @@ def main():
         for platform, extensions, description, s, names in status:
             if s == state:
                 print(f"| {platform} | {extensions} | {description} | {', '.join(sorted(names))} |")
+
+    print("\n## Beyond RECOIL\n")
+    print("Our formats with no extension on a RECOIL row of the same platform. This")
+    print("also lists RECOIL formats we register under another platform name or with")
+    print("no extension (content detection only).\n")
+    print("| Platform | Format | Extensions |")
+    print("|---|---|---|")
+    for platform, name, exts in sorted(beyond):
+        print(f"| {platform} | {name} | {', '.join(sorted(e for e in exts if e))} |")
 
 
 if __name__ == "__main__":
