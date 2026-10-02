@@ -40,7 +40,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("MSX2+", "Screen 10/11", &["sca", "scb"], |d| {
         screen::decode_bitmap_dump(Bitmap::Yae, d)
     }),
-    Format::new("MSX2+", "Screen 12", &["scc", "yjk"], |d| {
+    Format::new("MSX2+", "Screen 12", &["scc", "yjk", "s12"], |d| {
         screen::decode_bitmap_dump(Bitmap::Yjk, d)
     }),
     Format::new("MSX2", "Graph Saurus Screen 5", &["sr5"], |d| {

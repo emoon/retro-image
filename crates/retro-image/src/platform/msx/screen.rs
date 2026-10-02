@@ -20,6 +20,9 @@
 //!   drawn only for dumps of exactly 0x4000 (Screens 2/3), 0x4000 or more
 //!   (Screen 4), exactly 0x8000 (Screens 5/6) or exactly 0xFAA0 bytes (Screens
 //!   7-12 and Graph Saurus Screen 8; other Graph Saurus pages never).
+//! - Reverse engineered from samples: Sunrise and msx.org Screen 12 dumps use
+//!   the extension `S12`; the MSX Photoshop Graphic Kit wrote a Screen 8 `PIC`
+//!   with its 7 header bytes zeroed (accepted only with exactly 212 lines).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -235,9 +238,25 @@ fn bsave_body(data: &[u8]) -> Option<&[u8]> {
     Some(&data[7..7 + len])
 }
 
+/// Size of a full 212-line Screen 8 bitmap.
+const GRAPHIC7_BITMAP: usize = 212 * 256;
+
+/// Body of a Screen 8 dump whose BSAVE header was zeroed (seen in the MSX
+/// Photoshop Graphic Kit sample): accepted only for a complete bitmap.
+fn zeroed_header_body(data: &[u8]) -> Option<&[u8]> {
+    let (header, body) = data.split_at_checked(7)?;
+    (header.iter().all(|&b| b == 0) && body.len() == GRAPHIC7_BITMAP).then_some(body)
+}
+
 /// BSAVE dump of a bitmap screen.
 pub(super) fn decode_bitmap_dump(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeError> {
-    let body = bsave_body(data).ok_or(DecodeError::Unrecognized)?;
+    let body = bsave_body(data)
+        .or_else(|| {
+            (mode == Bitmap::Graphic7)
+                .then(|| zeroed_header_body(data))
+                .flatten()
+        })
+        .ok_or(DecodeError::Unrecognized)?;
     let vram = Vram::new(body);
     // YAE pictures are only accepted with their palette.
     if mode == Bitmap::Yae && vram.palette(0xfa80, 16).is_none() {
@@ -412,6 +431,18 @@ mod tests {
         let image = decode_bitmap_dump(Bitmap::Graphic4, &data).unwrap();
         assert_eq!((image.width(), image.height()), (256, 3));
         assert_eq!(&image.rgb()[..6], &[0, 0, 0, 0x24, 0xdb, 0x24]);
+    }
+
+    #[test]
+    fn screen8_accepts_zeroed_header_only_when_complete() {
+        let mut data = vec![0u8; 7 + GRAPHIC7_BITMAP];
+        data[7] = 0xff;
+        let image = decode_bitmap_dump(Bitmap::Graphic7, &data).unwrap();
+        assert_eq!((image.width(), image.height()), (256, 212));
+        assert!(decode_bitmap_dump(Bitmap::Graphic7, &data[..data.len() - 1]).is_err());
+        assert!(decode_bitmap_dump(Bitmap::Graphic4, &data).is_err());
+        data[3] = 1;
+        assert!(decode_bitmap_dump(Bitmap::Graphic7, &data).is_err());
     }
 
     #[test]
