@@ -12,7 +12,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, be32, interleaved_index, st_rgb, uses_ste_bits, words};
+use super::common::{interleaved_index, st_rgb, uses_ste_bits, words};
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 const LINES: usize = 199;

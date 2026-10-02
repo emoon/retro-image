@@ -22,6 +22,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::super::nec_pc::Machine;
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 /// Largest picture accepted, in pixels.
@@ -60,10 +61,6 @@ struct Header<'a> {
     stream: &'a [u8],
 }
 
-fn be16(data: &[u8], at: usize) -> Option<usize> {
-    Some(u16::from_be_bytes([*data.get(at)?, *data.get(at + 1)?]) as usize)
-}
-
 const fn level(v: u32, bits: u32) -> u32 {
     let v = v << (8 - bits);
     (v | v >> bits | v >> (2 * bits)) & 0xff
@@ -86,9 +83,10 @@ impl<'a> Header<'a> {
         let comment_end = eof + 1 + data[eof + 1..].iter().position(|&b| b == 0)?;
         let fixed = comment_end + 2;
         let kind = *data.get(fixed)?;
-        let bits = be16(data, fixed + 1)?;
-        let width = be16(data, fixed + 3)?;
-        let height = be16(data, fixed + 5)?;
+        let word = |at| be16(data, at).map(usize::from);
+        let bits = word(fixed + 1)?;
+        let width = word(fixed + 3)?;
+        let height = word(fixed + 5)?;
         let mut at = fixed + 7;
         let (mut machine, extended, towns) = match kind {
             0x00 => (Machine::X68000, false, false),
@@ -112,7 +110,7 @@ impl<'a> Header<'a> {
         let mut palette = Vec::new();
         if let Colour::Indexed(bits) = colour {
             for i in 0..1usize << bits {
-                let word = be16(data, at + 2 * i)? as u32;
+                let word = u32::from(be16(data, at + 2 * i)?);
                 palette.push(if msx {
                     let three = |shift: u32| level(word >> (shift + 2) & 7, 3);
                     three(6) << 16 | three(11) << 8 | three(1)

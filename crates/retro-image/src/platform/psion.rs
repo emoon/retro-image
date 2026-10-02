@@ -9,34 +9,35 @@
 //! - Only the first bitmap is shown, set bit = black: observed from
 //!   `recoil2png` output.
 
-use alloc::vec::Vec;
-
-use crate::{DecodeError, Format, Image};
+use crate::bytes::{le16, le32};
+use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
     &[Format::new("Psion Series 3", "mono", &["pic", "icn"], decode_pic).signature()];
 
-fn le16(b: &[u8]) -> usize {
-    usize::from(u16::from_le_bytes([b[0], b[1]]))
-}
-
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     // "PIC" $DC, then format version "00".
-    if data.len() < 20 || data[..6] != *b"PIC\xdc00" || le16(&data[6..8]) == 0 {
+    if data.len() < 20 || data[..6] != *b"PIC\xdc00" || le16(data, 6) == Some(0) {
         return Err(fail);
     }
-    let record = &data[8..20];
-    let (width, height) = (le16(&record[2..4]), le16(&record[4..6]));
-    let offset = u32::from_le_bytes([record[8], record[9], record[10], record[11]]) as usize;
+    // The first picture record.
+    let word = |at| le16(data, at).map(usize::from).ok_or(fail);
+    let (width, height) = (word(10)?, word(12)?);
+    let offset = le32(data, 16).ok_or(fail)? as usize;
     let row_len = width.div_ceil(16) * 2;
     let start = 20usize.checked_add(offset).ok_or(fail)?;
     let pixels = data.get(start..start + row_len * height).ok_or(fail)?;
     if width == 0 || height == 0 {
         return Err(fail);
     }
-    let indices: Vec<u8> = (0..height)
-        .flat_map(|y| (0..width).map(move |x| pixels[y * row_len + x / 8] >> (x % 8) & 1))
-        .collect();
-    Image::from_indexed(width as u32, height as u32, &indices, &[0xffffff, 0])
+    let colors = [0xffffff, 0];
+    Image::from_bits(
+        width as u32,
+        height as u32,
+        pixels,
+        row_len,
+        BitOrder::LsbFirst,
+        colors,
+    )
 }

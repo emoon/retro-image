@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::be32;
+use crate::bytes::be32;
 use crate::{DecodeError, Image};
 
 struct Mode {

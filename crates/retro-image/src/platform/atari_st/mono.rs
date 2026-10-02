@@ -14,7 +14,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, be32, mono_image};
+use super::common::{MAX_PIXELS, mono_image};
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 /// Public Painter: escape byte, size byte (0 = 640x400, 200 = 640x800),
@@ -101,8 +102,8 @@ pub(super) fn decode_bld(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode_bld_inner(data: &[u8]) -> Option<Image> {
-    let raw_width = super::common::be16(data, 0)? as i16;
-    let height = usize::from(super::common::be16(data, 2)?) + 1;
+    let raw_width = be16(data, 0)? as i16;
+    let height = usize::from(be16(data, 2)?) + 1;
     let compressed = raw_width < 0;
     let width = usize::from(raw_width.unsigned_abs()) + 1;
     if width > 4096 || height > 4096 {
@@ -182,13 +183,13 @@ pub(super) fn decode_cp3(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode_cp3_inner(data: &[u8]) -> Option<Image> {
-    let count = usize::from(super::common::be16(data, 0)?);
+    let count = usize::from(be16(data, 0)?);
     let units = data.get(4 + 4 * count..)?;
     let mut units = units.chunks_exact(8);
     let mut bitmap = Vec::with_capacity(32000);
     for record in 0..count {
-        let literals = super::common::be16(data, 4 + record * 4)?;
-        let repeats = super::common::be16(data, 6 + record * 4)?;
+        let literals = be16(data, 4 + record * 4)?;
+        let repeats = be16(data, 6 + record * 4)?;
         for _ in 0..literals {
             bitmap.extend_from_slice(units.next()?);
         }
@@ -261,7 +262,7 @@ fn parse_hex(token: &str) -> Option<usize> {
 /// plane count (1), then word-aligned rows. Derived from sample files and
 /// `recoil2png` output (the survey found no documentation).
 pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
-    let word = |i: usize| super::common::be16(data, i).map(usize::from);
+    let word = |i: usize| be16(data, i).map(usize::from);
     let (width, height, planes) = match (word(0), word(2), word(4)) {
         (Some(w), Some(h), Some(p)) => (w + 1, h + 1, p),
         _ => return Err(DecodeError::Unrecognized),

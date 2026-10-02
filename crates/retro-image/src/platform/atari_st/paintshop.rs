@@ -5,7 +5,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, mono_image};
+use super::common::mono_image;
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_psc(data: &[u8]) -> Result<Image, DecodeError> {

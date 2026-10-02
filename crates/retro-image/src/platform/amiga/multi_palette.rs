@@ -15,8 +15,9 @@
 
 use alloc::vec::Vec;
 
-use super::iff::{be16, be32, find};
+use super::iff::find;
 use super::ilbm::{Palette, rgb12};
+use crate::bytes::{be16, be32};
 
 pub(super) enum LinePalettes<'a> {
     /// Complete colour tables of `colors` `0RGB` words, each used for
@@ -66,7 +67,7 @@ impl<'a> LinePalettes<'a> {
                 let start = y / lines_per_table * colors * 2;
                 let table = &words[start..start + colors * 2];
                 for (i, word) in table.chunks_exact(2).enumerate() {
-                    palette.set(i, rgb12(be16(word)));
+                    palette.set(i, rgb12(u16::from_be_bytes([word[0], word[1]])));
                 }
             }
             Self::Changes { start, lines } => {
@@ -86,10 +87,10 @@ const PCHG_32BIT: u16 = 2;
 
 fn parse_pchg(pchg: &[u8]) -> Option<LinePalettes<'static>> {
     let header = pchg.get(..20)?;
-    let compression = be16(&header[0..2]);
-    let flags = be16(&header[2..4]);
-    let start = be16(&header[4..6]) as i16 as isize;
-    let line_count = usize::from(be16(&header[6..8]));
+    let compression = be16(header, 0)?;
+    let flags = be16(header, 2)?;
+    let start = be16(header, 4)? as i16 as isize;
+    let line_count = usize::from(be16(header, 6)?);
     let data = match compression {
         0 => pchg[20..].to_vec(),
         1 => unpack_huffman(&pchg[20..])?,
@@ -107,20 +108,20 @@ fn parse_pchg(pchg: &[u8]) -> Option<LinePalettes<'static>> {
                 let high = usize::from(*data.get(pos + 1)?);
                 pos += 2;
                 for i in 0..low + high {
-                    let word = be16(data.get(pos..pos + 2)?);
+                    let word = be16(&data, pos)?;
                     pos += 2;
                     let bank = if i < low { 0 } else { 16 };
                     changes.push((bank + usize::from(word >> 12), rgb12(word & 0xfff)));
                 }
             } else if flags & PCHG_32BIT != 0 {
-                let count = usize::from(be16(data.get(pos..pos + 2)?));
+                let count = usize::from(be16(&data, pos)?);
                 pos += 2;
                 for _ in 0..count {
                     let change = data.get(pos..pos + 6)?;
                     pos += 6;
-                    let [_, r, b, g] = be32(&change[2..6]).to_be_bytes();
+                    let [_, r, b, g] = be32(change, 2)?.to_be_bytes();
                     let color = u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b);
-                    changes.push((usize::from(be16(&change[0..2])), color));
+                    changes.push((usize::from(be16(change, 0)?), color));
                 }
             } else {
                 return None;
@@ -138,13 +139,13 @@ fn parse_pchg(pchg: &[u8]) -> Option<LinePalettes<'static>> {
 /// node's left subtree is the preceding word; its own word is a negative byte
 /// offset to its right subtree, or a right leaf's character stored inline.
 fn unpack_huffman(data: &[u8]) -> Option<Vec<u8>> {
-    let tree_len = be32(data.get(..4)?) as usize;
-    let len = be32(data.get(4..8)?) as usize;
+    let tree_len = be32(data, 0)? as usize;
+    let len = be32(data, 4)? as usize;
     let tree_end = 8usize.checked_add(tree_len)?;
     let tree: Vec<i16> = data
         .get(8..tree_end)?
         .chunks_exact(2)
-        .map(|w| be16(w) as i16)
+        .map(|w| i16::from_be_bytes([w[0], w[1]]))
         .collect();
     let stream = &data[tree_end..];
     let root = tree.len().checked_sub(1)?;

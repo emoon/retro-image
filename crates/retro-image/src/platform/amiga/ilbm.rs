@@ -14,9 +14,10 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::iff::{be16, be32, find};
+use super::iff::find;
 use super::multi_palette::LinePalettes;
 use super::vdat;
+use crate::bytes::{be16, be32};
 use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
@@ -41,8 +42,8 @@ impl Header {
             return None;
         }
         let header = Self {
-            width: be16(&bmhd[0..2]) as usize,
-            height: be16(&bmhd[2..4]) as usize,
+            width: be16(bmhd, 0)? as usize,
+            height: be16(bmhd, 2)? as usize,
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
@@ -82,7 +83,7 @@ pub(super) fn decode_acbm(contents: &[u8]) -> Result<Image, DecodeError> {
 fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Image, DecodeError> {
     let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
     let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
-    let camg = find(contents, b"CAMG").filter(|c| c.len() >= 4).map(be32);
+    let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
     let mut palette = find(contents, b"CMAP")
         .map(Palette::from_cmap)
         .unwrap_or_default();

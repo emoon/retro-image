@@ -15,20 +15,8 @@
 
 use alloc::vec::Vec;
 
-use crate::Image;
-use crate::codec::packbits;
-
-/// Big-endian 16-bit word at `offset`, if in range.
-pub(super) fn be16(data: &[u8], offset: usize) -> Option<u16> {
-    let bytes = data.get(offset..offset.checked_add(2)?)?;
-    Some(u16::from_be_bytes([bytes[0], bytes[1]]))
-}
-
-/// Big-endian 32-bit word at `offset`, if in range.
-pub(super) fn be32(data: &[u8], offset: usize) -> Option<u32> {
-    let bytes = data.get(offset..offset.checked_add(4)?)?;
-    Some(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-}
+use crate::bytes::be16;
+use crate::{BitOrder, Image};
 
 /// Replicates a 3-bit value to 8 bits.
 pub(super) fn scale3(v: u16) -> u32 {
@@ -286,16 +274,15 @@ pub(super) fn vdi_palette(data: &[u8], colors: usize) -> Option<Vec<u32>> {
 
 /// Renders a 1-bit bitmap of `row_len`-byte lines, set bits black.
 pub(super) fn mono_image(bitmap: &[u8], width: u32, height: u32, row_len: usize) -> Option<Image> {
-    if bitmap.len() < row_len * height as usize || row_len * 8 < width as usize {
-        return None;
-    }
-    let indices: Vec<u8> = (0..height as usize)
-        .flat_map(|y| {
-            let line = &bitmap[y * row_len..];
-            (0..width as usize).map(move |x| line[x / 8] >> (7 - x % 8) & 1)
-        })
-        .collect();
-    Image::from_indexed(width, height, &indices, &MONO_PALETTE).ok()
+    Image::from_bits(
+        width,
+        height,
+        bitmap,
+        row_len,
+        BitOrder::MsbFirst,
+        MONO_PALETTE,
+    )
+    .ok()
 }
 
 /// Reorders bitplanes stored line by line, each line holding one complete
@@ -338,16 +325,6 @@ pub(super) fn separate_planes_to_interleaved(data: &[u8], planes: usize) -> Vec<
         }
     }
     out
-}
-
-/// [`packbits::unpack`], rejecting up front an `out_len` that `data` could
-/// never produce (one input byte yields at most 64 output bytes), so a
-/// corrupt header can't force a huge allocation.
-pub(super) fn unpack_bits(data: &[u8], out_len: usize) -> Option<(Vec<u8>, usize)> {
-    if out_len / 64 > data.len() {
-        return None;
-    }
-    packbits::unpack(data, out_len)
 }
 
 #[cfg(test)]

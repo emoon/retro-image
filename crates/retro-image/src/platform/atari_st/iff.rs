@@ -12,7 +12,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, be32, unpack_bits};
+use crate::bytes::{be16, be32};
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
@@ -86,7 +87,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     let len = row_len * h.planes * h.height;
     let bitmap = match h.compression {
         0 => body?.get(..len)?.to_vec(),
-        1 => unpack_bits(body?, len)?.0,
+        1 => packbits::unpack(body?, len)?.0,
         _ => return None,
     };
     let y_scale = if h.x_aspect != 0 && u32::from(h.x_aspect) * 2 <= u32::from(h.y_aspect) {

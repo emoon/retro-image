@@ -9,9 +9,10 @@
 //!   at their full height: observed from `recoil2png` output.
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, line_planes_to_interleaved, palette_words,
-    unpack_bits,
+    Resolution, SCREEN_LEN, decode_screen, line_planes_to_interleaved, palette_words,
 };
+use crate::bytes::be16;
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 34;
@@ -54,7 +55,7 @@ pub(super) fn decode_pc(data: &[u8]) -> Result<Image, DecodeError> {
     let resolution = Resolution::from_index(word & 3).ok_or(DecodeError::Unrecognized)?;
     let words = palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?;
     let (unpacked, _) =
-        unpack_bits(&data[HEADER_LEN..], SCREEN_LEN).ok_or(DecodeError::Unrecognized)?;
+        packbits::unpack(&data[HEADER_LEN..], SCREEN_LEN).ok_or(DecodeError::Unrecognized)?;
     let bitmap = line_planes_to_interleaved(
         &unpacked,
         resolution.width(),
@@ -80,7 +81,7 @@ pub(super) fn decode_eza(data: &[u8]) -> Result<Image, DecodeError> {
     let words = palette_words(data, 4, 16).ok_or(DecodeError::Unrecognized)?;
     let body = data.get(44..).ok_or(DecodeError::Unrecognized)?;
     let (unpacked, _) =
-        unpack_bits(body, 160 * height as usize).ok_or(DecodeError::Unrecognized)?;
+        packbits::unpack(body, 160 * height as usize).ok_or(DecodeError::Unrecognized)?;
     let bitmap =
         line_planes_to_interleaved(&unpacked, 320, height, 4).ok_or(DecodeError::Unrecognized)?;
     let palette = super::common::st_palette(&words);

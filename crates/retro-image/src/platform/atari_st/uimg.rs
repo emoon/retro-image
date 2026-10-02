@@ -9,8 +9,9 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, be16, planar_image, st_palette, vdi_palette, words};
+use super::common::{MAX_PIXELS, planar_image, st_palette, vdi_palette, words};
 use super::falcon::rgb565;
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 14;

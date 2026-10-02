@@ -18,7 +18,7 @@
 
 use alloc::vec::Vec;
 
-use super::iff::{be16, be32};
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 const DISK_OBJECT_LEN: usize = 78;
@@ -32,10 +32,10 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let object = data.get(..DISK_OBJECT_LEN).ok_or(fail)?;
     // Magic and version 1.
-    if be16(&object[0..2]) != 0xe310 || be16(&object[2..4]) != 1 {
+    if be16(object, 0).ok_or(fail)? != 0xe310 || be16(object, 2).ok_or(fail)? != 1 {
         return Err(fail);
     }
-    let has_drawer = be32(&object[66..70]) != 0;
+    let has_drawer = be32(object, 66).ok_or(fail)? != 0;
     let palette: &[u32] = if object[47] == 0 {
         &PALETTE_1X
     } else {
@@ -43,9 +43,9 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let start = DISK_OBJECT_LEN + if has_drawer { DRAWER_DATA_LEN } else { 0 };
     let header = data.get(start..start + 20).ok_or(fail)?;
-    let width = usize::from(be16(&header[4..6]));
-    let height = usize::from(be16(&header[6..8]));
-    let depth = usize::from(be16(&header[8..10]));
+    let width = usize::from(be16(header, 4).ok_or(fail)?);
+    let height = usize::from(be16(header, 6).ok_or(fail)?);
+    let depth = usize::from(be16(header, 8).ok_or(fail)?);
     // Only depths whose colours all have a known pen.
     if width == 0 || height == 0 || !(2..=3).contains(&depth) || 1 << depth > palette.len() {
         return Err(fail);

@@ -15,9 +15,10 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, palette_words,
+    Resolution, SCREEN_LEN, decode_screen, interleaved_index, palette_words,
     separate_planes_to_interleaved, st_rgb, uses_ste_bits, words,
 };
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 /// Unpacks Pack-Ice data; `None` if `data` is not packed.

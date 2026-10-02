@@ -6,12 +6,9 @@
 
 use alloc::vec::Vec;
 
-const MAGIC: u32 = 0x184d_2204;
+use crate::bytes::le32;
 
-fn le32(data: &[u8], pos: usize) -> Option<u32> {
-    let b = data.get(pos..pos + 4)?;
-    Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-}
+const MAGIC: u32 = 0x184d_2204;
 
 /// Decompresses an LZ4 frame, stopping once `limit` bytes are produced.
 pub(super) fn decompress_frame(data: &[u8], limit: usize) -> Option<Vec<u8>> {

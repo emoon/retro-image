@@ -29,9 +29,8 @@
 //!
 //! Format background: <http://fileformats.archiveteam.org/wiki/Pack-Ice>.
 
+use crate::bytes::be32;
 use alloc::vec::Vec;
-
-use super::common::be32;
 
 /// Largest unpacked size accepted.
 const MAX_RAW_LEN: usize = 1 << 24;

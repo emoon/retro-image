@@ -9,7 +9,8 @@
 //! - Observed from `recoil2png` output: 4-bit components times 0x11, and
 //!   TT low resolution (320x480) shown with doubled pixels.
 
-use super::common::{be16, palette_words, planar_image};
+use super::common::{palette_words, planar_image};
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 const BITMAP_LEN: usize = 153600;

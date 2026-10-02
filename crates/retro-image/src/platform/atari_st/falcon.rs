@@ -28,7 +28,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, be16, be32, planar_image, separate_planes_to_interleaved};
+use super::common::{MAX_PIXELS, planar_image, separate_planes_to_interleaved};
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {

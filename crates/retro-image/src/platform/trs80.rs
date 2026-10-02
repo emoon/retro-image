@@ -19,7 +19,7 @@
 
 use alloc::vec::Vec;
 
-use crate::{DecodeError, Format, Image};
+use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("TRS-80", "640x240", &["hr"], decode_hr),
@@ -36,14 +36,18 @@ pub(super) static FORMATS: &[Format] = &[
 
 const WHITE: u32 = 0xffffff;
 
-/// Draws a 1-bit bitmap (most significant bit leftmost) of exactly
-/// `width / 8 * height` bytes.
+/// Draws a 1-bit bitmap, most significant bit leftmost, `width / 8` bytes
+/// per row.
 fn mono(bitmap: &[u8], width: usize, height: usize, set: u32) -> Result<Image, DecodeError> {
-    let indices: Vec<u8> = bitmap[..width / 8 * height]
-        .iter()
-        .flat_map(|&b| (0..8).rev().map(move |i| b >> i & 1))
-        .collect();
-    Image::from_indexed(width as u32, height as u32, &indices, &[set ^ WHITE, set])
+    let colors = [set ^ WHITE, set];
+    Image::from_bits(
+        width as u32,
+        height as u32,
+        bitmap,
+        width / 8,
+        BitOrder::MsbFirst,
+        colors,
+    )
 }
 
 fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {

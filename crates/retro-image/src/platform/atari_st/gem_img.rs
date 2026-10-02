@@ -13,7 +13,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, be16, st_rgb, vdi_level};
+use super::common::{MAX_PIXELS, st_rgb, vdi_level};
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {

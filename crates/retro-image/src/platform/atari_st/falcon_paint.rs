@@ -20,10 +20,11 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    MAX_PIXELS, be16, be32, line_planes_to_interleaved, palette_words, planar_image, st_palette,
-    unpack_bits, vdi_palette,
+    MAX_PIXELS, line_planes_to_interleaved, palette_words, planar_image, st_palette, vdi_palette,
 };
 use super::falcon::{rgb565, videl_palette};
+use crate::bytes::{be16, be32};
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
@@ -226,7 +227,7 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
     let line_len = padded / 8 * bits;
     let body = data.get(128 + palette_len * 6..)?;
     let bitmap = if compressed {
-        let (unpacked, _) = unpack_bits(body, line_len * height)?;
+        let (unpacked, _) = packbits::unpack(body, line_len * height)?;
         if bits < 16 {
             line_planes_to_interleaved(&unpacked, padded as u32, height as u32, bits as u32)?
         } else {

@@ -18,9 +18,9 @@
 //!   `docs/formats/atari-st-tt-falcon.md`; checked against `recoil2png` output.
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, palette_words, planar_image, st_palette,
-    vdi_palette,
+    Resolution, SCREEN_LEN, decode_screen, palette_words, planar_image, st_palette, vdi_palette,
 };
+use crate::bytes::{be16, be32};
 use crate::{Companions, DecodeError, Image};
 
 const NEO_HEADER_LEN: usize = 128;
@@ -268,16 +268,16 @@ fn decode_gfb_inner(data: &[u8]) -> Option<Image> {
     if data.get(..4)? != b"GF25" {
         return None;
     }
-    let planes = match super::common::be32(data, 4)? {
+    let planes = match be32(data, 4)? {
         2 => 1,
         4 => 2,
         16 => 4,
         256 => 8,
         _ => return None,
     };
-    let width = super::common::be32(data, 8)?;
-    let height = super::common::be32(data, 12)?;
-    let size = super::common::be32(data, 16)? as usize;
+    let width = be32(data, 8)?;
+    let height = be32(data, 12)?;
+    let size = be32(data, 16)? as usize;
     if width == 0 || width % 16 != 0 || height == 0 || height > 4096 || width > 4096 {
         return None;
     }

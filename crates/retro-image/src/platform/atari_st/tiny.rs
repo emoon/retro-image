@@ -6,7 +6,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{Resolution, SCREEN_LEN, be16, decode_screen, palette_words};
+use super::common::{Resolution, SCREEN_LEN, decode_screen, palette_words};
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 const WORDS: usize = SCREEN_LEN / 2;

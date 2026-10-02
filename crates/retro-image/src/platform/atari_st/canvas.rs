@@ -13,9 +13,9 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, decode_screen_by_line, palette_words, scale3,
-    vdi_pen,
+    Resolution, SCREEN_LEN, decode_screen, decode_screen_by_line, palette_words, scale3, vdi_pen,
 };
+use crate::bytes::be16;
 use crate::{Companions, DecodeError, Image};
 
 /// CPT, shown with the rasters of the `.HBL` file next to it if present.

@@ -10,9 +10,11 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen_by_line, interleaved_index, palette_words,
-    st_palette, st_rgb, unpack_bits, words,
+    Resolution, SCREEN_LEN, decode_screen_by_line, interleaved_index, palette_words, st_palette,
+    st_rgb, words,
 };
+use crate::bytes::be16;
+use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 128;
@@ -43,7 +45,7 @@ fn decode(data: &[u8]) -> Option<Image> {
             // not documented precisely enough.
             return None;
         }
-        unpacked = unpack_bits(body, palette_len + SCREEN_LEN)?.0;
+        unpacked = packbits::unpack(body, palette_len + SCREEN_LEN)?.0;
         let (palettes, columns) = unpacked.split_at(palette_len);
         (palettes, super::tiny::from_columns(columns)?)
     } else {

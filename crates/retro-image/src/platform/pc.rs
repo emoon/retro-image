@@ -19,7 +19,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::{DecodeError, Format, Image};
+use crate::bytes::le16;
+use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
     // Version 2 first: its "AWBM" header would also pass as version 1 cells.
@@ -37,14 +38,11 @@ const CGA_PALETTE: [u32; 16] = [
 
 const MSP_HEADER_LEN: usize = 32;
 
-fn le16(b: &[u8]) -> usize {
-    usize::from(u16::from_le_bytes([b[0], b[1]]))
-}
-
 fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let header = data.get(..MSP_HEADER_LEN).ok_or(fail)?;
-    let (width, height) = (le16(&header[4..6]), le16(&header[6..8]));
+    let word = |at| le16(header, at).map(usize::from).ok_or(fail);
+    let (width, height) = (word(4)?, word(6)?);
     if width == 0 || height == 0 {
         return Err(fail);
     }
@@ -64,7 +62,11 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
             }
             let mut bitmap = vec![0u8; row_len * height];
             let mut pos = map_end;
-            for (y, size) in map.chunks_exact(2).map(le16).enumerate() {
+            for (y, size) in map
+                .chunks_exact(2)
+                .map(|w| usize::from(u16::from_le_bytes([w[0], w[1]])))
+                .enumerate()
+            {
                 let line = data.get(pos..pos + size).ok_or(fail)?;
                 pos += size;
                 unpack_msp_line(line, &mut bitmap[y * row_len..(y + 1) * row_len]);
@@ -78,10 +80,15 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// A 1-bit bitmap, most significant bit leftmost, set bit white.
 fn mono(bitmap: &[u8], width: usize, height: usize, row_len: usize) -> Result<Image, DecodeError> {
-    let indices: Vec<u8> = (0..height)
-        .flat_map(|y| (0..width).map(move |x| bitmap[y * row_len + x / 8] >> (7 - x % 8) & 1))
-        .collect();
-    Image::from_indexed(width as u32, height as u32, &indices, &[0, 0xffffff])
+    let colors = [0, 0xffffff];
+    Image::from_bits(
+        width as u32,
+        height as u32,
+        bitmap,
+        row_len,
+        BitOrder::MsbFirst,
+        colors,
+    )
 }
 
 /// `00 count value` is a run; any other byte `n` is followed by `n` literals.
@@ -147,7 +154,8 @@ fn decode_epa_cells(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let header = data.get(..8).ok_or(fail)?;
-    let (width, height) = (le16(&header[4..6]), le16(&header[6..8]));
+    let word = |at| le16(header, at).map(usize::from).ok_or(fail);
+    let (width, height) = (word(4)?, word(6)?);
     if &header[..4] != b"AWBM" || width == 0 || height == 0 {
         return Err(fail);
     }

@@ -27,6 +27,7 @@
 use alloc::vec::Vec;
 
 use super::pack_bytes;
+use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
 const LINE_LEN: usize = 160;
@@ -42,15 +43,11 @@ struct Line<'a> {
     palette: Palette,
 }
 
-fn le16(b: &[u8]) -> u16 {
-    u16::from_le_bytes([b[0], b[1]])
-}
-
 /// 16 colour words, optionally stored colour 15 first.
 fn read_palette(words: &[u8], reversed: bool) -> Palette {
     let mut palette = [0; 16];
     for (i, word) in words.chunks_exact(2).take(16).enumerate() {
-        let w = u32::from(le16(word));
+        let w = u32::from(u16::from_le_bytes([word[0], word[1]]));
         let color = ((w & 0xf00) << 8 | (w & 0xf0) << 4 | (w & 0xf)) * 0x11;
         palette[if reversed { 15 - i } else { i }] = color;
     }
@@ -216,7 +213,7 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
         rest = &rest[len..];
     }
     let main = main.ok_or(fail)?;
-    let field = |at: usize| main.get(at..at + 2).map(le16).ok_or(fail);
+    let field = |at: usize| le16(main, at).ok_or(fail);
     let master_640 = field(0)? as u8 & MODE_640;
     let width = usize::from(field(2)?);
     let tables = usize::from(field(4)?);
@@ -233,7 +230,7 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
     let mut packed = &main[lines_at + 2 + line_count * 4..];
     let multipal = match multipal {
         Some(block) => {
-            let count = usize::from(block.get(..2).map(le16).ok_or(fail)?);
+            let count = usize::from(le16(block, 0).ok_or(fail)?);
             let palettes = block.get(2..2 + count * 32).ok_or(fail)?;
             Some(palettes)
         }
@@ -242,7 +239,7 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
 
     let mut unpacked = Vec::with_capacity(line_count);
     for entry in directory.chunks_exact(4) {
-        let packed_len = usize::from(le16(&entry[0..2]));
+        let packed_len = usize::from(u16::from_le_bytes([entry[0], entry[1]]));
         // The 320/640 choice follows MasterMode. With MULTIPAL the per-line
         // mode is ignored: some such files hold garbage there (observed from
         // `recoil2png` output).

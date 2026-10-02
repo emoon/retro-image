@@ -11,7 +11,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, interleaved_index, st_rgb, uses_ste_bits};
+use super::common::{interleaved_index, st_rgb, uses_ste_bits};
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 const SCREEN_LEN: usize = 32000;

@@ -9,7 +9,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::iff::{be16, be32, find};
+use super::iff::find;
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 const RED: u16 = 1;
@@ -26,18 +27,20 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         .ok_or(fail)?;
     let body = find(contents, b"DBOD").ok_or(fail)?;
     let (width, height) = match find(contents, b"DLOC").filter(|c| c.len() >= 4) {
-        Some(dloc) => (be16(&dloc[0..2]), be16(&dloc[2..4])),
-        None => (be16(&dgbl[0..2]), be16(&dgbl[2..4])),
+        Some(dloc) => (be16(dloc, 0), be16(dloc, 2)),
+        None => (be16(dgbl, 0), be16(dgbl, 2)),
     };
-    let (width, height) = (usize::from(width), usize::from(height));
-    let compression = be16(&dgbl[4..6]);
+    let (width, height) = (
+        usize::from(width.ok_or(fail)?),
+        usize::from(height.ok_or(fail)?),
+    );
+    let compression = be16(dgbl, 4).ok_or(fail)?;
     // Element types; every element must be 8 bits deep.
-    let count = be32(&dpel[0..4]) as usize;
+    let count = be32(dpel, 0).ok_or(fail)? as usize;
     let elements: Vec<u16> = dpel[4..]
         .chunks_exact(4)
         .take(count)
-        .map(|e| (be16(&e[0..2]), be16(&e[2..4])))
-        .map(|(kind, depth)| (depth == 8).then_some(kind))
+        .map(|e| be16(e, 2).filter(|&depth| depth == 8).and(be16(e, 0)))
         .collect::<Option<_>>()
         .ok_or(fail)?;
     if width == 0 || height == 0 || elements.len() != count || count == 0 {
@@ -105,7 +108,7 @@ fn unpack_tvdc(
     let table_chunk = find(contents, b"TVDC")?;
     let mut table = [0i16; 16];
     for (t, w) in table.iter_mut().zip(table_chunk.get(..32)?.chunks_exact(2)) {
-        *t = be16(w) as i16;
+        *t = i16::from_be_bytes([w[0], w[1]]);
     }
     let mut out = vec![0u8; width * height * elements];
     let mut line = vec![0u8; width];

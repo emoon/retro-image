@@ -12,7 +12,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::iff::{be16, chunks};
+use super::iff::chunks;
+use crate::bytes::be16;
 
 /// Unpacks a BODY into ILBM's interleaved layout (`row_len` bytes per plane row).
 pub(super) fn unpack(body: &[u8], planes: usize, row_len: usize, height: usize) -> Option<Vec<u8>> {
@@ -32,9 +33,11 @@ pub(super) fn unpack(body: &[u8], planes: usize, row_len: usize, height: usize) 
 }
 
 fn unpack_plane(vdat: &[u8], len: usize) -> Option<Vec<u16>> {
-    let command_len = usize::from(be16(vdat.get(..2)?));
+    let command_len = usize::from(be16(vdat, 0)?);
     let commands = vdat.get(2..command_len)?;
-    let mut data = vdat[command_len..].chunks_exact(2).map(be16);
+    let mut data = vdat[command_len..]
+        .chunks_exact(2)
+        .map(|w| u16::from_be_bytes([w[0], w[1]]));
     let mut out = Vec::with_capacity(len);
     for &command in commands {
         match command as i8 {

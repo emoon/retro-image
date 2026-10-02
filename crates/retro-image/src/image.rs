@@ -2,6 +2,13 @@ use alloc::vec::Vec;
 
 use crate::DecodeError;
 
+/// Which bit of a byte in a 1-bit bitmap is the leftmost pixel.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum BitOrder {
+    MsbFirst,
+    LsbFirst,
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -75,6 +82,40 @@ impl Image {
         Ok(Self { width, height, rgb })
     }
 
+    /// An image from a 1-bit bitmap of `row_len`-byte rows; a pixel whose
+    /// bit is `b` gets `colors[b]`.
+    ///
+    /// Fails if `bitmap` holds fewer than `height` rows or a row is too
+    /// short for `width` pixels.
+    pub(crate) fn from_bits(
+        width: u32,
+        height: u32,
+        bitmap: &[u8],
+        row_len: usize,
+        order: BitOrder,
+        colors: [u32; 2],
+    ) -> Result<Self, DecodeError> {
+        let fits = row_len
+            .checked_mul(height as usize)
+            .is_some_and(|len| len <= bitmap.len());
+        if !fits || row_len.saturating_mul(8) < width as usize {
+            return Err(DecodeError::Unrecognized);
+        }
+        let mut image = Self::new(width, height);
+        for y in 0..height {
+            let row = &bitmap[y as usize * row_len..];
+            for x in 0..width {
+                let shift = match order {
+                    BitOrder::MsbFirst => 7 - x % 8,
+                    BitOrder::LsbFirst => x % 8,
+                };
+                let bit = row[x as usize / 8] >> shift & 1;
+                image.set(x, y, colors[usize::from(bit)]);
+            }
+        }
+        Ok(image)
+    }
+
     /// Every pixel repeated `sx` times horizontally and `sy` times vertically.
     pub(crate) fn scaled(&self, sx: u32, sy: u32) -> Self {
         let mut out = Self::new(self.width * sx, self.height * sy);
@@ -128,6 +169,29 @@ mod tests {
         assert_eq!(image.rgb(), &[0xff, 0x80, 0, 0, 0, 0]);
         assert!(Image::from_indexed(2, 1, &[2, 0], &[0, 0]).is_err());
         assert!(Image::from_indexed(2, 2, &[0, 0], &[0]).is_err());
+    }
+
+    #[test]
+    fn from_bits_follows_bit_order_and_validates() {
+        let colors = [0x000000, 0xffffff];
+        let msb = Image::from_bits(
+            3,
+            2,
+            &[0b1010_0000, 0, 0b0100_0000, 0],
+            2,
+            BitOrder::MsbFirst,
+            colors,
+        )
+        .unwrap();
+        assert_eq!(
+            (msb.get(0, 0), msb.get(1, 0), msb.get(2, 0)),
+            (0xffffff, 0, 0xffffff)
+        );
+        assert_eq!(msb.get(1, 1), 0xffffff);
+        let lsb = Image::from_bits(2, 1, &[0b10], 1, BitOrder::LsbFirst, colors).unwrap();
+        assert_eq!((lsb.get(0, 0), lsb.get(1, 0)), (0, 0xffffff));
+        assert!(Image::from_bits(8, 2, &[0], 1, BitOrder::MsbFirst, colors).is_err());
+        assert!(Image::from_bits(9, 1, &[0, 0], 1, BitOrder::MsbFirst, colors).is_err());
     }
 
     #[test]

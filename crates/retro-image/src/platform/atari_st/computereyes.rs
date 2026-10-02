@@ -7,7 +7,7 @@
 //!   replication, the high-resolution sum (0-191) as `sum * 4 / 3`, and
 //!   medium resolution lines are doubled.
 
-use super::common::{be16, be32};
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 22;

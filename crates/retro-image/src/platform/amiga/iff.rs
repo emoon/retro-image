@@ -3,6 +3,8 @@
 //! Source: EA IFF 85 standard
 //! (<https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>).
 
+use crate::bytes::be32;
+
 /// Returns the FORM type and its contents, if `data` is an IFF FORM.
 ///
 /// The declared FORM length is clamped to the data actually present.
@@ -10,7 +12,7 @@ pub(super) fn form(data: &[u8]) -> Option<([u8; 4], &[u8])> {
     if data.len() < 12 || &data[..4] != b"FORM" {
         return None;
     }
-    let len = be32(&data[4..8]) as usize;
+    let len = be32(data, 4)? as usize;
     let end = data.len().min(8usize.saturating_add(len));
     let kind = data[8..12].try_into().ok()?;
     Some((kind, &data[12..end.max(12)]))
@@ -23,7 +25,7 @@ pub(super) fn chunks(mut data: &[u8]) -> impl Iterator<Item = ([u8; 4], &[u8])> 
             return None;
         }
         let id: [u8; 4] = data[..4].try_into().ok()?;
-        let len = be32(&data[4..8]) as usize;
+        let len = be32(data, 4)? as usize;
         let rest = &data[8..];
         let body = &rest[..len.min(rest.len())];
         let next = len.saturating_add(len & 1).min(rest.len());
@@ -37,14 +39,6 @@ pub(super) fn find<'a>(contents: &'a [u8], id: &[u8; 4]) -> Option<&'a [u8]> {
     chunks(contents)
         .find(|(i, _)| i == id)
         .map(|(_, body)| body)
-}
-
-pub(super) fn be16(b: &[u8]) -> u16 {
-    u16::from_be_bytes([b[0], b[1]])
-}
-
-pub(super) fn be32(b: &[u8]) -> u32 {
-    u32::from_be_bytes([b[0], b[1], b[2], b[3]])
 }
 
 #[cfg(test)]

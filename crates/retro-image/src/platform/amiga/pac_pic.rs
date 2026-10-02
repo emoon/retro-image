@@ -11,8 +11,8 @@
 
 use alloc::vec::Vec;
 
-use super::iff::{be16, be32};
 use super::ilbm::rgb12;
+use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
 const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
@@ -25,27 +25,27 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     let screen = data.get(20..20 + SCREEN_HEADER_LEN).ok_or(fail)?;
-    if !SCREEN_IDS.contains(&be32(&screen[0..4])) {
+    if !SCREEN_IDS.contains(&be32(screen, 0).ok_or(fail)?) {
         return Err(fail);
     }
-    let mode = be16(&screen[20..22]);
+    let mode = be16(screen, 20).ok_or(fail)?;
     let mut palette = [0u32; 64];
     for (i, word) in screen[26..90].chunks_exact(2).enumerate() {
-        palette[i] = rgb12(be16(word));
+        palette[i] = rgb12(u16::from_be_bytes([word[0], word[1]]));
         palette[i + 32] = (palette[i] >> 1) & 0x7f7f7f;
     }
 
     let start = 20 + SCREEN_HEADER_LEN;
     let picture = data.get(start..start + 24).ok_or(fail)?;
-    if be32(&picture[0..4]) != PICTURE_ID {
+    if be32(picture, 0).ok_or(fail)? != PICTURE_ID {
         return Err(fail);
     }
-    let row_len = usize::from(be16(&picture[8..10]));
-    let lumps = usize::from(be16(&picture[10..12]));
-    let lump_lines = usize::from(be16(&picture[12..14]));
-    let planes = usize::from(be16(&picture[14..16]));
-    let rle_pos = start.saturating_add(be32(&picture[16..20]) as usize);
-    let points_pos = start.saturating_add(be32(&picture[20..24]) as usize);
+    let row_len = usize::from(be16(picture, 8).ok_or(fail)?);
+    let lumps = usize::from(be16(picture, 10).ok_or(fail)?);
+    let lump_lines = usize::from(be16(picture, 12).ok_or(fail)?);
+    let planes = usize::from(be16(picture, 14).ok_or(fail)?);
+    let rle_pos = start.saturating_add(be32(picture, 16).ok_or(fail)? as usize);
+    let points_pos = start.saturating_add(be32(picture, 20).ok_or(fail)? as usize);
     let (width, height) = (row_len * 8, lumps * lump_lines);
     if width == 0 || height == 0 || !(1..=6).contains(&planes) {
         return Err(fail);

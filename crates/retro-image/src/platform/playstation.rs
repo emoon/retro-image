@@ -9,30 +9,22 @@
 //! - 5-bit to 8-bit scaling (`v << 3 | v >> 2`): observed from `recoil2png`
 //!   output.
 
+use crate::bytes::{le16, le32};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
     &[Format::new("PlayStation", "TIM", &["tim"], decode_tim).signature()];
 
-fn le16(b: &[u8]) -> usize {
-    usize::from(u16::from_le_bytes([b[0], b[1]]))
-}
-
-fn le32(b: &[u8]) -> usize {
-    u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize
-}
-
 /// A block: returns (width in halfwords, height, data, length field).
 fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
-    let header = data.get(..12)?;
-    let len = le32(&header[0..4]);
-    let (width, height) = (le16(&header[8..10]), le16(&header[10..12]));
+    let len = le32(data, 0)? as usize;
+    let (width, height) = (usize::from(le16(data, 8)?), usize::from(le16(data, 10)?));
     let body = data.get(12..12 + width * height * 2)?;
     Some((width, height, body, len))
 }
 
 /// 15-bit colour: red in bits 0-4, green 5-9, blue 10-14.
-fn color15(word: usize) -> u32 {
+fn color15(word: u16) -> u32 {
     let channel = |shift: usize| {
         let v = (word >> shift & 31) as u32;
         v << 3 | v >> 2
@@ -42,11 +34,10 @@ fn color15(word: usize) -> u32 {
 
 fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
-    let header = data.get(..8).ok_or(fail)?;
-    if le32(&header[0..4]) != 0x10 {
+    if le32(data, 0) != Some(0x10) {
         return Err(fail);
     }
-    let flags = le32(&header[4..8]);
+    let flags = le32(data, 4).ok_or(fail)?;
     let depth = flags & 7;
     let has_clut = flags & 8 != 0;
     // The other flag bits are reserved but not always zero (PSn00bSDK's
@@ -80,7 +71,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     let row_len = w * 2;
-    let lookup = |i: usize| clut.get(i * 2..i * 2 + 2).map_or(0, |c| color15(le16(c)));
+    let lookup = |i: usize| le16(clut, i * 2).map_or(0, color15);
     let mut image = Image::new(width as u32, height as u32);
     for y in 0..height {
         let row = &pixels[y * row_len..(y + 1) * row_len];
@@ -88,7 +79,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
             let color = match depth {
                 0 => lookup(usize::from(row[x / 2] >> (x % 2 * 4) & 15)),
                 1 => lookup(usize::from(row[x])),
-                2 => color15(le16(&row[x * 2..])),
+                2 => color15(u16::from_le_bytes([row[x * 2], row[x * 2 + 1]])),
                 _ => {
                     let p = &row[x * 3..x * 3 + 3];
                     u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2])

@@ -9,8 +9,8 @@
 
 use alloc::vec::Vec;
 
-use super::iff::be16;
 use super::ilbm::rgb12;
+use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 struct Object<'a> {
@@ -26,14 +26,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if magic != b"AmSp" && magic != b"AmIc" {
         return Err(fail);
     }
-    let count = usize::from(be16(data.get(4..6).ok_or(fail)?));
+    let count = usize::from(be16(data, 4).ok_or(fail)?);
     let mut pos = 6;
     let mut objects = Vec::new();
     for _ in 0..count {
         let header = data.get(pos..pos + 10).ok_or(fail)?;
-        let width = usize::from(be16(&header[0..2])) * 16;
-        let height = usize::from(be16(&header[2..4]));
-        let depth = usize::from(be16(&header[4..6]));
+        let word = |at| be16(header, at).map(usize::from).ok_or(fail);
+        let (width, height, depth) = (word(0)? * 16, word(2)?, word(4)?);
         if depth > 6 {
             return Err(fail);
         }
@@ -47,13 +46,16 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             planes,
         });
     }
-    let palette = data.get(pos..pos + 64).ok_or(fail)?;
+    let palette: Vec<u16> = (0..32)
+        .map(|i| be16(data, pos + i * 2))
+        .collect::<Option<_>>()
+        .ok_or(fail)?;
     // 6-plane objects use Extra Half-Brite: colours 32-63 are colours 0-31
     // with each 4-bit component halved (Amiga Hardware Reference Manual,
     // "Extra Half Brite Mode"). RECOIL rejects such banks.
     let colors: Vec<u32> = (0..64)
         .map(|i| {
-            let word = be16(&palette[i % 32 * 2..i % 32 * 2 + 2]);
+            let word = palette[i % 32];
             rgb12(if i >= 32 { (word >> 1) & 0x777 } else { word })
         })
         .collect();

@@ -12,6 +12,7 @@
 
 extern crate alloc;
 
+mod bytes;
 mod codec;
 mod error;
 mod format;
@@ -20,6 +21,7 @@ mod platform;
 
 pub use error::DecodeError;
 pub use format::{Companions, Format, NoCompanions, candidates, formats};
+pub(crate) use image::BitOrder;
 pub use image::Image;
 
 /// Decodes `data` on its own. See [`decode_with`].
