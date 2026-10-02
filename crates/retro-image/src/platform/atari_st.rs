@@ -11,6 +11,7 @@ mod dali;
 mod degas;
 mod duo;
 mod falcon;
+mod falcon_paint;
 mod gem_img;
 mod mono;
 mod mpp;
@@ -134,4 +135,16 @@ pub(super) static FORMATS: &[Format] = &[
     falcon("IndyPaint", &["tru"], falcon::decode_tru),
     falcon("Falcon True Color", &["ftc"], falcon::decode_ftc),
     falcon("XGA", &["xga"], falcon::decode_xga),
+    falcon("TmS Cranach", &["esm"], falcon_paint::decode_esm),
+    falcon("Funny Paint", &["fun"], falcon_paint::decode_fun),
+    falcon("PixArt", &["pix"], falcon_paint::decode_pix),
+    falcon(
+        "Prism Paint / TruePaint",
+        &["pnt", "tpi"],
+        falcon_paint::decode_pnt,
+    ),
+    falcon("DelmPaint", &["del"], falcon_paint::decode_del),
+    falcon("DelmPaint (640x480)", &["dph"], falcon_paint::decode_dph),
+    falcon("RAG-D", &["rag"], falcon_paint::decode_rag),
+    falcon("Music Compile", &["ragc"], falcon_paint::decode_ragc),
 ];

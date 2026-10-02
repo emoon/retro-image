@@ -178,7 +178,7 @@ pub(super) fn planar_image(
     y_scale: u32,
 ) -> Option<Image> {
     let stride = (width / 16 * planes * 2) as usize;
-    if bitmap.len() < stride * height as usize {
+    if !width.is_multiple_of(16) || bitmap.len() < stride * height as usize {
         return None;
     }
     let mut image = Image::new(width, height * y_scale);
