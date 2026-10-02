@@ -22,12 +22,16 @@ use alloc::vec::Vec;
 use crate::bytes::le16;
 use crate::{BitOrder, DecodeError, Format, Image};
 
+mod flf;
+
 pub(super) static FORMATS: &[Format] = &[
     // Version 2 first: its "AWBM" header would also pass as version 1 cells.
     Format::new("PC", "Award BIOS logo version 2", &["epa"], decode_awbm).signature(),
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
+    // Wave 5: FLF
+    Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.

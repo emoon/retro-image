@@ -13,6 +13,7 @@ mod degas;
 mod duo;
 mod falcon;
 mod falcon_paint;
+mod flf;
 mod gem_img;
 mod grafix;
 mod iff;
@@ -228,6 +229,14 @@ pub(super) static FORMATS: &[Format] = &[
     st("ColorSTar object", &["obj"], mono::decode_obj),
     st("Grafix", &["grx"], grafix::decode_grx).signature(),
     st("Imagic", &["ic1", "ic2", "ic3"], imagic::decode_ic).signature(),
+    // Wave 5: FLF
+    Format::new(
+        "Atari ST",
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_flf,
+    )
+    .signature(),
 ];
 
 #[cfg(test)]

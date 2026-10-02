@@ -14,6 +14,7 @@ mod c128;
 mod cgx;
 mod charpad;
 mod charset;
+mod flf;
 mod fli;
 mod godot;
 mod ifli;
@@ -291,6 +292,15 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(VIC20, "Best Paint", &["bp"], vic20::decode_best_paint),
     Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
+    // Wave 5: FLF
+    Format::new(C64, "Turbo Rascal Syntax Error", &["flf"], flf::decode_c64).signature(),
+    Format::new(
+        VIC20,
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_vic20,
+    )
+    .signature(),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

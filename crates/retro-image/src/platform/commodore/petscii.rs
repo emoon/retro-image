@@ -33,7 +33,7 @@ use alloc::vec::Vec;
 ///
 /// The reversed `@` (screen code `$80`) is not an exact inverse of `@` in
 /// this ROM (row 5 is `$99`, not `$9D`); the VIC-II shows the ROM as is.
-static CHARGEN: &[u8; 4096] = include_bytes!("chargen-901225-01.bin");
+pub(super) static CHARGEN: &[u8; 4096] = include_bytes!("chargen-901225-01.bin");
 
 /// Which ROM character set a picture uses.
 #[derive(Clone, Copy)]
