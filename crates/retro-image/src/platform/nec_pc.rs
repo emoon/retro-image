@@ -25,29 +25,38 @@ pub(super) enum Machine {
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NEC PC-80", "Maki-chan Graphics", &["mag"], |d| {
         maki::decode_mag(d, Machine::Pc80)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-88", "Maki-chan Graphics", &["mag"], |d| {
         maki::decode_mag(d, Machine::Pc88)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-88 VA", "Maki-chan Graphics", &["mag"], |d| {
         maki::decode_mag(d, Machine::Pc88Va)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-98", "Maki-chan Graphics", &["mag"], |d| {
         maki::decode_mag(d, Machine::Pc98)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-98", "Maki-chan Graphics (MAKI01)", &["mki"], |d| {
         maki::decode_mki(d, Machine::Pc98)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-88", "Pi", &["pi"], |d| {
         pi::decode_pi(d, Machine::Pc88)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-88 VA", "Pi", &["pi"], |d| {
         pi::decode_pi(d, Machine::Pc88Va)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-98", "Pi", &["pi"], |d| {
         pi::decode_pi(d, Machine::Pc98)
-    }),
+    })
+    .signature(),
     Format::new("NEC PC-88 VA", "PIC", &["pic"], |d| {
         super::sharp_x68000::pic::decode_pic(d, Machine::Pc88Va)
-    }),
+    })
+    .signature(),
 ];

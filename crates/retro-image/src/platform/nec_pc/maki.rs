@@ -428,6 +428,25 @@ mod tests {
     }
 
     #[test]
+    fn content_detection_picks_the_saving_machine() {
+        for (machine, expected) in [
+            (0x00, Machine::Pc98),
+            (0x03, Machine::Msx),
+            (0x68, Machine::X68000),
+            (0x80, Machine::Pc80),
+        ] {
+            let data = mag(machine, 0, 0, 7, &[0x44; 48], &[0x10, 0x01, 0, 0]);
+            let ours = decode_mag(&data, expected).unwrap();
+            assert_eq!(crate::decode("x.dat", &data), Ok(ours.clone()));
+            assert_eq!(crate::decode("x.mag", &data), Ok(ours));
+            let (format, _) = crate::candidates("x.dat")
+                .find_map(|f| f.decode(&data).ok().map(|i| (f, i)))
+                .unwrap();
+            assert_eq!(format.name, "Maki-chan Graphics");
+        }
+    }
+
+    #[test]
     fn mag_reads_big_endian_variant() {
         let mut data = b"MAKI02  \x1a\0".to_vec();
         data.extend([0xff, 0, 0]); // unreliable machine byte, flags, mode

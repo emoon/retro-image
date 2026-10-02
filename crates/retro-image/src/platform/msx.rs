@@ -84,27 +84,32 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new("MSX2", "Maki-chan Graphics", &["mag", "max"], |d| {
         maki::decode_mag(d, Machine::Msx)
-    }),
+    })
+    .signature(),
     Format::new("MSX2", "Maki-chan Graphics (MAKI01)", &["mki"], |d| {
         maki::decode_mki(d, Machine::Msx)
-    }),
-    Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
+    })
+    .signature(),
+    Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)).signature(),
     Format::new("MSX2", "PIC", &["pic"], |d| {
         super::sharp_x68000::pic::decode_pic(d, Machine::Msx)
-    }),
-    Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode),
+    })
+    .signature(),
+    Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode).signature(),
     Format::new(
         "MSX2",
         "Dynamic Publisher screen",
         &["pct"],
         dynamic_publisher::decode_pct,
-    ),
+    )
+    .signature(),
     Format::new(
         "MSX2",
         "Dynamic Publisher font",
         &["fnt"],
         dynamic_publisher::decode_fnt,
-    ),
+    )
+    .signature(),
     Format::new(
         "MSX2",
         "Dynamic Publisher stamp",
