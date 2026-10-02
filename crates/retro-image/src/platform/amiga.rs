@@ -45,6 +45,11 @@ fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Any IFF picture FORM we support.
 fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
+    // NEOchrome Master (Atari ST) pictures: an ILBM plus rasters after the
+    // FORM, left to that decoder.
+    if super::atari_st::is_neochrome_master(data) {
+        return Err(DecodeError::Unrecognized);
+    }
     let (kind, contents) = iff::form(data).ok_or(DecodeError::Unrecognized)?;
     decode_form(&kind, contents)
 }

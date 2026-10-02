@@ -31,6 +31,8 @@ mod tiny;
 mod tt;
 mod uimg;
 
+pub(super) use iff::is_neochrome_master;
+
 use crate::{Companions, DecodeError, Format, Image};
 
 type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
@@ -70,7 +72,8 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     st("EZ-Art Professional", &["eza"], degas::decode_eza),
     st_with("NEOchrome", &["neo"], simple::decode_neo),
-    st("NEOchrome Master", &["neo"], iff::decode_block),
+    // Content detection: an ILBM FORM followed by a `RAST` chunk.
+    st("NEOchrome Master", &["neo"], iff::decode_neochrome_master).signature(),
     st("Doodle", &["doo"], simple::decode_doo),
     st(
         "Art Director / GFA Artist / Palette Master",

@@ -303,9 +303,12 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   Paintworks, UIMG, Pablo Paint, KID, DEGAS Elite icon, Grafix, Imagic and the Falcon formats with
   ID strings (ImageLab, DuneGraph, Print-Technik, InShape, Rembrandt, COKE, EggPaint and
   Spooky TRP/TRE, IndyPaint, TmS Cranach, Funny Paint, PixArt, Prism Paint, RAG-D,
-  ICDRAW). Left off on purpose: NEOchrome Master and DEGAS Elite blocks (renamed ILBMs
-  already go to the Amiga IFF decoder, which comes first; ours would claim Amiga DCTV and
-  HAM-E ILBMs that it rejects), EZ-Art (only a 2-byte `EZ`), Music Compile (RAG-D claims
+  ICDRAW), and NEOchrome Master, but only for an ILBM FORM directly followed by a `RAST`
+  chunk (the Amiga IFF decoder declines those). Without `RAST`, `recoil2png` renders a
+  NEOchrome Master FORM as a plain Amiga ILBM even as `.neo`, and so do we (checked
+  black-box with FISH.neo renamed and with its `RAST` chunk cut off). Left off on purpose:
+  DEGAS Elite blocks (renamed ILBMs already go to the Amiga IFF decoder, which comes first;
+  ours would claim Amiga DCTV and HAM-E ILBMs that it rejects), EZ-Art (only a 2-byte `EZ`), Music Compile (RAG-D claims
   the same container first), HRM and PCI (their unpacked form has no header) and every
   headerless or size-only format.
 - Companion files (black-box tests with `recoil2png`):

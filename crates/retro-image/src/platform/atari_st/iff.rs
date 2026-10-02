@@ -20,6 +20,29 @@ pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
     decode(data).ok_or(DecodeError::Unrecognized)
 }
 
+/// A NEOchrome Master picture needs its rasters: without them `recoil2png`
+/// renders the FORM as a plain (Amiga) ILBM, whatever the extension.
+pub(super) fn decode_neochrome_master(data: &[u8]) -> Result<Image, DecodeError> {
+    if !is_neochrome_master(data) {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode_block(data)
+}
+
+/// Whether an ILBM FORM is directly followed by a NEOchrome Master `RAST`
+/// chunk (with or without a pad byte).
+pub(in crate::platform) fn is_neochrome_master(data: &[u8]) -> bool {
+    let Some(len) = be32(data, 4) else {
+        return false;
+    };
+    let end = 8usize.saturating_add(len as usize);
+    data.get(..4) == Some(b"FORM")
+        && data.get(8..12) == Some(b"ILBM")
+        && [end, end.saturating_add(1)]
+            .iter()
+            .any(|&at| data.get(at..).is_some_and(|rest| rest.starts_with(b"RAST")))
+}
+
 struct Header {
     width: usize,
     height: usize,
@@ -121,4 +144,23 @@ fn decode(data: &[u8]) -> Option<Image> {
 /// Whether `id` looks like an IFF chunk id (four printable ASCII bytes).
 fn is_chunk_id(id: &[u8]) -> bool {
     id.iter().all(|b| (b' '..=b'~').contains(b))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn neochrome_master_needs_rast_right_after_the_form() {
+        // FORM of odd length 5: "ILBM" + one byte, as NEOchrome Master writes it.
+        let form = b"FORM\0\0\0\x05ILBMx";
+        let unpadded = [&form[..], b"RAST\0\0\0\0"].concat();
+        let padded = [&form[..], b"\0RAST\0\0\0\0"].concat();
+        assert!(is_neochrome_master(&unpadded));
+        assert!(is_neochrome_master(&padded));
+        assert!(!is_neochrome_master(form));
+        assert!(!is_neochrome_master(&[&form[..], b"CMAP\0\0\0\0"].concat()));
+        let pbm = [&b"FORM\0\0\0\x05PBM x"[..], b"RAST\0\0\0\0"].concat();
+        assert!(!is_neochrome_master(&pbm));
+    }
 }
