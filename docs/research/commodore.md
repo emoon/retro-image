@@ -94,7 +94,7 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 | FBI | Flip (FLI Painter) | **Spec** | [GD Flip](https://www.godot64.de/german/l_flipr.htm) | Unpacked: load `$3C00` (68 blocks). Colour 1024, 8×1024 video RAMs, 8192 bitmap; background black. Packed: load `$38F0` with a 16-byte header (indicator, end addresses) and backwards RLE. |
 | FCP, FPT | Face Painter | **Partial** | [JS](http://fileformats.archiveteam.org/wiki/Face_Painter) | Exactly 10004 bytes, so Koala-sized with 1 extra byte. Offsets not documented. |
 | FD2 | FLI Designer 1.1/2.0 | **Spec** | CB, [GD FLI-Designer](https://www.godot64.de/german/l_flidesgn.htm) | Load `$3C00`. Colour `$3C00`, 8 screens `$4000`, bitmap `$6000`; background black. |
-| FED | FLI Editor | **None** | – | Nothing beyond the name. |
+| FED | FLI Editor | **RE** | samples (CSDb 3200, 35827, 46326) | 17665 bytes, load `$3B00`: the FLI Graph memory map. Done in wave 6. |
 | FFL, FFLI | Flash FLI | **Partial** | [JS FFLI](http://fileformats.archiveteam.org/wiki/FFLI), C64Gfx.lha `man/ffli.doc` | Exactly 26115 bytes, starts `FF 3A 66`. Flickering FLI (two frames blended). ffli.doc not yet read. |
 | FLF | Turbo Rascal Syntax Error | **None** | [JS](http://fileformats.archiveteam.org/wiki/Turbo_Rascal_Syntax_Error) | TRSE's own image format. The only description is TRSE's GPL source (avoid). |
 | FLI | FLI (FLI Designer 2 / generic) | **Spec** | CB ("FLI Designer 2") | Load `$3FF0`, 17409 bytes. Colour `$3FF0`, 8 screens `$43F0`, bitmap `$63F0`. |
@@ -109,7 +109,7 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 | GR, CS | Star Painter | **Spec** | [GD StarPntr](https://www.godot64.de/german/l_starp.htm), [JS](http://fileformats.archiveteam.org/wiki/Star_Painter) | No load address. 2-byte header (width, height in 8×8 cells; `.gr` max 80×89, `.cs` 32×21), then hires bitmap stored cell by cell. |
 | GUN, IFL | Gunpaint | **Spec** | CB, [GD IFLI](https://www.godot64.de/german/l_ifli.htm), [JS](http://fileformats.archiveteam.org/wiki/Gunpaint) | Load `$4000`, 33603 bytes. Screens 1 `$4000` (header text `GUNPAINT (JZ)` at `$43E8`), bitmap 1 `$6000`, 177×`$D021` `$7F4F`, colour `$8000`, screens 2 `$8400`, 20×`$D021` `$87E8`, bitmap 2 `$A400`. |
 | HBM, HIR, HPI, FGS | Hires-Bitmap | **Spec** | [JS](http://fileformats.archiveteam.org/wiki/Hires-Bitmap), [GD HiresBitmap](https://www.godot64.de/german/l_hibmap.htm) | 8002 bytes: load address plus 8000-byte hires bitmap, no colour (monochrome). |
-| HCB | HCB-editor | **None** | – | No information found. |
+| HCB | HCB-editor | **RE** | samples (CSDb 72550) | 12148 bytes, load `$5000`, two screen RAMs and a background colour per four lines. Done in wave 6. |
 | HED | Hi-Eddi | **Spec** | CB, [GD Hi-Eddi](https://www.godot64.de/german/l_hieddi.htm), [JS](http://fileformats.archiveteam.org/wiki/Hi-Eddi) | Load `$2000`, 9218 bytes. Bitmap `$2000`, screen `$4000`. |
 | HET | Hires-Editor (Topaz Beerline) | **None** | CB ("undocumented") | Listed as undocumented. |
 | HFC, HFD | Hires FLI Designer | **Spec** | CB, [JS](http://fileformats.archiveteam.org/wiki/Hires_FLI_Designer) | Load `$4000`. Bitmap `$4000`, 8 screens `$6000-$7FE7`. AFLI. |
@@ -135,11 +135,11 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 | MUP | MUFLI Editor (packed) | **Partial** | as MUF | Packing undocumented. |
 | MWI, MWIN | Art Studio window | **None** | – | Art Studio v1.2b window (clip) files. No layout found. |
 | NUF | NUFLI Editor | **Partial** | [C64-Wiki NUFLI](https://www.c64-wiki.com/wiki/NUFLI), [GD NuFLI](https://www.godot64.de/german/l_nufli.htm), [pynuvie FORMAT.md](https://github.com/anarkiwi/pynuvie/blob/main/docs/FORMAT.md) (**Apache-2.0**), [NUFLIX manual](https://github.com/cobbpg/nuflix-studio/blob/main/manual/manual.md) (**MIT**) | Unpacked: load `$2000`, data to `$7A00` (91 blocks), viewer at `$3000`. The full spec is in a Forum64 thread "Nufli File Specs?", linked from C64-Wiki (it returned 403 to us). pynuvie decodes the bitmap, FLI screens and six underlay sprites under a permissive license. |
-| NUP | NUFLI Editor (packed) | **Partial** | as NUF | Packed form undocumented. |
+| NUP | NUFLI Editor (packed) | **RE** | samples (CSDb 81153, 243096) | `$FD`, escape, NUFLI memory packed backwards like `.mup`. Done in wave 6. |
 | OCP, MPI, MPIC | Advanced Art Studio | **Spec** | CB, BT, [GD OCP](https://www.godot64.de/german/l_ocp.htm), [JS](http://fileformats.archiveteam.org/wiki/Advanced_Art_Studio) | Load `$2000`, 10018 bytes. Bitmap `$2000`, screen `$3F40`, border `$4328`, background `$4329`, colour `$4338`. |
 | P64, FLY | Picasso 64 / Flying Colors | **Partial** | [JS Picasso 64](http://fileformats.archiveteam.org/wiki/Picasso_64), CB (`.fly` undocumented) | Load `$1800`, 10050 bytes (same size as Vidcom). Offsets not documented. |
 | PBOT | PETSCII BOT | **Spec** | [C64 OS](https://c64os.com/post/imageformats) | 70 bytes (5×7) or 384 bytes (12×16). Colour codes, then screen codes, using the ROM uppercase charset. |
-| PDR | PetDraw64 | **None** | – | No information found. |
+| PDR | PetDraw64 | **RE** | samples (CSDb 153440) | 2029 bytes: header, screen codes, colours. Done in wave 6. |
 | PET | C64 OS screenshot v2 | **Spec** | [C64 OS](https://c64os.com/post/imageformats) | `PET` (`$D0 $C5 $D4`) plus version `0`/`1`/`2`, three 17-byte strings, 1000 screen codes, 1000 colours, border, background; v2 adds a 2048-byte charset. |
 | PET | PETSCII Editor | **Spec** | [GD PETSCII](https://www.godot64.de/german/l_petscii.htm), [Marq's PETSCII](https://www.kameli.net/marq/?page_id=2717) (**WTFPL** source) | Header: width, height, border, background, charset (1 byte each), then screen RAM and colour RAM (1000 bytes each for 40×25). |
 | PG | Pagefox | **Spec** | [GD PFoxSelect](https://www.godot64.de/german/l_pfoxs.htm), [JS](http://fileformats.archiveteam.org/wiki/Printfox_bitmap) | First byte `P`, height/width in tiles, `K` plus layout contour data up to `$00`, then bitmap in tiles. RLE `$9B count(byte) byte`. Up to 640×800. |
@@ -155,8 +155,8 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 | SCR + COL | PETSCII Editor (raw) | **Hardware-only** | [PETSCII Editor](https://petscii.krissz.hu/) (exports raw streams) | Pair of raw 1000-byte screen-code and colour files. Needs the ROM charset. |
 | SH1 | Super-hires Editor I | **None** | – | No information found. |
 | SH2 | Super-hires Editor II | **None** | – | No information found. |
-| SHE | Super Hires Editor | **None** | – | No information found. |
-| SHE | Super Hires Editor 2 | **None** | – | No information found. |
+| SHE | Super Hires Editor | **RE** | sample (CSDb 128082) | 3250 bytes, 96×88, bitmap plus two sprite layers. Done in wave 6. |
+| SHE | Super Hires Editor 2 | **Partial** | probing | `recoil2png` also takes 8642-byte `.she` files (192×168); layout probed, no sample. See "Wave 6: PetDraw and Super Hires Editor". |
 | SHF | Super Hires FLI Editor | **Partial** | CB (SHFLI) | Unpacked: 8 video RAMs `$4000-$5FE7` with sprite pointers, bitmap `$6000`. How the sprite data is stored is unknown ("How are the sprites stored?"). Packed form unknown. |
 | SHI | Super Hires Interlace Editor | **Partial** | CB (SHIFLI) | Runnable `$0801` file: picture 1 data at `$095C` is moved to `$4000`, picture 2 at `$475C` is moved to `$C000`. Sprite storage unknown. |
 | SHP | Loadstar SHP | **Spec** | [GD Loadstar](https://www.godot64.de/german/l_loadstar.htm), [JS](http://fileformats.archiveteam.org/wiki/SHP_(Loadstar)) | Load `$4000`. New format: mode byte (`$80` hires, `$00` multi), pack indicator, background; then bitmap, video and colour chunks, each RLE'd with its own indicator. The old format (`$A8`/`$E8` mode, height in cells) is also documented. |
@@ -166,10 +166,10 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 | SPD | SpritePad | **Spec** | [CSDb forum: SPD format](https://csdb.dk/forums/?roomid=7&topicid=125812), [GD SpritePad](https://www.godot64.de/german/l_spritepad.htm), [spritemate](https://github.com/Esshahn/spritemate) (**MIT**) | Magic `SPD` plus version, sprite count-1, animation count-1, background, MC1, MC2; then 63 bytes of data plus 1 flag byte per sprite; then animation tables. Versions 1 and 2 (tiles). |
 | UFL | UFLI-editor | **Partial** | CB (UFLI), [Codebase UFLI](http://codebase.c64.org/doku.php?id=base:ufli) | Memory map known (60 sprites `$4000`, sprite colour `$4FF0`, 4 screen RAMs, bitmap `$6000`), but the load address is unknown. |
 | UIF | UIFLI-editor | **Partial** | CB (UIFLI) | Memory map for both frames known; load address unknown. |
-| VHI | Vertical Hires Interlace Editor | **None** | – | No information found. |
+| VHI | Vertical Hires Interlace Editor | **RE** | samples (CSDb 12502) | 17389 bytes (two hires bitmaps, one screen) or a packed form. Done in wave 6. |
 | VIC | Generic C64 (up to 320×200) | **Hardware-only** | [JS list](http://fileformats.archiveteam.org/wiki/Commodore_graphics_formats) | Generic memory dumps. Identify them by load address and length. |
 | VID | Vidcom 64 | **Spec** | CB, BT, [GD VidCom](https://www.godot64.de/german/l_vidcom.htm), [JS](http://fileformats.archiveteam.org/wiki/Vidcom_64) | Load `$5800`, 10050 bytes. Colour `$5800`, screen `$5C00`, background `$5FE8`, bitmap `$6000`. |
-| XFL | X-FLI Editor | **None** | – | No information found. |
+| XFL | X-FLI Editor | **RE** | samples (CSDb 6498, 8131) | Load `$4000`, escape, backward RLE to `$3F40` bytes: FLI bitmap, 8 sprites, per-line sprite colour table. Done in wave 6. |
 | ZOM | Zoomatic | **Spec** | CB | Load `$6000`, Koala layout. RLE where the escape `$03` comes *after* byte,length (length 0 = 256). |
 | ZS | Star Painter font | **None** | [JS Star Painter](http://fileformats.archiveteam.org/wiki/Star_Painter) | Only the extension is listed. |
 
@@ -298,7 +298,7 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 - UFLI-editor (`.ufl`): 16194 bytes = unpacked `$4000-$7F3F`; any other size is packed like SHF (2 ignored bytes, escape, forward `ESC count value`) to at least `$3F40` bytes. Hires FLI with screen RAM `$5000 + $400 * (y/2 % 4)`, bitmap `$6000` (columns 3-38 shown, 288 wide), six X-expanded sprites behind the bitmap's clear pixels in colour `$4FF0`: line `y` shows row `(y+1)/2 % 21` of block `$4000 + $300*(y/40) + $180*(y/2 % 2) + $40*column` (the file's sprite pointers are not used).
 - FLI Profi (`.fpr`, 18370 bytes, load `$3780`): multicolour FLI (colour `$3C00`, screens `$4000`, bitmap `$6000`, black background) at the full 320 width. The FLI-bug columns 0-23 are covered by a multicolour sprite read from two streams of 21-row blocks: lines `y % 4` = 0/3 from `$3780`, 1/2 from `$38C0`. Sprite pairs `01` = per-line colour `$3A00+y`, `10` = `$3BC8`, `11` = `$3BC9`; under it the bitmap shows `00` black, `01`/`10` light grey, `11` the high nibble of `$3B00+y`.
 - Content detection (`.signature()`): packed Drazpaint/Drazlace, Funpaint II, GoDot 4Bit/clip, SpritePad v1, Commodore Grafix, CharPad, C64 OS `.pet`, VDC BitMap, BASIC 8 `brus`.
-- Not implemented: packed ECI (ECP), Dolphin Ed (one sample, black background, so the background byte can't be located), Face Painter, Hires Editor (HET), Centauri Logo Editor, M.C.S. (the `.mcs` samples have no load address and may belong to another platform), Interlace Hires Editor, the remaining Super Hires editors (SH1, SH2, SHE, SHS, ESH and the Interlace-Super-Hires ISH; no samples in the corpus), packed NUFLI (NUP), UIFLI, MUFLI/MUIFLI, Multi-Lace Editor, Botticelli 128×64 and PetDraw64 (no samples). Petmate `.pet` (header with width, height, colours and charset) is documented on GoDot's PETSCII loader page, but `recoil2png` rejects it and there are no samples.
+- Not implemented (after wave 6): Boogie Down Paint (BDP), the remaining Super Hires editors (SH1, SH2, the 8642-byte SHE, SHS, ESH), Flimatic (FLM), Fuckpaint (FP), Hireslace Editor (HLE), Interlaced Logo Editor (ILE), Run Paint (RPH), UIFLI (UIF) and Zoomatic (ZOM). None has a sample yet; see the wave 5 and wave 6 sample hunts in [README.md](README.md). Petmate `.pet` (header with width, height, colours and charset) is documented on GoDot's PETSCII loader page, but `recoil2png` rejects it and there are no samples.
 
 ### Corrections found while reviewing hostile samples
 
@@ -396,10 +396,24 @@ do the other 8 `.nup` files on the same two disks (13 in all, every `.NUP` in th
 
 ## Wave 6: FLI Editor and HCB
 
-Both reverse engineered with `recoil2png` as a black box; every corpus sample matches pixel for pixel, no divergences recorded.
+Both were worked out with `recoil2png` as a black box. Every corpus sample matches pixel for
+pixel and no divergences were recorded.
 
-- **FLI Editor (`.fed`, 4 samples).** 17665 bytes, load `$3B00`: this is exactly the FLI Graph memory map (per-line background table at `$3B00`, colour RAM `$3C00`, eight screen RAMs from `$4000`, bitmap `$6000`), 296x200 with the three FLI-bug columns cut. It reuses the FLI Graph renderer and accepts only that size. Ten more 17665-byte FLI pictures (Morbid Art 3 and LCPpic disks, copied as `.fed`) also match `recoil2png`.
-- **HCB-editor (`.hcb`, 2 samples).** 12148 bytes, load `$5000`, found by flipping bytes and by writing single bytes into a synthetic file with a fixed bitmap. Two screen RAMs at `$5800` (lines 0-3 of each character row) and `$5C00` (lines 4-7), multicolour bitmap at `$6000`, then 50 background colours at `$7F40`, one per four lines. Pair `01` is the screen high nibble, `10` and `11` both its low nibble; there is no colour RAM. `$5000-$57FF` (non-zero in the samples) changes nothing; no other bytes exist. The picture is 296x200 (left 24 pixels cut). The name probably means "half colour bitmap" (colour changes every 4 lines). Only 2 samples; `recoil2png` accepts only 12148 bytes.
+- **FLI Editor (`.fed`, 4 samples): done.** 17665 bytes, load `$3B00`, and it's just the FLI
+  Graph memory map: per-line background table at `$3B00`, colour RAM `$3C00`, eight screen
+  RAMs from `$4000`, bitmap `$6000`. The picture is 296x200 with the three FLI-bug columns cut.
+  We reuse the FLI Graph renderer and accept only that size. Ten more 17665-byte pictures from
+  the Morbid Art 3 and LCPpic disks, renamed to `.fed`, match as well.
+- **HCB-editor (`.hcb`, 2 samples): done.** 12148 bytes, load `$5000`, found by flipping bytes
+  and by writing single bytes into a synthetic file with a fixed bitmap. Two screen RAMs, `$5800`
+  for lines 0-3 of each character row and `$5C00` for lines 4-7, then a multicolour bitmap at
+  `$6000` and 50 background colours at `$7F40`, one per four lines. There's no colour RAM:
+  pair `01` takes the screen's high nibble, and `10` and `11` both take its low nibble.
+  `$5000-$57FF` is non-zero in the samples but changes nothing. The picture is 296x200 with the
+  left 24 pixels cut. I'd treat this one with some caution. It rests on two pictures from one
+  demo, and two bit pairs sharing a nibble is odd enough that a third sample would be worth
+  checking against. My guess is that the name means "half colour bitmap", since the colours
+  change every four lines, but nothing confirms it.
 
 ## Wave 6: PetDraw and Super Hires Editor
 

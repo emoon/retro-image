@@ -124,3 +124,38 @@ for EMC (GoDot is MIT; its sizes give 17410 bytes, the sample has 17412), the Co
 spec list (Wayback) for Hireslace Editor, a [note.com article](https://note.com/ftz/n/n84d9dd98c1e2)
 on Kitty (the `rururutan/ifkty` plugin has no checked licence; don't read it), and a Japanese Pi
 document with a machine translation attached to RECOIL ticket #12 (prose, licence unstated).
+
+## Wave 6 sample hunt: the Assembly64 CSDb archive (2026-10-02)
+
+Assembly64 mirrors CSDb as plain zips at <https://hackerswithstyle.se/artifacts/> (one folder
+per category: `CSDB_graphics`, `CSDB_tools`, `CSDB_demos`, `CSDB_misc` and so on, one folder
+per release inside each zip). We took graphics, tools, demos and misc (about 3.1 GB), pulled
+every file out of every D64/D71/D81/T64 and searched about 380,000 files three ways: the
+editor's own release disk, PETSCII file names with a format tag (`.VHI`, `.NUP`, `.HCB`,
+`.X-FLI`...), and files of a size `recoil2png` accepts for the format. Folder names are release
+names, so the CSDb IDs in the manifest came from the CSDb search.
+
+Found, all checked by eye and recorded in `corpus/extra/commodore/MANIFEST.tsv`:
+
+- PDR: 17 pictures on the Pet-Draw disk (CSDb 153440).
+- VHI: three pictures on the VHI Editor disk (12502), one of them packed.
+- SHE: DOGGY on "Super Hires Editor with sample" (128082). That's the 3250-byte 96×88 kind;
+  the 8642-byte kind `recoil2png` also takes is still missing.
+- NUP: 13 `.NUP` files on Crest Slide Story (81153) and Deadly Chords (243096).
+- HCB: `KEMIKAL.HCB` and `FEMBOT.HCB` in Edge of Disgrace (72550).
+- X-FLI: 54 `.X-FLI` workstages by Dane (Ray of Light 6498, Homoerotic 8131).
+- FED: 17665-byte FLIs on Morbid Art 3 (3200), LCPpic (35827) and Ambient Work 1 (46326). No
+  file name ties them to the FLI Editor; the size is the only one `recoil2png` accepts and every
+  one is a clean picture, so the risk is low but real.
+
+Still none: BDP, ESH, FLM, FP, HLE, ILE, RPH, SH1, SH2, SHS, UIF, ZOM and a real MUF. The editors
+are all in the archive (Boogie Down Paint, Extend Super Hires Interlace Editor, Flimatic,
+FuckPaint, Hireslace Editor, Interlaced Logo Editor, the Vermes and 3LUX Super Hires editors,
+SuperHireStudio, UIFLI Editor, Zoomatic), but none ships a saved picture. Scoring the
+size-matched files didn't help: `recoil2png` takes nearly anything as ESH, FLM, RPH, SH1, SH2,
+UIF or ZOM, and the hits were code, music and Koala pictures from other packers. Making
+samples with the editors in VICE is what's left.
+
+One loose end: the Super Hires Interlace Editor V1.2 disk (CSDb 101835) has 18 `.SHI` files
+loading at `$7FFF` (packed, 4.7-10.4 KB). `recoil2png` rejects all of them as `.shi`. They might
+be a packed SHI that RECOIL doesn't know about; nobody has looked at the layout yet.
