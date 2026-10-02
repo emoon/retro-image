@@ -355,6 +355,13 @@ pub(super) static FORMATS: &[Format] = &[
         &["mwi", "mwin"],
         mwin::decode_mwin,
     ),
+    // Wave 6: C64 NUFLI packed
+    Format::new(
+        C64,
+        "NUFLI Editor (compressed)",
+        &["nup"],
+        nufli::decode_nup,
+    ),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
