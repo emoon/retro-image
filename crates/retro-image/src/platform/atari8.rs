@@ -14,8 +14,10 @@ mod hip;
 mod inflate;
 mod interlace;
 mod koala;
+mod leo;
 mod mad_studio;
 mod palette;
+mod pmg;
 mod portfolio;
 mod rom_font;
 mod screen;
@@ -233,4 +235,27 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
+    // Wave 4: player/missile graphics
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 missiles",
+        &["4mi"],
+        pmg::decode_4mi,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players",
+        &["4pl"],
+        pmg::decode_4pl,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players and missiles",
+        &["4pm"],
+        pmg::decode_4pm,
+    ),
+    Format::new(ATARI8, "Atari Player Editor", &["apl"], pmg::decode_apl),
+    Format::new(ATARI8, "Ludek Maker", &["ldm"], pmg::decode_ldm).signature(),
+    Format::new(ATARI8, "Larka Edytor Obiektow", &["leo"], leo::decode_leo),
+    Format::new(ATARI8, "PMG Designer", &["pmd"], pmg::decode_pmd).signature(),
 ];
