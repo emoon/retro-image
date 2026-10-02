@@ -13,13 +13,16 @@
 //!   area saves (`$4AFC`, width in 512-pixel coordinates, height, line
 //!   increment, mode 0/4 or 8, spare byte, then the lines) and PSA files
 //!   (the same after 4 more bytes): Dilwyn Jones, "QL Graphics File
-//!   Formats" and "Partial Screen Area Saves, or PIC/PSA Files", QL
-//!   documentation pages at
-//!   <https://dilwyn.theqlforum.com/> (articles from the "formats"
-//!   documentation section).
+//!   Formats" (`graphics.txt`) and "Partial Screen Area Saves, or PIC/PSA
+//!   Files" (`pics.txt`), from his QL pages' file formats section, read on
+//!   the sinclairql.net mirror:
+//!   <https://www.sinclairql.net/djw/docs/formats/graphics.zip>,
+//!   <https://www.sinclairql.net/djw/docs/formats/pics.zip>.
 //! - `.QS4` / `.QS8` for 32 KB mode 4 / mode 8 screens on PCs: C. Delhez,
-//!   ShowQS 1992 documentation (`SHOWQS.TXT`, in `showqs.zip` on Dilwyn
-//!   Jones' QL pages).
+//!   ShowQS (1992) documentation, `SHOWQS.TXT` in
+//!   <https://www.sinclairql.net/djw/graphics/showqs.zip>.
+//! - Padding after the last line of PIC files: observed in the QDesign clip
+//!   art (`QDesign_ClipArt.zip` on the same mirror).
 //! - Pixel shape (rows doubled so a 512x256 screen shows as 512x512 at the
 //!   QL's 4:3 display aspect): from the 512x256 resolution on a 4:3 TV, as
 //!   for other 2:1 screens in this crate.
