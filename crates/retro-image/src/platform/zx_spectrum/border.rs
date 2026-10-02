@@ -110,7 +110,9 @@ fn bsp_frame(scr: &[u8], border: &[u8]) -> Result<Frame, DecodeError> {
 /// BSP border runs, one per byte: colour in bits 2-0, length code in bits
 /// 7-3. Code 0 runs to the end of the segment (the line, or the left side
 /// of a screen row), 1 takes the half-length from the next byte, 2 is 24
-/// pixels, and higher codes are `(code + 13) * 2` pixels.
+/// pixels, and higher codes are `(code + 13) * 2` pixels. The runs must use
+/// up `border` exactly, as in every sample, which keeps the `bsp` signature
+/// strict.
 fn draw_rle_border(frame: &mut Frame, border: &[u8]) -> Result<(), DecodeError> {
     let mut bytes = border.iter().copied();
     let (mut x, mut y) = (0, 0);
@@ -141,6 +143,9 @@ fn draw_rle_border(frame: &mut Frame, border: &[u8]) -> Result<(), DecodeError> 
                 y += 1;
             }
         }
+    }
+    if bytes.next().is_some() {
+        return Err(DecodeError::Unrecognized);
     }
     Ok(())
 }
