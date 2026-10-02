@@ -20,6 +20,7 @@
 //! | Picasso 64 | <http://fileformats.archiveteam.org/wiki/Picasso_64> (load `$1800`, size); Vidcom's layout at `$1800`, background at `$1FFF`: reverse engineered from 9 samples with different backgrounds and checked against `recoil2png` output |
 //! | Cheese | <http://fileformats.archiveteam.org/wiki/Cheese> (size); load `$8000`, bitmap `$8000`, screen `$C200`, colour `$C800`, background `$CFFD`: reverse engineered from 3 samples and checked against `recoil2png` output (changing `$CFFD` changes its background) |
 //! | Rainbow Painter | <http://fileformats.archiveteam.org/wiki/Rainbow_Painter> (size); load `$5C00`, screen `$5C00`, bitmap `$6000`, colour `$8000`: reverse engineered from 2 samples. No byte sets the background: `recoil2png` shows black whatever the unused bytes hold |
+//! | Face Painter | Koala layout at `$4000` plus one trailing byte: reverse engineered from 3 samples by mutating bytes and watching `recoil2png` (bitmap `$4000`, screen `$5F40`, colour `$6328`, background `$6710`; the byte after it changes nothing) |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
@@ -112,6 +113,7 @@ const fn koala_at(load: u16, sizes: &'static [usize]) -> Multicolor {
 }
 
 pub(super) const KOALA: Multicolor = koala_at(0x6000, &[10003]);
+const FACE_PAINTER: Multicolor = koala_at(0x4000, &[10004]);
 const RUN_PAINT: Multicolor = koala_at(0x6000, &[10003, 10006]);
 const INTERPAINT_LORES: Multicolor = koala_at(0x4000, &[10003]);
 const CREATE_WITH_GARFIELD: Multicolor = koala_at(0x8000, &[10007]);
@@ -270,6 +272,10 @@ pub(super) fn decode_micro_illustrator(data: &[u8]) -> Result<Image, DecodeError
 
 pub(super) fn decode_koala(data: &[u8]) -> Result<Image, DecodeError> {
     KOALA.decode(data)
+}
+
+pub(super) fn decode_face_painter(data: &[u8]) -> Result<Image, DecodeError> {
+    FACE_PAINTER.decode(data)
 }
 
 pub(super) fn decode_run_paint(data: &[u8]) -> Result<Image, DecodeError> {

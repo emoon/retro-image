@@ -14,6 +14,7 @@ mod c128;
 mod cgx;
 mod charpad;
 mod charset;
+mod cle;
 mod fli;
 mod godot;
 mod ifli;
@@ -291,6 +292,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(VIC20, "Best Paint", &["bp"], vic20::decode_best_paint),
     Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
+    // Wave 5: C64
+    Format::new(C64, "Centauri Logo-Editor", &["cle"], cle::decode_cle),
+    Format::new(
+        C64,
+        "Face Painter",
+        &["fcp", "fpt"],
+        bitmap::decode_face_painter,
+    ),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
