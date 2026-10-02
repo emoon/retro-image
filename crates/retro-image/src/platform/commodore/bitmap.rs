@@ -16,6 +16,7 @@
 //! | Advanced Art Studio, Saracen Paint, Paint Magic, Drazpaint | CB, GD |
 //! | Art Studio, Interpaint hires, Image System hires, Hi-Eddi, Doodle (DD, JJ) | CB, BT, GD |
 //! | Hires-Bitmap (mono), Gigapaint hires, Giga-CAD, Mono Magic | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap, GD format table <https://www.godot64.de/german/formats.htm>; colours observed from `recoil2png` output |
+//! | Micro Illustrator (uncompressed only) | GD MIllustr8or <https://www.godot64.de/german/l_millu.htm> |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
@@ -234,6 +235,18 @@ pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
     frame
         .map(|f| f.to_image(0))
         .ok_or(DecodeError::Unrecognized)
+}
+
+/// Micro Illustrator, uncompressed: 22-byte header (load address, magic
+/// `FF 80 69 67`, header length 20, compression 0, background, ...), then
+/// screen, colour RAM and bitmap.
+pub(super) fn decode_micro_illustrator(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 10022 || data[2..8] != [0xff, 0x80, 0x69, 0x67, 20, 0] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let bitmap = Bitmap::multicolor(&data[2022..], &data[22..], &data[1022..], data[8]);
+    let frame = Frame::multicolor(&bitmap, HEIGHT).ok_or(DecodeError::Unrecognized)?;
+    Ok(frame.to_image(0))
 }
 
 pub(super) fn decode_koala(data: &[u8]) -> Result<Image, DecodeError> {

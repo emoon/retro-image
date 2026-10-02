@@ -11,6 +11,7 @@
 
 mod bitmap;
 mod fli;
+mod godot;
 mod ifli;
 mod interlace;
 mod prg;
@@ -174,6 +175,14 @@ pub(super) static FORMATS: &[Format] = &[
         ifli::decode_pixel_perfect_packed,
     ),
     Format::new(C64, "ECI Graphic Editor", &["eci"], ifli::decode_eci),
+    Format::new(
+        C64,
+        "Micro Illustrator",
+        &["mil"],
+        bitmap::decode_micro_illustrator,
+    ),
+    Format::new(C64, "GoDot 4Bit", &["4bt"], godot::decode_4bt),
+    Format::new(C64, "GoDot 4Bit clip", &["clp"], godot::decode_clp),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
 ];
 
