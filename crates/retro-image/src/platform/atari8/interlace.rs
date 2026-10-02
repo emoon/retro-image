@@ -3,6 +3,8 @@
 //! Sources:
 //! - INP: Just Solve "InterPainter", XL-Paint 1.9 MaX doc (16004 bytes),
 //!   atari-owner.com "Atari Software Graphic Modes" (frames flipped per VBI).
+//! - INT: Just Solve "INT95a" (signature, up to 160x239, 2 frames); the
+//!   header fields and frame layout observed from `recoil2png` output.
 //! - MCP: Just Solve "McPainter" (16008 bytes, 160x200, 2 frames).
 //! - MCPP: Just Solve "Paradox" (8008 bytes, 160x100).
 //! - IST: Just Solve "Atari Interlaced Studio" (exactly 17184 bytes,
@@ -41,6 +43,38 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(mix(
         &frame(data, 200).render(2, 1, color),
         &frame(&data[FRAME..], 200).render(2, 1, color),
+    ))
+}
+
+/// INT95a: `INT95a`, width in bytes, height, `0F 2B`, the colour sets
+/// (background, playfield 0-2) of both frames, then both frames. Files
+/// without the signature are read as InterPainter.
+pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
+    let Some(rest) = data.strip_prefix(b"INT95a") else {
+        return decode_inp(data);
+    };
+    let [width, height, 0x0f, 0x2b, ref rest @ ..] = *rest else {
+        return Err(DecodeError::Unrecognized);
+    };
+    let (width, height) = (usize::from(width), usize::from(height));
+    let frame_len = width * height;
+    if width == 0 || !(1..=239).contains(&height) || rest.len() != 8 + 2 * frame_len {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (sets, frames) = rest.split_at(8);
+    let frame_image = |frame: &[u8], set: &[u8]| {
+        let bitmap = Bitmap {
+            data: frame,
+            bytes_per_line: width,
+            lines: height,
+            bits: 2,
+        };
+        bitmap.render(2, 1, |_, value| register_rgb(set[usize::from(value)]))
+    };
+    let (first, second) = frames.split_at(frame_len);
+    Ok(mix(
+        &frame_image(first, &sets[..4]),
+        &frame_image(second, &sets[4..]),
     ))
 }
 

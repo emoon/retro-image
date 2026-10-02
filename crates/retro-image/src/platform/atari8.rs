@@ -59,6 +59,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Hard Interlace Picture", &["hip"], hip::decode_hip),
     Format::new(ATARI8, "VertiZontal Interlacing", &["vzi"], hip::decode_vzi),
     Format::new(ATARI8, "InterPainter", &["inp"], interlace::decode_inp),
+    Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int),
     Format::new(
         ATARI8,
         "HCI interlace",
