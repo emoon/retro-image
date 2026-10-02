@@ -86,7 +86,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     let start = first - 4;
-    let end = free - 4;
+    let end = free.checked_sub(4).ok_or(fail)?;
     if end > data.len() || start.checked_add(HEADER_LEN).is_none_or(|e| e > end) {
         return Err(fail);
     }
