@@ -21,6 +21,10 @@
      with a default palette): callers such as sandboxed thumbnailers only have one file.
      The oracle checks both: the file alone, and with its siblings against RECOIL
      given the same files (`<id> +companions` in divergence files).
+   - Reuse the shared helpers instead of writing local copies: `crate::bytes`
+     (`le16`/`le32`/`be16`/`be32` at an offset, `None` past the end), `Image::from_indexed`,
+     `Image::from_bits` (1-bit bitmaps, `BitOrder`), `Image::scaled`, `Image::blend`,
+     and `codec::packbits`.
    - Platform names (`Format::platform`) follow RECOIL's format list, e.g. `"Atari ST"`,
      `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
 3. Start the module doc comment with the sources the layout came from.
