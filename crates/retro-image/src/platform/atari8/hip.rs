@@ -1,8 +1,11 @@
 //! HIP (Hard Interlace Picture): a GTIA mode 9 frame and a mode 10 frame
 //! shown alternately; mode 10 is shifted by half a pixel, which doubles the
-//! horizontal resolution to 160.
+//! horizontal resolution to 160. VZI does the same with two mode 9 frames.
 //!
 //! Sources:
+//! - VZI: Just Solve "VertiZontal Interlacing" (16000 bytes, 2 frames);
+//!   the frame order and shift direction are observed from `recoil2png`
+//!   output.
 //! - Just Solve "Hard Interlace Picture"; Mad Team TIP/HIP article;
 //!   atari-owner.com "Atari Software Graphic Modes"; Altirra Hardware
 //!   Reference Manual (GTIA mode 10 half-pixel shift).
@@ -36,20 +39,41 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
         }
         _ => return Err(DecodeError::Unrecognized),
     };
+    Ok(half_pixel_pair(
+        |y, x| rgb(nibble(&gtia9[y * 40..], x)),
+        |y, x| register_rgb(registers[gtia10_register(nibble(&gtia10[y * 40..], x))]),
+    ))
+}
+
+/// VertiZontal Interlacing: two GTIA mode 9 frames; the second is drawn
+/// half a pixel left of the first.
+pub(super) fn decode_vzi(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2 * FRAME {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (first, second) = data.split_at(FRAME);
+    Ok(half_pixel_pair(
+        |y, x| rgb(nibble(&second[y * 40..], x)),
+        |y, x| rgb(nibble(&first[y * 40..], x)),
+    ))
+}
+
+/// Mixes two 80x200 frames given as `color(line, pixel)`: `left`'s pixels
+/// start 1 output pixel left of the 4-pixel grid, `right`'s 1 pixel right.
+fn half_pixel_pair(
+    left: impl Fn(usize, usize) -> u32,
+    right: impl Fn(usize, usize) -> u32,
+) -> Image {
     let mut image = Image::new(320, 200);
     for y in 0..200 {
-        let line9 = &gtia9[y * 40..][..40];
-        let line10 = &gtia10[y * 40..][..40];
         for x in 0..320 {
-            let left = (x + 1 < 320).then(|| rgb(nibble(line9, (x + 1) / 4)));
-            let right = x
-                .checked_sub(1)
-                .map(|x| register_rgb(registers[gtia10_register(nibble(line10, x / 4))]));
+            let left = (x + 1 < 320).then(|| left(y, (x + 1) / 4));
+            let right = x.checked_sub(1).map(|x| right(y, x / 4));
             let rgb = average(left.unwrap_or(0), right.unwrap_or(0));
             image.set(x as u32, y as u32, rgb);
         }
     }
-    Ok(image)
+    image
 }
 
 /// The 8000 bytes of a DOS binary-load segment (`FF FF`, start, end).
