@@ -12,8 +12,9 @@
 //!   B bits; 32 768-byte files as 512x256 screens with no mode stored; PIC
 //!   area saves (`$4AFC`, width in 512-pixel coordinates, height, line
 //!   increment, mode 0/4 or 8, spare byte, then the lines) and PSA files
-//!   (the same after 4 more bytes): Dilwyn Jones, "QL Graphics File Formats" and "Partial Screen
-//!   Area Saves, or PIC/PSA Files", QL documentation pages at
+//!   (the same after 4 more bytes): Dilwyn Jones, "QL Graphics File
+//!   Formats" and "Partial Screen Area Saves, or PIC/PSA Files", QL
+//!   documentation pages at
 //!   <https://dilwyn.theqlforum.com/> (articles from the "formats"
 //!   documentation section).
 //! - `.QS4` / `.QS8` for 32 KB mode 4 / mode 8 screens on PCs: C. Delhez,
@@ -124,8 +125,8 @@ fn decode_screen(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
 
 /// PIC area save: a 10-byte header, then the lines. The header is
 /// validated strictly (flag, mode, a line increment that holds the width,
-/// a file that ends with the last line), so PIC files are also recognised
-/// by content.
+/// a file that ends with the last line, give or take a little zero
+/// padding), so PIC files are also recognised by content.
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     decode_area(data)
 }
@@ -137,6 +138,7 @@ fn decode_psa(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode_area(data: &[u8]) -> Result<Image, DecodeError> {
     const HEADER_LEN: usize = 10;
+    const MAX_PADDING: usize = 7;
     let fail = DecodeError::Unrecognized;
     let word = |at| be16(data, at).map(usize::from).ok_or(fail);
     if word(0)? != 0x4afc || data.get(9) != Some(&0) {
@@ -148,11 +150,13 @@ fn decode_area(data: &[u8]) -> Result<Image, DecodeError> {
         8 => Mode::Eight,
         _ => return Err(fail),
     };
-    if stride
+    let end = stride
         .checked_mul(height)
         .and_then(|n| n.checked_add(HEADER_LEN))
-        != Some(data.len())
-    {
+        .ok_or(fail)?;
+    // QDesign clip art (`_cut` files) ends with 2-6 zero bytes of padding.
+    let padding = data.get(end..).ok_or(fail)?;
+    if padding.len() > MAX_PADDING || padding.iter().any(|&b| b != 0) {
         return Err(fail);
     }
     render(&data[HEADER_LEN..], mode, width, height, stride)
@@ -229,7 +233,12 @@ mod tests {
         assert!(decode_pic(&bad_mode).is_err());
         assert!(decode_pic(&pic[..pic.len() - 1]).is_err());
         let mut padded = pic.clone();
-        padded.push(0);
-        assert!(decode_pic(&padded).is_err());
+        padded.extend_from_slice(&[0; 6]);
+        assert!(decode_pic(&padded).is_ok(), "zero padding");
+        padded.extend_from_slice(&[0; 2]);
+        assert!(decode_pic(&padded).is_err(), "too much padding");
+        let mut trailing = pic.clone();
+        trailing.push(1);
+        assert!(decode_pic(&trailing).is_err());
     }
 }
