@@ -53,6 +53,13 @@ pub(super) enum Bg {
     Byte(u16),
     /// A table with one entry per line at this address.
     Table(u16),
+    /// A per-line table split in two: `first` entries at the first
+    /// address, then the rest at the second.
+    SplitTable {
+        first: u16,
+        len: u8,
+        rest: u16,
+    },
 }
 
 impl Fli {
@@ -74,10 +81,18 @@ impl Fli {
             data: prg.at(self.screens, SCREENS_LEN)?,
             stride: 1024,
         };
+        let split;
         let background = match self.background {
             Bg::Black => Background::Fixed(0),
             Bg::Byte(addr) => Background::Fixed(prg.byte(addr)?),
             Bg::Table(addr) => Background::PerLine(prg.at(addr, self.height)?),
+            Bg::SplitTable { first, len, rest } => {
+                let len = usize::from(len);
+                let mut table = prg.at(first, len)?.to_vec();
+                table.extend_from_slice(prg.at(rest, self.height.saturating_sub(len))?);
+                split = table;
+                Background::PerLine(&split)
+            }
         };
         let bitmap = Bitmap {
             bitmap: prg.at(self.bitmap, BITMAP_LEN)?,
@@ -89,10 +104,13 @@ impl Fli {
             background,
         };
         let height = self.skip + self.height;
-        match self.color {
+        let mut frame = match self.color {
             Some(_) => Frame::multicolor(&bitmap, height),
             None => Frame::hires(&bitmap, height),
-        }
+        }?;
+        // The FLI bug columns show the background.
+        frame.fill_left(FLI_BUG, |y| background.get(y));
+        Some(frame)
     }
 }
 
