@@ -1,0 +1,128 @@
+//! AMOS "Pac.Pic." picture bank (AmBk), compressed by the Compact extension.
+//!
+//! Sources:
+//! - Screen header (id `$12031990`, mode, palette) and picture header
+//!   (id `$06071963`, bytes per row, lumps, planes, stream offsets), the
+//!   three-stream decompression and the lump/column pixel order: Deark's
+//!   `abk.c` and `fmtutil_decompress_stos_pictbank`
+//!   (<https://github.com/jsummers/deark>, MIT licence,
+//!   Copyright (C) 2016-2026 Jason Summers).
+//! - The AmBk bank header: <http://alvyn.sourceforge.net/amos_file_formats.html>.
+
+use alloc::vec::Vec;
+
+use super::iff::{be16, be32};
+use super::ilbm::rgb12;
+use crate::{DecodeError, Image};
+
+const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
+const PICTURE_ID: u32 = 0x0607_1963;
+const SCREEN_HEADER_LEN: usize = 90;
+
+pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    if data.get(..4) != Some(b"AmBk") || data.get(12..20) != Some(b"Pac.Pic.") {
+        return Err(fail);
+    }
+    let screen = data.get(20..20 + SCREEN_HEADER_LEN).ok_or(fail)?;
+    if !SCREEN_IDS.contains(&be32(&screen[0..4])) {
+        return Err(fail);
+    }
+    let mode = be16(&screen[20..22]);
+    let mut palette = [0u32; 64];
+    for (i, word) in screen[26..90].chunks_exact(2).enumerate() {
+        palette[i] = rgb12(be16(word));
+        palette[i + 32] = (palette[i] >> 1) & 0x7f7f7f;
+    }
+
+    let start = 20 + SCREEN_HEADER_LEN;
+    let picture = data.get(start..start + 24).ok_or(fail)?;
+    if be32(&picture[0..4]) != PICTURE_ID {
+        return Err(fail);
+    }
+    let row_len = usize::from(be16(&picture[8..10]));
+    let lumps = usize::from(be16(&picture[10..12]));
+    let lump_lines = usize::from(be16(&picture[12..14]));
+    let planes = usize::from(be16(&picture[14..16]));
+    let rle_pos = start.saturating_add(be32(&picture[16..20]) as usize);
+    let points_pos = start.saturating_add(be32(&picture[20..24]) as usize);
+    let (width, height) = (row_len * 8, lumps * lump_lines);
+    if width == 0 || height == 0 || !(1..=6).contains(&planes) {
+        return Err(fail);
+    }
+    let plane_len = row_len * height;
+    let unpacked = unpack(data, start + 24, rle_pos, points_pos, plane_len * planes).ok_or(fail)?;
+
+    let ham = mode & 0x800 != 0 && planes == 6;
+    let mut image = Image::new(width as u32, height as u32);
+    let mut held = 0;
+    for y in 0..height {
+        let (lump, line) = (y / lump_lines, y % lump_lines);
+        for x in 0..width {
+            if x == 0 {
+                held = palette[0];
+            }
+            let offset = lump * row_len * lump_lines + x / 8 * lump_lines + line;
+            let value = (0..planes).fold(0, |v, p| {
+                v | usize::from(unpacked[p * plane_len + offset] >> (7 - x % 8) & 1) << p
+            });
+            let color = if ham {
+                let data = (value & 15) as u32 * 0x11;
+                match value >> 4 {
+                    0 => palette[value & 15],
+                    1 => (held & 0xffff00) | data,
+                    2 => (held & 0x00ffff) | data << 16,
+                    _ => (held & 0xff00ff) | data << 8,
+                }
+            } else {
+                palette[value]
+            };
+            held = color;
+            image.set(x as u32, y as u32, color);
+        }
+    }
+    Ok(image)
+}
+
+/// Three streams: picture bytes, RLE bit masks and "points" bits. Each RLE
+/// bit says whether the next output byte is a new picture byte or a repeat;
+/// each points bit says whether the next 8 RLE bits are a new mask byte or a
+/// repeat of the previous one. The first byte of both byte streams is read
+/// up front, as the original decompressor does.
+fn unpack(
+    data: &[u8],
+    pic_pos: usize,
+    rle_pos: usize,
+    points_pos: usize,
+    len: usize,
+) -> Option<Vec<u8>> {
+    let mut pic = data.get(pic_pos..)?.iter().copied();
+    let mut rle = data.get(rle_pos..)?.iter().copied();
+    let mut points = data
+        .get(points_pos..)?
+        .iter()
+        .flat_map(|&b| (0..8).rev().map(move |i| b >> i & 1));
+    // Every output byte costs at least a bit of RLE data, read every 8 bytes
+    // from a points bit.
+    if len > data.len().saturating_mul(64) {
+        return None;
+    }
+    let mut pic_byte = pic.next()?;
+    let mut rle_byte = rle.next()?;
+    let mut out = Vec::with_capacity(len);
+    let mut mask = 0u8;
+    for i in 0..len {
+        if i % 8 == 0 {
+            if points.next()? != 0 {
+                rle_byte = rle.next()?;
+            }
+            mask = rle_byte;
+        }
+        if mask & 0x80 != 0 {
+            pic_byte = pic.next()?;
+        }
+        mask <<= 1;
+        out.push(pic_byte);
+    }
+    Some(out)
+}

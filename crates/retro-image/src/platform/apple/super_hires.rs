@@ -1,0 +1,272 @@
+//! Apple IIGS Super Hi-Res pictures: screen dump ($C1/0000), Brooks
+//! 3200-colour ($C1/0002), compressed 3200-colour (`.3201`), Apple Preferred
+//! Format ($C0/0002) and Paintworks ($C0/0000).
+//!
+//! Sources:
+//! - Screen memory (160-byte lines, SCBs at $7D00, sixteen 16-colour palettes
+//!   at $7E00, colour word `0RGB` little-endian; 320 and 640 modes, fill
+//!   mode, 640-mode palette per pixel column): CiderPress II Super Hi-Res
+//!   notes (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>) and
+//!   the Apple IIGS Hardware Reference.
+//! - Brooks: File Type Note $C1/0002
+//!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c1.0002>):
+//!   200 palettes after the pixels, colour 15 stored first.
+//! - `.3201`: CiderPress II notes (high-ASCII "APP", 200 palettes, PackBytes).
+//! - APF: File Type Note $C0/0002
+//!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0002>):
+//!   MAIN and MULTIPAL blocks.
+//! - Paintworks: File Type Note $C0/0000
+//!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0000>).
+//! - Output size (640-mode pictures at 640 pixels with doubled lines,
+//!   320-mode lines doubled horizontally next to them): observed from
+//!   `recoil2png` output.
+
+use alloc::vec::Vec;
+
+use super::pack_bytes;
+use crate::{DecodeError, Image};
+
+const LINE_LEN: usize = 160;
+const SCREEN_LEN: usize = 32000;
+const MODE_640: u8 = 0x80;
+const FILL: u8 = 0x20;
+
+type Palette = [u32; 16];
+
+struct Line<'a> {
+    pixels: &'a [u8],
+    scb: u8,
+    palette: Palette,
+}
+
+fn le16(b: &[u8]) -> u16 {
+    u16::from_le_bytes([b[0], b[1]])
+}
+
+/// 16 colour words, optionally stored colour 15 first.
+fn read_palette(words: &[u8], reversed: bool) -> Palette {
+    let mut palette = [0; 16];
+    for (i, word) in words.chunks_exact(2).take(16).enumerate() {
+        let w = u32::from(le16(word));
+        let color = ((w & 0xf00) << 8 | (w & 0xf0) << 4 | (w & 0xf)) * 0x11;
+        palette[if reversed { 15 - i } else { i }] = color;
+    }
+    palette
+}
+
+/// Draws lines; `width` is the pixel count of a 320-mode line.
+fn render(lines: &[Line], width: usize) -> Result<Image, DecodeError> {
+    if lines.is_empty() || width == 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let hires = lines.iter().any(|l| l.scb & MODE_640 != 0);
+    let scale = if hires { 2 } else { 1 };
+    let out_width = width * scale;
+    let mut image = Image::new(out_width as u32, (lines.len() * scale) as u32);
+    let mut row = Vec::with_capacity(out_width);
+    for (y, line) in lines.iter().enumerate() {
+        row.clear();
+        if line.scb & MODE_640 != 0 {
+            for x in 0..out_width {
+                let byte = line.pixels.get(x / 4).copied().unwrap_or(0);
+                let j = x % 4;
+                let value = usize::from(byte >> (6 - 2 * j) & 3);
+                row.push(line.palette[[8, 12, 0, 4][j] + value]);
+            }
+        } else {
+            let mut previous = line.palette[0];
+            for x in 0..width {
+                let byte = line.pixels.get(x / 2).copied().unwrap_or(0);
+                let value = usize::from(if x % 2 == 0 { byte >> 4 } else { byte & 15 });
+                let color = if value == 0 && line.scb & FILL != 0 {
+                    previous
+                } else {
+                    line.palette[value]
+                };
+                previous = color;
+                for _ in 0..scale {
+                    row.push(color);
+                }
+            }
+        }
+        for dy in 0..scale {
+            for (x, &color) in row.iter().enumerate() {
+                image.set(x as u32, (y * scale + dy) as u32, color);
+            }
+        }
+    }
+    Ok(image)
+}
+
+/// $C1/0000: a 32 KB dump of screen memory.
+pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 0x8000 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let lines: Vec<Line> = (0..200)
+        .map(|y| {
+            let scb = data[0x7d00 + y];
+            let palette_at = 0x7e00 + usize::from(scb & 15) * 32;
+            Line {
+                pixels: &data[y * LINE_LEN..(y + 1) * LINE_LEN],
+                scb,
+                palette: read_palette(&data[palette_at..palette_at + 32], false),
+            }
+        })
+        .collect();
+    render(&lines, 320)
+}
+
+/// 320-mode pixels with one reversed palette per line.
+fn render_3200(pixels: &[u8], palettes: &[u8]) -> Result<Image, DecodeError> {
+    let lines: Vec<Line> = pixels
+        .chunks_exact(LINE_LEN)
+        .zip(palettes.chunks_exact(32))
+        .map(|(pixels, palette)| Line {
+            pixels,
+            scb: 0,
+            palette: read_palette(palette, true),
+        })
+        .collect();
+    render(&lines, 320)
+}
+
+/// $C1/0002 (Brooks): pixels, then 200 palettes.
+pub(super) fn decode_brooks(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != SCREEN_LEN + 200 * 32 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (pixels, palettes) = data.split_at(SCREEN_LEN);
+    render_3200(pixels, palettes)
+}
+
+/// `.3201`: "APP" in high ASCII, 200 palettes, PackBytes pixels.
+pub(super) fn decode_3201(data: &[u8]) -> Result<Image, DecodeError> {
+    const PIXELS_AT: usize = 4 + 200 * 32;
+    if data.len() <= PIXELS_AT || data[..4] != [0xc1, 0xd0, 0xd0, 0] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let pixels = pack_bytes::unpack(&data[PIXELS_AT..], SCREEN_LEN)
+        .filter(|p| p.len() == SCREEN_LEN)
+        .ok_or(DecodeError::Unrecognized)?;
+    render_3200(&pixels, &data[4..PIXELS_AT])
+}
+
+/// $C0/0000 (Paintworks): palette, background, patterns, then 200 or 396
+/// PackBytes lines in 320 mode.
+pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
+    const PIXELS_AT: usize = 0x222;
+    // Colour words are `0RGB`: the high nibble of each high byte is zero.
+    if data.len() <= PIXELS_AT || data[..32].iter().skip(1).step_by(2).any(|&b| b > 15) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let pixels =
+        pack_bytes::unpack(&data[PIXELS_AT..], 396 * LINE_LEN).ok_or(DecodeError::Unrecognized)?;
+    let height = match pixels.len() / LINE_LEN {
+        396.. => 396,
+        200.. => 200,
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    let palette = read_palette(&data[..32], false);
+    let lines: Vec<Line> = pixels
+        .chunks_exact(LINE_LEN)
+        .take(height)
+        .map(|pixels| Line {
+            pixels,
+            scb: 0,
+            palette,
+        })
+        .collect();
+    render(&lines, 320)
+}
+
+/// $C0/0002 (Apple Preferred Format): a list of named blocks.
+pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    let mut main = None;
+    let mut multipal = None;
+    let mut rest = data;
+    while rest.len() >= 5 {
+        let len = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]) as usize;
+        let name_len = usize::from(rest[4]);
+        if len < 5 + name_len || len > rest.len() {
+            break;
+        }
+        let name = &rest[5..5 + name_len];
+        let body = &rest[5 + name_len..len];
+        match name {
+            b"MAIN" => main = Some(body),
+            b"MULTIPAL" => multipal = Some(body),
+            _ => {}
+        }
+        rest = &rest[len..];
+    }
+    let main = main.ok_or(fail)?;
+    let field = |at: usize| main.get(at..at + 2).map(le16).ok_or(fail);
+    let master_640 = field(0)? as u8 & MODE_640;
+    let width = usize::from(field(2)?);
+    let tables = usize::from(field(4)?);
+    let tables_at = 6;
+    let lines_at = tables_at + tables * 32;
+    let line_count = usize::from(field(lines_at)?);
+    // Far beyond any IIGS screen; keeps corrupt headers from making huge images.
+    if width > 2048 || line_count > 4096 {
+        return Err(fail);
+    }
+    let directory = main
+        .get(lines_at + 2..lines_at + 2 + line_count * 4)
+        .ok_or(fail)?;
+    let mut packed = &main[lines_at + 2 + line_count * 4..];
+    let multipal = match multipal {
+        Some(block) => {
+            let count = usize::from(block.get(..2).map(le16).ok_or(fail)?);
+            let palettes = block.get(2..2 + count * 32).ok_or(fail)?;
+            Some(palettes)
+        }
+        None => None,
+    };
+
+    let mut unpacked = Vec::with_capacity(line_count);
+    for entry in directory.chunks_exact(4) {
+        let packed_len = usize::from(le16(&entry[0..2]));
+        // The 320/640 choice follows MasterMode. With MULTIPAL the per-line
+        // mode is ignored: some such files hold garbage there (observed from
+        // `recoil2png` output).
+        let scb = match multipal {
+            Some(_) => master_640,
+            None => master_640 | (entry[2] & !MODE_640),
+        };
+        let line_len = if scb & MODE_640 != 0 {
+            width.div_ceil(4)
+        } else {
+            width.div_ceil(2)
+        };
+        let bytes = packed.get(..packed_len).ok_or(fail)?;
+        packed = &packed[packed_len..];
+        let pixels = pack_bytes::unpack(bytes, line_len).ok_or(fail)?;
+        unpacked.push((pixels, scb));
+    }
+    let table = |index: usize| {
+        main.get(tables_at + index * 32..tables_at + index * 32 + 32)
+            .map(|words| read_palette(words, false))
+            .unwrap_or([0; 16])
+    };
+    let lines: Vec<Line> = unpacked
+        .iter()
+        .enumerate()
+        .map(|(y, (pixels, scb))| Line {
+            pixels,
+            scb: *scb,
+            palette: match multipal {
+                Some(palettes) => palettes
+                    .get(y * 32..y * 32 + 32)
+                    .map(|words| read_palette(words, false))
+                    .unwrap_or([0; 16]),
+                None => table(usize::from(scb & 15)),
+            },
+        })
+        .collect();
+    // A 640-mode width counts 640-mode pixels; `render` takes 320-mode ones.
+    let any_640 = lines.iter().any(|l| l.scb & MODE_640 != 0);
+    render(&lines, if any_640 { width / 2 } else { width })
+}
