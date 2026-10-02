@@ -54,12 +54,12 @@ use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
 /// Width of the SHI, SIF and packed SHF pictures.
-const NARROW: usize = 96;
+pub(super) const NARROW: usize = 96;
 /// Bytes of a 96-pixel line or row of cells.
-const ROW: usize = NARROW / 8;
+pub(super) const ROW: usize = NARROW / 8;
 
 /// An image from `pixel(x, y)` colour indices.
-fn render(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u8) -> Image {
+pub(super) fn render(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u8) -> Image {
     let colors: Vec<u8> = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .map(|(x, y)| pixel(x, y))
@@ -68,12 +68,12 @@ fn render(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u8) -> Im
 }
 
 /// Whether bit `x` (MSB first) of a line of bytes is set.
-fn bit(line: &[u8], x: usize) -> bool {
+pub(super) fn bit(line: &[u8], x: usize) -> bool {
     line[x / 8] & (0x80 >> (x % 8)) != 0
 }
 
 /// A hires pixel: the high nibble of `color` if set, else the low nibble.
-fn hires(set: bool, color: u8) -> u8 {
+pub(super) fn hires(set: bool, color: u8) -> u8 {
     if set { color >> 4 } else { color & 15 }
 }
 

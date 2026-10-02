@@ -1,0 +1,2 @@
+# Wave 6: C64 PetDraw and Super Hires Editor
+extra/commodore/csdb-petdraw/pdr/gary.pdr	320x200	f5263e5a705943e3	One pixel differs, at (45,109) in a reversed @ (screen code $80), the same as gary.pet in commodore.tsv: the C64 character ROM 901225-01 stores row 5 of the reversed @ as $99, not the exact inverse $9D, and the VIC-II displays ROM bytes as they are; RECOIL draws the inverse. Output reviewed: same picture as RECOIL apart from that pixel.
