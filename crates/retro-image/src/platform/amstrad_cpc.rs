@@ -41,6 +41,20 @@ fn strip_amsdos(data: &[u8]) -> &[u8] {
     }
 }
 
+/// Whether `data` starts with an AMSDOS header: a matching checksum, plus a
+/// user number (byte 0) of 0-15 and a non-zero sum so that blank data, which
+/// trivially "matches", doesn't count. Lets decoders of other platforms'
+/// files with shared extensions (`.SCR`) turn CPC files away.
+pub(super) fn has_amsdos_header(data: &[u8]) -> bool {
+    let Some(header) = data.get(..AMSDOS_HEADER_LEN) else {
+        return false;
+    };
+    let sum = header[..67]
+        .iter()
+        .fold(0u16, |sum, &b| sum.wrapping_add(u16::from(b)));
+    header[0] <= 15 && sum != 0 && sum == u16::from_le_bytes([header[67], header[68]])
+}
+
 const HGB_LEN: usize = 16384;
 const HGB_ROW_BYTES: usize = 64;
 

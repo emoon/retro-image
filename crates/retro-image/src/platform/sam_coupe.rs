@@ -111,12 +111,17 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     if first_len + second_len != data.len() {
         return Err(DecodeError::Unrecognized);
     }
-    let fields = [
+    Ok(interlace(&[
         render(Mode::Four, first, 0, &first_palette),
         render(Mode::Four, second, 0, &second_palette),
-    ];
+    ]))
+}
+
+/// Shows two 256x192 fields interlaced as 512x384: the first on even lines,
+/// each pixel doubled horizontally. Also used by the Spectrum LCE variant.
+pub(super) fn interlace(fields: &[Image; 2]) -> Image {
     let mut image = Image::new(512, 2 * HEIGHT as u32);
-    for (field, frame) in (0..).zip(&fields) {
+    for (field, frame) in (0..).zip(fields) {
         for (i, pixel) in frame.rgb().chunks_exact(3).enumerate() {
             let (x, y) = ((i % 256) as u32, (i / 256) as u32);
             let color = u32::from_be_bytes([0, pixel[0], pixel[1], pixel[2]]);
@@ -124,7 +129,7 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
             image.set(2 * x + 1, 2 * y + field, color);
         }
     }
-    Ok(image)
+    image
 }
 
 const RAW_WIDTH: usize = 512;
