@@ -297,6 +297,17 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   uncompressed (256 VDI triplets at 36, data at 1586), Atari Image Manager IM/COL (square
   byte planes; COL = I, R, G, B), PI5 320x240 and PI6 1280x960, Pablo Paint uncompressed.
   NEOchrome Master writes its `RAST` chunk after the FORM, without a pad byte.
+- Content detection (`.signature()`) is on for formats with real magic bytes: CRG, GFB,
+  PSC, CrackArt, SPC/SPS (`SP` plus the reserved zero word), SPX, GEM IMG (strict header),
+  MPP, ComputerEyes, STAD, PhotoChrome, PL4 (LZ4 frame and exact unpacked size),
+  Paintworks, UIMG, Pablo Paint, KID, DEGAS Elite icon, Grafix and the Falcon formats with
+  ID strings (ImageLab, DuneGraph, Print-Technik, InShape, Rembrandt, COKE, EggPaint and
+  Spooky TRP/TRE, IndyPaint, TmS Cranach, Funny Paint, PixArt, Prism Paint, RAG-D,
+  ICDRAW). Left off on purpose: NEOchrome Master and DEGAS Elite blocks (renamed ILBMs
+  already go to the Amiga IFF decoder, which comes first; ours would claim Amiga DCTV and
+  HAM-E ILBMs that it rejects), EZ-Art (only a 2-byte `EZ`), Music Compile (RAG-D claims
+  the same container first), HRM and PCI (their unpacked form has no header) and every
+  headerless or size-only format.
 - Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
   screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files,
   8-plane IMG without palette, and Canvas FUL.
