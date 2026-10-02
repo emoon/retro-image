@@ -28,6 +28,9 @@
 //!   `S1x` (odd lines), both in the even page's palette, without sprites,
 //!   256-wide modes doubled horizontally, and falls back to the even page
 //!   when the odd one is missing, invalid or shorter.
+//! - Reverse engineered from MSX-FAN samples (RECOIL rejects them): pictures
+//!   packed with "ukp" (see `ukp.rs`), Graph Saurus Screen 5 pages saved from
+//!   page 1, and palette files saved as a BSAVE of the VRAM palette table.
 //! - Reverse engineered from samples: Sunrise and msx.org Screen 12 dumps use
 //!   the extension `S12`; the MSX Photoshop Graphic Kit wrote a Screen 8 `PIC`
 //!   with its 7 header bytes zeroed (accepted only with exactly 212 lines).
@@ -35,6 +38,7 @@
 use alloc::vec::Vec;
 
 use super::dot_designer;
+use super::ukp;
 use super::vdp::{self, Palette, SpriteTables, Vram};
 use crate::{Companions, DecodeError, Image};
 
@@ -231,16 +235,28 @@ fn draw_sprites_if_dumped(mode: Bitmap, vram: &Vram, image: &mut Image, palette:
     }
 }
 
-/// Body of a BSAVE file (`FE`, start, end, exec) loaded at address 0.
-fn bsave_body(data: &[u8]) -> Option<&[u8]> {
+/// Start and end addresses of a BSAVE file (`FE`, start, end, exec).
+fn bsave_range(data: &[u8]) -> Option<(usize, usize)> {
     let header = data.get(..7)?;
     let start = u16::from_le_bytes([header[1], header[2]]) as usize;
     let end = u16::from_le_bytes([header[3], header[4]]) as usize;
-    if header[0] != 0xfe || start != 0 {
+    (header[0] == 0xfe).then_some((start, end))
+}
+
+/// Body of a BSAVE file loaded at `start`, as far as its end address and
+/// the data go.
+fn bsave_body_at(data: &[u8], start: usize) -> Option<&[u8]> {
+    let (from, end) = bsave_range(data)?;
+    if from != start {
         return None;
     }
-    let len = (end + 1).min(data.len() - 7);
+    let len = (end + 1).checked_sub(start)?.min(data.len() - 7);
     Some(&data[7..7 + len])
+}
+
+/// Body of a BSAVE file loaded at address 0.
+fn bsave_body(data: &[u8]) -> Option<&[u8]> {
+    bsave_body_at(data, 0)
 }
 
 /// Size of a full 212-line Screen 8 bitmap.
@@ -290,7 +306,8 @@ pub(super) fn decode_bitmap_dump(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let even = Dump::load(mode, data)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let even = Dump::load(mode, &data)?;
     let odd = companions
         .get(mode.interlace_extension())
         .and_then(|odd| Dump::load(mode, &odd).ok())
@@ -326,7 +343,12 @@ fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Image {
 /// the V9938 register format, if `companions` has one for `mode`.
 fn palette_file(mode: Bitmap, companions: &dyn Companions) -> Option<Palette> {
     let data = companions.get(mode.palette_extension()?)?;
-    let table = data.get(..32)?;
+    // MSX-FAN saved the VRAM palette table with BSAVE (`FE`, start, start +
+    // 31, exec); RECOIL reads the header as colours, which is clearly wrong.
+    let table = match bsave_range(&data) {
+        Some((start, end)) if end.checked_sub(start) == Some(31) => data.get(7..39)?,
+        _ => data.get(..32)?,
+    };
     let mut palette = [0; 16];
     for (entry, bytes) in palette.iter_mut().zip(table.chunks_exact(2)) {
         *entry = vdp::palette_entry(bytes[0], bytes[1]);
@@ -341,18 +363,28 @@ pub(super) fn decode_graph_saurus(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let vram = graph_saurus_vram(data)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let vram = graph_saurus_vram(mode, &data)?;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     // Graph Saurus pages show no sprites, except Screen 8 ones.
     let page = render_page(mode, &vram, &palette, mode == Bitmap::Graphic7)?;
     Ok(mode.output(page))
 }
 
-/// VRAM of a Graph Saurus page: `FE` and raw data, or `FD` and RLE.
-fn graph_saurus_vram(data: &[u8]) -> Result<Vram, DecodeError> {
+/// VRAM of a Graph Saurus page: `FE` and raw data, or `FD` and RLE. Raw
+/// Screen 5/6 pages may have been saved from page 1 (address 0x8000; MSX2
+/// Technical Handbook, appendix 5), seen in an MSX-FAN sample that RECOIL
+/// rejects; they are shown like page 0.
+fn graph_saurus_vram(mode: Bitmap, data: &[u8]) -> Result<Vram, DecodeError> {
+    let page_1 = match mode {
+        Bitmap::Graphic4 | Bitmap::Graphic5 => Some(0x8000),
+        _ => None,
+    };
     match data.first() {
         Some(0xfe) => Ok(Vram::new(
-            bsave_body(data).ok_or(DecodeError::Unrecognized)?,
+            bsave_body(data)
+                .or_else(|| bsave_body_at(data, page_1?))
+                .ok_or(DecodeError::Unrecognized)?,
         )),
         Some(0xfd) if data.len() > 7 => Ok(Vram::new(&unpack_graph_saurus(&data[7..]))),
         _ => Err(DecodeError::Unrecognized),
@@ -369,11 +401,12 @@ pub(super) fn decode_graph_saurus_interlaced(
 ) -> Result<Image, DecodeError> {
     let mode = Bitmap::Graphic6;
     let palette = palette_file(mode, companions).ok_or(DecodeError::Unrecognized)?;
-    let even = graph_saurus_vram(data)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let even = graph_saurus_vram(mode, &data)?;
     let even_page = render_page(mode, &even, &palette, false)?;
     let odd_page = companions
         .get("sr1")
-        .and_then(|odd| graph_saurus_vram(&odd).ok())
+        .and_then(|odd| graph_saurus_vram(mode, &odd).ok())
         .and_then(|odd| render_page(mode, &odd, &palette, false).ok())
         .filter(|odd| odd.height() >= even_page.height());
     Ok(match odd_page {
@@ -427,6 +460,7 @@ pub(super) fn decode_copy(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
+    let data = &ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
     let header = data.get(..4).ok_or(DecodeError::Unrecognized)?;
     let width = u16::from_le_bytes([header[0], header[1]]) as usize;
     let height = u16::from_le_bytes([header[2], header[3]]) as usize;
@@ -610,6 +644,16 @@ mod tests {
         let alone = decode_copy(Bitmap::Graphic4, &data, &NoCompanions).unwrap();
         let short = Files(&[("pl5", &palette[..31])]);
         assert_eq!(decode_copy(Bitmap::Graphic4, &data, &short), Ok(alone));
+    }
+
+    #[test]
+    fn palette_file_may_be_a_bsave_of_the_palette_table() {
+        let data = [2, 0, 1, 0, 0x10];
+        let mut palette = vec![0xfe, 0x80, 0x76, 0x9f, 0x76, 0x80, 0x76];
+        palette.extend([0u8; 32]);
+        palette[7 + 2..7 + 4].copy_from_slice(&[0x70, 0x07]); // colour 1: yellow
+        let image = decode_copy(Bitmap::Graphic4, &data, &Files(&[("pl5", &palette)])).unwrap();
+        assert_eq!(image.rgb(), &[0xff, 0xff, 0, 0, 0, 0]);
     }
 
     /// Screen 5 BSAVE dump of `lines` lines filled with `pixels`.

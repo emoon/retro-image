@@ -7,6 +7,7 @@ mod dot_designer;
 mod dynamic_publisher;
 mod g9b;
 mod screen;
+mod ukp;
 mod vdp;
 
 use screen::{Bitmap, Tiled};
