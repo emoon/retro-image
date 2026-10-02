@@ -1,12 +1,17 @@
 //! Atari 8-bit, including VBXE, and Atari Portfolio.
 //!
-//! Each submodule lists the sources of its formats. The palette is in
-//! [`palette`]; ANTIC/GTIA bitmap rendering in [`antic`].
+//! This file only registers the formats. The documentation survey with
+//! every source per format is `docs/formats/atari-8bit.md`; each submodule
+//! cites the sources of its own formats. The palette is in [`palette`];
+//! ANTIC/GTIA bitmap rendering in [`antic`].
 
 mod antic;
 mod apac;
 mod font;
+mod graph2font;
+mod gtia;
 mod hip;
+mod inflate;
 mod interlace;
 mod koala;
 mod mad_studio;
@@ -14,6 +19,7 @@ mod palette;
 mod portfolio;
 mod rom_font;
 mod screen;
+mod sfdn;
 mod technicolor;
 mod text;
 mod tip;
@@ -79,6 +85,28 @@ pub(super) static FORMATS: &[Format] = &[
         apac::decode_interlaced,
     ),
     Format::new(ATARI8, "Champions' Interlace", &["cin"], apac::decode_cin),
+    Format::new(
+        ATARI8,
+        "Graphics 9 (SFDN)",
+        &["g9s", "sfd"],
+        sfdn::decode_g9s,
+    ),
+    Format::new(ATARI8, "Plama 256 (SFDN)", &["pls"], sfdn::decode_pls),
+    Format::new(
+        ATARI8,
+        "Any Point, Any Color (SFDN)",
+        &["aps"],
+        sfdn::decode_aps,
+    ),
+    Format::new(ATARI8, "Apac3 Linker-Viewer", &["app"], sfdn::decode_app),
+    Format::new(ATARI8, "APACVIEW (SFDN)", &["ils"], sfdn::decode_ils),
+    Format::new(ATARI8, "InterPainter (SFDN)", &["ins"], sfdn::decode_ins),
+    Format::new(
+        ATARI8,
+        "Hard Interlace Picture (SFDN)",
+        &["hps"],
+        sfdn::decode_hps,
+    ),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
     Format::with_companions(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
@@ -116,6 +144,12 @@ pub(super) static FORMATS: &[Format] = &[
         "Atari Interlace Studio",
         &["ist"],
         interlace::decode_ist,
+    ),
+    Format::new(
+        ATARI8,
+        "SAMAR Hires Interlace",
+        &["shc"],
+        interlace::decode_shc,
     ),
     Format::new(ATARI8, "McPainter", &["mcp"], interlace::decode_mcp),
     Format::new(ATARI8, "Paradox", &["mcpp"], interlace::decode_mcpp),
@@ -183,6 +217,8 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Daisy-Dot NLQ font", &["nlq"], font::decode_nlq).signature(),
     Format::new(ATARI8, "AtariTools-800 font", &["acs"], font::decode_acs),
     Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
+    Format::new(ATARI8, "Graph2Font", &["mch"], graph2font::decode_mch),
+    Format::new(ATARI8, "Graph2Font", &["g2f"], graph2font::decode_g2f),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,

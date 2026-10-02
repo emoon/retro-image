@@ -1,20 +1,29 @@
 //! 8x8 character sets: FNT (one set of 128 characters) and FN2 (two sets).
 //!
 //! Sources:
-//! - FNT: Graph2Font manual and De Re Atari ch. 3 (1024-byte charset,
-//!   8 bytes per character, top row first, bit 7 leftmost).
-//! - FN2: Atari FontMaker page ("dual font", 2 x 1024 bytes); docs only.
-//!   Drawing the two fonts as halves of 8x16 characters: observed from
+//! - FNT: Graph2Font manual (<https://g2f.atari8.info/instrukcja_eng.html>)
+//!   and De Re Atari ch. 3 (<https://www.atariarchives.org/dere/chapt03.php>):
+//!   1024-byte charset, 8 bytes per character, top row first, bit 7 leftmost.
+//! - FN2: Atari FontMaker page
+//!   (<http://matosimi.websupport.sk/atari/atari-fontmaker/>; "dual font",
+//!   2 x 1024 bytes); docs only. Drawing the two fonts as halves of 8x16
+//!   characters: observed from `recoil2png` output.
+//! - SIF: Super-IRG Font Editor doc SIFE.TXT by Bill Kendrick
+//!   (<http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/Super%20IRG%20Font%20Editor/SIFE.TXT>):
+//!   two 1024-byte ANTIC mode 4 charsets flipped every frame.
+//! - ACS: Just Solve "AtariTools-800"
+//!   (<http://fileformats.archiveteam.org/wiki/AtariTools-800>, 4 colours).
+//!   Size 1028, the colour bytes and the 16-character rows: observed from
 //!   `recoil2png` output.
-//! - SIF: Super-IRG Font Editor doc SIFE.TXT by Bill Kendrick (two 1024-byte
-//!   ANTIC mode 4 charsets flipped every frame).
-//! - ACS: Just Solve "AtariTools-800" (4 colours). Size 1028, the colour
-//!   bytes and the 16-character rows: observed from `recoil2png` output.
-//! - JGP: Just Solve "Jet Graphics Planner" (exactly 2054 bytes, 4 colours).
+//! - JGP: Just Solve "Jet Graphics Planner"
+//!   (<http://fileformats.archiveteam.org/wiki/Jet_Graphics_Planner>;
+//!   exactly 2054 bytes, 4 colours).
 //!   The binary-load header (any 2048-byte segment), the two charsets
 //!   stacked as 8x16 characters
 //!   and the grey colours: observed from `recoil2png` output.
-//! - NLQ: Just Solve "Daisy-Dot font" and the Daisy-Dot II reader of
+//! - NLQ: Just Solve "Daisy-Dot font"
+//!   (<http://fileformats.archiveteam.org/wiki/Daisy-Dot_font>) and the
+//!   Daisy-Dot II reader of
 //!   monobit (MIT, <https://github.com/robhagemans/monobit>): signature,
 //!   per character a width and two passes of column bytes. The 20x16 cell
 //!   sheet: observed from `recoil2png` output. Daisy-Dot III (`3` 0x9B,
@@ -23,7 +32,8 @@
 //!   cells) is our own extension of the Daisy-Dot II one.
 //! - SXS (1024-byte font of 16x16 characters as a DOS binary-load file), ODF (OD Font Editor,
 //!   8x10 characters), F80 (The Last Word, 4x8 characters, two per 8-byte
-//!   group): layouts reverse engineered from samples and checked against
+//!   group; manual: <https://atari8.co.uk/wp-content/uploads/2015/03/The-Last-Word-2.1.pdf>):
+//!   layouts reverse engineered from samples and checked against
 //!   `recoil2png` output.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the

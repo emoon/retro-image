@@ -86,7 +86,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | AP3, APV, DGI, DGP, ESC, ILC, PZM | 80x192 APAC-interlace family (Digi Paint, EscalPaint, Pryzm Artist, ...) | Partial | [Just Solve Digi Paint](http://fileformats.archiveteam.org/wiki/Digi_Paint), [AtariWiki File Suffix](https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix), [atari-owner modes](https://atari-owner.com/club/articles/atari-software-graphic-modes.17/) | 15360 or 15362 bytes (AP3: 15872). 2 frames of GR9/GR11, 256 colours. Uncompressed. Frame order unverified. |
 | APA, APC, PLM | 80x96 APAC | Partial | [Just Solve AP*](http://fileformats.archiveteam.org/wiki/AP*), [AtariWiki File Suffix](https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix) | APC = "80x96x256 noncompressed". 7680/7684/7720 bytes. GR9/GR11 lines alternate. |
 | APL | Atari Player Editor (Playsoft) | None | [Just Solve list](http://fileformats.archiveteam.org/wiki/Atari_graphics_formats), [SprEd thread](https://forums.atariage.com/topic/330217-spred-new-atari-sprite-editor/) | Multi-frame PMG animation. SprEd can load it. 48-line player height is the default. |
-| APP | Apac3 Linker-Viewer | Partial | [Just Solve Apac3 APP](http://fileformats.archiveteam.org/wiki/Apac3_APP) | Starts with ASCII `S101`. "SFDN" compressed, and the packer is undocumented. 80x192, 2 frames. |
+| APP | Apac3 Linker-Viewer | Partial | [Just Solve Apac3 APP](http://fileformats.archiveteam.org/wiki/Apac3_APP) | Starts with ASCII `S101`. "SFDN" compressed (packer reverse engineered, see section 8). 80x192, 2 frames. |
 | APS | Any Point, Any Color | Partial | [AtariWiki APAC](https://atariwiki.org/wiki/Wiki.jsp?page=APAC+Graphics+Mode) | 80x96 APAC, SFDN compressed (undocumented). |
 | ART | Ascii-Art Editor | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Ascii-Art_Editor), [atarionline.pl](https://atarionline.pl/v01/index.php?ct=utils&sub=2.%20Grafika&tg=Ascii-Art%20Editor) | Up to 64x24 characters, mono. |
 | ART | Artist by David Eaton | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Artist_(David_Eaton)) | 160x80, 4 colours. The extension is arbitrary. |
@@ -112,7 +112,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | FWA | Fun with Art | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Fun_with_Art), [ANTIC: Rapid Graphics Converter](https://www.atarimagazines.com/v4n7/rapidgraphicsconverter.html) | "Slightly longer than 62 sectors" = GR15 screen plus per-line colours (DLI). 160x192, 128 colours. |
 | G10 | Graphics 10 | Partial | [Just Solve GR*](http://fileformats.archiveteam.org/wiki/GR*), [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | 7689 bytes = 7680 + 9 colour registers (704-712). Up to 80x240. |
 | G11 | Graphics 11 | Hardware-only | [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | Raw GTIA mode 11 dump. Up to 80x240. Height from size/40. |
-| G2F | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html), [G2F site](http://g2f.atari8.info/) | Starts with `G2FZLIB` (zlib container). The components (FNT/SCR/TAB/COL/PMG) are documented, but the container layout is not. Up to 336x240. |
+| G2F | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html), [G2F site](http://g2f.atari8.info/) | Starts with `G2FZLIB` (zlib container). The components (FNT/SCR/TAB/COL/PMG) are documented, but the container layout is not (reverse engineered, see section 8). Up to 336x240. |
 | G9S, SFD | Graphics 9 (SFDN compressed) | Partial | [De Re Atari App. E](https://www.atariarchives.org/dere/chaptE.php) | GR9 data is documented. The SFDN packer is not. |
 | GED | GED | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/GED) | 11302 bytes, starts `FF FF` (DOS binary-load header). 160x200, 128 colours (per-line colours). |
 | GHG | Gephard Hires Graphics | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Gephard_Hires_Graphics) | Up to 320x200 mono. |
@@ -156,7 +156,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | MAP | EnvisionPC | Partial | [EnvisionPC manual](http://ftp.pigwa.net/stuff/collections/holmes%20cd/Holmes%202/PC%20Atari%20Programming%20Utils/EnvisionPC%20V0.5/envision.txt), [EnvisionPC page](http://ftp.pigwa.net/stuff/collections/holmes%20cd/Holmes%202/PC%20Atari%20Programming%20Utils/EnvisionPC%20V0.5/index.html) | ANTIC mode (1), width (2, LE), height (2, LE), PF0-PF4 (5), "...", map (w×h), font (1024). The "..." gap is unexplained. The zip includes C source (licence unstated). |
 | MAX | XL-Paint MAX | Partial | [XL-Paint doc](http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/XL-Paint%201.9Max.txt), [Just Solve](http://fileformats.archiveteam.org/wiki/XL-Paint) | `XLPM`, then 8 × 193-byte per-line tables (colour 0-3, luminance 0-3), then a 193-byte palette table, then compressed data (packer undocumented). 160x192, 2 frames. |
 | MBG | Mad Designer | Hardware-only | [Just Solve](http://fileformats.archiveteam.org/wiki/Mad_Designer), [gury.atari8.info](http://gury.atari8.info/software/1330.php) | Exactly 16384 bytes = 512x256 mono bitmap (64 bytes/line). |
-| MCH | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html) | Up to 336x240. Layout not published. |
+| MCH | Graph2Font | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Graph2Font), [G2F manual](https://g2f.atari8.info/instrukcja_eng.html) | Up to 336x240. Layout not published; reverse engineered, see section 8. |
 | MCP | McPainter | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/McPainter), [McPainter page](http://east.atari8.info/mcp/index.htm) | Exactly 16008 bytes (2 × 8000 + 8 colours?). 160x200, 16 colours, 2 frames. |
 | MCPP | Paradox | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Paradox_(graphics)), [Demozoo](https://demozoo.org/productions/111562/) | Exactly 8008 bytes. 160x100, 16 colours. |
 | MCS | MCS | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/MCS) | Exactly 10185 bytes. 160x192, 9 colours. |
@@ -191,7 +191,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | RYS | Mamut | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Mamut) | 160x96, 4 colours. |
 | SG3 | Standard Graphics 3 | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/Standard_Graphics_3_(Atari)), [AtariAge GR3 planner](https://atariage.com/forums/topic/225305-graphics-3-planner-early-beta-version/) | 40x24, 4 colours (GR3 = 240 bytes + colours?). |
 | SGE | Semi-Graphic logos Editor | None | [Just Solve](http://fileformats.archiveteam.org/wiki/Semi-Graphic_logos_Editor) | 40x24 characters, mono. |
-| SHC | SAMAR Hi-res Interlace | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace), [AtariAge discussion](https://atariage.com/forums/topic/138640-640-x-200-x-2-color-mode-discussion/?tab=comments#comment-1675241) | Exactly 17920 bytes. 320x192 with a colour map, 2 frames. |
+| SHC | SAMAR Hi-res Interlace | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace), [AtariAge discussion](https://atariage.com/forums/topic/138640-640-x-200-x-2-color-mode-discussion/?tab=comments#comment-1675241) | Exactly 17920 bytes. 320x192 with a colour map, 2 frames (layout reverse engineered, see section 8). |
 | SHP | Blazing Paddles shape table | None | [Blazing Paddles manual (archive.org)](https://archive.org/details/BlazingPaddlesAtariSupplementManualBaudville), [Just Solve](http://justsolve.archiveteam.org/wiki/Blazing_Paddles) | Mono vector/shape table. |
 | SHP | Movie Maker shapes | Partial | [Just Solve Movie Maker](http://fileformats.archiveteam.org/wiki/Movie_Maker), [Wikipedia](https://en.wikipedia.org/wiki/Movie_Maker_(Reston_Publishing)) | 1024 or 4384 bytes. 160x96, 4 colours. |
 | SIF | Super-IRG Font | Spec | [SIFE.TXT](http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/Super%20IRG%20Font%20Editor/SIFE.TXT) | 2 × 1024-byte ANTIC 4 charsets, flipped per VBI (2048 bytes). Colours are not stored. Sample `ATARI.SIF` is in the same directory. |
@@ -328,12 +328,66 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   load address; HIP as two 192-line binary-load frames.
 - **Content detection** (`.signature()`): INT95a, TIP, NLQ, PGC. Not Koala (Rambrandt
   RM0-RM4 files start with a Koala header) and not JGP (a generic binary-load header).
-- **SFDN** (APP/APS/G9S/HPS/ILS/INS/PLS/SFD), partly understood, not implemented:
-  `S101`, the unpacked length (little-endian), then a 16-entry table that is exactly
-  the frequency order of the nibble deltas (previous minus current, mod 16, in raster
-  order). The bitstream after it is not a plain prefix code of those ranks from
-  offset 22 (tested against SHPOON.G9S, whose pixels RECOIL shows).
-- **Not attempted**: G2F/MCH/VSC (the G2F container is undocumented and needs raster
+- **SFDN**: solved in wave 3 (section 8).
+- **Not attempted** (MCH, G2F, SHC since done in wave 3, section 8): G2F/MCH/VSC (the G2F container is undocumented and needs raster
   and PMG emulation), SHC (the colour map is a list of mid-line register writes),
   Blazing Paddles CHR (proportional glyphs behind a pointer table), RastaConverter
   (no samples).
+
+## 8. Implementation notes (wave 3)
+
+- **SFDN** (APP/APS/G9S/HPS/ILS/INS/PLS/SFD), `atari8/sfdn.rs`. Reverse engineered by
+  feeding `recoil2png` hand-made `.G9S` files (GR9 shows each nibble as a grey):
+  `S101`, unpacked length (LE16), a 16-byte table of nibble deltas (most frequent
+  first; only the low nibble counts), then an MSB-first bitstream. The first nibble
+  is 4 raw bits; each next nibble is the previous minus `table[rank]` (mod 16), where
+  the rank is coded as `k` one bits, a zero, and one more bit: `rank = 2k + bit`
+  (`00`, `01`, `100`, `101`, `1100`, ... `111111101`). Eight ones in a row are
+  rejected. Nibbles fill bytes high nibble first. Each extension takes exactly one
+  unpacked length (probed): G9S/SFD 7680 (GR9), PLS 7680 (interleaved APAC), APS 7720
+  (interleaved APAC), APP 15872 and ILS 15360 (interlaced APAC), INS 16004
+  (InterPainter), HPS 16009 (HIP with registers). Every corpus sample consumes its
+  bitstream to the last byte and matches RECOIL. We also take G9S/SFD that unpack to
+  7684 bytes (the MGV12 disk's GIRL1/GIRL2; RECOIL rejects them). No `.signature()`:
+  the header doesn't say which picture format is inside (7680 bytes is GR9 or PLS).
+- **MCH** (Graph2Font), `atari8/graph2font/mch.rs`; renderer in `atari8/graph2font.rs`, GTIA logic in `atari8/gtia.rs`.
+  Exactly 30833 bytes (40 columns) or 32993 (48). 30 rows of 9-byte cells (code byte,
+  then the 8 bytes shown), then 20 per-scanline tables of 240 bytes (COLBK, COLPF0-3,
+  COLPM0-3, HPOSP0-3, HPOSM0-3, SIZEP0-3 packed, SIZEM, PRIOR), GRAFM per scanline,
+  and 4 × 256 bytes of player memory (scanline y at byte 16 + y). The rest (13856
+  bytes, then a 113-byte tail) has no effect in RECOIL. The first code byte's low 6
+  bits are the mode: 01 ANTIC 2, 05 ANTIC 4, 09/19/29 ANTIC 2 + GTIA 9/10/11. The
+  picture is 336x240. RECOIL emulates GTIA: the priority equations ORing every
+  surviving colour register (checked for all 64 PRIOR values), PRIOR bits 6-7 ORed
+  into the header's GTIA mode per scanline, GTIA 10 delayed 2 pixels, and so on (the
+  module doc lists every rule). 150 random synthetic MCH files render identically to
+  `recoil2png`. Mode 07 (RastaConverter conversions made with G2F's `rc2mch`) is
+  rejected by RECOIL; it probably uses the ignored region for mid-line register
+  changes, and is not decoded.
+- **G2F** (Graph2Font), `atari8/graph2font/g2f.rs`, with a clean-room zlib/DEFLATE
+  decoder written from RFC 1950/1951 in `atari8/inflate.rs` (nothing else in the crate
+  needs it yet; it can move to `codec` if something does). `G2FZLIB`, then a zlib
+  stream of the editor's memory (160-330 KB inflated). Susanne's G2F and MCH render
+  identically in RECOIL, so the MCH tables could be located inside the G2F; the rest
+  came from probing RECOIL with modified, recompressed files. The full layout is in
+  the module doc. Highlights: width and font count in the header, screen codes, the
+  fonts, one font per row, 256-byte colour tables, 512-byte per-object (X, size)
+  tables for P0, M0, P1, M1, ... whose size-byte flags give each scanline's PRIOR
+  (player 0's flags pick 4/2/1/8/0; player 1's give the fifth player and multicolour
+  bits), player memory with missile graphics in the top bits of its second half, and
+  at fixed offsets after that: options (split inverse, ANTIC 4 inverse colour), 30
+  row modes (ANTIC 2, ANTIC 4, GTIA 9/10/11 picked by header byte 1, blank), a VBXE
+  flag and the bottom-half inverse map. RECOIL reads nothing else in the 140-300 KB
+  that follow. All 13 corpus samples without VBXE attributes match, and 100 random
+  synthetic G2F files render identically.
+- **SHC** (SAMAR Hires Interlace), `atari8/interlace.rs`. Exactly 17920 bytes: two
+  7680-byte Graphics 8 frames, then for each frame 1280 bytes with 6 colours per
+  scanline (192 × 6, the last 128 unused). Each colour is COLPF2 (the background) for
+  a fixed span of the scanline, i.e. mid-line register writes: frame 1 changes at
+  pixels 94, 166, 214, 262, 306, frame 2 at 46, 142, 190, 238, 286. Set pixels show the
+  background hue at luminance 0. Frames are averaged. Probed with hand-made files; all
+  8 corpus samples and 15 random files match `recoil2png`.
+- **Not done**: G2F with VBXE colour attributes (flag at end+146753 = 1: athena,
+  sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
+  from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
+  by extension, can't fetch).

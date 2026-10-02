@@ -3,12 +3,18 @@
 //! horizontal resolution to 160. VZI does the same with two mode 9 frames.
 //!
 //! Sources:
-//! - VZI: Just Solve "VertiZontal Interlacing" (16000 bytes, 2 frames);
-//!   the frame order and shift direction are observed from `recoil2png`
-//!   output.
-//! - Just Solve "Hard Interlace Picture"; Mad Team TIP/HIP article;
-//!   atari-owner.com "Atari Software Graphic Modes"; Altirra Hardware
-//!   Reference Manual (GTIA mode 10 half-pixel shift).
+//! - VZI: Just Solve "VertiZontal Interlacing"
+//!   (<http://fileformats.archiveteam.org/wiki/VertiZontal_Interlacing>;
+//!   16000 bytes, 2 frames); the frame order and shift direction are
+//!   observed from `recoil2png` output.
+//! - Just Solve "Hard Interlace Picture"
+//!   (<http://fileformats.archiveteam.org/wiki/Hard_Interlace_Picture>);
+//!   Mad Team TIP/HIP article
+//!   (<https://madteam.atari8.info/index.php?atarynka=tip>); atari-owner.com
+//!   "Atari Software Graphic Modes"
+//!   (<https://atari-owner.com/club/articles/atari-software-graphic-modes.17/>);
+//!   Altirra Hardware Reference Manual, GTIA mode 10 half-pixel shift
+//!   (<https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf>).
 //! - Observed from `recoil2png` output: the layouts (16000 bytes: mode 9 frame
 //!   then mode 10 frame; 16009 bytes: plus registers 704-712; 16012 bytes:
 //!   two DOS binary-load segments, mode 10 frame first; 15372 bytes: the

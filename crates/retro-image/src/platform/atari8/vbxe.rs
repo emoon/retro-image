@@ -1,8 +1,11 @@
 //! Atari 8-bit VBXE: DAP (SlideShow for VBXE).
 //!
 //! Sources:
-//! - Just Solve "SlideShow for VBXE": exactly 77568 bytes; VBXE FX manual
-//!   (8 bits per pixel overlay, 256-entry RGB palette).
+//! - Just Solve "SlideShow for VBXE"
+//!   (<http://fileformats.archiveteam.org/wiki/SlideShow_for_VBXE>): exactly
+//!   77568 bytes; VBXE FX core programmer's manual
+//!   (<https://www.mathyvannisselroy.nl/VBXE/VBXE%20fx_en.pdf>): 8 bits per
+//!   pixel overlay, 256-entry RGB palette.
 //! - Layout (320x240 pixels, then the palette as 256 red, 256 green and
 //!   256 blue bytes, used unscaled): observed from `recoil2png` output.
 

@@ -3,10 +3,17 @@
 //! Any Colour, 256 colours) and Champions' Interlace (CIN).
 //!
 //! Sources:
-//! - Mode descriptions: AtariWiki "APAC Graphics Mode", atari-owner.com
-//!   "Atari Software Graphic Modes", De Re Atari App. E.
-//! - Sizes: Just Solve "AP*", "Digi Paint" and "Champions' Interlace",
-//!   AtariWiki File Suffix.
+//! - Mode descriptions: AtariWiki "APAC Graphics Mode"
+//!   (<https://atariwiki.org/wiki/Wiki.jsp?page=APAC+Graphics+Mode>),
+//!   atari-owner.com "Atari Software Graphic Modes"
+//!   (<https://atari-owner.com/club/articles/atari-software-graphic-modes.17/>),
+//!   De Re Atari App. E (<https://www.atariarchives.org/dere/chaptE.php>).
+//! - Sizes: Just Solve "AP*" (<http://fileformats.archiveteam.org/wiki/AP*>),
+//!   "Digi Paint" (<http://fileformats.archiveteam.org/wiki/Digi_Paint>) and
+//!   "Champions' Interlace"
+//!   (<http://fileformats.archiveteam.org/wiki/Champions%27_Interlace>),
+//!   AtariWiki File Suffix
+//!   (<https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix>).
 //! - Observed from `recoil2png` output: the plane layouts below, and how
 //!   colours are formed. A luminance line takes its hue from the hue line
 //!   above; a hue line takes the average (rounded down) of the luminance

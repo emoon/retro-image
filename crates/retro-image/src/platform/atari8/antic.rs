@@ -1,8 +1,12 @@
 //! Rendering of ANTIC/GTIA bitmap memory.
 //!
-//! Sources: De Re Atari ch. 2 (ANTIC mode table) and App. E (GTIA modes);
-//! the output scaling (a 320-pixel-wide canvas, so 160-pixel modes are drawn
-//! 2 pixels wide and GTIA modes 4 pixels wide) is observed from `recoil2png` output.
+//! Sources:
+//! - De Re Atari ch. 2, ANTIC mode table
+//!   (<https://www.atariarchives.org/dere/chapt02.php>), and App. E, GTIA
+//!   modes (<https://www.atariarchives.org/dere/chaptE.php>).
+//! - The output scaling (a 320-pixel-wide canvas, so 160-pixel modes are
+//!   drawn 2 pixels wide and GTIA modes 4 pixels wide) is observed from
+//!   `recoil2png` output (black box).
 
 use crate::Image;
 

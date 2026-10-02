@@ -2,8 +2,11 @@
 //! luminance, each scanline pair completed by a GTIA mode 11 hue line.
 //!
 //! Sources:
-//! - Just Solve "Taquart Interlace Picture" (`TIP`, version byte 1, up to
-//!   160x119, 2 frames, GR9/10/11); Mad Team TIP/HIP article (mode idea).
+//! - Just Solve "Taquart Interlace Picture"
+//!   (<http://fileformats.archiveteam.org/wiki/Taquart_Interlace_Picture>;
+//!   `TIP`, version byte 1, up to 160x119, 2 frames, GR9/10/11); Mad Team
+//!   TIP/HIP article, the mode idea
+//!   (<https://madteam.atari8.info/index.php?atarynka=tip>).
 //! - Observed from `recoil2png` output: the header (`TIP`, 1, 0, width in
 //!   half-pixels, height, frame length) followed by the mode 9, mode 10 and
 //!   mode 11 frames; output of 2 x width by 2 x height; each line shown as a

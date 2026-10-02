@@ -1,8 +1,9 @@
 //! Technicolor Dream: a luminance file (`.LUM`) and a hue file (`.COL`).
 //!
 //! Sources:
-//! - Just Solve "Technicolor Dream" (two files of 4766 bytes, 80x119,
-//!   256 colours).
+//! - Just Solve "Technicolor Dream"
+//!   (<http://fileformats.archiveteam.org/wiki/Technicolor_Dream>; two files
+//!   of 4766 bytes, 80x119, 256 colours).
 //! - Observed from `recoil2png` output: each file is a 6-byte header
 //!   (ignored) and 119 lines of 40 bytes, one 4-bit value per pixel. Every
 //!   line is shown as two scanlines with pixels 4 wide: a hue scanline (the

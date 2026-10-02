@@ -1,6 +1,9 @@
 //! The 256-colour GTIA palette (PAL).
 //!
-//! Source: observed from `recoil2png` output (its default PAL palette). Synthetic
+//! Source: reverse engineered by black-box probing of `recoil2png` (its
+//! default PAL palette); no palette document or table was copied. The
+//! hue/luminance model (high nibble hue, low nibble luminance) is from De Re
+//! Atari ch. 3 (<https://www.atariarchives.org/dere/chapt03.php>). Synthetic
 //! MIC files with every colour-register value were rendered and the even
 //! luminances read back. Every channel fits `clamp(base[hue] + 0x11 * luminance)`
 //! exactly, so the table below stores only the 16 per-hue bases. Odd luminances
