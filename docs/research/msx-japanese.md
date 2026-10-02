@@ -568,3 +568,39 @@ Header notes from wave 3 still hold (`MAJYO` at 11, size at 8). New this wave:
 - Nothing about the entropy model (Huffman, arithmetic or LZ) has been found. A next attempt could
   start from the other 8 samples in `corpus/extra/msx-japanese/kawaii-dake-na-no/` (same header,
   different sizes) and from synthetic streams, once the stream end rule is known.
+
+## Wave 5b: Japanese
+
+Two more NEC formats, both found by black-box probing of `recoil2png` on mutated copies (kept
+outside the corpus) and pixel-identical to it on every sample. No RECOIL or GPL source was read.
+Prose only: the ftz article on note.com about KTY/KT4
+(<https://note.com/ftz/n/n84d9dd98c1e2>), which says the format paints rectangles filled with one
+repeated 4x2 tile. The `rururutan/ifkty` plug-in source was not read (licence unverified).
+
+- **KT4 "Kitty"** (`nec_pc/kt4.rs`, no magic, 3 samples under `extra/msx-japanese/sembiance/kt4/`):
+  640x400, the 8 digital colours. The picture is 160 x 100 cells of two stacked 4x2 tiles (three
+  bytes each: blue, red, green plane, row-major, MSB first). The file is a run of segments: a byte
+  `n` (0 refused, `0xFF` starts the raw tail), then one tile triple (`n == 1`, used for both halves)
+  or two (any other `n`), then area entries up to `0xFF`, then single cells up to `0xFF`. Entry
+  kinds come from the top two bits of the first byte, with the low 6 bits and the next byte giving
+  a cell number `row * 160 + column`: `01` horizontal run plus a last column, `10` vertical run plus
+  a last row, `00` rectangle plus last column and last row; `11` was never seen. Single cells are
+  (column, row) pairs. Later segments overwrite earlier ones (RECOIL agrees on about 1200 random
+  byte mutations of the samples, checked against a scratch decoder). The tail is six bytes for
+  every cell no segment painted, raster order, and RECOIL rejects any byte more or less after it,
+  which is why most single mutations of an area entry are rejected: they change the painted-cell
+  count. Registered by extension only (no magic).
+  **KTY** (PC-88, 640x200, the same scheme per the article) was not registered: no sample. The
+  likely differences (200 rows, so 100 x 100 cells of 4x2, or a tile height of 2 pixels) are
+  untested.
+- **ARTV `ARV`** (`nec_pc/arv.rs`, signature `SS_SIF    0.`, 1 sample `TAIHO (from Gr.lzh).ARV`):
+  the 16-colour sibling of ArtMaster88, reusing its run-length plane packing
+  (`artmaster88::unpack_plane`). Version digit at 0x0D ignored. `"IRB"` at 0x10 and `"BRG"` at 0x13,
+  640 and 400 at 0x18/0x1A (0x16/0x17 ignored; 0x12 other than `B` gives a different layout that
+  was not decoded). A chain of three length-prefixed records at 0x28: the second holds the palette
+  (16 x three LE16 values, R, G, B, 0-15, scaled by 17); the first and third do not affect the
+  picture. Then four packed planes of 80 x 400 bytes (blue, red, green, intensity); trailing bytes
+  are ignored. RECOIL also accepts a 200-line header (0x1A = 200) but the plane data of this
+  sample does not parse as 200 lines, so only 400 is accepted; heights 1, 2, 100, 399, 401, 480
+  are rejected by RECOIL. The `.arv` files under `corpus/hostile/` are rejected by RECOIL and
+  not by us either.
