@@ -16,7 +16,10 @@
 //!   palette applies; Screen 10/11 dumps without a palette are rejected; Graph Saurus
 //!   pages ignore the palette table; Screen 3 dumps that stop before the name
 //!   table use the BASIC default name table; `SHx` files decode like `GLx`, and
-//!   `GLA`/`GLB`/`SHA`/`SHB` hold YAE pixels (synthesized files).
+//!   `GLA`/`GLB`/`SHA`/`SHB` hold YAE pixels (synthesized files); sprites are
+//!   drawn only for dumps of exactly 0x4000 (Screens 2/3), 0x4000 or more
+//!   (Screen 4), exactly 0x8000 (Screens 5/6) or exactly 0xFAA0 bytes (Screens
+//!   7-12 and Graph Saurus Screen 8; other Graph Saurus pages never).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -201,10 +204,23 @@ fn render_bitmap(mode: Bitmap, vram: &Vram, use_palette_table: bool) -> Result<I
         .unwrap_or_else(|| mode.default_palette());
     let mut canvas = Canvas::new(width, height);
     draw_packed(mode, vram.bytes(), &mut canvas, &palette);
-    if vram.loaded() > mode.sprite_tables().attributes {
-        draw_bitmap_sprites(mode, vram, &mut canvas, &palette);
+    // Graph Saurus pages show no sprites, except Screen 8 ones.
+    if use_palette_table || mode == Bitmap::Graphic7 {
+        draw_sprites_if_dumped(mode, vram, &mut canvas, &palette);
     }
     Ok(canvas.into_image(mode.doubles_lines()))
+}
+
+/// Draws sprites only for dumps of exactly 0x8000 (Screens 5/6) or 0xFAA0
+/// bytes (Screens 7-12), as observed from `recoil2png`.
+fn draw_sprites_if_dumped(mode: Bitmap, vram: &Vram, canvas: &mut Canvas, palette: &Palette) {
+    let full_dump = match mode {
+        Bitmap::Graphic4 | Bitmap::Graphic5 => 0x8000,
+        _ => 0xfaa0,
+    };
+    if vram.loaded() == full_dump {
+        draw_bitmap_sprites(mode, vram, canvas, palette);
+    }
 }
 
 /// Body of a BSAVE file (`FE`, start, end, exec) loaded at address 0.
@@ -305,7 +321,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
     }
     let palette = vram
         .palette(palette_table, 16)
-        .filter(|_| !vram.is_zero(palette_table, 32))
+        .filter(|_| vram.is_valid_palette(palette_table))
         .unwrap_or(match mode {
             Tiled::Graphic3 => vdp::MSX2_PALETTE,
             _ => vdp::MSX1_PALETTE,
@@ -340,7 +356,13 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
             canvas.set(x, y, palette[index as usize]);
         }
     }
-    if vram.loaded() > 0x3800 {
+    // Sprites are drawn for 16 KiB dumps (Screen 2/3) or at least 16 KiB
+    // (Screen 4), as observed from `recoil2png`.
+    let with_sprites = match mode {
+        Tiled::Graphic3 => vram.loaded() >= 0x4000,
+        _ => vram.loaded() == 0x4000,
+    };
+    if with_sprites {
         let tables = match mode {
             Tiled::Graphic3 => SpriteTables {
                 attributes: 0x1e00,

@@ -56,9 +56,18 @@ impl Vram {
         self.data[address & (Self::SIZE - 1)] = value;
     }
 
-    /// Whether `len` bytes from `address` are all zero.
-    pub(super) fn is_zero(&self, address: usize, len: usize) -> bool {
-        (address..address + len).all(|a| self.get(a) == 0)
+    /// Whether the 16-entry palette table at `address` is set: not all zero
+    /// and every entry in the `0RRR0BBB 00000GGG` format.
+    pub(super) fn is_valid_palette(&self, address: usize) -> bool {
+        let table = (0..16).map(|i| (self.get(address + 2 * i), self.get(address + 2 * i + 1)));
+        let mut set = false;
+        for (rb, g) in table {
+            if rb & 0x88 != 0 || g & 0xf8 != 0 {
+                return false;
+            }
+            set |= rb != 0 || g != 0;
+        }
+        set
     }
 
     /// The `count`-entry palette table at `address`, or `None` if the dump
