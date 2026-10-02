@@ -3,7 +3,10 @@
 //! Sources: Codebase64 "C64 Graphics File Format Specs"
 //! (<http://codebase.c64.org/doku.php?id=base:c64_grafix_files_specs_list_v0.03>)
 //! for the escape-byte schemes; details (count 0 meaning 256, stopping at
-//! the expected size) checked against sample files.
+//! the expected size) checked against sample files. The exact-length
+//! backward variant ([`backward_rle_filled`]) was reverse engineered from
+//! the Super Hires samples (SIF, packed SHX) by probing `recoil2png` with
+//! repacked copies.
 
 use alloc::vec::Vec;
 

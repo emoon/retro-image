@@ -7,8 +7,12 @@
 //! - Memory map (bitmap split between `$6000` and `$3400`, the screen RAM
 //!   and the sprite pointers of each line pair, the six 101-entry sprite
 //!   colour tables, the sprite row counter, the FLI-bug sprites and their
-//!   colour switch codes and initial colours): pynuvie's `src/nuvie/nufli.py`
-//!   and `src/nuvie/_flibug.py` and its format notes
+//!   colour switch codes and initial colours): pynuvie,
+//!   <https://github.com/anarkiwi/pynuvie>, files `src/nuvie/nufli.py`
+//!   (<https://github.com/anarkiwi/pynuvie/blob/main/src/nuvie/nufli.py>) and
+//!   `src/nuvie/_flibug.py`
+//!   (<https://github.com/anarkiwi/pynuvie/blob/main/src/nuvie/_flibug.py>),
+//!   and its format notes
 //!   <https://github.com/anarkiwi/pynuvie/blob/main/docs/FORMAT.md>.
 //! - Mode description: C64-Wiki, <https://www.c64-wiki.com/wiki/NUFLI>.
 //! - Reverse engineered by probing `recoil2png` with modified copies of the
