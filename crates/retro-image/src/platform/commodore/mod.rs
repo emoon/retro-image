@@ -35,6 +35,7 @@ mod superhires;
 mod ted;
 mod ufli;
 mod unpack;
+mod vhi;
 mod vic2;
 mod vic20;
 
@@ -354,6 +355,13 @@ pub(super) static FORMATS: &[Format] = &[
         "Art Studio window",
         &["mwi", "mwin"],
         mwin::decode_mwin,
+    ),
+    // Wave 6: C64 VHI + X-FLI
+    Format::new(
+        C64,
+        "Vertical Hires Interlace Editor",
+        &["vhi"],
+        vhi::decode_vhi,
     ),
 ];
 
