@@ -1,0 +1,123 @@
+# Divergences for riscos-ql; see README.md. RECOIL supports neither RISC OS nor the
+# Sinclair QL. Sprites: compared with `deark -m rosprite` (Deark 1.7.3) as a black box,
+# RGB only (Deark adds the mask as alpha), after undoing our pixel-shape repetition.
+# QL: rendered and reviewed visually against the Developer's Guide / Dilwyn Jones layouts.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/2DWaves_2DWaves.ff9	320x45	a5c6b26f539fcc4d	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/BotMap_Sprites.ff9	16x16	0d3874f510468f23	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/DrawPlus_Tools.ff9	24x22	10c3873edc733df1	RISC OS sprite (mode 0); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/FastJPEG_Frank.ff9	135x219	9494594aecca14f0	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/FatPaint_JuzzBag.ff9	260x152	d828b7b3f468f39d	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_ExclSprites.ff9	34x34	75ac5a37d14189e5	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_ExclSprites23.ff9	16x22	5cc66a2cda8415c5	RISC OS sprite (mode 19); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_Sprites.ff9	30x32	d1fd6f2a27143191	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Microscope_Sprites.ff9	34x34	00a206b40dd2a76a	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/MultiScrn_Sprites22.ff9	34x34	e9881a6846de985f	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/NumberCr2_Pics.ff9	16x16	cdce9dbe5238d622	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/PalMakers_Lady.ff9	268x221	70f7a696c7f6a1c1	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Process_XSprites.ff9	142x110	a1c0588979b0f331	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/SESanim_FrontSpri.ff9	278x100	6412202dc474fc9b	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Sascha_Maarten.ff9	134x196	d884f40abd78746b	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Sascha_Sprites.ff9	36x36	a2bf68eab00bb449	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/ShowPic_Warning.ff9	252x161	435f4a06709d11f0	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Translatr_Sprites22.ff9	34x34	59fd8403e44e2026	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Tyla2_Image.ff9	50x50	d7839d5228d65be2	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/VRML_Sprites.ff9	36x36	507ddef134ee8f0d	RISC OS sprite (mode 31); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.11/PaintDemo.ff9	64x64	d6aebc7c2673bdd5	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.11/Patience_Sprites23.ff9	31x42	2b625781c3a43269	RISC OS sprite (mode 18); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/ARMovie_Default.ff9	320x256	b1a18c33e92045d5	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/Blocks_Sprites.ff9	32x32	846ab4e21762e065	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/Bookworm_Sprites.ff9	44x34	3f790c2d46a1d771	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/Configure_2DTools.ff9	21x22	e8a9ff218d7a15e1	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/Configure_Sprites.ff9	34x34	47b6d89321b62f11	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/DrawTutor_Horse.ff9	400x560	3c6ce35ba7a1fd71	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/DrawTutor_LakeView.ff9	542x398	e135f3787644c8d2	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/Maestro_Sprites22.ff9	11x10	606a8d3e81b8fce7	RISC OS sprite (mode 18); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/Meteors_Sprites.ff9	18x26	ed1d89d9ae7c7895	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/PaintTutor_Flower.ff9	80x80	c1699e50fbbfd4e0	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/SparkPlug_4Sprites.ff9	34x34	a15b34ce74e133b5	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/Textures_T3.ff9	272x238	8a803d92cead5708	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/ia-risc-os-3.7/Textures_T6.ff9	272x238	0c71ad2602cc21cf	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Anagramarama_Sprites22.ff9	36x36	fba2c6178da6a87f	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Barrage_Sprites22.ff9	32x32	200950e815962276	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Blackbox_Sprites.ff9	34x30	6627ee41c60b71e3	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Bugsquish_Sprites22.ff9	40x40	a1d62f1356702996	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/CircusLnx_Sprites.ff9	34x34	d6064bd07284937d	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/riscosinfo/Decor_Sprites22.ff9	34x34	ca3dd0d7c42bbbd6	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/IceBreaker_Sprites.ff9	32x32	c5e3eae16418daa0	RISC OS sprite (mode word 0x281680b5 (type 5)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/RS_Sprites.ff9	34x34	09ec8a31ccfa68cc	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Wargus_Sprites22.ff9	34x34	b09709adf9917cb1	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/136.ff9	128x128	45f5ea2686710dd2	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/BUS240.ff9	152x166	96e4f4b4d46dc9be	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/COM234.ff9	104x54	681ceb555d7e575a	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/CTN672.ff9	88x52	b8ed1a434870d71c	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/DRUMS.ff9	605x615	ea2f63d6a9570862	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/Drives.ff9	49x22	112b4b4a45a612f8	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/EDU275.ff9	144x201	87b875bf1ad9f75a	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/FLG012.ff9	1031x901	82365bd5e399440a	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/cinders.ff9	93x128	7ccb3caed6ac6933	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/fibreoptc.ff9	128x20	6d751ae9bf1fd40c	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/microwav.ff9	128x99	206e23ac37ac9a07	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sembiance/shape_049.ff9	128x128	363b574f14d1763a	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/sinclairql-djw/LookShow_Cat.qs8	512x512	f45237ee62879b65	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/LookShow_Lamp.qs8	512x512	2ee778217f384e09	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/LookShow_cervo.qs8	512x512	5c3ad22a3538f64d	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/LookShow_gatto.qs8	512x512	45b24a40b3a60f11	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/MODE8_cat.qs8	512x512	861038a8435d1f4d	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/MODE8_liz.qs8	512x512	80b57acdcfc797f1	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/MODE8_sonia.qs8	512x512	8fc68544a6349ddd	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/QDesign_CARTOON_MARSHAL.pic	98x266	5587313852e76325	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_DAFT_DUCK_WITH_CATAPULT.pic	104x268	b8edb4e82bb2e705	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_PANASONIC_PRINTER.pic	193x222	1297fc2bbe79abc7	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_SILLY_BOYS_FACE.pic	263x368	92598f403b61eb0b	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_SMALL_BEAR_WITH_SIGN.pic	116x150	1aff47bc9c572875	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_SMALL_SNAKE_SINGING.pic	118x158	11d8a2468577f371	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/QDesign_SPOTTY_DOG.pic	251x382	ae964de5f5254f9f	QL PIC area save (mode byte 0); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/ads1_25th.qs4	512x512	0b63126e319f3081	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/ads1_Adverts1.qs4	512x512	b093186dfc5e0e31	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/ads1_Adverts5.qs4	512x512	3e572c099a08be35	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/assorted_ART.qs4	512x512	cd7016d776b928ad	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/assorted_TRAINS.qs4	512x512	3b3f689e21c5b6ad	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/calscrs_JANUARY.qs4	512x512	f7130f66093691c5	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/calscrs_JULY.qs4	512x512	00c351cb63f34861	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/fantasy1_fantsy01.qs4	512x512	4f327dab16b293e5	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/general_general01.qs4	512x512	86f72306a310a705	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/gv115_example_mode0.pic	96x170	b58ed739f6732631	QL PIC area save (mode byte 4); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/gv115_example_mode8.pic	168x224	2ef80f404e6b7865	QL PIC area save (mode byte 8); not in RECOIL; reviewed visually against the PIC layout in Dilwyn Jones' pics.txt and the Developer's Guide screen layout
+extra/riscos-ql/sinclairql-djw/misc1_cat1a.qs8	512x512	0982af877b393e49	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/misc1_meryl1.qs8	512x512	7759f88588176609	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/misc1_rose2.qs8	512x512	53baca13b31c5b0d	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/painter304_title.qs8	512x512	b9a5ff95027f92d5	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/scrcompr_IP.qs8	512x512	7af1bf58b9347fa5	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/scrcompr_steamtrain.qs4	512x512	e5708fbdae5148c1	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_BATH.qs4	512x512	0823477a6a15e771	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_GCHROME.qs8	512x512	f401f14529c93e61	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_GWENDO.qs8	512x512	d3e79ac3ea529645	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_LYAPUNOV.qs4	512x512	18514e24a6e98dbd	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_RENAULT5.qs4	512x512	0e28980e8348317d	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/showqs_SJPD.qs4	512x512	a265d76dec637d85	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/spemdemo_girl2.qs8	512x512	c76ad2b26e4e3721	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/spemdemo_raquel.qs8	512x512	69ae5202776d9bd9	QL mode 8 screen (ShowQS .QS8); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/sinclairql-djw/viz_Viz01.qs4	512x512	dd401281f2562199	QL mode 4 screen (ShowQS .QS4); not in RECOIL; reviewed visually against the Developer's Guide 10.2 screen layout: coherent picture, expected colours
+extra/riscos-ql/synthetic/mode0.ff9	64x64	24d31f54aeb53b25	RISC OS sprite (mode 0); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode1.ff9	40x24	eb68068b87248195	RISC OS sprite (mode 1); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode12.ff9	64x64	c0792dfc835a2b25	RISC OS sprite (mode 12); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode12pal.ff9	64x64	908b4c291e1d5b25	RISC OS sprite (mode 12); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode13.ff9	64x64	e74fd6c2f149b4a5	RISC OS sprite (mode 13); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode15.ff9	64x128	5e53bd2ded126125	RISC OS sprite (mode 15); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode18.ff9	50x20	86714bc16cafe429	RISC OS sprite (mode 18); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode19.ff9	30x30	d6ff17bd13c99f09	RISC OS sprite (mode 19); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode2.ff9	64x32	239a916212fe2725	RISC OS sprite (mode 2); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 2x1 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode20.ff9	37x21	62dc377419fceb93	RISC OS sprite (mode 20); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode21.ff9	33x40	cc9d5b4c7381295d	RISC OS sprite (mode 21); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode27.ff9	64x48	1c2d9bb289e7c325	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode27mask.ff9	40x30	ede427b36712cbcd	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode28.ff9	64x48	51274fd405733525	RISC OS sprite (mode 28); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode28pal.ff9	64x64	2386811b9e309125	RISC OS sprite (mode 28); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/mode8pal.ff9	40x40	3f810eff65093925	RISC OS sprite (mode 8); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/mode9.ff9	48x32	7aa8947422b9e995	RISC OS sprite (mode 9); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/multi.ff9	16x16	ee0dc334c5d34575	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/new16.ff9	48x40	ade54ca19c3aa5e9	RISC OS sprite (mode word 0x281680b5 (type 5)); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/new16_9045.ff9	48x80	e7d444424bcc2e4d	RISC OS sprite (mode word 0x280b40b5 (type 5)); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/synthetic/new32.ff9	64x64	8571d3f5aef5d325	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/new4.ff9	30x20	484394951462ccbd	RISC OS sprite (mode word 0x180b405b (type 3)); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/synthetic/new8.ff9	32x32	542cb9c47c981165	RISC OS sprite (mode word 0x201680b5 (type 4)); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
