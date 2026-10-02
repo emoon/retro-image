@@ -14,6 +14,7 @@
 //!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
 mod abk;
+mod dctv;
 mod deep;
 mod icon;
 mod iff;
@@ -47,11 +48,21 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
+    // Wave 5: Amiga and misc
+    Format::new("Amiga DCTV", "DCTV", &["dct", "dctv"], decode_dctv),
 ];
 
 /// AMOS sprite, icon or picture bank.
 fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
     abk::decode(data).or_else(|_| pac_pic::decode(data))
+}
+
+/// DCTV pictures: an ILBM with the DCTV signature in its first row.
+fn decode_dctv(data: &[u8]) -> Result<Image, DecodeError> {
+    match iff::form(data) {
+        Some((kind, contents)) if &kind == b"ILBM" => dctv::decode(contents),
+        _ => Err(DecodeError::Unrecognized),
+    }
 }
 
 /// Any IFF picture FORM we support.
@@ -67,7 +78,7 @@ fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     match kind {
-        b"ILBM" => ilbm::decode_ilbm(contents),
+        b"ILBM" => ilbm::decode_ilbm(contents).or_else(|_| dctv::decode(contents)),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),

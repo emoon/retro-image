@@ -81,20 +81,19 @@ pub(super) fn decode_acbm(contents: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Image, DecodeError> {
-    let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
-    let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
-    let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
+    let bitmap = read_bitmap(contents, body_id, layout)?;
+    if bitmap.is_dctv() || bitmap.is_ham_e() {
+        return Err(DecodeError::Unrecognized);
+    }
+    let Bitmap {
+        header,
+        camg,
+        indices,
+    } = bitmap;
     let mut palette = find(contents, b"CMAP")
         .map(Palette::from_cmap)
         .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
-    let indices = match layout {
-        Layout::Chunky => read_chunky(&header, body)?,
-        _ => read_planar(&header, body, layout)?,
-    };
-    if is_dctv_or_ham_e(&header, &indices) {
-        return Err(DecodeError::Unrecognized);
-    }
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
     let mut image = Image::new(header.width as u32, header.height as u32);
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
@@ -108,23 +107,55 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
     Ok(scale(image, camg.unwrap_or(0)))
 }
 
-/// Whether the first row carries the DCTV signature or the HAM-E cookie.
-/// Both encode colours the plain bitmap does not show, so such files are
-/// left to decoders for those devices. Both markers were reverse engineered
-/// from samples.
-fn is_dctv_or_ham_e(header: &Header, indices: &[u32]) -> bool {
-    const DCTV: u64 = 0x0049_8728_de11_0bef;
-    const HAM_E: [u32; 14] = [10, 2, 15, 5, 8, 4, 13, 12, 6, 13, 11, 0, 7, 15];
-    let Some(row) = indices.get(..64) else {
-        return false;
+/// The BMHD, CAMG and raw pixel values (palette indices or packed RGB,
+/// row-major) of a bitmap FORM, before any colour interpretation.
+pub(super) struct Bitmap {
+    pub header: Header,
+    pub camg: Option<u32>,
+    pub indices: Vec<u32>,
+}
+
+/// Reads the ILBM at `contents` without interpreting its pixel values.
+pub(super) fn read_ilbm(contents: &[u8]) -> Result<Bitmap, DecodeError> {
+    read_bitmap(contents, b"BODY", Layout::Interleaved)
+}
+
+fn read_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Bitmap, DecodeError> {
+    let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
+    let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
+    let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
+    let indices = match layout {
+        Layout::Chunky => read_chunky(&header, body)?,
+        _ => read_planar(&header, body, layout)?,
     };
-    let top = 1 << (header.planes.max(1) - 1);
-    let dctv = row.iter().all(|&v| v == 0 || v == top)
-        && row
-            .iter()
-            .fold(0u64, |bits, &v| bits << 1 | u64::from(v != 0))
-            == DCTV;
-    dctv || (header.planes == 4 && row[..14] == HAM_E)
+    Ok(Bitmap {
+        header,
+        camg,
+        indices,
+    })
+}
+
+impl Bitmap {
+    /// Pixel row `y`.
+    pub fn row(&self, y: usize) -> Option<&[u32]> {
+        let width = self.header.width;
+        self.indices.get(y * width..(y + 1) * width)
+    }
+
+    /// Whether the first row carries the DCTV signature.
+    fn is_dctv(&self) -> bool {
+        self.row(0)
+            .is_some_and(|row| super::dctv::has_signature(self.header.planes, row))
+    }
+
+    /// Whether the first row starts with the HAM-E cookie. Both this and DCTV
+    /// encode colours the plain bitmap does not show, so such files are left
+    /// to decoders for those devices. The marker was reverse engineered from
+    /// samples.
+    fn is_ham_e(&self) -> bool {
+        const HAM_E: [u32; 14] = [10, 2, 15, 5, 8, 4, 13, 12, 6, 13, 11, 0, 7, 15];
+        self.header.planes == 4 && self.row(0).is_some_and(|row| row.starts_with(&HAM_E))
+    }
 }
 
 /// Colour registers, as `0xRRGGBB`.
