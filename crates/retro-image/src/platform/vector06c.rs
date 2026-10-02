@@ -9,7 +9,8 @@
 //!   from the end of the file into the screen, filled from its end), the
 //!   plane order, the edge cases (trailing bytes, unused bytes after the
 //!   palette, overrunning the screen) and the colour levels: reverse
-//!   engineered from the sample files of the `vector-06c-spr2bmp` repository
+//!   engineered from the sample files of the `vector-06c-spr2bmp` repository,
+//!   <https://github.com/drilnet/vector-06c-spr2bmp>
 //!   (data only; its code and the `Info SPR` archive were not read) and
 //!   `recoil2png` output, including hand-made probe files.
 

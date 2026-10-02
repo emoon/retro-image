@@ -2,6 +2,10 @@
 //!
 //! `no_std` (needs `alloc`): decoders work on in-memory byte slices only.
 //!
+//! This file holds no external format knowledge: it is the public API.
+//! Each decoder module cites the documents its layouts come from; the
+//! platform surveys are in `docs/formats/`.
+//!
 //! ```
 //! fn to_rgb(filename: &str, data: &[u8]) -> Result<Vec<u8>, retro_image::DecodeError> {
 //!     Ok(retro_image::decode(filename, data)?.into_rgb())

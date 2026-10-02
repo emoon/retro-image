@@ -4,7 +4,8 @@
 //! Sources:
 //! - BSC, BMC4 and BSP layouts (border byte packing, BSP header and border
 //!   RLE): SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), sections BSC,
-//!   BMC4 and BSP; zx-image README (CC0).
+//!   BMC4 and BSP, <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>;
+//!   zx-image README (CC0), <https://github.com/moroz1999/zx-image>.
 //! - Border colours at normal intensity: observed from `recoil2png` output.
 
 use super::screen::{

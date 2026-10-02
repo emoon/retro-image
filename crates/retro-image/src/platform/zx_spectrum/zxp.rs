@@ -3,7 +3,8 @@
 //! Sources:
 //! - Layout (header line, rows of `0`/`1`, blank line, rows of hex
 //!   attributes whose count gives the cell height): SpectraLab
-//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section ZXP.
+//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section ZXP,
+//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - The plain `ZX-Paintbrush image` header variant: seen in samples.
 //!   Files with the optional ULA+ palette line are not accepted (no sample).
 

@@ -11,7 +11,8 @@
 //!   (<https://map.grauw.nl/articles/yjk/>).
 //! - Sprite attribute layout, early clock, end markers (208 / 216), the
 //!   per-line sprite limits and the CC (colour combine) bit: TMS9918 data sheet
-//!   and V9938 data book.
+//!   (<https://map.grauw.nl/resources/video/texasinstruments_tms9918.pdf>)
+//!   and the V9938 data book above.
 //! - Observed from `recoil2png` output: the RGB values of the MSX1 (TMS9918)
 //!   palette, 3-bit to 8-bit scaling by bit replication, 2-bit Graphic 7 blue
 //!   levels (0, 0x49, 0x92, 0xff), the default Graphic 5 palette, sprites always

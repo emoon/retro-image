@@ -1,5 +1,8 @@
 //! Decoders, one module per platform family. Each module exports its
 //! formats as `FORMATS`; a module may grow into a directory of submodules.
+//!
+//! No external format knowledge: the list of platform modules. Each module
+//! cites its own sources; the platform surveys are in `docs/formats/`.
 
 mod amiga;
 mod amstrad_cpc;

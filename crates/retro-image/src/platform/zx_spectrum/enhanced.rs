@@ -4,11 +4,12 @@
 //! Sources:
 //! - NXI (512-byte RGB333 palette + 256x192 bytes): ZX Spectrum Next wiki,
 //!   <https://wiki.specnext.dev/File_Formats>, and SpectraLab
-//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section NXI.
+//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section NXI,
+//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - SXG header: hype.retroscene.org sXg article,
 //!   <https://hype.retroscene.org/blog/126.html>; palette entry encodings
 //!   (bit 15 set: 5-bit RGB, clear: 25-level TS-Conf CLUT indices) from the
-//!   CC0 moroz1999/sxg writer.
+//!   CC0 moroz1999/sxg writer, <https://github.com/moroz1999/sxg>.
 //! - RGB333 widened by bit repetition, CLUT level scaling (`level * 255 / 24`, rounded down) and nibble order:
 //!   observed from `recoil2png` output.
 

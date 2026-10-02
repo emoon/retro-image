@@ -17,7 +17,11 @@
 //! - Rembrandt: <https://temlib.org/AtariForumWiki/index.php/Rembrandt_file_format>
 //! - COKE: <https://temlib.org/AtariForumWiki/index.php/COKE_file_format>
 //! - EggPaint: <https://temlib.org/AtariForumWiki/index.php/EggPaint_file_format>
-//! - Spooky Sprites: <https://temlib.org/AtariForumWiki/index.php/Spooky_Sprites_file_format>
+//! - Spooky Sprites (`TRU`, RLE `TRE`): <https://temlib.org/AtariForumWiki/index.php/Spooky_Sprites_file_format>,
+//!   <http://cd.textfiles.com/atarilibrary/atari_cd07/GRAPHICS/PAINT/SPOOKY4/SPOOKY.TXT>
+//! - ICDRAW icons: <http://fileformats.archiveteam.org/wiki/ICDRAW_icon> and
+//!   the ICDRAW 1.4 distribution, <http://cd.textfiles.com/suzybatari1/falcon/icdraw14/>;
+//!   the byte layout is derived from sample files and `recoil2png` output.
 //! - IndyPaint: <https://temlib.org/AtariForumWiki/index.php/IndyPaint_file_format>
 //! - Falcon True Color: <http://fileformats.archiveteam.org/wiki/Falcon_True_Color>
 //! - XGA: <http://fileformats.archiveteam.org/wiki/XGA_(Falcon)>

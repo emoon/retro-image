@@ -6,7 +6,9 @@
 //!   (<https://leopard-adc.pepas.com/technotes/pt/pt_24.html>) and
 //!   CiderPress II notes (<https://ciderpress2.com/formatdoc/MacPaint-notes.html>).
 //! - Optional 128-byte MacBinary header (name length at +1, file type at
-//!   +65): MacBinary specification, recognised by type `PNTG`.
+//!   +65): MacBinary II standard,
+//!   <https://files.stairways.com/other/macbinaryii-standard-info.txt>;
+//!   recognised by type `PNTG`.
 
 use crate::codec::packbits;
 use crate::{BitOrder, DecodeError, Image};

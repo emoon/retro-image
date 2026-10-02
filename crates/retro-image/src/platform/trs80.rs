@@ -2,14 +2,18 @@
 //!
 //! Sources:
 //! - HR: raw 640x240 1-bit screen of the Model 4 hi-res boards, 80 bytes per
-//!   line (trs-80.org hardware pages listed in `docs/formats/amiga-apple-misc.md`).
+//!   line: trs-80.org hardware pages,
+//!   <http://www.trs-80.org/radio-shack-model-4-high-resolution-board/> and
+//!   <http://www.trs-80.org/model-4-grafyx-solution.html>.
 //! - CompuServe RLE: Brutman, "Rediscovering CompuServe RLE"
 //!   (<http://www.brutman.com/RLE/RLE_Graphics.html>): `ESC G H` (256x192) or
 //!   `ESC G M` (128x96), then characters giving run lengths plus 32,
 //!   alternating background and foreground, starting with background.
 //! - Color Computer PMODE 4 (256x192, 1 bit) and PMODE 1 (128x96, 2 bits)
-//!   screens: Lomont, "Color Computer 1/2/3 Hardware Programming"; files are
-//!   RS-DOS binaries with a 5-byte preamble (0, length, load address).
+//!   screens: Lomont, "Color Computer 1/2/3 Hardware Programming",
+//!   <https://www.lomont.org/software/misc/coco/Lomont_CoCoHardware.pdf>;
+//!   files are RS-DOS binaries with a 5-byte preamble (0, length, load
+//!   address), see the platform survey `docs/formats/amiga-apple-misc.md`.
 //! - CLP: 40x56 1-bit clip with a 25-byte header: reverse engineered from a
 //!   sample.
 //! - Colours (set bit white, except black in CLP; the PMODE 1 colour set),

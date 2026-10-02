@@ -8,7 +8,16 @@
 //! ```
 //!
 //! On failure nothing is written and the exit code is non-zero, as
-//! freedesktop thumbnailers require.
+//! thumbnailer hosts expect.
+//!
+//! Sources: the thumbnailer conventions this follows (`-i %i -o %o -s %s`,
+//! a PNG written to the output path, a non-zero exit status on failure so
+//! the host records the failure instead of a thumbnail) are those of
+//! `.thumbnailer` entries, described in the Xfce Tumbler documentation,
+//! <https://docs.xfce.org/xfce/tumbler/available_plugins>; failure handling
+//! by the host is in the Thumbnail Managing Standard, "Thumbnail Creation
+//! Failures", <https://specifications.freedesktop.org/thumbnail/latest/>.
+//! See `freedesktop.rs` for the generated entry.
 
 mod freedesktop;
 mod thumbnail;

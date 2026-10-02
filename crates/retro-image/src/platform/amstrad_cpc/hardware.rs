@@ -5,7 +5,8 @@
 //!   channel): Gate Array, <https://cpctech.cpcwiki.de/docs/garray.html>.
 //! - Firmware colour numbers (`9 * green + 3 * red + blue`, levels 0-2) and
 //!   the power-on inks of the 16 pens: Amstrad CPC6128 User Instructions,
-//!   chapter 8 ("INK" and the default ink table).
+//!   chapter 8 ("INK" and the default ink table),
+//!   <https://archive.org/details/amstrad-cpc-6128-user-manual>.
 //! - Pixel packing of modes 0, 1 and 2:
 //!   <https://cpctech.cpcwiki.de/docs/graphics.html>.
 //! - Screen line addressing: <https://cpctech.cpcwiki.de/docs/screen.html>.

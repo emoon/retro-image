@@ -1,8 +1,8 @@
 //! SymbOS graphics (SGX).
 //!
 //! Sources: SGX chunks, pixel encodings and fixed palettes: SymbOS wiki,
-//! <https://github.com/Prodatron/symbos-wiki/wiki> page
-//! `Format-SGX-(Graphic)` (documentation only). The 4-bit to 8-bit level
+//! <https://github.com/Prodatron/symbos-wiki/wiki/Format-SGX-(Graphic)>
+//! (documentation only). The 4-bit to 8-bit level
 //! mapping (0, 0x80, 0xFF) and grey levels: observed from `recoil2png`
 //! output. ZX0-compressed chunks are not supported (no sample).
 

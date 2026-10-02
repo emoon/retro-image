@@ -4,8 +4,10 @@
 //! - CPC screen line addressing (`(y & 7) * 0x800 + (y >> 3) * row bytes`)
 //!   and mode 2 pixels (MSB left): <https://cpctech.cpcwiki.de/docs/screen.html>,
 //!   <https://cpctech.cpcwiki.de/docs/graphics.html>.
-//! - HGB is a 512x256 mode 2 screen (64 bytes per line): FutureOS wallpaper
-//!   pages listed in `docs/formats/sinclair-cpc-bbc-misc.md`; shown white on
+//! - HGB is a 512x256 mode 2 screen (64 bytes per line): CPCrulez FutureOS
+//!   wallpaper page,
+//!   <https://cpcrulez.fr/GamesTest//applications_graphic-futureos_wallpaper_hgb.htm>
+//!   (more pages in `docs/formats/sinclair-cpc-bbc-misc.md`); shown white on
 //!   black with rows doubled (observed from `recoil2png` output).
 
 use super::amsdos::strip_amsdos;

@@ -1,3 +1,10 @@
+//! The decoded picture type and pixel helpers shared by the decoders.
+//!
+//! No external format knowledge, except `Image::blend`: averaging the
+//! frames of interlaced, flickering and gigascreen pictures per channel,
+//! rounding down, reproduces how RECOIL shows them (observed from
+//! `recoil2png` output).
+
 use alloc::vec::Vec;
 
 use crate::DecodeError;

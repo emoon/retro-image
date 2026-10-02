@@ -3,7 +3,8 @@
 //!
 //! Sources:
 //! - SCR, ATR, IMG, HLR, STL, `.3`: SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md`
-//!   (MIT), sections SCR, 53c/ATR, Gigascreen, HLR, STL and RGB3.
+//!   (MIT), sections SCR, 53c/ATR, Gigascreen, HLR, STL and RGB3,
+//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - LCE (13824 bytes, two screens interlaced to 512x384, first on even
 //!   lines, pixels doubled): zx-image README (CC0),
 //!   <https://github.com/moroz1999/zx-image>.

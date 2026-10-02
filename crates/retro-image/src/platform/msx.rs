@@ -1,6 +1,7 @@
 //! MSX, MSX2, MSX2+ and V9990.
 //!
-//! Sources are listed per submodule; see also `docs/formats/msx-japanese.md`.
+//! Each submodule lists the documents its layouts come from; the platform
+//! survey is `docs/formats/msx-japanese.md`.
 
 mod bitbuster;
 mod dot_designer;

@@ -1,4 +1,6 @@
 //! Fixed-width integers read from byte slices, `None` past the end.
+//!
+//! No external format knowledge: little- and big-endian readers.
 
 fn array<const N: usize>(data: &[u8], at: usize) -> Option<[u8; N]> {
     data.get(at..at.checked_add(N)?)?.try_into().ok()

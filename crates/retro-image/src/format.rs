@@ -1,3 +1,9 @@
+//! The format registry: extensions, content detection and dispatch to
+//! the platform decoders.
+//!
+//! No external format knowledge: which extensions and signatures each
+//! format has is stated, with its sources, by the platform modules.
+
 use alloc::vec::Vec;
 
 use crate::{DecodeError, Image, platform};

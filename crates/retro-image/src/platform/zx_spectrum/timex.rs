@@ -6,7 +6,8 @@
 //!   <https://worldofspectrum.org/faq/reference/tmxreference.htm>.
 //! - File sizes (12288 hi-colour, 12289 hi-res, 24578 HRG = two hi-res
 //!   screens) and ULAplus SCR (6912 + 64-byte palette): zx-image README (CC0)
-//!   and SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), ULA+ section.
+//!   (<https://github.com/moroz1999/zx-image>) and SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), ULA+
+//!   section, <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - ULAplus GRB332 palette and CLUT selection: ULAplus specification,
 //!   <https://sinclair.wiki.zxnet.co.uk/wiki/ULAplus>.
 //! - Hi-res colours at bright intensity, rows doubled to 512x384, and the

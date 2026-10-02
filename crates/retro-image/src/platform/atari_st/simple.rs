@@ -16,6 +16,21 @@
 //! - RGB Intermediate: <https://temlib.org/AtariForumWiki/index.php/RGB_Intermediate_file_format>
 //! - ColorSTar `BIL` is GFA Artist or DEGAS by size: survey notes in
 //!   `docs/formats/atari-st-tt-falcon.md`; checked against `recoil2png` output.
+//! - Cyber Paint Cell: <https://temlib.org/AtariForumWiki/index.php/Cyber_Paint_Cell_file_format>,
+//!   <http://fileformats.archiveteam.org/wiki/Cyber_Paint_Cell>
+//! - DeskPic: <https://temlib.org/AtariForumWiki/index.php/DeskPic_file_format>,
+//!   <http://fileformats.archiveteam.org/wiki/DeskPic> (trailing VDI palette)
+//! - Sinbad Slideshow: <http://fileformats.archiveteam.org/wiki/Sinbad_Slideshow>
+//!   (always 32768 bytes); the screen-then-palette layout is derived from
+//!   sample files and `recoil2png` output.
+//! - C.O.L.R. Object Editor: <https://temlib.org/AtariForumWiki/index.php/C.O.L.R._Object_Editor_file_format>;
+//!   the palette layout is derived from the sample file.
+//! - Pablo Paint: <https://temlib.org/AtariForumWiki/index.php/Pablo_Paint_file_format>
+//! - Graphics Processor: <http://fileformats.archiveteam.org/wiki/Graphics_Processor>
+//!   and survey notes in `docs/formats/atari-st-tt-falcon.md` (raw and RLE
+//!   modes); offsets and RLE records derived from sample files.
+//! - Atari Image Manager (`IM`, `COL`): no documentation found; derived from
+//!   sample files and `recoil2png` output.
 
 use super::common::{
     Resolution, SCREEN_LEN, decode_screen, palette_words, planar_image, st_palette, vdi_palette,
