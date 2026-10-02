@@ -490,3 +490,30 @@ probing of `recoil2png` established so far:
   stream. Not decoded further.
 - **ZIM** (`lockonstar.zim`, 640x400): `"FORMAT-A"`, `"PC9801"` at 0x16, the file name twice and
   `"Z'sSTAFF KID98"` at 0x6A. Not started.
+
+### Archived wiki pages (Wayback Machine)
+
+The archiveteam wiki refused connections during wave 3; its pages were read from the Wayback
+Machine instead. They add little layout information:
+
+- [Mapletown Network](http://web.archive.org/web/20250524112620/http://fileformats.archiveteam.org/wiki/Mapletown_Network):
+  a **NEC PC-98** format (so the decoder belongs in `nec_pc`, not `msx`). Signatures only: ML1
+  `"100" 1A`, MX1 `"@@@ "`, NL3 `20 20 78 25`. Samples: dexvert `image/mapletownNetwork`
+  (<http://sembiance.com/fileFormatSamples/image/mapletownNetwork>).
+- [XLD4](http://web.archive.org/web/20251221202725/http://fileformats.archiveteam.org/wiki/XLD4):
+  `.q4` picture + `.q4d` text document (`"===============>>>>> XLD4 GRAPHIC DATA  DOCUMENT
+  <<<<<==============="`, Shift-JIS). `"MAJYO"` at offset 11. Samples: `XLD4_images.zip` on
+  RECOIL bug #14 and dexvert `image/q4`. **Do not read** `q4toppm.zip`, attached to the same
+  RECOIL bug: code attached to RECOIL's tracker, licence unknown (CLEANROOM.md).
+- [MIF (MSX)](http://web.archive.org/web/20251219160336/http://fileformats.archiveteam.org/wiki/MIF_(MSX)):
+  no layout; extra samples in `mifui2.1.zip` (msx.org) and dexvert `image/msxInterchangeFormat`.
+  `MIF2BMP.EXE` is an MS-DOS binary converter.
+- The wiki's `ZIM` page is the unrelated openZIM wiki-dump format; there is no page for the
+  Z's Staff Kid98 ZIM. emk's ZIM viewer page
+  ([Wayback](http://web.archive.org/web/20170105145627/https://emk.name/2016/01/zim.html),
+  prose read, script not read) says the format is proprietary with no public spec. Software that
+  still reads it: Zeit's free "イメージファイルコンバータ" (Image File Converter), Paintgraphic 3,
+  Photo ReColor, PictureFan and the Susie plug-in IFZIM. Sample sources it names: the
+  *recollections vol.3* collection and the SMC-NETWORKS Toyohashi node CG library. The page also
+  says ML1, like MAG, came from the PC-communications (BBS) world, so a Japanese ML1
+  description may exist in BBS-era archives.
