@@ -1,0 +1,116 @@
+# Divergences for textmode; see README.md. RECOIL decodes none of these formats.
+# Deark comparisons: deark 1.7.3 with -opt char:output=image -nodens (-maxdim 30000 for tall files).
+extra/textmode/sembiance/ans/33-HAZE.ANS	640x1600	7851f0361c4e7389	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/3_doodle.ans	640x432	e850a96333dd6475	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/7k-bsex.ans	640x2464	8040c16b4b531f05	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/ARCANA.ANS	640x304	2d2b195ee71fe1ef	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/BASEBALL.ANS	640x368	7df7ee17eb94255c	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/BYM-BED.ANS	640x592	7485d81188f0aac1	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/CSTL.ANS	640x368	c115d1454b917cb9	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/EASTERS.ANS	640x384	29d80324c95e7744	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/GORILLA.ANS	640x512	a15cb88c790f51f7	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/HONEY.ANS	640x304	9bad2779b8aa63c6	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/KM-TRANSPORTER.ANS	640x384	a48e62329a4f22b0	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/Luciano-Alcoholiday.ans	640x1872	f847eaef865a847a	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/NEPTUNE2.ANS	640x400	2f3adb6316b1d7ca	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/P1-PC3.ANS	640x3216	72a04320550edd90	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/PASSWORD.ANS	640x240	a121c3b462c34a17	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/PC-BOY1.ANS	640x368	dc7b905d2825c325	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/Po-eod.ans	640x1792	6f04e28e8d777981	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/RAINBOW.ANS	640x368	d26640b133447815	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/SPACEDOC.ANS	640x400	a7aed637b788dc74	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/T7G_SOL.ANS	640x17424	ae194fb86bb6a15f	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/TOPGUN.ANS	640x416	1fe3418041aa7c77	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/US-BRUD.ANS	640x1040	4e3098d8eade72de	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/ViiX2 - avg-alove.ans	640x2736	0d738ba0a0a69b28	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/WZ - Portrait Blonde.ans	1760x2816	bc056e3b9dc0b62c	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/ZIPPY.ANS	640x400	f93d4769903b6d54	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/abydos.ans	640x400	2ce02218fa9e416c	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/fr-dangergirl.ans	640x3280	74beeb9224364f7f	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/kissing.ans	640x400	3730b2616fc136a8	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/rmp-impure.ans	640x4640	adee8051d5a28836	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/test.ans	640x400	3edf0be2e7947851	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/tg-girl1.ans	640x1104	527613c9d6973deb	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/tk-samanthafox.ans	640x3504	b9c7d59a7a28db3f	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/artworx/0797MEMB.ADF	640x1728	0f4d87f37e347d66	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 12258 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/42_FIRE.ADF	640x880	3f1ba1c220f87be5	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 11312 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/42_PASQ.ADF	640x1120	a70ca443d3d84e84	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 128465 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/ARTX-LGO.ADF	640x640	31438570aed243f3	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 26504 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/RP-PSYCH.ADF	640x384	c6d6838a1cd04a37	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 10436 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/RP-VISN.ADF	640x448	cd51e1be502cd8cc	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/artworx/SKANK2.ADF	640x1456	eb996f35ed807b9c	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 3680 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/US-NCPL1.ADF	640x1456	fdb6ef96f910c83c	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 3680 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/US-NECRO.ADF	640x1088	7588a6b8eba078bd	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf) except palette rounding: 311535 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/artworx/ZS-DECIE.ADF	640x256	7a851f83d182cc17	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/artworx/ZS-SII9.ADF	640x304	0caea999faa5a11f	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/artworx/test.adf	640x400	1305cc98f796a16c	not in RECOIL; matches Deark 1.7.3 (-m artworx_adf -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/avatar/BBSLIST.AVT	640x240	b4e1c554fde8fb32	not in RECOIL or Deark; reviewed visually: BBS number ranges list, framed. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/CD002.AVT	640x224	d3589d087a92621a	not in RECOIL or Deark; reviewed visually: blue box with CD-ROM text. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/COLHELP.AVT	640x368	796502e3bbd519a0	not in RECOIL or Deark; reviewed visually: PubColour code chart with coloured samples. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/HACK.AVT	640x272	a5d8fac5695d9cbf	not in RECOIL or Deark; reviewed visually: "BBS Crash" display frame. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/INTRO.AVT	640x336	1c177976993384f9	not in RECOIL or Deark; reviewed visually: New York 2008 skyline with moon. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/JCQHLP.AVT	640x96	bc898fd43459de2e	not in RECOIL or Deark; reviewed visually: two lines of Dutch help text. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/JCQLIM.AVT	640x128	90eb14b09433bb62	not in RECOIL or Deark; reviewed visually: "WARNING!!!" box and time-left text. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/KOPF15.AVT	640x176	8be6a72ed761fc15	not in RECOIL or Deark; reviewed visually: framed portrait of a man in a hat. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/LASTNOD.AVT	640x448	e63d18b9b428c277	not in RECOIL or Deark; reviewed visually: last callers table. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/LOGOFF.AVT	640x288	02d14875094c8815	not in RECOIL or Deark; reviewed visually: "LOG OFF" logo and menu bars. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/NY2008.AVT	640x496	5e7ef6fcac1a6301	not in RECOIL or Deark; reviewed visually: garbled skyline: this copy of INTRO.AVT's picture was damaged by an LF to CRLF conversion (^Y counts of 0Ah became 0Dh 0Ah); the render follows the bytes. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/QUOTEHLP.AVT	640x208	1f82b5c3af262ff0	not in RECOIL or Deark; reviewed visually: TopEd quote help table. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/SETUP.AVT	640x272	e355ec2b877fe356	not in RECOIL or Deark; reviewed visually: "Change Setup" logo and settings boxes. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/TOPEDHLP.AVT	640x576	5ab5b1f6bde5071e	not in RECOIL or Deark; reviewed visually: TopEd key help table. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/VIEWMENU.AVT	640x16	93f8347aeccab16e	not in RECOIL or Deark; reviewed visually: one-line German key menu. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/VIRUS.AVT	640x80	951e2cca268741ca	not in RECOIL or Deark; reviewed visually: game shop table (5 rows). AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/WEAPONS.AVT	640x240	073756a0a5e64d72	not in RECOIL or Deark; reviewed visually: game shop table (15 rows). AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/WELCOME.AVT	640x352	3ba20e19a65b08cd	not in RECOIL or Deark; reviewed visually: EZYCOM logo welcome screen. AVT/0 per FSC-0025
+extra/textmode/sembiance/avatar/test.avt	640x400	2ce02218fa9e416c	not in RECOIL or Deark; reviewed visually: rainbow ring logo, same picture as test.ans. AVT/0 per FSC-0025
+extra/textmode/sembiance/binaryText/2013 - 16 - TCF - 16 - Colors.bin	1280x3008	830c4178cf484567	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/COMPUTER.BIN	640x400	0dd1bef0d4d344e3	not in RECOIL; 4000 bytes without SAUCE is one 80x25 screen: matches Deark 1.7.3 given -opt char:width=80 pixel for pixel (Deark defaults to 160 columns and shows 12 of 12.5 rows)
+extra/textmode/sembiance/binaryText/LM_SCR1.BIN	640x400	14ea83f5457ee336	not in RECOIL; 4000 bytes without SAUCE is one 80x25 screen: matches Deark 1.7.3 given -opt char:width=80 pixel for pixel (Deark defaults to 160 columns and shows 12 of 12.5 rows)
+extra/textmode/sembiance/binaryText/PPE-ANSI.BIN	1280x416	026b8bc2549c675c	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/US-USED1.BIN	1280x960	4340d9a732b84db8	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/aOh-DeRidder.bin	1280x3264	4191a4a196c9726f	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/aoh-drseuss.bin	1280x6784	8e69250486fbed4d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/dy-reviv.bin	1280x4176	5600b3db8b90ef9d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/fil-412.bin	3600x4256	e4bb241957ee770d	not in RECOIL; SAUCE asks for 9-pixel letter spacing. Matches Deark 1.7.3 except the 9th column of B0h-B2h shade cells: Deark repeats the 8th column for B0h-DFh, the SAUCE spec and the VGA hardware only for C0h-DFh (checked: every differing pixel is column 8 of a B0h-B2h cell)
+extra/textmode/sembiance/binaryText/goo-metroid.bin	1280x2688	131d816f9dd2727d	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/r5-B7+WC.bin	1280x1696	90810578ea9c0d1e	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/r5-XVOL1.BIN	1280x15424	c17f42cebb36c387	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/ra-cc.bin	1280x4448	bec1cbba72a4b014	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/binaryText/test.bin	640x400	2ce02218fa9e416c	not in RECOIL; matches Deark 1.7.3 (-m bintext -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/iCEDraw/ICE-9605.IDF	640x3200	6d3a90e9a6344ba1	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: iCE logo over the staff list, custom font text legible. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/LS-ICE.IDF	640x3200	974cf8b8d7883fc9	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: green logo and skull with red eyes. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/MD-XMAS.IDF	640x3200	530dd016be81c824	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: cartoon kid in winter hat, iCE logo, Christmas text. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/SG-LAME1.IDF	640x3200	00c2b161adfd6428	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: pink "LAME" logo with credits. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/SQ-FORCE.IDF	640x3200	bde57793c9512e67	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: pink "FORCE" logo with iCEView status line; SAUCE record excluded from the palette. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/US-HLWN.IDF	640x3200	a418211290d743b9	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: "Happy Halloween" logo with moon. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/iCEDraw/test.idf	640x3184	939f06ad4c39a16c	not in RECOIL or Deark (Deark has only an iCEDraw stub); reviewed visually: rainbow ring logo, same picture as test.ans/test.xb. Layout per libansilove icedraw.c; the 80x200 canvas is what iCE Draw saves
+extra/textmode/sembiance/pcBoard/BLADE.PCB	640x288	ddd0deae6e3b2c24	not in RECOIL or Deark; reviewed visually: Blade BBS menu with ASCII logo. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/EEBRDM.PCB	640x240	07709b7546f41761	not in RECOIL or Deark; reviewed visually: BBS command menu in three boxed columns. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/FILE_ID.PCB	640x208	ce9cf69a3422fea5	not in RECOIL or Deark; reviewed visually: VR logo with Visual Pollution pack info. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/HACX!UP.PCB	640x368	3fae83c86b64ce05	not in RECOIL or Deark; reviewed visually: blue blocky logo and option boxes. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/LIMITED.PCB	640x336	07f4cd7717bb1eac	not in RECOIL or Deark; reviewed visually: repeated LIM- background with $ logo. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/RVCMDPM.PCB	640x96	3aa9b2241e063170	not in RECOIL or Deark; reviewed visually: small skull with @TIMELEFT@/@USER@ macros as text. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/SAMPLE5.PCB	640x272	a9ed391946ec0252	not in RECOIL or Deark; reviewed visually: red heart and "TIMEX BBS" logo. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/SAMPLE8.PCB	640x352	36ff988fdfa6b161	not in RECOIL or Deark; reviewed visually: Year 2000 Network main menu boxes. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/SAMPLE9.PCB	640x720	d5cb9e97662a8589	not in RECOIL or Deark; reviewed visually: "Year 2000" logo with cowboy figures. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/VIRTUAL.PCB	640x288	b12ade022e5057e8	not in RECOIL or Deark; reviewed visually: "Virtual Hell" ASCII logo. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/pcBoard/test.pcb	640x400	6ffbb54ca5e3129c	not in RECOIL or Deark; reviewed visually: rainbow ring logo, same picture as test.ans. @X codes per libansilove pcboard.c; other @macros@ shown literally
+extra/textmode/sembiance/tundra/_Pumpkin_by_TCF.tnd	640x1312	7764c2a8b04b137b	not in RECOIL or Deark; reviewed visually: creature in a pumpkin with swirls, 24-bit shades. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/avg-iq3.tnd	640x448	a6f832053ea0178a	not in RECOIL or Deark; reviewed visually: face with "IQ" logo and credits. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/avg-thebatman.tnd	1280x5264	359e68fd6f3ebdd4	not in RECOIL or Deark; reviewed visually: Batman comic panel 160 columns wide (SAUCE TInfo1; its FileType 7 is mislabelled); 80 columns gives garbage. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/tcf-shocktronics.tnd	1600x3504	45ea1ce19dd2f892	not in RECOIL or Deark; reviewed visually: Tesla portrait and Blocktronics logo, 200 columns. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/test.tnd	640x400	6eb47bf12c35fa34	not in RECOIL or Deark; reviewed visually: rainbow ring logo, same picture as test.ans. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/us-mario.tnd	640x1360	01fbe8446d00121b	not in RECOIL or Deark; reviewed visually: Paper Mario and a Goomba. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/we-iqtm2.tnd	640x416	ecd9a0da4b835049	not in RECOIL or Deark; reviewed visually: green goblin title screen. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/wz - ben harper - diamonds on the inside.tnd	640x640	c1bfb6adf4f6e81a	not in RECOIL or Deark; reviewed visually: desert scene with a figure, sepia 24-bit palette. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/tundra/wz-amish.tnd	2000x1600	eed3e1b15b06fe9d	not in RECOIL or Deark; reviewed visually: covered bridge and Amish buggy, 250 columns. Commands per libansilove tundra.c; SAUCE stripped (libansilove draws it)
+extra/textmode/sembiance/xb/2M-MISTIGRIS_BYM.XB	1600x2192	1836e6b3d3a63eb4	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/PM-PROMO.XB	1280x160	0668b1d9b7a196cd	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/V-THRADD.XB	640x480	87b5a8cb8f7e77a5	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/[018] cx-delayed_redemption.xb	640x2208	af2a5efa09b47510	not in RECOIL; matches Deark 1.7.3 (-m xbin) except palette rounding: 426301 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/xb/[032] CX-Adrift.xb	1280x800	938df87332949843	not in RECOIL; matches Deark 1.7.3 (-m xbin) except palette rounding: 74513 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/xb/acid-61.xb	640x2976	be236ee098d26a5b	not in RECOIL; matches Deark 1.7.3 (-m xbin) except palette rounding: 85954 px differ by 1 in a channel (6-bit DAC values scaled v*4+v/16 as in the other PC/VGA decoders here; Deark rounds v*255/63)
+extra/textmode/sembiance/xb/artattack01_title.xb	640x992	1b002555999c2c07	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/pmt-riot.xb	1280x3008	1377bf59f79ad4cb	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/r5-25b.xb	1512x2432	6dd1c7a952d68baf	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/xb/test.xb	640x400	1305cc98f796a16c	not in RECOIL; matches Deark 1.7.3 (-m xbin -opt char:output=image) pixel for pixel
