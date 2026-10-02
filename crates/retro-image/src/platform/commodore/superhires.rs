@@ -21,11 +21,14 @@
 //!   (`value count escape` runs, count 0 = 256) to 8176 bytes of planes.
 //! - Super Hires FLI (SHF) and SHF-XL (SHX), unpacked (load `$4000`): hires
 //!   FLI (eight screen RAMs from `$4000`, bitmap `$6000`) with sprites whose
-//!   pointers come from the screen RAM of the previous raster line, so each
-//!   line can show a different 64-byte block; line `y` of the picture shows
-//!   row `y % 21` of it. SHF: 26 columns from column 14, from bitmap line 1,
-//!   167 lines, sprites 0-3 (colour `$43E8`) over sprites 4-7 (`$43E9`).
-//!   SHX: 18 columns from column 11, 168 lines, sprites 1-6 (`$43E9`).
+//!   block changes every line, as if the pointers came from the screen RAM
+//!   of the previous raster line; line `y` of the picture shows row `y % 21`
+//!   of the block. The blocks are the editors' fixed pointer layout (found
+//!   in the samples); `recoil2png` ignores the pointer bytes in the file, and
+//!   so do we. SHF: 26 columns from column 14, from bitmap line 1, 167
+//!   lines, an upper layer (colour `$43E8`) over a lower one (`$43E9`), four
+//!   sprites each. SHX: 18 columns from column 11, 168 lines, one layer of
+//!   six sprites (colour `$43E9`).
 //! - Packed SHF (any other size): two ignored bytes, an escape byte, then
 //!   `escape count value` runs unpacking forwards to the planes of one SIF
 //!   frame; the sprite colours are at offsets `$1FE8` and `$1FE9`.
@@ -200,7 +203,14 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
     ]))
 }
 
-/// Unpacked SHF and SHX: hires FLI at `$4000` with sprites whose pointers
+/// A sprite layer of unpacked SHF/SHX: the block (pointer) of each 24-pixel
+/// column for each screen RAM, and the address of the layer's colour.
+struct Layer {
+    blocks: [&'static [u8]; 8],
+    color: u16,
+}
+
+/// Unpacked SHF and SHX: hires FLI at `$4000` with sprites whose blocks
 /// change every line.
 struct SpriteFli {
     len: usize,
@@ -209,9 +219,8 @@ struct SpriteFli {
     /// Bitmap line shown at the top.
     first_line: usize,
     height: usize,
-    /// Sprite numbers (one per 24-pixel column) and colour address of each
-    /// layer, topmost first.
-    layers: &'static [(&'static [usize], u16)],
+    /// Sprite layers, topmost first.
+    layers: &'static [Layer],
 }
 
 impl SpriteFli {
@@ -219,7 +228,7 @@ impl SpriteFli {
         if data.len() != self.len {
             return Err(DecodeError::Unrecognized);
         }
-        // The VIC bank `$4000-$7FFF`; sprite pointers may reach past the file.
+        // The VIC bank `$4000-$7FFF`; sprite blocks may lie past the file.
         let mut mem = alloc::vec![0u8; 0x4000];
         let body = &data[2..];
         mem[..body.len()].copy_from_slice(body);
@@ -227,14 +236,13 @@ impl SpriteFli {
             let line = self.first_line + y;
             let previous = (line + 7) % 8;
             let column = x / 24;
-            for &(sprites, color) in self.layers {
-                let Some(&sprite) = sprites.get(column) else {
+            for layer in self.layers {
+                let Some(&block) = layer.blocks[previous].get(column) else {
                     continue;
                 };
-                let pointer = usize::from(mem[previous * 0x400 + 0x3f8 + sprite]);
-                let start = pointer * 64 + y % 21 * 3;
+                let start = usize::from(block) * 64 + y % 21 * 3;
                 if bit(&mem[start..start + 3], x % 24) {
-                    return mem[usize::from(color) - 0x4000];
+                    return mem[usize::from(layer.color) - 0x4000];
                 }
             }
             let cell = line / 8 * 40 + self.first_column + x / 8;
@@ -250,7 +258,34 @@ const SHF: SpriteFli = SpriteFli {
     columns: 26,
     first_line: 1,
     height: 167,
-    layers: &[(&[0, 1, 2, 3], 0x43e8), (&[4, 5, 6, 7], 0x43e9)],
+    layers: &[
+        Layer {
+            blocks: [
+                &[0x80, 0x84, 0x85, 0x89],
+                &[0x94, 0x98, 0x99, 0x9d],
+                &[0xa8, 0xac, 0xad, 0xb1],
+                &[0xbc, 0xc0, 0xc1, 0xc5],
+                &[0xd0, 0xd4, 0xd5, 0xd9],
+                &[0xe4, 0xe8, 0xe9, 0xea],
+                &[0xef, 0xf0, 0xf1, 0xf2],
+                &[0xf7, 0x1e, 0x2e, 0x3e],
+            ],
+            color: 0x43e8,
+        },
+        Layer {
+            blocks: [
+                &[0x8a, 0x8e, 0x8f, 0x93],
+                &[0x9e, 0xa2, 0xa3, 0xa7],
+                &[0xb2, 0xb6, 0xb7, 0xbb],
+                &[0xc6, 0xca, 0xcb, 0xcf],
+                &[0xda, 0xde, 0xdf, 0xe3],
+                &[0xeb, 0xec, 0xed, 0xee],
+                &[0xf3, 0xf4, 0xf5, 0xf6],
+                &[0x4e, 0x5e, 0x6e, 0x7e],
+            ],
+            color: 0x43e9,
+        },
+    ],
 };
 
 const SHX: SpriteFli = SpriteFli {
@@ -259,7 +294,19 @@ const SHX: SpriteFli = SpriteFli {
     columns: 18,
     first_line: 0,
     height: 168,
-    layers: &[(&[1, 2, 3, 4, 5, 6], 0x43e9)],
+    layers: &[Layer {
+        blocks: [
+            &[0x80, 0x84, 0x85, 0x89, 0x8a, 0x8e],
+            &[0x8f, 0x93, 0x94, 0x98, 0x99, 0x9d],
+            &[0x9e, 0xa2, 0xa3, 0xa7, 0xa8, 0xac],
+            &[0xad, 0xb1, 0xb2, 0xb6, 0xb7, 0xbb],
+            &[0xbc, 0xc0, 0xc1, 0xc5, 0xc6, 0xca],
+            &[0xcb, 0xcf, 0xd0, 0xd4, 0xd5, 0xd9],
+            &[0xda, 0xde, 0xdf, 0xe3, 0xe4, 0xe8],
+            &[0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee],
+        ],
+        color: 0x43e9,
+    }],
 };
 
 /// Super Hires FLI Editor: unpacked, or packed forwards.
@@ -357,13 +404,13 @@ mod tests {
     }
 
     #[test]
-    fn sprite_pointers_follow_the_previous_line() {
+    fn sprite_blocks_follow_the_previous_line() {
         let mut data = alloc::vec![0u8; SHF.len];
         let mem = |addr: usize| addr - 0x4000 + 2;
-        // Picture line 0 is bitmap line 1: screen 1 colours, screen 0 pointers.
+        // Picture line 0 is bitmap line 1: screen 1 colours, screen 0's
+        // blocks; the lower layer's column 0 is block $8A at $6280.
         data[mem(0x4400 + 14)] = 0x34;
-        data[mem(0x43f8 + 4)] = 0x81; // lower layer, column 0 -> $6040
-        data[mem(0x6040)] = 0x40;
+        data[mem(0x6280)] = 0x40;
         data[mem(0x43e8)] = 1;
         data[mem(0x43e9)] = 2;
         let image = decode_shf(&data).unwrap();

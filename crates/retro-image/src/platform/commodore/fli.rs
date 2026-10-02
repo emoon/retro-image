@@ -16,6 +16,7 @@
 //! | Hires FLI Designer (HFC, HFD) | CB "Hires FLI" |
 //! | Flip (FBI), FLI Graph packed | GD Flip <https://www.godot64.de/german/l_flipr.htm>, CB "FLI Graph 2.2" |
 //! | Hires Manager (HIM) | CB "Hires Manager", GD HiManRaw; for the packed form, the exclusive end address and literal lengths were checked against a sample that exists both packed and unpacked |
+//! | FLI Profi (FPR) | CB "FLI-Profi" (load `$3780`, sprites from `$3780`, colour `$3C00`, screens `$4000`, bitmap `$6000`); how the leftmost 24 pixels are drawn was reverse engineered by probing `recoil2png` with modified and random files (see [`decode_fli_profi`]) |
 //! | CFLI Designer (CFLI) | Reverse engineered from 3 samples: load `$4000`, eight screen RAMs and no bitmap; the picture is hires FLI over a bitmap of `$AA` bytes, so each pixel pair shows both screen nibbles. Checked against `recoil2png` output |
 //!
 //! Picture heights of Hires FLI Designer (112 lines) and Hires Manager
@@ -205,7 +206,6 @@ pub(super) fn decode_hires_fli_designer(data: &[u8]) -> Result<Image, DecodeErro
     HIRES_FLI_DESIGNER.decode(data)
 }
 
-/// Hires Manager: plain (`$FF` at `$4001`) or packed.
 /// CFLI Designer: eight screen RAMs from `$4000`, shown as hires FLI over
 /// a fixed `$AA` bitmap.
 pub(super) fn decode_cfli(data: &[u8]) -> Result<Image, DecodeError> {
@@ -227,6 +227,61 @@ pub(super) fn decode_cfli(data: &[u8]) -> Result<Image, DecodeError> {
         .ok_or(DecodeError::Unrecognized)
 }
 
+const FLI_PROFI: Fli = Fli {
+    load: 0x3780,
+    sizes: &[2 + 0x47c0],
+    bitmap: 0x6000,
+    screens: 0x4000,
+    color: Some(0x3c00),
+    background: Bg::Black,
+    height: 200,
+    skip: 0,
+};
+
+/// FLI Profi: multicolour FLI shown at full width, with the FLI-bug columns
+/// covered by a multicolour sprite. Sprite rows alternate between two
+/// streams of 64-byte blocks (21 rows each): lines `y % 4` = 0 or 3 read
+/// the next row from `$3780`, lines 1 and 2 from `$38C0`. Sprite bit pairs
+/// `01` take the line's colour from `$3A00 + y`, `10` the colour at
+/// `$3BC8`, `11` the one at `$3BC9`, and cover the bitmap. Under the sprite
+/// the bitmap's `00` is black, `01` and `10` light grey (the FLI bug) and
+/// `11` the high nibble of `$3B00 + y`.
+pub(super) fn decode_fli_profi(data: &[u8]) -> Result<Image, DecodeError> {
+    if !FLI_PROFI.sizes.contains(&data.len()) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let prg = Prg::new(data, FLI_PROFI.load);
+    let fli = FLI_PROFI.frame(&prg).ok_or(DecodeError::Unrecognized)?;
+    // All addresses below lie inside the size checked above.
+    let byte = |addr: usize| prg.byte(addr as u16).unwrap_or(0);
+    let frame = Frame::from_fn(200, |x, y| {
+        if x >= FLI_BUG {
+            return fli.get(x, y);
+        }
+        let (base, nth) = match y % 4 {
+            0 | 3 => (0x3780, y / 4 * 2 + usize::from(y % 4 == 3)),
+            _ => (0x38c0, y / 4 * 2 + y % 4 - 1),
+        };
+        let row = base + nth / 21 * 64 + nth % 21 * 3;
+        let shift = 6 - (x & 6);
+        match byte(row + x / 8) >> shift & 3 {
+            1 => byte(0x3a00 + y),
+            2 => byte(0x3bc8),
+            3 => byte(0x3bc9),
+            _ => {
+                let cell = y / 8 * 40 + x / 8;
+                match byte(0x6000 + cell * 8 + y % 8) >> shift & 3 {
+                    0 => 0,
+                    3 => byte(0x3b00 + y) >> 4,
+                    _ => 15,
+                }
+            }
+        }
+    });
+    Ok(frame.to_image(0))
+}
+
+/// Hires Manager: plain (`$FF` at `$4001`) or packed.
 pub(super) fn decode_hires_manager(data: &[u8]) -> Result<Image, DecodeError> {
     if HIRES_MANAGER.sizes.contains(&data.len()) {
         return HIRES_MANAGER.decode(data);

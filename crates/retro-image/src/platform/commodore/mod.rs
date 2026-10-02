@@ -27,6 +27,7 @@ mod printfox;
 mod sprites;
 mod superhires;
 mod ted;
+mod ufli;
 mod unpack;
 mod vic2;
 mod vic20;
@@ -175,6 +176,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "Hires Manager", &["him"], fli::decode_hires_manager),
     Format::new(C64, "CFLI Designer", &["cfli"], fli::decode_cfli),
+    Format::new(C64, "FLI Profi", &["fpr"], fli::decode_fli_profi),
     Format::new(C64, "Drazlace", &["drl", "dlp"], interlace::decode_drazlace),
     Format::new(
         C64,
@@ -282,6 +284,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "SHF-XL Edit", &["shx"], superhires::decode_shx),
     Format::new(C64, "NUFLI Editor", &["nuf"], nufli::decode_nufli),
+    Format::new(C64, "UFLI-editor", &["ufl"], ufli::decode_ufli),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),
