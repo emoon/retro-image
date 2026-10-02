@@ -12,8 +12,10 @@ mod koala;
 mod mad_studio;
 mod palette;
 mod portfolio;
+mod rom_font;
 mod screen;
 mod technicolor;
+mod text;
 mod tip;
 mod vbxe;
 
@@ -24,6 +26,18 @@ const VBXE: &str = "Atari 8-bit VBXE";
 const PORTFOLIO: &str = "Atari Portfolio";
 
 pub(super) static FORMATS: &[Format] = &[
+    Format::new(
+        ATARI8,
+        "Mad Studio Graphics 0",
+        &["gr0", "asc", "scr", "sge"],
+        text::decode_gr0,
+    ),
+    Format::new(ATARI8, "Mad Studio ANTIC 2", &["an2"], text::decode_an2),
+    Format::new(ATARI8, "Mad Studio Graphics 1", &["gr1"], text::decode_gr1),
+    Format::new(ATARI8, "Mad Studio Graphics 2", &["gr2"], text::decode_gr2),
+    Format::new(ATARI8, "Mad Studio ANTIC 4", &["an4"], text::decode_an4),
+    Format::new(ATARI8, "Mad Studio ANTIC 5", &["an5"], text::decode_an5),
+    Format::new(ATARI8, "Dir Logo Maker", &["dlm"], text::decode_dlm),
     Format::new(ATARI8, "Graphics 3", &["gr3"], screen::decode_gr3),
     Format::new(ATARI8, "Standard Graphics 3", &["sg3"], screen::decode_sg3),
     Format::new(ATARI8, "Graphics 7", &["gr7"], screen::decode_gr7),
