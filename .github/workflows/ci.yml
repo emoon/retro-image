@@ -21,10 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-          targets: thumbv7em-none-eabihf
+      # With no argument, rustup installs the toolchain in rust-toolchain.toml.
+      - run: rustup toolchain install
+      - run: rustup target add thumbv7em-none-eabihf
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
@@ -49,7 +48,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       # RECOIL's public sample set. The pictures are copyrighted, so they are
       # fetched here and never committed (see CLEANROOM.md). recoil2png isn't
