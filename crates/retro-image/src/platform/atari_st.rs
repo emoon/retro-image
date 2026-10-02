@@ -15,6 +15,7 @@ mod falcon;
 mod falcon_paint;
 mod gem_img;
 mod iff;
+mod imagic;
 mod lz4;
 mod mono;
 mod mpp;
@@ -221,6 +222,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     st("ColorSTar object", &["obj"], mono::decode_obj),
     st("Grafix", &["grx"], simple::decode_grx).signature(),
+    st("Imagic", &["ic1", "ic2", "ic3"], imagic::decode_ic).signature(),
 ];
 
 #[cfg(test)]

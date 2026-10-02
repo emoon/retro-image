@@ -300,7 +300,7 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
 - Content detection (`.signature()`) is on for formats with real magic bytes: CRG, GFB,
   PSC, CrackArt, SPC/SPS (`SP` plus the reserved zero word), SPX, GEM IMG (strict header),
   MPP, ComputerEyes, STAD, PhotoChrome, PL4 (LZ4 frame and exact unpacked size),
-  Paintworks, UIMG, Pablo Paint, KID, DEGAS Elite icon, Grafix and the Falcon formats with
+  Paintworks, UIMG, Pablo Paint, KID, DEGAS Elite icon, Grafix, Imagic and the Falcon formats with
   ID strings (ImageLab, DuneGraph, Print-Technik, InShape, Rembrandt, COKE, EggPaint and
   Spooky TRP/TRE, IndyPaint, TmS Cranach, Funny Paint, PixArt, Prism Paint, RAG-D,
   ICDRAW). Left off on purpose: NEOchrome Master and DEGAS Elite blocks (renamed ILBMs
@@ -320,8 +320,15 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
     is always shown with 3-bit ST colours (unlike `RAST`, where STE bits switch to STE).
   - `MUR` + `PAL`: the PAL holds 16 VDI triplets (0-1000, clamped) in pen order. RECOIL
     rejects a `MUR` without its PAL, and so do we.
-- Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
-  screen), Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files
+- Imagic, from samples and black-box tests (the AFW page differs): bytes 64-65 are
+  `$C8 $02` (RECOIL rejects anything else), the escape byte is at 66 and data starts at
+  67. After the escape: the escape itself = literal; `0, n, v` = `n + 1` × `v`;
+  `1`×o, any byte, `n`, `v` = `256·o + n + 1` × `v`; `2, 0` = end; `2, 1…` or `2, n≥3`
+  = that many bytes from the base picture (zero when absent); `2, 2` = skip through the
+  next zero byte; `n≥3, v` = `n + 1` × `v`. The unpacked bytes fill 160 columns of 200
+  bytes, top to bottom, in every resolution; a full screen needs no end marker, and
+  trailing bytes and the length word are ignored.
+- Still unsupported: Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files
   and 8-plane IMG without palette.
 
 <!-- link definitions -->
