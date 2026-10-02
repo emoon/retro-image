@@ -10,6 +10,7 @@ mod border;
 mod chars;
 mod enhanced;
 mod multicolor;
+mod profi;
 mod screen;
 mod standard;
 mod timex;
@@ -131,6 +132,13 @@ pub(super) static FORMATS: &[Format] = &[
         "Speccy eXtended Graphics",
         &["sxg"],
         enhanced::decode_sxg,
+    )
+    .signature(),
+    Format::new(
+        "ZX Spectrum Profi",
+        "Profi screen",
+        &["grf"],
+        profi::decode_grf,
     )
     .signature(),
     Format::new("ZX81", "Program with screen", &["p"], zx81::decode_p),

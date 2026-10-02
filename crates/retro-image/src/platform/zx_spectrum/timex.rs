@@ -111,7 +111,7 @@ pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// GRB332 palette byte: 3-bit green and red widen by repeating their bits,
 /// 2-bit blue by multiplying by 0x55.
-fn grb332(value: u8) -> u32 {
+pub(super) fn grb332(value: u8) -> u32 {
     let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
     let green = widen3(value >> 5);
     let red = widen3((value >> 2) & 7);
