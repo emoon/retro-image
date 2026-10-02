@@ -240,8 +240,8 @@ mod tests {
         data[16000..].copy_from_slice(&[0x00, 0x0e, 0x00, 0x00]);
         let image = decode_ing(&data).unwrap();
         // Frame 2 shows value 0 (black) there.
-        assert_eq!(image.get(2, 0), 0x777777);
-        assert_eq!(image.get(0, 0), 0);
+        assert_eq!(image.get(0, 0), 0x777777);
+        assert_eq!(image.get(2, 0), 0);
         assert!(decode_ing(&data[..16003]).is_err());
     }
 

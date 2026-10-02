@@ -19,6 +19,7 @@ mod koala;
 mod mad_studio;
 mod palette;
 mod portfolio;
+mod rip;
 mod rom_font;
 mod screen;
 mod sfdn;
@@ -264,4 +265,5 @@ pub(super) static FORMATS: &[Format] = &[
         interlace2::decode_cci,
     ),
     Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
+    Format::new(ATARI8, "Rocky Interlace Picture", &["rip"], rip::decode_rip),
 ];
