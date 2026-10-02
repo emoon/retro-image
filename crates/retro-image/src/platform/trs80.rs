@@ -17,11 +17,13 @@
 //!   at the end taking the last run's colour: observed from `recoil2png`
 //!   output.
 
+use alloc::vec::Vec;
+
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("TRS-80", "640x240", &["hr"], decode_hr),
-    Format::new("TRS-80", "CompuServe RLE", &["rle"], decode_rle),
+    Format::new("TRS-80", "CompuServe RLE", &["rle"], decode_rle).signature(),
     Format::new("TRS-80 Color Computer", "40x56", &["clp"], decode_clp),
     Format::new(
         "TRS-80 Color Computer",
@@ -34,21 +36,14 @@ pub(super) static FORMATS: &[Format] = &[
 
 const WHITE: u32 = 0xffffff;
 
-/// Draws a 1-bit bitmap (most significant bit leftmost), each line
-/// `line_repeat` times.
-fn mono(bitmap: &[u8], width: usize, height: usize, line_repeat: usize, set: u32) -> Image {
-    let row_len = width / 8;
-    let mut image = Image::new(width as u32, (height * line_repeat) as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let bit = bitmap[y * row_len + x / 8] & (0x80 >> (x % 8)) != 0;
-            let color = if bit { set } else { set ^ WHITE };
-            for r in 0..line_repeat {
-                image.set(x as u32, (y * line_repeat + r) as u32, color);
-            }
-        }
-    }
-    image
+/// Draws a 1-bit bitmap (most significant bit leftmost) of exactly
+/// `width / 8 * height` bytes.
+fn mono(bitmap: &[u8], width: usize, height: usize, set: u32) -> Result<Image, DecodeError> {
+    let indices: Vec<u8> = bitmap[..width / 8 * height]
+        .iter()
+        .flat_map(|&b| (0..8).rev().map(move |i| b >> i & 1))
+        .collect();
+    Image::from_indexed(width as u32, height as u32, &indices, &[set ^ WHITE, set])
 }
 
 fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
@@ -57,7 +52,7 @@ fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
     if !(LEN..=LEN + 1024).contains(&data.len()) {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(mono(data, 640, 240, 2, WHITE))
+    Ok(mono(data, 640, 240, WHITE)?.scaled(1, 2))
 }
 
 fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
@@ -66,13 +61,24 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
         Some(b"\x1bGM") => (128, 96),
         _ => return Err(DecodeError::Unrecognized),
     };
-    let mut image = Image::new(width, height);
     let total = (width * height) as usize;
+    // Printable run characters up to an escape or the end, covering the
+    // picture; one pixel short is accepted only before an escape. This is
+    // what recoil2png accepts (probed as a black box), and all samples are
+    // such 7-bit text.
+    let end = data[3..].iter().position(|&c| c == 0x1b);
+    let runs = &data[3..end.map_or(data.len(), |e| 3 + e)];
+    let covered: usize = runs.iter().map(|&c| usize::from(c.wrapping_sub(32))).sum();
+    let shortfall = total.saturating_sub(covered);
+    if runs.iter().any(|c| !(0x20..=0x7f).contains(c)) || shortfall > usize::from(end.is_some()) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(width, height);
     let mut pos = 0;
     let mut foreground = false;
     let mut color = 0;
-    for &c in &data[3..] {
-        if c == 0x1b || pos >= total {
+    for &c in runs {
+        if pos >= total {
             break;
         }
         let run = usize::from(c.saturating_sub(32));
@@ -96,7 +102,7 @@ fn decode_clp(data: &[u8]) -> Result<Image, DecodeError> {
         .get(HEADER_LEN..HEADER_LEN + 5 * 56)
         .filter(|_| data[24] == 5 && data[16..18] == [0, 56])
         .ok_or(DecodeError::Unrecognized)?;
-    Ok(mono(bitmap, 40, 56, 1, 0))
+    mono(bitmap, 40, 56, 0)
 }
 
 /// The data of an RS-DOS binary's first segment, which must hold at least
@@ -112,7 +118,7 @@ fn rs_dos_data(data: &[u8], len: usize) -> Option<&[u8]> {
 
 fn decode_pmode4(data: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = rs_dos_data(data, 6144).ok_or(DecodeError::Unrecognized)?;
-    Ok(mono(bitmap, 256, 192, 1, WHITE))
+    mono(bitmap, 256, 192, WHITE)
 }
 
 /// Colour set 0 of the MC6847: green, yellow, blue, red.
@@ -120,15 +126,40 @@ const PMODE1_COLORS: [u32; 4] = [0x07ff00, 0xffff00, 0x3b08ff, 0xcc003b];
 
 fn decode_pmode1(data: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = rs_dos_data(data, 3072).ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(256, 192);
-    for y in 0..96 {
-        for x in 0..128 {
-            let byte = bitmap[y * 32 + x / 4];
-            let color = PMODE1_COLORS[usize::from(byte >> (6 - x % 4 * 2) & 3)];
-            for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                image.set((x * 2 + dx) as u32, (y * 2 + dy) as u32, color);
-            }
+    let indices: Vec<u8> = bitmap
+        .iter()
+        .flat_map(|&b| [b >> 6, b >> 4 & 3, b >> 2 & 3, b & 3])
+        .collect();
+    Ok(Image::from_indexed(128, 96, &indices, &PMODE1_COLORS)?.scaled(2, 2))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 256x192 RLE header and runs covering `pixels`, then `tail`.
+    fn rle(pixels: usize, tail: &[u8]) -> Vec<u8> {
+        let mut data = b"\x1bGH".to_vec();
+        let mut left = pixels;
+        while left > 0 {
+            let run = left.min(95);
+            data.push(32 + run as u8);
+            left -= run;
         }
+        data.extend_from_slice(tail);
+        data
     }
-    Ok(image)
+
+    #[test]
+    fn rle_runs_must_cover_the_picture_in_printable_characters() {
+        let full = 256 * 192;
+        assert!(decode_rle(&rle(full, b"")).is_ok());
+        assert!(decode_rle(&rle(full + 500, b"\x1bGN")).is_ok());
+        assert!(decode_rle(&rle(full - 1, b"\x1bGN")).is_ok());
+        assert!(decode_rle(&rle(full - 1, b"")).is_err());
+        assert!(decode_rle(&rle(full - 2, b"\x1bGN")).is_err());
+        let mut control = rle(1000, b"\x05");
+        control.extend_from_slice(&rle(full, b"")[3..]);
+        assert!(decode_rle(&control).is_err());
+    }
 }

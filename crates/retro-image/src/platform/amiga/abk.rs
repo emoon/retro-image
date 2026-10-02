@@ -51,36 +51,32 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     // 6-plane objects use Extra Half-Brite: colours 32-63 are colours 0-31
     // with each 4-bit component halved (Amiga Hardware Reference Manual,
     // "Extra Half Brite Mode"). RECOIL rejects such banks.
-    let color = |i: usize| {
-        let word = be16(&palette[i % 32 * 2..i % 32 * 2 + 2]);
-        rgb12(if i >= 32 { (word >> 1) & 0x777 } else { word })
-    };
+    let colors: Vec<u32> = (0..64)
+        .map(|i| {
+            let word = be16(&palette[i % 32 * 2..i % 32 * 2 + 2]);
+            rgb12(if i >= 32 { (word >> 1) & 0x777 } else { word })
+        })
+        .collect();
     let width: usize = objects.iter().map(|o| o.width).sum();
     let height = objects.iter().map(|o| o.height).max().unwrap_or(0);
     if width == 0 || height == 0 || width > 0xffff {
         return Err(fail);
     }
-    let mut image = Image::new(width as u32, height as u32);
-    let background = color(0);
-    for y in 0..height {
-        for x in 0..width {
-            image.set(x as u32, y as u32, background);
-        }
-    }
+    // Colour 0 where no object reaches.
+    let mut indices = alloc::vec![0u8; width * height];
     let mut left = 0;
     for object in &objects {
         let row_len = object.width / 8;
         let plane_len = row_len * object.height;
         for y in 0..object.height {
             for x in 0..object.width {
-                let index = (0..object.depth).fold(0, |index, plane| {
+                indices[y * width + left + x] = (0..object.depth).fold(0, |index, plane| {
                     let byte = object.planes[plane * plane_len + y * row_len + x / 8];
-                    index | usize::from(byte >> (7 - x % 8) & 1) << plane
+                    index | (byte >> (7 - x % 8) & 1) << plane
                 });
-                image.set((left + x) as u32, y as u32, color(index));
             }
         }
         left += object.width;
     }
-    Ok(image)
+    Image::from_indexed(width as u32, height as u32, &indices, &colors)
 }

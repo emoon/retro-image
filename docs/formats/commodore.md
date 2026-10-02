@@ -275,7 +275,22 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 - BASIC 8 `brus`: bitmap and colours packed separately with a literal `COLR` between them.
 - Plus/4 Botticelli: set/`01` pixels = high colour nibble + low luminance nibble, clear/`10` = low colour nibble + high luminance nibble, `00` = `$FF15`, `11` = `$FF16`.
 - VIC-20 MiniPaint: colour RAM packed two cells per byte, low nibble first, 20×12 cells of 8×16.
-- Not implemented (need reverse engineering or ROM data): FLI Profi sprites, packed ECI (ECP), CFLI, Dolphin Ed, Rainbow Painter, Picasso 64, Face Painter, Cheese, Hires Editor (HET), Centauri Logo Editor, Logo Painter 3, M.C.S., Interlace Hires Editor, SIF, Multi-Lace Editor, Star Painter font (ZS), Best Paint (VIC-20), Botticelli 128×64, PETSCII Editor and PETSCII BOT (need the C64 character ROM).
+- C64 character ROM: 901225-01 (MD5 `12a4202f5331d45af846af6c58fba946`), taken from the ROM dump `chargen` in `1.4.0/Firmware.zip` of the archive.org item `bizhawk-firmware-files_20250516`. In this ROM the reversed `@` is not an exact inverse of `@` (row 5 is `$99`, not `$9D`). `recoil2png` draws the exact inverse, so `gary.pet` differs by one pixel (recorded divergence).
+- PETSCII pictures (ROM upper case/graphics set unless noted, set pixels in the colour RAM colour):
+  - PETSCII Editor `.pet`: 2026-byte dump of `$3000-$37E7`, with screen codes at `$3000`, background at `$33E9` and colour RAM at `$3400`.
+  - `.scr` + `.col`: two 1002-byte files (load addresses ignored), black background. `recoil2png` rejects the `.scr` alone, and so do we.
+  - PETSCII BOT `.pbot`: 70 or 384 bytes, black background.
+  - C64 OS `.pet` versions 0/1 use the ROM upper/graphics and lower/upper sets. `recoil2png` rejects them; the C64 OS sample files (`thirtytwo.pet`, `colors.pet`, `dndroller.pet` on c64os.com) render correctly but aren't in the corpus.
+- VIC-20 Picasso: `.pic0` (load `$0D00`) holds 22×11 characters of 8×16 pixels in screen order, followed by the VIC registers `$9000-$900F` (`$900E`/`$900F` give the colours). `.pic1` is colour RAM. `recoil2png` needs both files and checks `$9002`=`$96`, `$9003`=`$17` and `$9005`=`$8C`.
+- VIC-20 Best Paint: load `$1100`, bitmap in vertical 8-pixel strips (like MiniPaint), 240 bytes of colour RAM, then `$900F`. Hires only; `recoil2png` rejects colour RAM with bit 3 set.
+- Picasso 64: Vidcom's layout at `$1800` with the background at `$1FFF`.
+- Cheese: load `$8000`, bitmap `$8000`, screen `$C200`, colour `$C800`, background `$CFFD` (probing `recoil2png` confirms it).
+- Rainbow Painter: load `$5C00`, screen `$5C00`, bitmap `$6000`, colour `$8000`. No byte sets the background; `recoil2png` shows black.
+- CFLI Designer: load `$4000`, eight FLI screen RAMs and no bitmap. The picture is hires FLI over a fixed `$AA` bitmap.
+- Logo Painter 3: load `$1800`, 40×50 screen codes, character set at `$2000`, always multicolour. 4174-byte files (with the viewer appended) keep `$D021`, colour RAM, `$D022` and `$D023` at `$1FFB`. 4098-byte files have no colours, and `recoil2png` uses black, light red, red and white.
+- Star Painter font (ZS): load `$F0B0`, then 9-byte records (a width byte and 8 rows), shown as a 128-character sheet.
+- Content detection (`.signature()`): packed Drazpaint/Drazlace, Funpaint II, GoDot 4Bit/clip, SpritePad v1, Commodore Grafix, CharPad, C64 OS `.pet`, VDC BitMap, BASIC 8 `brus`.
+- Not implemented: FLI Profi sprites, packed ECI (ECP), Dolphin Ed (one sample, black background, so the background byte can't be located), Face Painter, Hires Editor (HET), Centauri Logo Editor, M.C.S. (the `.mcs` samples have no load address and may belong to another platform), Interlace Hires Editor, the Super Hires family (SHI, SIF, SHF), NUFLI, UFLI, Multi-Lace Editor, Botticelli 128×64 and PetDraw64 (no samples). Petmate `.pet` (header with width, height, colours and charset) is documented on GoDot's PETSCII loader page, but `recoil2png` rejects it and there are no samples.
 
 ### Corrections found while reviewing hostile samples
 

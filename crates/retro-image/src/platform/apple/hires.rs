@@ -9,6 +9,8 @@
 //! - Monochrome rendering (set bit = white) and doubled lines for Double
 //!   Hi-Res: observed from `recoil2png` output.
 
+use alloc::vec::Vec;
+
 use crate::{DecodeError, Image};
 
 const PAGE_LEN: usize = 0x2000;
@@ -23,15 +25,17 @@ pub(super) fn decode_hgr(data: &[u8]) -> Result<Image, DecodeError> {
     if !matches!(data.len(), 0x1ff8 | 0x1ffc | PAGE_LEN) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(280, HEIGHT as u32);
-    for y in 0..HEIGHT {
-        let line = &data[line_offset(y)..line_offset(y) + 40];
-        for x in 0..280 {
-            let white = line[x / 7] >> (x % 7) & 1 != 0;
-            image.set(x as u32, y as u32, if white { 0xffffff } else { 0 });
-        }
-    }
-    Ok(image)
+    let indices: Vec<u8> = (0..HEIGHT)
+        .flat_map(|y| line_pixels(&data[line_offset(y)..line_offset(y) + 40]))
+        .collect();
+    Image::from_indexed(280, HEIGHT as u32, &indices, &BLACK_WHITE)
+}
+
+const BLACK_WHITE: [u32; 2] = [0, 0xffffff];
+
+/// The 7 pixels of each byte, least significant bit leftmost; bit 7 ignored.
+fn line_pixels(bytes: &[u8]) -> impl Iterator<Item = u8> + '_ {
+    bytes.iter().flat_map(|&b| (0..7).map(move |i| b >> i & 1))
 }
 
 pub(super) fn decode_dhgr(data: &[u8]) -> Result<Image, DecodeError> {
@@ -39,19 +43,14 @@ pub(super) fn decode_dhgr(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (aux, main) = data.split_at(PAGE_LEN);
-    let mut image = Image::new(560, HEIGHT as u32 * 2);
+    let mut indices = Vec::with_capacity(560 * HEIGHT);
     for y in 0..HEIGHT {
-        let offset = line_offset(y);
-        for x in 0..560 {
-            let (column, bit) = (x / 7, x % 7);
-            let page = if column % 2 == 0 { aux } else { main };
-            let white = page[offset + column / 2] >> bit & 1 != 0;
-            let color = if white { 0xffffff } else { 0 };
-            image.set(x as u32, y as u32 * 2, color);
-            image.set(x as u32, y as u32 * 2 + 1, color);
+        let at = line_offset(y);
+        for (&aux, &main) in aux[at..at + 40].iter().zip(&main[at..at + 40]) {
+            indices.extend(line_pixels(&[aux, main]));
         }
     }
-    Ok(image)
+    Ok(Image::from_indexed(560, HEIGHT as u32, &indices, &BLACK_WHITE)?.scaled(1, 2))
 }
 
 #[cfg(test)]
