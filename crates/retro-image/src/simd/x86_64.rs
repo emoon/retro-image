@@ -4,6 +4,17 @@
 //! `#[target_feature]` function only ever runs on a CPU that has the
 //! feature. Kernels handle whole blocks; the scalar reference finishes
 //! the tail.
+//!
+//! Sources:
+//! - Intel Intrinsics Guide,
+//!   <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/>.
+//! - Rust `core::arch` documentation,
+//!   <https://doc.rust-lang.org/core/arch/x86_64/index.html>.
+//! - CPU feature detection with CPUID and XGETBV (OSXSAVE, XCR0 state
+//!   bits): Intel 64 and IA-32 Architectures Software Developer's Manual,
+//!   vol. 1, sections 14.3 ("Detection of Intel AVX instructions") and
+//!   15.2 ("Detection of AVX-512 foundation instructions"), and the
+//!   CPUID leaf 1 / leaf 7 feature flags in vol. 2A.
 
 use core::arch::x86_64::*;
 use core::sync::atomic::{AtomicU8, Ordering};
@@ -55,7 +66,8 @@ fn probe() -> Level {
     if max_leaf < 7 || leaf1.ecx & (OSXSAVE | AVX) != OSXSAVE | AVX {
         return Level::Sse41;
     }
-    // SAFETY: CPUID.1:ECX.OSXSAVE is set, so XGETBV is available.
+    // SAFETY: CPUID.1:ECX.OSXSAVE is set, which implies CPUID.1:ECX.XSAVE
+    // (bit 26), so XGETBV is available.
     let xcr0 = unsafe { xcr0() };
     let leaf7 = __cpuid_count(7, 0);
     if xcr0 & XCR0_AVX != XCR0_AVX || leaf7.ebx & AVX2 == 0 {
@@ -74,6 +86,7 @@ fn xcr0() -> u64 {
 }
 
 pub(super) fn expand_plane(level: Level, plane: &[u8], bit: u32, out: &mut [u8]) {
+    let plane = &plane[..out.len().div_ceil(8)];
     let done = match level.min(detected()) {
         // SAFETY: the CPU has AVX-512 F and BW (clamped above).
         Level::Avx512 => unsafe { expand_plane_avx512(plane, bit, out) },

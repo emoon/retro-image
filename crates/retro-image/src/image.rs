@@ -184,12 +184,13 @@ impl Image {
 
 /// Pixel values of one row of bitplanes: the `p`th row from `planes`
 /// (most significant bit first) gives bit `p` of each value. At most 32
-/// planes; `scratch` must be as long as `out`.
+/// planes. Panics unless `scratch` is as long as `out`.
 pub(crate) fn planar_values<'a>(
     planes: impl IntoIterator<Item = &'a [u8]>,
     scratch: &mut [u8],
     out: &mut [u32],
 ) {
+    assert_eq!(scratch.len(), out.len(), "scratch buffer size");
     out.fill(0);
     let mut planes = planes.into_iter();
     for shift in [0, 8, 16, 24] {

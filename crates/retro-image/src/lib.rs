@@ -13,7 +13,7 @@
 //! ```
 
 #![no_std]
-// Only the `simd` module may use `unsafe`.
+// Only `simd::x86_64` may use `unsafe`.
 #![deny(unsafe_code)]
 
 extern crate alloc;
@@ -24,7 +24,6 @@ mod error;
 mod format;
 mod image;
 mod platform;
-#[allow(unsafe_code)]
 mod simd;
 
 pub use error::DecodeError;

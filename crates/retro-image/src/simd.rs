@@ -3,21 +3,13 @@
 //! No external format knowledge. Each public function checks its
 //! arguments, then runs the best implementation the CPU supports: the
 //! scalar reference in `scalar` (always compiled; the only one on other
-//! architectures and under Miri) or a SIMD version in `x86_64`. This is
-//! the only module allowed `unsafe`, and only `x86_64` uses it.
+//! architectures and under Miri) or a SIMD version in `x86_64`, the
+//! only module allowed `unsafe`.
 //!
-//! Sources:
-//! - Intel Intrinsics Guide,
-//!   <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/>.
-//! - Rust `core::arch` documentation,
-//!   <https://doc.rust-lang.org/core/arch/x86_64/index.html>.
-//! - CPU feature detection with CPUID and XGETBV (OSXSAVE, XCR0 state
-//!   bits): Intel 64 and IA-32 Architectures Software Developer's Manual,
-//!   vol. 1, sections 14.3 ("Detection of Intel AVX instructions") and
-//!   15.2 ("Detection of AVX-512 foundation instructions"), and the
-//!   CPUID leaf 1 / leaf 7 feature flags in vol. 2A.
+//! The SIMD versions cite their sources in `x86_64`.
 
 #[cfg(all(target_arch = "x86_64", not(miri)))]
+#[allow(unsafe_code)]
 mod x86_64;
 // NEON: add an `aarch64` module with the same entry points and a `Neon`
 // level, and dispatch to it next to `x86_64` in the `_at` functions.
