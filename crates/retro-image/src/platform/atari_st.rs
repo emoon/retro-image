@@ -14,6 +14,7 @@ mod gem_img;
 mod mono;
 mod mpp;
 mod paintshop;
+mod paintworks;
 mod simple;
 mod spectrum;
 mod tiny;
@@ -90,4 +91,13 @@ pub(super) static FORMATS: &[Format] = &[
     st("Canvas compressed", &["cpt"], canvas::decode_cpt),
     st("DUO", &["du1", "duo"], duo::decode_duo),
     st("DUO (medium resolution)", &["du2"], duo::decode_du2),
+    st("STAD", &["pac"], mono::decode_pac),
+    st("MegaPaint", &["bld"], mono::decode_bld),
+    st(
+        "Paintworks",
+        &[
+            "sc0", "sc1", "sc2", "cl0", "cl1", "cl2", "pg0", "pg1", "pg2",
+        ],
+        paintworks::decode_paintworks,
+    ),
 ];
