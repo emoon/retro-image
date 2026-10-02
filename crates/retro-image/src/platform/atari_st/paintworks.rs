@@ -28,7 +28,7 @@ fn decode(data: &[u8]) -> Option<Image> {
         _ => return None,
     };
     let len = lines as usize * (resolution.width() / 8 * resolution.planes()) as usize;
-    let body = &data[HEADER_LEN..];
+    let body = data.get(HEADER_LEN..)?;
     let bitmap = if flags & 0x80 != 0 {
         let planes = unpack(body, len)?;
         separate_planes_to_interleaved(&planes, resolution.planes() as usize)
