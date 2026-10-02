@@ -19,6 +19,11 @@
 //!   - output starts at the 4-byte aligned left edge and ends at the right edge;
 //!   - YJK groups cut by the right edge show their Y as grey;
 //!   - MKI: names `X68K` and `MSX2` select X68000 and 3-bit palettes, others 4 bits.
+//! - Reverse engineered from samples (Punincess Maker, X68000 game data): a
+//!   variant with no machine name (`0x1A` right after the signature) and every
+//!   header field big-endian; flag and colour streams then match their stated
+//!   sizes exactly. Its machine byte varies, so it is treated as X68000 (whose
+//!   68000 CPU is big-endian); palette bytes are 5-bit values filled with ones.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -29,16 +34,6 @@ use crate::{DecodeError, Image};
 
 /// Largest picture accepted, in output pixels.
 const MAX_PIXELS: usize = 1 << 22;
-
-fn le16(data: &[u8], offset: usize) -> Option<usize> {
-    let b = data.get(offset..offset + 2)?;
-    Some(u16::from_le_bytes([b[0], b[1]]) as usize)
-}
-
-fn le32(data: &[u8], offset: usize) -> Option<usize> {
-    let b = data.get(offset..offset + 4)?;
-    Some(u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
-}
 
 fn read_palette(grb: &[u8], precision: Precision) -> Vec<u32> {
     grb.chunks_exact(3)
@@ -93,20 +88,46 @@ impl MagHeader {
         if !data.starts_with(b"MAKI02  ") {
             return None;
         }
-        let name = data.get(8..12)?.try_into().ok()?;
-        let comment_end = 12 + data.get(12..)?.iter().position(|&b| b == 0x1a)?;
+        // X68000 programs may write the header big-endian, without the machine
+        // name (the comment terminator follows the signature directly).
+        let big_endian = data.get(8) == Some(&0x1a);
+        let (name, comment_start) = if big_endian {
+            ([0; 4], 8)
+        } else {
+            (data.get(8..12)?.try_into().ok()?, 12)
+        };
+        let comment_end =
+            comment_start + data.get(comment_start..)?.iter().position(|&b| b == 0x1a)?;
         let h = comment_end + data[comment_end..].iter().position(|&b| b == 0)?;
         let header = data.get(h..h + 32)?;
-        let at = |offset: usize| h.checked_add(le32(header, offset)?);
+        let u16_at = |offset: usize| {
+            let b = [header[offset], header[offset + 1]];
+            usize::from(if big_endian {
+                u16::from_be_bytes(b)
+            } else {
+                u16::from_le_bytes(b)
+            })
+        };
+        let at = |offset: usize| {
+            let b = header.get(offset..offset + 4)?.try_into().ok()?;
+            let value = if big_endian {
+                u32::from_be_bytes(b)
+            } else {
+                u32::from_le_bytes(b)
+            };
+            h.checked_add(value as usize)
+        };
         let parsed = Self {
             name,
-            machine: header[1],
+            // The byte order marks an X68000 file; its machine byte is
+            // unreliable (0x00, 0x68 and 0xFF seen in one game's files).
+            machine: if big_endian { 0x68 } else { header[1] },
             flags: header[2],
             mode: header[3],
-            left: le16(header, 4)?,
-            top: le16(header, 6)?,
-            right: le16(header, 8)?,
-            bottom: le16(header, 10)?,
+            left: u16_at(4),
+            top: u16_at(6),
+            right: u16_at(8),
+            bottom: u16_at(10),
             flag_a: at(12)?,
             flag_b: at(16)?,
             colours: at(24)?,
@@ -438,6 +459,31 @@ mod tests {
         assert_eq!(&image.rgb()[9..12], &[0xff, 0, 0]);
         assert_eq!(
             decode_mag(&data, Machine::Msx),
+            Err(DecodeError::Unrecognized)
+        );
+    }
+
+    #[test]
+    fn mag_reads_big_endian_variant() {
+        let mut data = b"MAKI02  \x1a\0".to_vec();
+        data.extend([0xff, 0, 0]); // unreliable machine byte, flags, mode
+        for v in [0u16, 0, 7, 0] {
+            data.extend(v.to_be_bytes());
+        }
+        // Flag A: 2 bytes of zeros, flag B empty, then 4 colour bytes.
+        for v in [80u32, 82, 0, 82, 4] {
+            data.extend(v.to_be_bytes());
+        }
+        let mut palette = [0u8; 48];
+        palette[3..6].copy_from_slice(&[0, 0xff, 0]); // colour 1: red
+        data.extend(palette);
+        data.extend([0, 0, 0x10, 0x01, 0, 0]);
+        let image = decode_mag(&data, Machine::X68000).unwrap();
+        assert_eq!((image.width(), image.height()), (8, 1));
+        // X68000 precision: 5-bit red, intensity bit clear.
+        assert_eq!(&image.rgb()[..3], &[0xfb, 0, 0]);
+        assert_eq!(
+            decode_mag(&data, Machine::Pc98),
             Err(DecodeError::Unrecognized)
         );
     }
