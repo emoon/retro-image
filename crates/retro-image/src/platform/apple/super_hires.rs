@@ -15,6 +15,9 @@
 //! - APF: File Type Note $C0/0002
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0002>):
 //!   MAIN and MULTIPAL blocks.
+//! - Packed screen: File Type Note $C0/0001
+//!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0001>):
+//!   the 32 KB screen dump passed through PackBytes.
 //! - Paintworks: File Type Note $C0/0000
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0000>).
 //! - Output size (640-mode pictures at 640 pixels with doubled lines,
@@ -115,6 +118,17 @@ pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
         })
         .collect();
     render(&lines, 320)
+}
+
+/// $C0/0001: a screen dump packed with PackBytes, which must unpack to
+/// exactly 32 KB using all of the data.
+pub(super) fn decode_packed_screen(data: &[u8]) -> Result<Image, DecodeError> {
+    // Asking for one byte more makes the unpacker stop only at the end of
+    // the data, so an exact result means nothing is left over.
+    let screen = pack_bytes::unpack(data, 0x8001)
+        .filter(|s| s.len() == 0x8000)
+        .ok_or(DecodeError::Unrecognized)?;
+    decode_screen(&screen)
 }
 
 /// 320-mode pixels with one reversed palette per line.
@@ -269,4 +283,21 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
     // A 640-mode width counts 640-mode pixels; `render` takes 320-mode ones.
     let any_640 = lines.iter().any(|l| l.scb & MODE_640 != 0);
     render(&lines, if any_640 { width / 2 } else { width })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn packed_screen_must_unpack_to_exactly_32k() {
+        // 128 runs of one byte repeated 64 x 4 times: 32 KB.
+        let packed: Vec<u8> = (0..128).flat_map(|_| [0xff, 0]).collect();
+        let image = decode_packed_screen(&packed).unwrap();
+        assert_eq!((image.width(), image.height()), (320, 200));
+        assert!(decode_packed_screen(&packed[2..]).is_err());
+        let mut longer = packed.clone();
+        longer.extend_from_slice(&[0x40, 0]);
+        assert!(decode_packed_screen(&longer).is_err());
+    }
 }

@@ -49,7 +49,9 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     let flags = le32(&header[4..8]);
     let depth = flags & 7;
     let has_clut = flags & 8 != 0;
-    if flags & !0xf != 0 || depth > 3 || (depth < 2) != has_clut {
+    // The other flag bits are reserved but not always zero (PSn00bSDK's
+    // tiles_256.tim); recoil2png ignores them too.
+    if depth > 3 || (depth < 2) != has_clut {
         return Err(fail);
     }
     let mut pos = 8;

@@ -40,6 +40,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Apple IIGS", "320x200", &["sh3", "3200"], decode_3200),
     Format::new("Apple IIGS", "320x200", &["shr"], decode_3200),
     Format::new(
+        "Apple IIGS",
+        "Packed Super Hi-Res",
+        &["shr"],
+        super_hires::decode_packed_screen,
+    ),
+    Format::new(
         "Apple Macintosh",
         "MacPaint",
         &["mac", "pnt", "pntg"],
