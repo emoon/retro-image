@@ -602,5 +602,5 @@ repeated 4x2 tile. The `rururutan/ifkty` plug-in source was not read (licence un
   picture. Then four packed planes of 80 x 400 bytes (blue, red, green, intensity); trailing bytes
   are ignored. RECOIL also accepts a 200-line header (0x1A = 200) but the plane data of this
   sample does not parse as 200 lines, so only 400 is accepted; heights 1, 2, 100, 399, 401, 480
-  are rejected by RECOIL. The `.arv` files under `corpus/hostile/` are rejected by RECOIL and
-  not by us either.
+  are rejected by RECOIL. RECOIL rejects the `.arv` files under `corpus/hostile/`, and so do
+  we.
