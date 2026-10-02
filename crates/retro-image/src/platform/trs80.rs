@@ -21,6 +21,8 @@
 //!   at the end taking the last run's colour: observed from `recoil2png`
 //!   output.
 
+mod magicdraw;
+
 use alloc::vec::Vec;
 
 use crate::{BitOrder, DecodeError, Format, Image};
@@ -36,6 +38,8 @@ pub(super) static FORMATS: &[Format] = &[
         decode_pmode4,
     ),
     Format::new("TRS-80 Color Computer", "128x96", &["p11"], decode_pmode1),
+    // Wave 5: Amiga and misc
+    Format::new("TRS-80", "MagicDraw", &["shr"], magicdraw::decode),
 ];
 
 const WHITE: u32 = 0xffffff;
