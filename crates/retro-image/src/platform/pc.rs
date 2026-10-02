@@ -30,8 +30,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
 ];
 
-/// The 16 colours of the IBM CGA/EGA text palette.
-const CGA_PALETTE: [u32; 16] = [
+/// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
+/// Also used by the text-mode art formats.
+pub(super) const CGA_PALETTE: [u32; 16] = [
     0x000000, 0x0000aa, 0x00aa00, 0x00aaaa, 0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa, 0x555555,
     0x5555ff, 0x55ff55, 0x55ffff, 0xff5555, 0xff55ff, 0xffff55, 0xffffff,
 ];
@@ -172,10 +173,9 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         return Err(fail);
     };
-    let scale = |v: u8| u32::from((v & 63) << 2 | (v & 63) >> 4);
     let palette: Vec<u32> = data[palette_start..palette_start + colors * 3]
         .chunks_exact(3)
-        .map(|c| scale(c[0]) << 16 | scale(c[1]) << 8 | scale(c[2]))
+        .map(|c| vga_rgb([c[0], c[1], c[2]]))
         .collect();
     let bitmap = &data[8..];
     let indices: Vec<u8> = if chunky {
@@ -192,6 +192,14 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
             .collect()
     };
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
+}
+
+/// A VGA DAC entry (red, green, blue of 0-63; higher bits ignored) as
+/// `0xRRGGBB`, each value scaled `v * 4 + v / 16`. Also used by the
+/// text-mode art formats.
+pub(super) fn vga_rgb(rgb: [u8; 3]) -> u32 {
+    let scale = |v: u8| u32::from((v & 63) << 2 | (v & 63) >> 4);
+    scale(rgb[0]) << 16 | scale(rgb[1]) << 8 | scale(rgb[2])
 }
 
 fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
