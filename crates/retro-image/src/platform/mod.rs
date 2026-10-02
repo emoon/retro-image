@@ -20,6 +20,7 @@ mod oric;
 mod pc;
 mod playstation;
 mod psion;
+mod risc_os;
 mod sam_coupe;
 mod sharp_x68000;
 mod tandy1000;
@@ -46,6 +47,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     pc::FORMATS,
     playstation::FORMATS,
     psion::FORMATS,
+    risc_os::FORMATS,
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,
     tandy1000::FORMATS,
