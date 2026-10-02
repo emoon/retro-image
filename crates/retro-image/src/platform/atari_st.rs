@@ -193,4 +193,5 @@ pub(super) static FORMATS: &[Format] = &[
     tt("DEGAS (TT high resolution)", &["pi6"], tt::decode_pi6),
     falcon("Spooky Sprites RLE", &["tre"], falcon::decode_tre),
     falcon("ICDRAW icon", &["ibi", "ib3"], falcon::decode_icdraw),
+    st("Fullscreen Construction Kit", &["kid"], duo::decode_kid),
 ];

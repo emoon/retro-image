@@ -1,5 +1,6 @@
-//! DUO overscan pictures by Anders Eriksson (`DU1`, `DUO`, `DU2`): two
-//! alternating screens shown in quick succession.
+//! Overscan pictures: DUO by Anders Eriksson (`DU1`, `DUO`, `DU2`), two
+//! alternating screens shown in quick succession, and Fullscreen
+//! Construction Kit (`KID`).
 //!
 //! Sources:
 //! - <https://temlib.org/AtariForumWiki/index.php/DUO_file_format>
@@ -28,6 +29,24 @@ pub(super) fn decode_du2(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     decode(data, 4, 832, 2, 2).ok_or(DecodeError::Unrecognized)
+}
+
+/// Fullscreen Construction Kit (`KID`): `KD`, 16 palette words, then 274
+/// lines of 230 bytes, the first 224 of which hold 448 low-resolution
+/// pixels. Sources: <http://fileformats.archiveteam.org/wiki/Fullscreen_Construction_Kit>
+/// (size, magic); the line layout is derived from sample files.
+pub(super) fn decode_kid(data: &[u8]) -> Result<Image, DecodeError> {
+    const LINE: usize = 230;
+    if data.len() != 34 + 274 * LINE || data.get(..2) != Some(b"KD") {
+        return Err(DecodeError::Unrecognized);
+    }
+    let palette = st_palette(&palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?);
+    let bitmap: alloc::vec::Vec<u8> = data[34..]
+        .chunks_exact(LINE)
+        .flat_map(|line| &line[..224])
+        .copied()
+        .collect();
+    planar_image(&bitmap, 448, 274, 4, &palette, 1).ok_or(DecodeError::Unrecognized)
 }
 
 fn decode(data: &[u8], colors: usize, width: u32, planes: u32, y_scale: u32) -> Option<Image> {
