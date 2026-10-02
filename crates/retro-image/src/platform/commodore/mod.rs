@@ -40,6 +40,7 @@ mod unpack;
 mod vhi;
 mod vic2;
 mod vic20;
+mod xfl;
 
 use crate::{DecodeError, Format, Image};
 
@@ -378,6 +379,8 @@ pub(super) static FORMATS: &[Format] = &[
         &["vhi"],
         vhi::decode_vhi,
     ),
+    // Wave 6: C64 X-FLI
+    Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

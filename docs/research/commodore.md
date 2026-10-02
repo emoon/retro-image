@@ -451,15 +451,15 @@ committed). No documentation exists for either format.
 - The `.HII` file on the same disk (`KISSMEBITCH.HII`, load `$8000`) is not accepted as VHI
   by `recoil2png` and was ignored.
 
-**X-FLI (XFL): skipped.** Container and bitmap layout are solved; the sprite overlay colours
-are not, so no pixel match yet (about 94% of pixels agree, which is not enough to register).
+**X-FLI (XFL): done.** The 4 corpus samples (`q17`, `rol47`, `soph07`, `ns09`) match, and so
+do the other 50 ROL Work and nswork workstages and 20 random or randomly mutated files.
 
 - Container: `00 40`, an escape byte, then a backward RLE stream (`value count ESC`, count 0 =
   256, read from the end of the file towards the start, same scheme as `backward_rle` in
-  `unpack.rs`) that unpacks to exactly 16192 (`$3F40`) bytes for all 54 real files tried (the 4
-  corpus samples plus the ~50 ROL Work / nswork workstages). The stream is consumed exactly:
-  the start of the file is the start of the data. This is a very tight validity check;
-  `backward_rle_filled` already returns the exactness flag.
+  `unpack.rs`). All 54 real files unpack to exactly 16192 (`$3F40`) bytes and use the stream
+  up exactly, so we require both, plus the `00 40` load address. `recoil2png` is laxer: it
+  ignores the load address and stops once the memory is full, so it also takes a file with
+  stray bytes at the start of the stream.
 - Memory image from `$4000` (offsets below are from `$4000`): eight screens at `1024 * n` and a
   bitmap at `$2000`.
 - Picture: 192x167. Only cell columns 16..39 are drawn, at x = (col - 16) * 8. Pixel line y
@@ -468,28 +468,26 @@ are not, so no pixel match yet (about 94% of pixels agree, which is not enough t
   Cells of columns 0..15 and of rows 21..24 are free memory used for sprite data and tables.
 - Sprite overlay: 8 multicolour sprites side by side (sprite `j` covers x = 24j..24j+23, two
   pixels per bit pair, MSB pair leftmost). Sprites are behind the bitmap: a pair shows only
-  where the bitmap bit is 0. Pair 00 is transparent, 01 = colour `$0C`, 11 = colour `$0B`
-  (the multicolour registers: offsets 1006/1007 of screen 7 hold `0C 0B`), 10 = the sprite's
-  own colour, which changes down the picture.
-- Sprite rows: 8 "sets", one per residue `y % 8`, each of 8 sprite blocks of 63 bytes (21
-  rows x 3 bytes). Row `i` of set `r` shows on line `y = (Y0[r] - 40 i) mod 168` with `Y0`
-  = {3: 43, 4: 84, 5: 85, 6: 126, 7: 127, 0: 0, 1: 1, 2: 42}, i.e. `i = 17 * ((Y0 - y) / 8)
-  mod 21`. Block start offsets: sets 3, 4, 5, 6, 7 start at `$2000`, `$2500`, `$2A00`,
-  `$2F00`, `$3400`, sprite `j` at +`(j/2)*320 + (j%2)*64` (two blocks live in the 128 bytes of
-  cell columns 0..15 of each cell row); set 0 at `$3900`, `$3940`, `$3A40`, `$3A80`, `$3AC0`,
-  `$3B00`, `$3B40`, `$3B80`; set 1 at `$3BC0`, `$3C00`, `$3C40`, `$3C80`, `$3CC0`, `$3D80`,
-  `$3DC0`, `$3E00`; set 2 sprite `j` at screen `j` + `$380`. With constant colours (01 = 12,
-  10 = 4, 11 = 11) this layout reproduces 94% of the pixels of `q17.xfl`.
-- Open: the per-line colour of pair 10. Offsets 1008..1015 of screen 7 hold the initial
-  colours of sprites 0..7. Screens 0, 1, 2 hold colour changes: the value is the new colour
-  (screen 0 offsets 980, 983, 985 = `07 04 0F` are sprite 7's colours from lines 43, 49 and
-  53), and the line of an entry follows `y = Y0s + 2 * (off - 980)` with `Y0s` = 43 for
-  screen 0 and 99 for screen 1. Offsets 1008 + k of the same screen are non-zero exactly when
-  entry 980 + k is used and equal sprite number + 3 (0A = sprite 7, 07 = sprite 4, 06 =
-  sprite 3). Entries at 960..979 and 988..1007 (also non-zero in the sample) are not
-  understood: they change sprites 0, 3, 4, 5, 6 from other lines, and several offsets 28
-  apart act on the same sprite. In a synthetic file with these bytes zeroed except one, a
-  single byte shows nothing, so entries only act together with their companion bytes.
-- Next steps: probe a synthetic file with every sprite row set to pair 10 and the bitmap bits
-  0, writing one companion/value pair at a time in screens 0..2 to learn the entry layout;
-  then check against the ROL/nswork workstages (same layout, only the entries differ).
+  where the bitmap bit is 0. Pair 00 is transparent (the screen's low nibble shows).
+- Sprite rows: 8 sets, one per residue `y % 8`, each of 8 sprite blocks of 63 bytes. Line `y`
+  shows row `((y - Y0) / 2) mod 21` of set `y % 8`, with `Y0` = 0, 1, 42, 43, 84, 85, 126, 127
+  for sets 0..7 (the same thing as the earlier `17 * ((Y0 - y) / 8) mod 21`). Block start
+  offsets: sets 3, 4, 5, 6, 7 start at `$2000`, `$2500`, `$2A00`, `$2F00`, `$3400`, sprite `j`
+  at +`(j/2)*320 + (j%2)*64` (two blocks live in the 128 bytes of cell columns 0..15 of each
+  cell row); set 0 at `$3900`, `$3940`, `$3A40`, `$3A80`, `$3AC0`, `$3B00`, `$3B40`, `$3B80`;
+  set 1 at `$3BC0`, `$3C00`, `$3C40`, `$3C80`, `$3CC0`, `$3D80`, `$3DC0`, `$3E00`; set 2
+  sprite `j` at screen `j` + `$380`. These match the sprite pointers at offsets 1016..1023
+  of the screens: screen `s` points at set `(s + 2) % 8`. `recoil2png` does not read the
+  pointers, though: the layout is fixed.
+- Colours: 11 registers. Index 1 is the pair 01 colour, 2 the pair 11 colour, 3..10 the pair
+  10 colour of sprites 0..7 (the order of the VIC registers `$D025..$D02E`). They start out
+  as screen 7's bytes at `1005 + index` (`0C 0B` and then the sprite colours in `q17`).
+- Colour changes: screens 0, 1 and 2 each hold 28 entries, the new colour at offset `960 + k`
+  and the register index at `988 + k` (k = 0..27). Entry k of screen s applies from line
+  `3 + 56 * s + 2 * k` on (entries past line 166 never show). Only the low nibble of the
+  index counts (`$13` acts like `$03`); index 0 and 11..15 change nothing. The earlier
+  partial reading (companion at `1008 + k` for the entry at `980 + k`) was this rule seen
+  from the middle of the table.
+- How the change table was found: zero every entry of `q17`, then set one (index, value)
+  pair and list which lines and sprites change, for indexes 0..20, `$23`, `$43`, `$83` and
+  `$FF`.
