@@ -120,7 +120,7 @@ fn decode_fun_inner(data: &[u8]) -> Option<Image> {
     let planes = usize::from(be16(data, 8)?);
     let frames = usize::from(be16(data, 10)?);
     check_size(width, height)?;
-    let body = &data[13..];
+    let body = data.get(13..)?;
     if planes == 16 {
         return chunky(body, width, height, 2, word565);
     }
