@@ -290,11 +290,11 @@ Container: `FLUFF64`, four bytes that `recoil2png` ignores (`02 00 00 00` or `0a
 
 Multicolour cell pixels run from the low bits (the leftmost pixel is `byte & 3`) and value `v` takes colour number `v`. Colour numbers are only checked when a pixel uses them; a used number of `$ff` is rejected.
 
-What to know:
+Open questions:
 
 - The platform for the paletted types 0x0c, 0x0d, 0x16 and 0x1b is a guess. `recoil2png` draws 0x0c, 0x16 and 0x1b identically, and the only evidence for Amiga (0x0d, 320x256) and PC (0x1b, 256 colours) is the size and palette. 0x0c and 0x16 went to Atari ST because they carry 16 colours at 320x200.
 - BBC pictures: `recoil2png` shows the stream starting at the mode byte, so pixel 0 is the mode number (drawn black) and the final stored byte is dropped. If the mode byte is really a header, the picture is one pixel shifted and loses its last pixel. The samples can't tell which side is right, so this follows `recoil2png`.
-- Not covered by any sample: other BBC modes, CPC modes 1 and 2, other Spectrum or CGA layouts, VIC-20 hires, and C64 type 6 beyond the synthetic check. `recoil2png` also accepts type 0x07 on `image1-1.flf` (changing byte 11) as a tiny 80x16 picture, so more type numbers exist than the samples show. Producing TRSE-made samples is the way to continue.
+- Not covered by any sample: other BBC modes, CPC modes 1 and 2, other Spectrum or CGA layouts, VIC-20 hires, and C64 type 6 beyond the synthetic check. `recoil2png` also accepts type 0x07 on `image1-1.flf` (changing byte 11) as a tiny 80x16 picture, so more type numbers exist than the samples show. Going further needs samples made with TRSE.
 
 ## Wave 5: Amiga and misc
 

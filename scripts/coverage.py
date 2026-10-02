@@ -23,8 +23,6 @@ import sys
 # RECOIL platform name -> ours.
 PLATFORM_ALIASES = {
     "Atari ST/STE": "Atari ST",
-    "Amiga DCTV": "Amiga",
-    "Amiga HAM-E": "Amiga",
 }
 
 
