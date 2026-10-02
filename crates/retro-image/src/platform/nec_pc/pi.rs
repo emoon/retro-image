@@ -21,7 +21,7 @@ use super::precision::Precision;
 use crate::{DecodeError, Image};
 
 /// Largest picture accepted, in pixels.
-const MAX_PIXELS: usize = 1 << 24;
+const MAX_PIXELS: usize = 1 << 22;
 
 struct Header<'a> {
     model: &'a [u8],

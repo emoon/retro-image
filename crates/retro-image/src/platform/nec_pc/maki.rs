@@ -28,7 +28,7 @@ use super::precision::Precision;
 use crate::{DecodeError, Image};
 
 /// Largest picture accepted, in output pixels.
-const MAX_PIXELS: usize = 1 << 24;
+const MAX_PIXELS: usize = 1 << 22;
 
 fn le16(data: &[u8], offset: usize) -> Option<usize> {
     let b = data.get(offset..offset + 2)?;
