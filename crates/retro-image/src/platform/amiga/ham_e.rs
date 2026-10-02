@@ -55,9 +55,9 @@ fn palette_line_mode(row: &[u32]) -> Option<Mode> {
     if cookie != COOKIE {
         return None;
     }
-    match rest.first()? {
-        &REGISTER => Some(Mode::Register),
-        &MODIFY => Some(Mode::Modify),
+    match *rest.first()? {
+        REGISTER => Some(Mode::Register),
+        MODIFY => Some(Mode::Modify),
         _ => None,
     }
 }
@@ -83,7 +83,7 @@ impl Field {
 
     fn colors(&self, row: &[u32], mut put: impl FnMut(usize, u32)) {
         let mut held = 0;
-        for (x, pair) in row.chunks_exact(2).enumerate() {
+        for (x, pair) in row.as_chunks::<2>().0.iter().enumerate() {
             let byte = pair[0] << 4 | pair[1] & 15;
             let (control, data) = (byte >> 6, byte & 63);
             let color = match self.mode {
