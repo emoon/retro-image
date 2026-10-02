@@ -17,6 +17,11 @@
 4. Add unit tests for the tricky parts (memory layout, unpacking, palette).
 5. Run the oracle against RECOIL:
    `RETRO_IMAGE_PLATFORMS="Atari ST" cargo test -p retro-image --test oracle -- --nocapture`
+   RECOIL is the baseline, not the definition of correct. If RECOIL crashes on, rejects
+   or misrenders a valid file, decode it properly anyway. After reviewing our output,
+   record it in `crates/retro-image/tests/divergences.tsv` with the evidence (spec
+   reference, emulator or original-program render). The oracle's failure message prints
+   the fingerprint to copy. Never record a divergence just to make a failure go away.
 6. `cargo fmt --all`, `cargo clippy --workspace --all-targets`, `cargo test --workspace`.
    `cargo test` includes `tests/robustness.rs`, which feeds truncated and mutated
    corpus files to your decoder and fails on any panic.

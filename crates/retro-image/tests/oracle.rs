@@ -9,9 +9,16 @@
 //! Skips (passes) when either is missing. RECOIL renders each file on its own,
 //! without its companion files. Reference PNGs are cached under the cargo
 //! target dir; delete it after upgrading RECOIL.
+//!
+//! RECOIL is the baseline, not the definition of correct. Files where we
+//! deliberately differ (RECOIL crashes, rejects a valid file, or renders it
+//! wrongly) are listed in `tests/divergences.tsv` with the evidence and the
+//! fingerprint of our reviewed output, which is checked instead. Failure
+//! messages print our fingerprint so a reviewed output can be recorded.
 
 mod common;
 
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
@@ -32,7 +39,9 @@ fn matches_recoil_on_corpus() {
     let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle-single-file");
     std::fs::create_dir_all(cache.join("isolated")).unwrap();
 
+    let divergences = load_divergences();
     let mut matched = 0;
+    let mut diverged = 0;
     let mut failures = Vec::new();
     for sample in &samples {
         let id = &sample.id;
@@ -45,21 +54,65 @@ fn matches_recoil_on_corpus() {
         else {
             continue; // not supported yet
         };
+        let fingerprint = fingerprint(&ours);
+        if let Some(expected) = divergences.get(id.as_str()) {
+            if fingerprint == *expected {
+                diverged += 1;
+            } else {
+                failures.push(format!(
+                    "{id}: differs from recorded divergence {expected} (ours: {fingerprint})"
+                ));
+            }
+            continue;
+        }
         let Some(reference_path) = reference_png(&recoil, sample, &cache) else {
-            failures.push(format!("{id}: we decode it but recoil2png rejects it"));
+            failures.push(format!(
+                "{id}: we decode it but recoil2png rejects it (ours: {fingerprint})"
+            ));
             continue;
         };
         match compare(&ours, &read_png(&reference_path)) {
             Ok(()) => matched += 1,
-            Err(why) => failures.push(format!("{id}: {why}")),
+            Err(why) => failures.push(format!("{id}: {why} (ours: {fingerprint})")),
         }
     }
     eprintln!(
-        "oracle: {matched} matched, {} failed, {} corpus files",
+        "oracle: {matched} matched, {diverged} recorded divergences, {} failed, {} corpus files",
         failures.len(),
         samples.len()
     );
     assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
+}
+
+/// Size and FNV-1a hash of the pixels, as written in `divergences.tsv`.
+fn fingerprint(image: &retro_image::Image) -> String {
+    let hash = image.rgb().iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    format!("{}x{} {hash:016x}", image.width(), image.height())
+}
+
+/// Corpus id -> expected fingerprint. Every entry must state its evidence.
+fn load_divergences() -> HashMap<String, String> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/divergences.tsv");
+    let text = std::fs::read_to_string(&path).unwrap();
+    text.lines()
+        .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
+        .map(|line| {
+            let fields: Vec<&str> = line.split('\t').collect();
+            let [id, size, hash, evidence] = fields[..] else {
+                panic!(
+                    "{}: expected 4 tab-separated fields: {line}",
+                    path.display()
+                );
+            };
+            assert!(
+                !evidence.trim().is_empty(),
+                "{id}: divergence needs evidence"
+            );
+            (id.to_owned(), format!("{size} {hash}"))
+        })
+        .collect()
 }
 
 /// Renders `sample` with recoil2png, caching the PNG in `cache`.
