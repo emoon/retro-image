@@ -15,10 +15,23 @@ mod standard;
 mod timex;
 mod zxp;
 
-use crate::Format;
+use crate::{DecodeError, Format, Image};
+
+use super::amstrad_cpc::has_amsdos_header;
+
+/// `.SCR` is shared with the Amstrad CPC: a file with an AMSDOS header is a
+/// CPC file even if its size matches a Spectrum screen.
+fn scr(data: &[u8], decode: fn(&[u8]) -> Result<Image, DecodeError>) -> Result<Image, DecodeError> {
+    if has_amsdos_header(data) {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode(data)
+}
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::new("ZX Spectrum", "Screen dump", &["scr"], standard::decode_scr),
+    Format::new("ZX Spectrum", "Screen dump", &["scr"], |data| {
+        scr(data, standard::decode_scr)
+    }),
     Format::new("ZX Spectrum", "Attributes", &["atr"], standard::decode_atr),
     Format::new("ZX Spectrum", "Gigascreen", &["img"], standard::decode_img),
     Format::new(
@@ -27,22 +40,24 @@ pub(super) static FORMATS: &[Format] = &[
         &["hlr"],
         standard::decode_hlr,
     ),
+    Format::new(
+        "ZX Spectrum",
+        "256x384 interlace",
+        &["lce"],
+        standard::decode_lce,
+    ),
     Format::new("ZX Spectrum", "Stellar", &["stl"], standard::decode_stl),
     Format::new("ZX Spectrum", "Tricolor", &["3"], standard::decode_3),
     Format::new("ZX Spectrum", "Tricolor", &["rgb"], standard::decode_rgb),
-    Format::new(
-        "ZX Spectrum ULAplus",
-        "ULAplus screen",
-        &["scr"],
-        timex::decode_ulaplus,
-    ),
-    Format::new(
-        "Timex 2048",
-        "Hi-color screen",
-        &["scr"],
-        timex::decode_hicolor,
-    ),
-    Format::new("Timex 2048", "Hi-res screen", &["scr"], timex::decode_hires),
+    Format::new("ZX Spectrum ULAplus", "ULAplus screen", &["scr"], |data| {
+        scr(data, timex::decode_ulaplus)
+    }),
+    Format::new("Timex 2048", "Hi-color screen", &["scr"], |data| {
+        scr(data, timex::decode_hicolor)
+    }),
+    Format::new("Timex 2048", "Hi-res screen", &["scr"], |data| {
+        scr(data, timex::decode_hires)
+    }),
     Format::new(
         "Timex 2048",
         "Hi-res gigascreen",

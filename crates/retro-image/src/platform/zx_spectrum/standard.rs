@@ -4,6 +4,9 @@
 //! Sources:
 //! - SCR, ATR, IMG, HLR, STL, `.3`: SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md`
 //!   (MIT), sections SCR, 53c/ATR, Gigascreen, HLR, STL and RGB3.
+//! - LCE (13824 bytes, two screens interlaced to 512x384, first on even
+//!   lines, pixels doubled): zx-image README (CC0),
+//!   <https://github.com/moroz1999/zx-image>.
 //! - ATR dither pattern (`55 AA ...`, first row starting with paper) and the
 //!   mono SCR colours: observed from `recoil2png` output.
 
@@ -55,6 +58,24 @@ pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
         frame
     });
     Ok(blend(&frames.collect::<alloc::vec::Vec<_>>()))
+}
+
+/// LCE (zx-image): two 6912-byte screens shown at once on an interlaced
+/// 512x384 display, the first on even lines, pixels doubled horizontally.
+pub(super) fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2 * SCR_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (first, second) = data.split_at(SCR_LEN);
+    let field = |scr| {
+        let mut frame = Frame::new(WIDTH, HEIGHT);
+        draw_scr(&mut frame, 0, 0, scr);
+        frame.into_image()
+    };
+    Ok(super::super::sam_coupe::interlace(&[
+        field(first),
+        field(second),
+    ]))
 }
 
 const HLR_LEN: usize = 1628;
