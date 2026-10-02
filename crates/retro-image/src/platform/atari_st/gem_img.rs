@@ -215,15 +215,16 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
             .collect();
     }
     if extra.get(..4)? == b"STTT" {
-        // Palettes shorter than the plane count allows are not supported.
-        if usize::from(be16(extra, 4)?) < colors {
-            return None;
-        }
-        let words: Vec<u16> = (0..colors)
+        // Entries beyond a shorter palette are black (observed from
+        // `recoil2png` output).
+        let count = usize::from(be16(extra, 4)?).min(colors);
+        let words: Vec<u16> = (0..count)
             .map(|i| be16(extra, 6 + i * 2))
             .collect::<Option<_>>()?;
         let ste = sttt_uses_ste(&words);
-        return Some(words.iter().map(|&w| st_rgb(w, ste)).collect());
+        let mut palette: Vec<u32> = words.iter().map(|&w| st_rgb(w, ste)).collect();
+        palette.resize(colors, 0);
+        return Some(palette);
     }
     None
 }
