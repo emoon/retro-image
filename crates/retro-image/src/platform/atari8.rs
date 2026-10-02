@@ -10,6 +10,7 @@ mod apac;
 mod cpi;
 mod font;
 mod fwa;
+mod ged;
 mod graph2font;
 mod gtia;
 mod hcm;
@@ -246,4 +247,5 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Marco Pixel Editor", &["cpi"], cpi::decode_cpi),
     Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
     Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
+    Format::new(ATARI8, "GED", &["ged"], ged::decode_ged),
 ];
