@@ -3,7 +3,10 @@
 //! Sources: Codebase64 "C64 Graphics File Format Specs"
 //! (<http://codebase.c64.org/doku.php?id=base:c64_grafix_files_specs_list_v0.03>)
 //! for the escape-byte schemes; details (count 0 meaning 256, stopping at
-//! the expected size) checked against sample files.
+//! the expected size) checked against sample files. The exact-length
+//! backward variant ([`backward_rle_filled`]) was reverse engineered from
+//! the Super Hires samples (SIF, packed SHX) by probing `recoil2png` with
+//! repacked copies.
 
 use alloc::vec::Vec;
 
@@ -83,9 +86,57 @@ pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<
     Some(out)
 }
 
+/// Unpacks like [`backward_rle`] until the output's start is reached;
+/// `None` if `packed` runs out first. The flag tells whether `packed` was
+/// used up exactly: no bytes left over and no run crossing the start.
+pub(super) fn backward_rle_filled(
+    packed: &[u8],
+    escape: u8,
+    len: usize,
+) -> Option<(Vec<u8>, bool)> {
+    let mut out = alloc::vec![0; len];
+    let mut end = len;
+    let mut bytes = packed.iter().rev().copied();
+    let mut exact = true;
+    while end > 0 {
+        let byte = bytes.next()?;
+        if byte == escape {
+            let count = bytes.next()?;
+            let value = bytes.next()?;
+            let count = if count == 0 { 256 } else { usize::from(count) };
+            exact &= count <= end;
+            let start = end.saturating_sub(count);
+            out[start..end].fill(value);
+            end = start;
+        } else {
+            end -= 1;
+            out[end] = byte;
+        }
+    }
+    Some((out, exact && bytes.next().is_none()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn backward_filled_reports_exact_use() {
+        let packed = [5, 3, 0xfe, 9];
+        assert_eq!(
+            backward_rle_filled(&packed, 0xfe, 4),
+            Some((alloc::vec![5, 5, 5, 9], true))
+        );
+        assert_eq!(backward_rle_filled(&packed, 0xfe, 5), None);
+        assert_eq!(
+            backward_rle_filled(&packed, 0xfe, 3),
+            Some((alloc::vec![5, 5, 9], false))
+        );
+        assert_eq!(
+            backward_rle_filled(&[1, 9], 0xfe, 1),
+            Some((alloc::vec![9], false))
+        );
+    }
 
     #[test]
     fn expands_runs_and_literals() {

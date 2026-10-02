@@ -1,4 +1,12 @@
 //! C64 program files: a 2-byte load address followed by a memory image.
+//!
+//! Sources: "The first two bytes in a PRG file are the memory address that
+//! the file should be loaded into (in little-endian format)",
+//! <http://fileformats.archiveteam.org/wiki/Commodore_64_binary_executable>;
+//! C64-Wiki `LOAD`, <https://www.c64-wiki.com/wiki/LOAD> (`,1` loads to the
+//! address in the first two bytes); Peter Schepers, "Standard C64 BITMAP
+//! files", <http://ist.uwaterloo.ca/~schepers/formats/BITMAP.TXT> (file
+//! offset = address - load address + 2).
 
 /// A memory image addressed by C64 address. The file's own load address is
 /// ignored: `load` is the format's documented one (some tools save the same

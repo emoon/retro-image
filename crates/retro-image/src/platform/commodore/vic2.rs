@@ -5,7 +5,8 @@
 //! Sources:
 //! - Bitmap, screen RAM and colour RAM semantics: Christian Bauer, "The MOS
 //!   6567/6569 video controller (VIC-II)", <https://www.cebix.net/VIC-Article.txt>,
-//!   and the C64 Programmer's Reference Guide.
+//!   and the C64 Programmer's Reference Guide,
+//!   <https://archive.org/details/Commodore_64_Programmers_Reference_Guide_1983_Commodore>.
 //! - Palette: Pepto's 2001 VIC-II palette,
 //!   <https://www.pepto.de/projects/colorvic/2001/>; that `recoil2png` uses it
 //!   was observed from its output.
