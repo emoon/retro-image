@@ -1,11 +1,12 @@
-//! Amstrad CPC: OCP Art Studio screens and windows, FutureOS wallpapers
-//! and SymbOS graphics.
+//! Amstrad CPC: OCP Art Studio screens and windows, Mode 5 pictures,
+//! FutureOS wallpapers and SymbOS graphics.
 //!
 //! Sources are listed in each submodule.
 
 mod amsdos;
 mod hardware;
 mod hgb;
+mod mode5;
 mod ocp;
 mod sgx;
 
@@ -34,6 +35,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["win"],
         ocp::decode_win,
     ),
+    Format::with_companions("Amstrad CPC", "Mode 5", &["cm5"], mode5::decode_cm5),
     Format::new(
         "Amstrad CPC",
         "FutureOS wallpaper",
