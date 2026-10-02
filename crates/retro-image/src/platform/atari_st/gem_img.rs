@@ -1,4 +1,4 @@
-//! GEM Bit Image (`IMG`) and its colour dialects (`XIMG`, `STTT`).
+//! GEM Bit Image (`IMG`) and its colour dialects (`XIMG`, `STTT`, `TIMG`).
 //!
 //! Sources:
 //! - <https://temlib.org/AtariForumWiki/index.php/GEM_Bit_Image_file_format>
@@ -8,7 +8,8 @@
 //!   <http://cd.textfiles.com/ataricompendium/BOOK/HTML/APPENDC.HTM>
 //! - Observed from `recoil2png` output: VDI intensities (0-1000) are
 //!   scaled as `v * 255 / 1000`, truncated; monochrome set bits are black;
-//!   16, 24 and 32-"plane" pictures hold chunky RGB565, RGB and xRGB pixels.
+//!   16, 24 and 32-"plane" XIMG pictures hold chunky RGB565, RGB and xRGB
+//!   pixels; TIMG pictures are true bitplanes, see [`timg_color`].
 
 use alloc::vec::Vec;
 
@@ -50,7 +51,7 @@ fn header(data: &[u8]) -> Option<Header> {
         || header.header_len < 16
         || header.header_len > data.len()
         || !(1..=8).contains(&header.pattern_len)
-        || !matches!(header.planes, 1..=8 | 16 | 24 | 32)
+        || !matches!(header.planes, 1..=8 | 15 | 16 | 24 | 32)
         || header.width == 0
         || header.height == 0
         || header.width * header.height > MAX_PIXELS
@@ -63,10 +64,14 @@ fn header(data: &[u8]) -> Option<Header> {
 fn decode(data: &[u8]) -> Option<Image> {
     let h = header(data)?;
     let palette = palette(data, &h)?;
+    let timg = timg_bits(data, &h);
+    if h.planes > 8 && timg.is_none() {
+        return true_color(&data[h.header_len..], &h);
+    }
     let row_len = h.width.div_ceil(8);
-    // Version 3 files store each plane whole, one after another; the
-    // others store all plane rows of a line together.
-    let plane_major = h.version == 3;
+    // STTT files store each plane whole, one after another (derived from
+    // sample files); the others store all plane rows of a line together.
+    let plane_major = data.get(16..20) == Some(b"STTT");
     let bitmap = if plane_major {
         unpack(
             &data[h.header_len..],
@@ -82,28 +87,12 @@ fn decode(data: &[u8]) -> Option<Image> {
             h.height,
         )?
     };
-    let (sx, sy) = pixel_scale(&h);
+    let (sx, sy) = if timg.is_some() {
+        (1, 1)
+    } else {
+        pixel_scale(&h)
+    };
     let mut image = Image::new((h.width * sx) as u32, (h.height * sy) as u32);
-    if h.planes > 8 {
-        // True colour lines are chunky: RGB565 words, RGB or xRGB pixels.
-        let bytes = h.planes / 8;
-        for y in 0..h.height {
-            let line = &bitmap[y * row_len * h.planes..];
-            for x in 0..h.width {
-                let p = &line[x * bytes..][..bytes];
-                let color = match bytes {
-                    2 => super::falcon::rgb565(u16::from_be_bytes([p[0], p[1]])),
-                    _ => u32::from_be_bytes([0, p[bytes - 3], p[bytes - 2], p[bytes - 1]]),
-                };
-                for dy in 0..sy {
-                    for dx in 0..sx {
-                        image.set((x * sx + dx) as u32, (y * sy + dy) as u32, color);
-                    }
-                }
-            }
-        }
-        return Some(image);
-    }
     for y in 0..h.height {
         for x in 0..h.width {
             let mut index = 0;
@@ -116,12 +105,65 @@ fn decode(data: &[u8]) -> Option<Image> {
                 let byte = bitmap[row * row_len + x / 8];
                 index |= usize::from(byte >> (7 - x % 8) & 1) << plane;
             }
-            let color = *palette.get(index)?;
+            let color = match timg {
+                Some(bits) => timg_color(index, bits),
+                None => *palette.get(index)?,
+            };
             for dy in 0..sy {
                 for dx in 0..sx {
                     image.set((x * sx + dx) as u32, (y * sy + dy) as u32, color);
                 }
             }
+        }
+    }
+    Some(image)
+}
+
+/// TIMG: `TIMG`, a word (3) and the red, green and blue bit counts.
+fn timg_bits(data: &[u8], h: &Header) -> Option<[u32; 3]> {
+    let extra = &data[16..h.header_len];
+    if extra.len() != 12 || &extra[..4] != b"TIMG" {
+        return None;
+    }
+    let bits = [be16(extra, 6)?, be16(extra, 8)?, be16(extra, 10)?].map(u32::from);
+    let total: u32 = bits.iter().sum();
+    (bits.iter().all(|&b| (1..=8).contains(&b)) && total as usize == h.planes).then_some(bits)
+}
+
+/// TIMG planes hold red, then green, then blue, least significant bit
+/// first (derived from sample files); components are scaled by bit
+/// replication.
+fn timg_color(index: usize, bits: [u32; 3]) -> u32 {
+    let mut shift = 0;
+    let mut color = 0;
+    for (i, &count) in bits.iter().enumerate() {
+        let v = (index >> shift) as u32 & ((1 << count) - 1);
+        shift += count;
+        let mut level = 0;
+        let mut pos = 8i32 - count as i32;
+        while pos > -(count as i32) {
+            level |= if pos >= 0 { v << pos } else { v >> -pos };
+            pos -= count as i32;
+        }
+        color |= (level & 0xff) << (16 - 8 * i);
+    }
+    color
+}
+
+/// True colour lines are chunky xRGB1555 or RGB565 words, RGB or xRGB
+/// pixels; they are never scaled for pixel aspect.
+fn true_color(data: &[u8], h: &Header) -> Option<Image> {
+    let bytes = h.planes.div_ceil(8);
+    let line_len = h.width * bytes;
+    let bitmap = unpack(data, h.pattern_len, line_len, h.height)?;
+    let mut image = Image::new(h.width as u32, h.height as u32);
+    for (y, line) in bitmap.chunks_exact(line_len).enumerate() {
+        for (x, p) in line.chunks_exact(bytes).enumerate() {
+            let color = match bytes {
+                2 => super::falcon::rgb565(u16::from_be_bytes([p[0], p[1]])),
+                _ => u32::from_be_bytes([0, p[bytes - 3], p[bytes - 2], p[bytes - 1]]),
+            };
+            image.set(x as u32, y as u32, color);
         }
     }
     Some(image)
@@ -143,7 +185,8 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
     let extra = &data[16..h.header_len];
     if h.planes > 8 {
         // True colour: no palette, at most an empty XIMG one.
-        return (extra.is_empty() || extra == b"XIMG\0\0").then(Vec::new);
+        let timg = extra.len() == 12 && &extra[..4] == b"TIMG";
+        return (extra.is_empty() || extra == b"XIMG\0\0" || timg).then(Vec::new);
     }
     let colors = 1usize << h.planes;
     if h.planes == 1 {
@@ -229,6 +272,11 @@ fn unpack(data: &[u8], pattern_len: usize, line_len: usize, lines: usize) -> Opt
         match x {
             0 => {
                 let n = usize::from(byte(pos)?);
+                if n == 0 {
+                    // Some snapshot tools write `0, 0, n` records whose
+                    // meaning is unknown.
+                    return None;
+                }
                 let pattern = data.get(pos + 1..pos + 1 + pattern_len)?;
                 pos += 1 + pattern_len;
                 for _ in 0..n {

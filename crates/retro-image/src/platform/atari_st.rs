@@ -102,7 +102,11 @@ pub(super) static FORMATS: &[Format] = &[
     st("Spectrum 512 compressed", &["spc"], spectrum::decode_spc),
     st("Spectrum 512 smooshed", &["sps"], spectrum::decode_sps),
     st("Spectrum 512 extended", &["spx"], spectrum::decode_spx),
-    st("GEM Bit Image", &["img", "ximg"], gem_img::decode_img),
+    st(
+        "GEM Bit Image",
+        &["img", "ximg", "timg"],
+        gem_img::decode_img,
+    ),
     st("Multi Palette Picture", &["mpp"], mpp::decode_mpp),
     st(
         "ComputerEyes",
