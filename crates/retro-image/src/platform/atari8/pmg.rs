@@ -318,6 +318,20 @@ mod tests {
     }
 
     #[test]
+    fn ludek_maker_shows_count_minus_skip_frames() {
+        let mut data = vec![0u8; 21 + 4 + 256 + 3 * 120];
+        data[..21].copy_from_slice(&[
+            0xcc, 0xf5, 0xe4, 0xe5, 0xeb, 0xa0, 0xcd, 0xe1, 0xeb, 0xe5, 0xf2, 0xa0, 0xe4, 0xe1,
+            0xf4, 0xe1, 0xa0, 0xe6, 0xe9, 0xec, 0xe5,
+        ]);
+        data[21..25].copy_from_slice(&[0x0a, 0x0e, 1, 3]);
+        let image = decode_ldm(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (2 * 20 * 2, 30));
+        data[24] = 4; // needs a fourth frame
+        assert!(decode_ldm(&data).is_err());
+    }
+
+    #[test]
     fn overlapping_players_or_their_colours() {
         let mut sheet = Sheet::new(8, 1);
         sheet.draw_player(0, 0, 0x80, 0x14);

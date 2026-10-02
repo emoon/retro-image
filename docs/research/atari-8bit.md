@@ -391,3 +391,80 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
+
+## 9.x Wave 4: player/missile graphics, shapes, fonts and maps
+
+All layouts below were found by flipping or setting single bytes of corpus files and
+hand-made files and reading back what `recoil2png` changes (nothing from RECOIL's source). Every
+corpus sample matches the oracle and each decoder was also compared with `recoil2png` on
+random synthetic files (60 to 120 per format) until none differed.
+
+- **4MI, 4PL, 4PM** (`atari8/pmg.rs`). The colours of players or missiles 0-3, then 240 lines
+  of one byte per line for each player (8 pixels, bit 7 left), or one byte per line for the four
+  missiles (missile 0 in bits 1-0, the left pixel of a pair in the high bit). 4MI is 4 + 240
+  bytes, 4PL 4 + 4 x 240, 4PM 4 + 4 x 240 + 240. Players sit 20 pixels apart (16 wide), the
+  missiles of 4PM start right of the fourth player, 8 pixels apart. Missile colours are used
+  as given (luminance bit 0 shows), player colours lose bit 0.
+- **APL** (Atari Player Editor). Exactly 1677 bytes: `9A F8 39 21`, frame count (1-16), height
+  (1-48), the X distance of player 1 from player 0 (0-8 player pixels), then per player 16 frame
+  colours plus a spare byte (at 7 and 24), one spare byte, and per player 17 slots of 48 lines
+  (at 42 and 858). The last 3 bytes are left over. A sheet frame is 20 + 2 x distance image
+  pixels wide; overlapping players OR their colour bytes.
+- **PMD** (PMG Designer). `F0 ED E4`, four colours, `players` (2 or 4), two factors that
+  multiply to the frame count (at most 160), the height (1-48), then `players x frames` blocks of
+  `height` lines, player-major, exactly. Players 0 and 1 make one sprite, 2 and 3 the next;
+  sprites go 16 to a row, 20 pixels apart with 2 blank lines between rows. RECOIL also accepts
+  1 or 3 players with odd results; we don't.
+- **LDM** (Ludek Maker). The inverse-ATASCII text `Ludek Maker data file`, the colours of
+  players 0/2 and 1/3, a number of unshown frames, the frame count (1-100), a 256-byte
+  animation script RECOIL ignores, then at least `count` frames of 120 bytes (players 0-3, 30
+  lines). Frames 0 to `count - skip - 1` are shown, 8 to a row, 40 pixels apart.
+- **LEO** (`atari8/leo.rs`). Exactly 2580 bytes: 256 glyphs, a 256-byte table with a glyph and
+  an inverse bit per cell, a 256-byte table RECOIL ignores, COLPF0-3 and COLBK, 15 ignored
+  bytes. The picture is 256 x 64: a cell index has the column parity in bit 7, the row parity
+  in bit 6, the row pair in bits 5-4 and the column pair in bits 3-0, and cells whose index
+  has bit 6 show glyphs 128-255.
+- **MAP, Envision** (`atari8/envision.rs`). Mode byte (2-7, bit 7 ignored), width-1, height-1
+  (at most 204 rows), COLPF0-3 and COLBK, the map, a 256-byte table RECOIL ignores, a 208-byte
+  table (entry `y` = font number of row `y`, entry 206 the font count, entry 207 = 1), an
+  8-byte name and 1024-byte font, then for each further font its number, an 8-byte name and its
+  1024 bytes. The length is exact. Mode 2/3 are 8x8/8x10 monochrome (ink = COLPF2's hue with
+  COLPF1's luminance; mode 3 moves the first two glyph lines of codes 0x60-0x7F to the bottom),
+  4/5 4-colour (5 doubles the lines), 6/7 five colours chosen by the top code bits, 16 wide.
+- **MAP, EnvisionPC**. Mode, width and height (16 bits each), COLBK and COLPF0-3, the map, one
+  font, then only zero bytes. No sample exists; this was probed with synthetic files only. The
+  other layout (with the "..." gap of the manual) is not understood. RECOIL takes widths up to
+  32767; we cap the picture at 2^25 pixels.
+- **SHP, Movie Maker** (`atari8/shapes.rs`). 4384 bytes: a 528-byte directory RECOIL ignores,
+  then a BKG picture (3856 bytes). All 7 corpus samples match.
+- **G2F with VBXE colours** (`atari8/graph2font/g2f.rs`; platform "Atari 8-bit VBXE"). The
+  array that follows the flag at end+146753 is 48 columns of 240 records of 12 bytes (first two
+  bytes 8 and the number of scanlines per record, normally 8). Bytes 4, 6 and 8 of a record
+  replace COLPF0-2 for that column and those scanlines, luminance bit 0 included; COLBK, COLPF3,
+  players and PRIOR work as before, GTIA modes 9 and 11 ignore the array, and in ANTIC 2 rows
+  set pixels show the COLPF1 colour over everything. A file too short for the whole array is
+  rendered without it. athena (ANTIC 2), sergeantseymour-robotcop and Blinkys match, and so do
+  300 randomly modified variants (row modes, GTIA, inverse, players, PRIOR, colours, split,
+  fonts, random attribute bytes, short files).
+- **Not done: SHP (Blazing Paddles shape table, exactly 1024 bytes) and CHR (Blazing Paddles
+  font).** Both use the same byte-coded pen language, which is only partly understood. SHP
+  starts with four little-endian pointers (base $7C00) and a zero word; the shapes end in
+  `08`. CHR (BP font, loaded at $7002) starts with 98 pointers to glyphs placed one after
+  another, proportionally, with line wrapping at about 320 pixels. A command byte has the
+  repeat count minus one in its high nibble; the low nibble picks right, up or down (plotting
+  before each step), bit 2 turns the plotting off, direction 1 plots the pixels to the right of
+  the pen without moving it, and `08` seems to end a glyph (the first byte of a glyph is a
+  position, the second is usually `08`). Pixels are 2 image pixels wide and glyphs start on
+  line 6 of an 8-line cell. The start position, the exact effect of bit 3, direction 1 and the
+  sheet layout were not pinned down, so neither is decoded.
+- **Not done: VSC + G2F vertical scroll.** A `.VSC` file is a text list of file names, each
+  ended by CR LF (a last name without CR LF is dropped, so is any list with a missing, non-G2F
+  or MCH file). RECOIL's picture is the full 336 x 240 renders of the listed G2F files
+  stacked, without limit on the count (VBXE files work too); names are matched case
+  sensitively. The companion API cannot fetch these, because `Companions::get` takes an
+  extension and returns the file with the main file's stem. Decoding it needs one new method,
+  for example `fn get_named(&self, file_name: &str) -> Option<Vec<u8>>` on `Companions` (looking
+  the name up in the main file's directory, ignoring directory parts), implemented by
+  `SiblingFiles` in `tests/common` over *all* files in the directory, and `tests/oracle.rs`
+  would have to copy every file the VSC names next to it before running `recoil2png`. The
+  decoder itself is then a loop over `graph2font::decode_g2f` and stacking the images.

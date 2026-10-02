@@ -52,3 +52,31 @@ pub(super) fn decode_leo(data: &[u8]) -> Result<Image, DecodeError> {
     }
     Ok(image)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::atari8::palette::register_rgb;
+    use alloc::vec;
+
+    #[test]
+    fn cells_interleave_the_four_glyphs_of_an_object() {
+        let mut data = vec![0; 2580];
+        // Cell table: every cell shows glyph 1 (so index bit 6 selects glyphs 1 or 129).
+        for entry in &mut data[2048..2304] {
+            *entry = 1;
+        }
+        data[8] = 0xff; // glyph 1, first line: pixel value 3
+        data[129 * 8] = 0x55; // glyph 129: pixel value 1
+        data[2560..2565].copy_from_slice(&[0x22, 0x44, 0x66, 0x88, 0x0a]);
+        let image = decode_leo(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (256, 64));
+        // Cell 0 is the top left, 1 two cells right, 128 one cell right and
+        // 64 one cell down, which shows glyph 129 instead of 1.
+        assert_eq!(image.get(0, 0), register_rgb(0x66));
+        assert_eq!(image.get(16, 0), register_rgb(0x66));
+        assert_eq!(image.get(8, 0), register_rgb(0x66));
+        assert_eq!(image.get(0, 8), register_rgb(0x22));
+        assert!(decode_leo(&data[..2579]).is_err());
+    }
+}

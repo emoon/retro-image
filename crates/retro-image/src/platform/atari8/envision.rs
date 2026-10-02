@@ -250,3 +250,72 @@ fn draw_cell(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::vec;
+    use alloc::vec::Vec;
+
+    /// An EnvisionPC file of one mode 4 cell showing glyph `code`, with
+    /// colours background and playfield 0-3 and a font whose glyph 1 starts
+    /// with the pixels 0, 1, 2, 3.
+    fn pc_file(tail: &[u8]) -> Vec<u8> {
+        let mut data = vec![4, 1, 0, 1, 0, 0x00, 0x22, 0x44, 0x66, 0x88, 1];
+        let mut font = vec![0; FONT];
+        font[8] = 0b0001_1011;
+        data.extend_from_slice(&font);
+        data.extend_from_slice(tail);
+        data
+    }
+
+    #[test]
+    fn pc_pixels_use_the_register_order_of_the_file() {
+        let image = decode_map_pc(&pc_file(&[])).unwrap();
+        assert_eq!((image.width(), image.height()), (8, 8));
+        let shown = [0x00, 0x22, 0x44, 0x66].map(register_rgb);
+        assert_eq!([0, 2, 4, 6].map(|x| image.get(x, 0)), shown);
+    }
+
+    #[test]
+    fn pc_accepts_only_zero_padding() {
+        assert!(decode_map_pc(&pc_file(&[0, 0, 0])).is_ok());
+        assert!(decode_map_pc(&pc_file(&[0, 1])).is_err());
+    }
+
+    #[test]
+    fn mode_3_moves_descender_lines() {
+        assert_eq!(hires_line(true, 0x41, 0), Some(0));
+        assert_eq!(hires_line(true, 0x41, 8), None);
+        assert_eq!(hires_line(true, 0x61, 1), None);
+        assert_eq!(hires_line(true, 0x61, 2), Some(2));
+        assert_eq!(hires_line(true, 0x61, 8), Some(0));
+        assert_eq!(hires_line(false, 0x61, 1), Some(1));
+    }
+
+    #[test]
+    fn envision_rows_pick_their_font() {
+        // 1x2 map of mode 4, two fonts; row 1 uses font 2.
+        let mut data = vec![4, 0, 1, 0x10, 0x20, 0x30, 0x40, 0x50, 1, 1];
+        data.extend_from_slice(&[0; IGNORED_TABLE]);
+        let mut rows = [1u8; ROW_TABLE];
+        rows[1] = 2;
+        rows[FONT_COUNT_ENTRY] = 2;
+        data.extend_from_slice(&rows);
+        let (mut first, mut second) = (vec![0; FONT], vec![0; FONT]);
+        first[8] = 0xc0;
+        second[8] = 0x10;
+        data.extend_from_slice(b"FONTONE ");
+        data.extend_from_slice(&first);
+        data.push(2);
+        data.extend_from_slice(b"FONTTWO ");
+        data.extend_from_slice(&second);
+        let image = decode_map(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (8, 16));
+        // Glyph 1 of the first font starts with pixel 3, of the second with
+        // 0, 1.
+        assert_eq!(image.get(0, 0), register_rgb(0x30));
+        assert_eq!(image.get(2, 8), register_rgb(0x10));
+        assert!(decode_map(&data[..data.len() - 1]).is_err());
+    }
+}
