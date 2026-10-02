@@ -2,6 +2,22 @@
 //! package and a freedesktop `.thumbnailer` entry, so file managers (e.g.
 //! flea) classify retro images as images and thumbnail them with this CLI.
 //!
+//! Sources:
+//! - MIME package XML (`mime-info`, `mime-type`, `comment`, `generic-icon`,
+//!   `glob` with `weight`, default weight 50) and the
+//!   `~/.local/share/mime/packages` location: Shared MIME-info Database
+//!   specification,
+//!   <https://specifications.freedesktop.org/shared-mime-info/latest/>.
+//! - `.thumbnailer` entries (`[Thumbnailer Entry]` with `TryExec`, `Exec`
+//!   using `%i` input, `%o` output and `%s` size, `MimeType`, installed in
+//!   `~/.local/share/thumbnailers`): freedesktop has no official
+//!   specification for these files; the convention (from GNOME, shared by
+//!   Xfce's Tumbler and PCManFM) is described in the Tumbler documentation,
+//!   <https://docs.xfce.org/xfce/tumbler/available_plugins>, and the Arch
+//!   wiki, <https://wiki.archlinux.org/title/File_manager_functionality>.
+//!   Where the thumbnails end up is the Thumbnail Managing Standard,
+//!   <https://specifications.freedesktop.org/thumbnail/latest/>.
+//!
 //! Install with:
 //!
 //! ```sh

@@ -1,7 +1,8 @@
 //! NEC PC-80, PC-88, PC-88 VA and PC-98.
 //!
 //! Also home of the Japanese cross-platform formats (Maki-chan, Pi), which the MSX
-//! and Sharp X68000 modules reuse. Sources are listed per submodule.
+//! and Sharp X68000 modules reuse. Sources are listed per submodule; the
+//! platform survey is `docs/formats/msx-japanese.md`.
 
 pub(super) mod maki;
 pub(super) mod pi;

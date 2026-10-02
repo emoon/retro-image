@@ -5,7 +5,8 @@
 //! - CH4/CH6/CH8 fonts (2048 bytes, 256 characters of 8 bytes, MSB left):
 //!   ZX-Paintbrush page, <https://zx-modules.jimdofree.com/zx-modules-start/zx-paintbrush/>.
 //! - `chr$` header and cell layout: SpectraLab
-//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section chr$.
+//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section chr$,
+//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - Font sheet layout (32 characters per row, white on black): observed
 //!   from `recoil2png` output.
 //! - CHX (ZX-Editor / ZX-Paintbrush big fonts): `CHX` signature, characters
@@ -21,7 +22,8 @@
 //!   width and height in pixels at 10 and 12), the 9-byte cells (8 bitmap
 //!   bytes, then the attribute) row by row, sizes that aren't a multiple of
 //!   8 cropped from whole cells, and that only the first frame is shown:
-//!   reverse engineered from samples (Sword of Ianna sources, Apache-2.0)
+//!   reverse engineered from samples (Sword of Ianna sources, Apache-2.0,
+//!   <https://github.com/fjpena/sword-of-ianna-zx>)
 //!   and `recoil2png` probes. SevenuP's own code (GPL) was not read.
 
 use alloc::vec::Vec;

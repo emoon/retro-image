@@ -5,6 +5,8 @@
 //! Sources:
 //! - <https://temlib.org/AtariForumWiki/index.php/DUO_file_format>
 //! - <http://fileformats.archiveteam.org/wiki/DUO>
+//! - Fullscreen Construction Kit: <http://fileformats.archiveteam.org/wiki/Fullscreen_Construction_Kit>
+//!   (size, magic); the line layout is derived from sample files.
 //! - Observed from `recoil2png` output: the two screens are averaged per
 //!   component (rounding down); medium resolution lines are doubled.
 

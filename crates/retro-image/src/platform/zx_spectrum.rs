@@ -1,10 +1,14 @@
 //! ZX Spectrum family: Spectrum, Profi, ULAplus, ZX Evolution, Next, ZX81 and Timex.
 //!
 //! Sources (details per format in each submodule):
-//! - Screen memory layout (bitmap interleave, attribute byte): ZX Spectrum
-//!   hardware documentation, see `docs/formats/sinclair-cpc-bbc-misc.md`.
+//! - Screen memory layout (bitmap interleave, attribute byte):
+//!   <http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout>;
+//!   the platform survey is `docs/formats/sinclair-cpc-bbc-misc.md`.
 //! - Palette levels (0x00 / 0xCD / 0xFF) and frame blending: observed from
 //!   `recoil2png` output.
+//! - `.SCR` files with a valid AMSDOS header are left to the Amstrad CPC
+//!   decoders (header and checksum:
+//!   <https://cpctech.cpcwiki.de/docs/allhead.html>).
 
 mod border;
 mod chars;

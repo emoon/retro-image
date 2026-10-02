@@ -2,8 +2,9 @@
 //!
 //! Sources:
 //! - MarMSX, "Dynamic Publisher Screen (.PCT)", "Font (.FNT)" and "Shape (.STP)"
-//!   (<https://marmsx.msxall.com/projetos/sketch/pct_en.php>, `fnt_en.php`,
-//!   `stp_en.php`): headers, the RLE scheme, nibble-swapped 8x1 patterns with
+//!   (<https://marmsx.msxall.com/projetos/sketch/pct_en.php>,
+//!   <https://marmsx.msxall.com/projetos/sketch/fnt_en.php>,
+//!   <https://marmsx.msxall.com/projetos/sketch/stp_en.php>): headers, the RLE scheme, nibble-swapped 8x1 patterns with
 //!   1 = black, and stamps of 4 two-bit pixels per byte.
 //! - Observed from `recoil2png` output: pictures are shown black on white with
 //!   doubled lines (Screen 6 pixels are twice as tall as wide); any non-zero

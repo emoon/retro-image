@@ -1,4 +1,7 @@
 //! Downscaling for thumbnails.
+//!
+//! No external document: a plain box filter (each output pixel averages
+//! the source pixels it covers) that keeps the aspect ratio.
 
 use retro_image::Image;
 

@@ -1,7 +1,8 @@
 //! Amstrad CPC: OCP Art Studio screens and windows, Mode 5 and Perfect Pix
 //! pictures, FutureOS wallpapers and SymbOS graphics.
 //!
-//! Sources are listed in each submodule.
+//! Each submodule lists the documents its layouts come from; the platform
+//! survey is `docs/formats/sinclair-cpc-bbc-misc.md`.
 
 mod amsdos;
 mod fnt;

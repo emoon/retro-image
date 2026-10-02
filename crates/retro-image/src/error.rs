@@ -1,3 +1,7 @@
+//! Decode errors.
+//!
+//! No external format knowledge: the crate's error type.
+
 use core::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

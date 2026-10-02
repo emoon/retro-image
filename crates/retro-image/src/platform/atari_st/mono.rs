@@ -11,6 +11,18 @@
 //!   <https://temlib.org/AtariForumWiki/index.php/Public_Painter_file_format>
 //! - Calamus Raster Graphic:
 //!   <https://temlib.org/AtariForumWiki/index.php/Calamus_Raster_Graphic_file_format>
+//! - DEGAS Elite font: <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Font_file_format>
+//! - GDOS font: <https://temlib.org/AtariForumWiki/index.php/GDOS_Font_file_format>
+//!   and Atari Compendium appendix C,
+//!   <http://cd.textfiles.com/ataricompendium/BOOK/HTML/APPENDC.HTM>
+//! - DEGAS Elite brush: <http://fileformats.archiveteam.org/wiki/DEGAS_Elite_brush>
+//! - Picworks, including Lonny Pursell's public-domain decoder:
+//!   <https://temlib.org/AtariForumWiki/index.php/Picworks_file_format>
+//! - DEGAS Elite icon: <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Icon_file_format>
+//! - ColorSTar objects: no documentation found; reverse engineered from
+//!   sample files and `recoil2png` output.
+//! - Sheet layouts, colours and the details noted on each decoder: observed
+//!   from `recoil2png` output.
 
 use alloc::vec::Vec;
 

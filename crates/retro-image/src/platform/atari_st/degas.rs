@@ -5,6 +5,8 @@
 //! - <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_file_format>
 //! - <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Compressed_file_format>
 //! - <http://fileformats.archiveteam.org/wiki/DEGAS_image> (`SUH` = hi-res).
+//! - EZ-Art Professional: <https://temlib.org/AtariForumWiki/index.php/EZ-Art_Professional_file_format>,
+//!   <http://fileformats.archiveteam.org/wiki/EZ-Art_Professional> (height word).
 //! - Taller low-resolution `PI1` files (`34 + 160 * lines` bytes) are shown
 //!   at their full height: observed from `recoil2png` output.
 

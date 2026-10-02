@@ -7,7 +7,8 @@
 //!   at $7E00, colour word `0RGB` little-endian; 320 and 640 modes, fill
 //!   mode, 640-mode palette per pixel column): CiderPress II Super Hi-Res
 //!   notes (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>) and
-//!   the Apple IIGS Hardware Reference.
+//!   the Apple IIGS Hardware Reference
+//!   (<https://archive.org/details/Apple_IIgs_Hardware_Reference>).
 //! - Brooks: File Type Note $C1/0002
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c1.0002>):
 //!   200 palettes after the pixels, colour 15 stored first.

@@ -1,5 +1,14 @@
 //! Shared Spectrum screen pieces: bitmap interleave, attribute colours,
 //! frames and frame blending.
+//!
+//! Sources:
+//! - Bitmap interleave (third, pixel line, character row) and the attribute
+//!   byte (flash, bright, paper, ink):
+//!   <http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout>
+//!   and SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT),
+//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
+//! - Colour levels (normal 0xCD, bright 0xFF) and gigascreen blending (the
+//!   per-channel average, rounded down): observed from `recoil2png` output.
 
 use alloc::vec::Vec;
 

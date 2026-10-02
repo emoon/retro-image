@@ -2,8 +2,10 @@
 //! colours are reprogrammed every line, and pen 0 six times per line (CM5).
 //!
 //! Sources:
-//! - CM5 holds the changing palette and GFX the screen: cpcwiki CM5 page
-//!   (search snippet only), see `docs/formats/sinclair-cpc-bbc-misc.md`.
+//! - CM5 holds the changing palette and GFX the screen: cpcwiki CM5 page,
+//!   <https://www.cpcwiki.eu/index.php?title=CM5&redirect=no> (blocks
+//!   automated fetches and has no Wayback Machine snapshot; read as a
+//!   search snippet only), see `docs/formats/sinclair-cpc-bbc-misc.md`.
 //! - Layout (GFX: 256 linear lines of 72 bytes, 288 mode 1 pixels; CM5: the
 //!   colour of pen 3, then per line pen 2, pen 1 and pen 0 for each 48-pixel
 //!   column band, all as `0x40 | hardware colour`; exact sizes): reverse

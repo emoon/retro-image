@@ -8,6 +8,9 @@
 //!   function: <https://temlib.org/AtariForumWiki/index.php/HighresMedium_file_format>
 //! - PL4: <https://temlib.org/AtariForumWiki/index.php/PL4_file_format>
 //!   (16-word palettes, as the 64070-byte total requires)
+//! - D-GRAPH: no documentation found (<http://fileformats.archiveteam.org/wiki/D-GRAPH>
+//!   only names it); the layout is derived from sample files and
+//!   `recoil2png` output.
 //! - Observed from `recoil2png` output: the two screens are averaged per
 //!   component; HighresMedium's 400 lines pair up into 200 doubled lines.
 //!   `PCI` and `HRM` files may be packed with Pack-Ice.

@@ -4,7 +4,8 @@
 //! Sources:
 //! - IFL, MLT, MG1/MG2/MG4/MG8 (MGH header and attribute layout):
 //!   SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), sections IFL, MLT and
-//!   MGH/Multiartist; zx-image README (CC0).
+//!   MGH/Multiartist, <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>;
+//!   zx-image README (CC0), <https://github.com/moroz1999/zx-image>.
 //! - MC layout (linear bitmap and attributes): zx-image README, confirmed
 //!   against `recoil2png` output.
 

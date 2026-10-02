@@ -1,6 +1,17 @@
 //! Amiga, including DCTV and HAM-E.
 //!
-//! Sources are listed per submodule.
+//! Each submodule lists the documents its layouts come from; the platform
+//! survey is `docs/formats/amiga-apple-misc.md`. This file dispatches IFF
+//! pictures:
+//! - `FORM` kinds (ILBM, PBM, ACBM, DEEP/TVPP, ANIM): EA IFF 85 standard,
+//!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,
+//!   and the IFF FORM and chunk registry,
+//!   <https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>.
+//! - ANIM shown as its first frame, a complete ILBM `FORM` nested at the
+//!   start of the ANIM: ANIM spec,
+//!   <https://wiki.amigaos.net/wiki/ANIM_IFF_CEL_Animations>.
+//! - AMOS banks tried as sprite/icon banks, then as a packed picture: the
+//!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
 mod abk;
 mod deep;

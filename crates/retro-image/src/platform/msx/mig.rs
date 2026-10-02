@@ -16,7 +16,9 @@
 //!   lines, the displayed page and the even/odd page interlace come from the
 //!   standard V9938/V9958 registers (MSX2 Technical Handbook, chapter 4,
 //!   <https://konamiman.github.io/MSX2-Technical-Handbook/md/Chapter4a.html>;
-//!   V9958 data book for R#25), the picture from the standard VRAM tables.
+//!   V9958 Technical Data Book for R#25,
+//!   <https://map.grauw.nl/resources/video/yamaha_v9958.pdf>), the picture
+//!   from the standard VRAM tables.
 
 use alloc::vec;
 use alloc::vec::Vec;

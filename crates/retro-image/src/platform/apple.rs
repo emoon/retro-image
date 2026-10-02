@@ -1,6 +1,17 @@
 //! Apple II, IIe, IIGS and Macintosh.
 //!
-//! Sources are listed per submodule.
+//! Each submodule lists the documents its layouts come from; the platform
+//! survey is `docs/formats/amiga-apple-misc.md`, which lists the extensions
+//! of each layout. `decode_3200` here tries Brooks, then `.3201`, then the
+//! 32 KB screen dump for `.SH3`, `.3200` and `.SHR`; the layouts differ in
+//! size and header, so the order only matters for rejecting files. Brooks
+//! is File Type Note $C1/0002
+//! (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c1.0002>),
+//! the screen dump File Type Note $C1/0000
+//! (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c1.0000>)
+//! and `.3201` the CiderPress II Super Hi-Res notes
+//! (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>); details in
+//! `super_hires.rs`.
 
 mod hires;
 mod macpaint;
