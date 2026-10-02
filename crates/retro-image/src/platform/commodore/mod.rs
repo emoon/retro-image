@@ -2,6 +2,12 @@
 //!
 //! Layout sources are listed per submodule; the platform survey is
 //! `docs/formats/commodore.md`.
+//!
+//! Generic C64 pictures (`.vic`, listed at
+//! <http://fileformats.archiveteam.org/wiki/Commodore_graphics_formats>) are
+//! memory dumps in the other formats' layouts. Which layouts occur (including
+//! FLI Graph dumps up to `$7FFF` and a 33602-byte Gunpaint-layout IFLI dump)
+//! was found by inspecting sample files and comparing with `recoil2png` output.
 
 mod bitmap;
 mod fli;
@@ -11,7 +17,9 @@ mod prg;
 mod unpack;
 mod vic2;
 
-use crate::Format;
+use crate::{DecodeError, Format, Image};
+
+type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
 
 const C64: &str = "Commodore 64";
 
@@ -166,4 +174,29 @@ pub(super) static FORMATS: &[Format] = &[
         ifli::decode_pixel_perfect_packed,
     ),
     Format::new(C64, "ECI Graphic Editor", &["eci"], ifli::decode_eci),
+    Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
 ];
+
+/// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
+/// file size (and load address for the 33602-byte IFLI dumps).
+fn decode_generic(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() == 33602 && data[..2] != [0x00, 0x3c] {
+        return ifli::decode_gunpaint_dump(data);
+    }
+    const LAYOUTS: &[Decoder] = &[
+        bitmap::decode_koala,
+        bitmap::decode_art_studio,
+        bitmap::decode_advanced_art_studio,
+        fli::decode_fli_designer,
+        fli::decode_fli_graph,
+        ifli::decode_gunpaint,
+        ifli::decode_funpaint,
+        ifli::decode_pixel_perfect,
+        bitmap::decode_blazing_paddles,
+        interlace::decode_drazlace,
+    ];
+    LAYOUTS
+        .iter()
+        .find_map(|decode| decode(data).ok())
+        .ok_or(DecodeError::Unrecognized)
+}

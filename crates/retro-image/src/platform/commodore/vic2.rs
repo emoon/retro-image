@@ -195,10 +195,11 @@ impl Frame {
         self
     }
 
-    /// Moves the picture one pixel right, repeating the left column.
+    /// Moves the picture one pixel right; black enters at the left edge.
     pub(super) fn shift_right(mut self) -> Self {
         for row in self.pixels.chunks_exact_mut(WIDTH) {
             row.copy_within(..WIDTH - 1, 1);
+            row[0] = 0;
         }
         self
     }

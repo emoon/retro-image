@@ -108,7 +108,7 @@ const FLI_DESIGNER: Fli = Fli {
 };
 const FLI_GRAPH: Fli = Fli {
     load: 0x3b00,
-    sizes: &[17474],
+    sizes: &[17474, 17665, 17666],
     background: Bg::Table(0x3b00),
     ..FLI_DESIGNER
 };

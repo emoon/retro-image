@@ -84,6 +84,15 @@ pub(super) fn decode_gunpaint(data: &[u8]) -> Result<Image, DecodeError> {
     GUNPAINT.decode(data)
 }
 
+/// Gunpaint's layout one byte shorter, as found in generic `.vic` dumps.
+pub(super) fn decode_gunpaint_dump(data: &[u8]) -> Result<Image, DecodeError> {
+    Ifli {
+        sizes: &[33602],
+        ..GUNPAINT
+    }
+    .decode(data)
+}
+
 const PIXEL_PERFECT: Ifli = Ifli {
     load: 0x3c00,
     sizes: &[33602],
