@@ -391,3 +391,36 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
+
+## 9.x Wave 4: charset interlace
+
+Module `atari8/ice.rs`. ICN, IMN, IPC, IP2, IRG, IR2 and DIN pictures plus part of
+the ICE font files, all reverse engineered from the corpus samples and by probing
+`recoil2png` with hand-made files (one glyph or header byte changed at a time).
+
+- **Picture layout**: header, 16 character sets of 1024 bytes, then a 40x24 screen of
+  codes (IRG and IR2 have two screens, one per frame). The 24 rows form 8 bands of 3
+  rows; band `b` uses set `2b` in frame 1 and `2b + 1` in frame 2. Each screen holds
+  120 codes per band, so each band's glyphs are unique and the picture is 160x192
+  (drawn 320x192). Frames are averaged (rounded down). File sizes: header + 16384 +
+  960 (or 1920).
+- **Headers** (byte 0 is a version, 1 or 3, which RECOIL checks): IMN 6 bytes
+  (version, background, PF0-3; frame 1 ANTIC 4, frame 2 GTIA 9 with luminance ORed
+  into the background). ICN 6 bytes (same fields; frame 1 ANTIC 4 on a black
+  background, frame 2 GTIA 11 with hue = pixel, luminance from the background, pixel 0
+  keeping only its hue). IPC 10 bytes (version, COLPM0-3, COLPF0-3, COLBK; frame 1
+  ANTIC 4 with COLPM0 as background, frame 2 GTIA 10). IP2 14 bytes (like IPC with
+  the PF colours of frame 1 and 2 interleaved, COLBK last). IRG 6 bytes (both frames
+  ANTIC 4). IR2 10 bytes (PF colours interleaved). DIN 7 bytes (version 3,
+  background, text luminance, PF0-3): frame 1 is ANTIC 2 text, frame 2 ANTIC 4. Code
+  bit 7 picks PF3 in mode 4 and is ignored in DIN's hires frame. All colour registers
+  ignore luminance bit 0.
+- **ICE fonts** (`.ICE`): mode byte, mode-specific header, then 1 or 2 character
+  sets. Output is the 128 characters in ATASCII row order (screen codes 64, 0, 32,
+  96), 32 per row, stacked in four 32-pixel blocks showing the inverse-video
+  variants (first and second frame: none, both, second only, first only). Inverse
+  means bit 7 in mode 4, inverted bits in hires and GTIA 9. Decoded: mode 0 (5-byte
+  header, two hires frames), 1 (Super IRG), 3 (DIN) and 12 (MIN: hires + GTIA 9),
+  5 samples. Not done: the one-set modes 0x1f, 0x20-0x25 (IRG 2.0, SZAP, HIP, CHIP,
+  GR9, GR11, APAC fonts; 1027-1038 bytes, nine 32-pixel blocks); their combination
+  rules were not worked out.
