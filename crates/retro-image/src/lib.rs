@@ -13,6 +13,8 @@
 //! ```
 
 #![no_std]
+// Only the `simd` module may use `unsafe`.
+#![deny(unsafe_code)]
 
 extern crate alloc;
 
@@ -22,12 +24,18 @@ mod error;
 mod format;
 mod image;
 mod platform;
+#[allow(unsafe_code)]
 mod simd;
 
 pub use error::DecodeError;
 pub use format::{Companions, Format, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
 pub use image::Image;
+/// For the `simd` fuzz target: compares every SIMD level with the scalar
+/// reference.
+#[cfg(fuzzing)]
+#[doc(hidden)]
+pub use simd::check_levels as fuzz_check_simd_levels;
 
 /// Decodes `data` on its own. See [`decode_with`].
 pub fn decode(filename: &str, data: &[u8]) -> Result<Image, DecodeError> {
