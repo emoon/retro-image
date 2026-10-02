@@ -41,32 +41,6 @@ fn read_palette(grb: &[u8], precision: Precision) -> Vec<u32> {
         .collect()
 }
 
-/// Rows of `0xRRGGBB`, stretched on output.
-struct Picture {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-    double_width: bool,
-    double_height: bool,
-}
-
-impl Picture {
-    fn into_image(self) -> Image {
-        let (sx, sy) = (
-            1 + self.double_width as usize,
-            1 + self.double_height as usize,
-        );
-        let mut image = Image::new((self.width * sx) as u32, (self.height * sy) as u32);
-        for y in 0..self.height * sy {
-            for x in 0..self.width * sx {
-                let colour = self.pixels[(y / sy) * self.width + x / sx];
-                image.set(x as u32, y as u32, colour);
-            }
-        }
-        image
-    }
-}
-
 /// Parsed MAG header; offsets are absolute.
 struct MagHeader {
     name: [u8; 4],
@@ -234,77 +208,83 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
     })
 }
 
-/// Indexed pixels at `bits` per pixel, MSB first.
-fn indexed(unpacked: &Unpacked, bits: usize, width: usize, palette: &[u32]) -> Vec<u32> {
+/// Palette indices at `bits` per pixel, MSB first, `width` per row.
+fn indices(unpacked: &Unpacked, bits: usize, width: usize) -> Vec<u8> {
     let per_byte = 8 / bits;
     let mask = ((1u32 << bits) - 1) as u8;
-    let mut pixels = Vec::with_capacity(width * unpacked.height);
+    let mut indices = Vec::with_capacity(width * unpacked.height);
     for row in unpacked.bytes.chunks_exact(unpacked.byte_width) {
         for x in 0..width {
             let shift = 8 - bits * (x % per_byte + 1);
-            let index = (row[x / per_byte] >> shift) & mask;
-            pixels.push(palette.get(index as usize).copied().unwrap_or(0));
+            indices.push((row[x / per_byte] >> shift) & mask);
         }
     }
-    pixels
+    indices
 }
 
-fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> Vec<u32> {
-    let mut pixels = Vec::with_capacity(width * unpacked.height);
+fn indexed(
+    unpacked: &Unpacked,
+    bits: usize,
+    width: usize,
+    palette: &[u32],
+) -> Result<Image, DecodeError> {
+    let indices = indices(unpacked, bits, width);
+    Image::from_indexed(width as u32, unpacked.height as u32, &indices, palette)
+}
+
+fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> Image {
+    let mut image = Image::new(width as u32, unpacked.height as u32);
     let mut pal16 = [0; 16];
     for (dst, src) in pal16.iter_mut().zip(palette) {
         *dst = *src;
     }
-    for row in unpacked.bytes.chunks_exact(unpacked.byte_width) {
+    for (y, row) in (0u32..).zip(unpacked.bytes.chunks_exact(unpacked.byte_width)) {
         for x in (0..width).step_by(4) {
             let group = [row[x], row[x + 1], row[x + 2], row[x + 3]];
             let colours = crate::platform::msx::yjk_group(group, yae, &pal16);
             for (i, &colour) in colours.iter().enumerate().take(width - x) {
                 let b = group[i];
-                pixels.push(if x + 4 > width && !(yae && b & 8 != 0) {
+                let colour = if x + 4 > width && !(yae && b & 8 != 0) {
                     let y = crate::platform::msx::level5(b >> 3);
                     y << 16 | y << 8 | y
                 } else {
                     colour
-                });
+                };
+                image.set((x + i) as u32, y, colour);
             }
         }
     }
-    pixels
+    image
 }
 
-fn msx_picture(header: &MagHeader, unpacked: &Unpacked, palette: &[u32]) -> Option<Picture> {
+fn msx_picture(
+    header: &MagHeader,
+    unpacked: &Unpacked,
+    palette: &[u32],
+) -> Result<Image, DecodeError> {
     let screen = header.flags >> 4;
     let interlaced = header.flags & 0x0c == 0;
     if header.flags & 8 != 0 {
-        return None;
+        return Err(DecodeError::Unrecognized);
     }
     let bpp = header.bits_per_pixel();
-    let (width, pixels) = match screen {
+    let image = match screen {
         // Screens 10/11 (YAE) and 12 (YJK): one byte per pixel.
         2 | 4 => {
             let width = unpacked.width * bpp / 8;
-            (width, yjk_pixels(unpacked, width, screen == 2, palette))
+            yjk_pixels(unpacked, width, screen == 2, palette)
         }
         // Screen 6: 2-bit pixels whatever the stored depth.
-        6 => {
-            let width = unpacked.width * bpp / 2;
-            (width, indexed(unpacked, 2, width, palette))
-        }
-        0 | 1 | 5 => (
-            unpacked.width,
-            indexed(unpacked, bpp, unpacked.width, palette),
-        ),
-        _ => return None,
+        6 => indexed(unpacked, 2, unpacked.width * bpp / 2, palette)?,
+        0 | 1 | 5 => indexed(unpacked, bpp, unpacked.width, palette)?,
+        _ => return Err(DecodeError::Unrecognized),
     };
     let wide_screen = matches!(screen, 0 | 6);
-    Some(Picture {
-        width,
-        height: unpacked.height,
-        pixels,
-        double_width: !wide_screen && interlaced,
-        double_height: wide_screen && !interlaced,
-    })
+    let (sx, sy) = (
+        1 + u32::from(!wide_screen && interlaced),
+        1 + u32::from(wide_screen && !interlaced),
+    );
+    Ok(image.scaled(sx, sy))
 }
 
 /// Decodes a MAG picture if it was saved on `machine`.
@@ -323,9 +303,9 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
         .ok_or(DecodeError::Unrecognized)?;
     let unpacked = unpack_mag(data, &header).ok_or(DecodeError::Unrecognized)?;
     let mode_200_lines = header.mode & 1 != 0;
-    let picture = if header.machine == 0x03 {
+    let image = if header.machine == 0x03 {
         let palette = read_palette(grb, Precision::Bits(3));
-        msx_picture(&header, &unpacked, &palette).ok_or(DecodeError::Unrecognized)?
+        msx_picture(&header, &unpacked, &palette)?
     } else {
         let (precision, double_height) = match header.machine {
             0x00 | 0x88 if mode_200_lines => (Precision::Bits(4), true),
@@ -339,18 +319,12 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
         };
         let palette = read_palette(grb, precision);
         let bpp = header.bits_per_pixel();
-        Picture {
-            width: unpacked.width,
-            height: unpacked.height,
-            pixels: indexed(&unpacked, bpp, unpacked.width, &palette),
-            double_width: false,
-            double_height,
-        }
+        indexed(&unpacked, bpp, unpacked.width, &palette)?.scaled(1, 1 + u32::from(double_height))
     };
-    if picture.width == 0 {
+    if image.width() == 0 {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(picture.into_image())
+    Ok(image)
 }
 
 /// Decodes a 640x400 MKI picture if it was saved on `machine`.
@@ -406,18 +380,8 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
     for i in xor_rows * MASK_WIDTH..bytes.len() {
         bytes[i] ^= bytes[i - xor_rows * MASK_WIDTH];
     }
-    let pixels = bytes
-        .iter()
-        .flat_map(|&b| [palette[(b >> 4) as usize], palette[(b & 15) as usize]])
-        .collect();
-    Ok(Picture {
-        width: 640,
-        height: 400,
-        pixels,
-        double_width: false,
-        double_height: false,
-    }
-    .into_image())
+    let indices: Vec<u8> = bytes.iter().flat_map(|&b| [b >> 4, b & 15]).collect();
+    Image::from_indexed(640, 400, &indices, &palette)
 }
 
 #[cfg(test)]
@@ -461,6 +425,25 @@ mod tests {
             decode_mag(&data, Machine::Msx),
             Err(DecodeError::Unrecognized)
         );
+    }
+
+    #[test]
+    fn content_detection_picks_the_saving_machine() {
+        for (machine, expected) in [
+            (0x00, Machine::Pc98),
+            (0x03, Machine::Msx),
+            (0x68, Machine::X68000),
+            (0x80, Machine::Pc80),
+        ] {
+            let data = mag(machine, 0, 0, 7, &[0x44; 48], &[0x10, 0x01, 0, 0]);
+            let ours = decode_mag(&data, expected).unwrap();
+            assert_eq!(crate::decode("x.dat", &data), Ok(ours.clone()));
+            assert_eq!(crate::decode("x.mag", &data), Ok(ours));
+            let (format, _) = crate::candidates("x.dat")
+                .find_map(|f| f.decode(&data).ok().map(|i| (f, i)))
+                .unwrap();
+            assert_eq!(format.name, "Maki-chan Graphics");
+        }
     }
 
     #[test]
