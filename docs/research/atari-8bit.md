@@ -446,17 +446,26 @@ random synthetic files (60 to 120 per format) until none differed.
   rendered without it. athena (ANTIC 2), sergeantseymour-robotcop and Blinkys match, and so do
   300 randomly modified variants (row modes, GTIA, inverse, players, PRIOR, colours, split,
   fonts, random attribute bytes, short files).
-- **Not done: SHP (Blazing Paddles shape table, exactly 1024 bytes) and CHR (Blazing Paddles
-  font).** Both use the same byte-coded pen language, which is only partly understood. SHP
-  starts with four little-endian pointers (base $7C00) and a zero word; the shapes end in
-  `08`. CHR (BP font, loaded at $7002) starts with 98 pointers to glyphs placed one after
-  another, proportionally, with line wrapping at about 320 pixels. A command byte has the
-  repeat count minus one in its high nibble; the low nibble picks right, up or down (plotting
-  before each step), bit 2 turns the plotting off, direction 1 plots the pixels to the right of
-  the pen without moving it, and `08` seems to end a glyph (the first byte of a glyph is a
-  position, the second is usually `08`). Pixels are 2 image pixels wide and glyphs start on
-  line 6 of an 8-line cell. The start position, the exact effect of bit 3, direction 1 and the
-  sheet layout were not pinned down, so neither is decoded.
+- **SHP (Blazing Paddles shape table) and CHR (Blazing Paddles font)**
+  (`atari8/blazing_paddles.rs`). One pen-drawing code serves both; the manual says nothing
+  about the files, so this was worked out from BLDGS.SHP and ITALIC8.CHR (both match) and
+  from synthetic files (about 700 random ones agree with `recoil2png`, rejections included).
+  SHP is exactly 1024 bytes, a memory image at $7C00; CHR exactly 3072 bytes at $7000. The file
+  starts with a table of little-endian pointers ended by a zero word, then streams. A
+  pointer minus the base is a file offset; its stream runs to the next `08` byte. The table
+  also ends at the first pointer that is outside the file or leads to no `08`; a table with
+  no stream is rejected. In a font each glyph is `A 08 commands`, the pointer is to
+  `commands`, and the previous stream swallows `A` (a pen-up move), so a glyph's pen travel
+  includes its successor's `A`. A command has the repeat count minus one in its high
+  nibble and a direction in its low two bits (0 right, 1 left, 2 up, 3 down); bit 2 moves
+  without plotting; bit 3 does nothing; a step plots at the pen, then moves it. The pen starts
+  at (0, 0). Units are 2 pixels wide, white on black. Streams are placed like text: the next
+  one starts at the furthest pen x reached plus 2, shifted right by how far left of its start
+  its pen went; a stream whose end position would pass 160 units starts a new row (it is
+  rejected if it doesn't fit even then). A row's height is the pen's travel over all its
+  streams (from its highest point to its lowest, pen-up moves and the position after the
+  last step included), rows are 1 unit apart, the sheet is as wide as the largest end
+  position and at most 240 high.
 - **Not done: VSC + G2F vertical scroll.** A `.VSC` file is a text list of file names, each
   ended by CR LF (a last name without CR LF is dropped, so is any list with a missing, non-G2F
   or MCH file). RECOIL's picture is the full 336 x 240 renders of the listed G2F files

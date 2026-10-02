@@ -7,6 +7,7 @@
 
 mod antic;
 mod apac;
+mod blazing_paddles;
 mod envision;
 mod font;
 mod graph2font;
@@ -275,4 +276,16 @@ pub(super) static FORMATS: &[Format] = &[
         graph2font::decode_g2f_vbxe,
     )
     .signature(),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles shape table",
+        &["shp"],
+        blazing_paddles::decode_shp,
+    ),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles font",
+        &["chr"],
+        blazing_paddles::decode_chr,
+    ),
 ];
