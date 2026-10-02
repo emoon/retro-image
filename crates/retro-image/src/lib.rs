@@ -13,6 +13,7 @@
 //! ```
 
 #![no_std]
+#![warn(missing_docs)]
 // Only `simd::x86_64` may use `unsafe`.
 #![deny(unsafe_code)]
 

@@ -11,7 +11,10 @@ use crate::{DecodeError, Image, platform};
 /// One supported file format.
 #[derive(Debug)]
 pub struct Format {
+    /// Machine the format belongs to, named as in RECOIL's format list
+    /// (e.g. `"Atari ST"`).
     pub platform: &'static str,
+    /// Name of the program or format, e.g. `"NEOchrome"`.
     pub name: &'static str,
     /// Lower-case extensions without the dot.
     pub extensions: &'static [&'static str],

@@ -4,6 +4,7 @@
 
 use core::fmt;
 
+/// Why a file could not be decoded.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecodeError {
     /// No format uses the file's extension, and none recognised its content.
