@@ -391,3 +391,305 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
+
+## 9. Implementation notes (wave 4)
+
+The remaining Atari 8-bit formats that have corpus samples. Every format below matches
+`recoil2png` on all its samples unless a note says otherwise, and none needed a divergence
+entry.
+
+### 9.1 Charset interlace
+
+Module `atari8/ice.rs`. ICN, IMN, IPC, IP2, IRG, IR2 and DIN pictures plus part of
+the ICE font files, all reverse engineered from the corpus samples and by probing
+`recoil2png` with hand-made files (one glyph or header byte changed at a time).
+
+- **Picture layout**: header, 16 character sets of 1024 bytes, then a 40x24 screen of
+  codes (IRG and IR2 have two screens, one per frame). The 24 rows form 8 bands of 3
+  rows; band `b` uses set `2b` in frame 1 and `2b + 1` in frame 2. Each screen holds
+  120 codes per band, so each band's glyphs are unique and the picture is 160x192
+  (drawn 320x192). Frames are averaged (rounded down). File sizes: header + 16384 +
+  960 (or 1920).
+- **Headers** (byte 0 is a version, 1 or 3, which RECOIL checks): IMN 6 bytes
+  (version, background, PF0-3; frame 1 ANTIC 4, frame 2 GTIA 9 with luminance ORed
+  into the background). ICN 6 bytes (same fields; frame 1 ANTIC 4 on a black
+  background, frame 2 GTIA 11 with hue = pixel, luminance from the background, pixel 0
+  keeping only its hue). IPC 10 bytes (version, COLPM0-3, COLPF0-3, COLBK; frame 1
+  ANTIC 4 with COLPM0 as background, frame 2 GTIA 10). IP2 14 bytes (like IPC with
+  the PF colours of frame 1 and 2 interleaved, COLBK last). IRG 6 bytes (both frames
+  ANTIC 4). IR2 10 bytes (PF colours interleaved). DIN 7 bytes (version 3,
+  background, text luminance, PF0-3): frame 1 is ANTIC 2 text, frame 2 ANTIC 4. Code
+  bit 7 picks PF3 in mode 4 and is ignored in DIN's hires frame. All colour registers
+  ignore luminance bit 0.
+- **ICE fonts** (`.ICE`): mode byte, mode-specific header, then 1 or 2 character
+  sets. Output is the 128 characters in ATASCII row order (screen codes 64, 0, 32,
+  96), 32 per row, stacked in four 32-pixel blocks showing the inverse-video
+  variants (first and second frame: none, both, second only, first only). Inverse
+  means bit 7 in mode 4, inverted bits in hires and GTIA 9. Decoded: mode 0 (5-byte
+  header, two hires frames), 1 (Super IRG), 3 (DIN) and 12 (MIN: hires + GTIA 9),
+  5 samples. Not done: the one-set modes 0x1f, 0x20-0x25 (IRG 2.0, SZAP, HIP, CHIP,
+  GR9, GR11, APAC fonts; 1027-1038 bytes, nine 32-pixel blocks); their combination
+  rules were not worked out.
+
+### 9.2 Small and packed screens
+
+Everything here was reverse engineered from the corpus samples and from hand-made files fed
+to `recoil2png` (black box); the modules `misc_screen.rs`, `packed.rs` and `text_art.rs` list the
+sources and layouts.
+
+- **Raw screens** (`misc_screen.rs`): TXS (6-byte `FF FF 00 06 FF 06` header, 256 grey levels
+  0-15, 16x16 drawn 4x4), FGE (6 unchecked header bytes, 64x40 greys, 4x4), KFX 56x60 and CUT 96x99
+  (bare 1-bit bitmaps, black and `0E`), GR9P (2400 bytes, 80x60 greys, 4x4), RYS (3840 bytes,
+  Graphics 7 in the OS colours), KSS (6400 + 4 colour bytes, 160x160), GHG (LE16 width 1-320,
+  height 1-200, 1-bit lines; bit 0 = `0C`, bit 1 = `02`), PI8 (7680 = Graphics 15 in greys, 7685 =
+  Graphics 8 plus 5 ignored bytes), PI9 (7684/7808/7936 = Graphics 9 with an ignored tail, 7720 =
+  interleaved APAC). Two PI9 samples sit in the Atari ST directory but are 8-bit files.
+- **ART** has three variants and is also an Atari ST/Commodore extension. Atari 8-bit ones are
+  told apart by exact checks: Artist (3206 bytes, first byte 7, then registers 708-710, an unused
+  byte, 712, 80 Graphics 7 lines), monochrome (width-1, height-1, bitmap, one spare byte; width at
+  most 30 bytes, height at most 64; RECOIL tries it before the text variant), Ascii-Art Editor
+  (ATASCII lines ended by `9B`, at most 24 lines of 64, ROM font). ST files (32000+ bytes) fail all
+  three.
+- **ALL** (Graph): 24 per-row font numbers, `n` 1024-byte fonts, 40x24 screen codes, COLOR0-3
+  and COLOR4, i.e. 989 + 1024 n bytes, ANTIC mode 4.
+- **AGS**: 16-byte header (`AGS`, mode, row bytes, LE16 height, 9 registers) plus two planes. Mode
+  `13` shows plane 1 as Graphics 9, 4x4. Mode `0B` shows two Graphics 15 frames on alternate
+  scanlines, each with its own register set.
+- **CPR** (Trzmiel): mode byte 1 or 2, then literal (`80|n`), run (`n v`) and long run (`00 hi lo v`)
+  tokens producing 7680 bytes. Mode 1 stores byte columns (even lines, then odd lines). A set bit is
+  black on `0C`. ROBO.CPR is one byte short, RECOIL rejects it and so do we.
+- **KPR**: binary-load header, `KB`, bands/cells/rows, tile map band by band, 8-byte tiles, in greys.
+- **Not done**: PIX (no Atari 8-bit sample; every PIX in the corpus is TRS-80 or another platform,
+  and RECOIL rejects zero-, random- and pattern-filled files of all sizes up to 12000 bytes, so the
+  header is unknown). HPM (Grass' Slideshow): the stream unpacks as `00 v n` runs and `n` literals
+  into 7680 bytes of Graphics 15 data, but the colours come from the bytes after it in a way that
+  depends on their value (only a handful of values give colours, the others give greys), which
+  samples alone cannot explain; DRAGON.HPM (19203 bytes) is a different program's format.
+
+### 9.3 Interlace and multi-frame bitmaps
+
+IGE, ILD, ING, HR, MGA, BGP, CCI, RGB, RIP, RM2 and RM4. Every layout was found by
+reading the corpus samples and probing `recoil2png` with hand-made files (one register
+or one byte at a time, size scans, bit flips). The layouts are also in each module's doc
+comment (`interlace2.rs`, `colorview.rs`, `rip.rs`, `rambrandt.rs`). Just Solve was unreachable
+while this was written, so none of its pages were read.
+
+- **IGE** (`interlace2.rs`): exactly 6160 bytes. The binary-load header
+  `FF FF F6 A3 FF BB` and `FF 5F` are checked, then 4 colour registers per frame (frame
+  1, frame 2, indexed by pixel value), then two 128x96 two-bit frames (32 bytes per
+  line), drawn 2 wide and averaged.
+- **ILD**: exactly 8195 bytes, no header. Two 128x128 two-bit frames in greys 0, 6, 2, 10
+  (by pixel value), 2 wide, averaged. The last 3 bytes are not read.
+- **ING**: two 160x200 frames, then 4 shared colour registers. Anything after is ignored
+  (the sample has a screen-code text there).
+- **HR** (Atari): exactly 16384 bytes, two 1-bit frames of 256 lines x 32 bytes, 239 lines
+  shown, averaged into black, grey and white. No corpus sample: the `.hr` files in the
+  corpus are TRS-80. The size and layout come from probing alone.
+- **MGA**: exactly 7856 bytes; 80x96 APAC with alternating luminance and hue lines (the
+  reverse of APA), 176 unread bytes.
+- **BGP**: `BUGBITER_APAC239I_PICTURE_V1.0`, `FF 50 EF`, 4 unread bytes, a 16-bit title
+  length and the title, the plane size 9560 (`58 25`), then 239 luminance lines and 239
+  hue lines, drawn like interlaced APAC.
+- **CCI** (packed CIN): `CIN 1.2 ` and four chunks. Each has a 16-bit length (counting
+  the next field), a 16-bit field that is never read, and run-length tokens: below 0x80 a
+  literal block of n + 1 bytes, from 0x80 one byte repeated n + 1 times. They unpack to
+  the 16384-byte CIN: the Graphics 15 columns of even lines (3840 bytes), of odd lines
+  (3840), the hue plane by column (7680) and the per-line colour tables (1024). Found by
+  unpacking SUNV2.CCI and matching it to THESUNV2.CIN. `recoil2png` only accepts the
+  1024-byte table variant and ignores data after the fourth chunk.
+- **RGB** (ColorViewSquash, `colorview.rs`): `RGB1`, title length and title, mode 9 or 15,
+  width in 4-pixel units (even, 2-80), height (1-192), the byte 1. The picture is a
+  column-major list of pixels, each three 4-bit values (one per frame), stored as a
+  nibble stream: tokens 1-7 repeat a triple 2-8 times, `0 N` repeats it N + 8 times, 9-15
+  hold 1-7 literal triples, `8 N` holds N + 7. The frames use the hues 3, 12 and 7. Mode 9
+  takes the value as luminance, mode 15 reads two 2-bit pixels per value (colours 0, 4, 10
+  and 14 of the hue, value 0 black). The screen colour is the average of the three frames.
+  Missing data is an error.
+- **RIP** (`rip.rs`): header `RIP`, 4 version bytes, a mode byte, 16-bit big-endian fields
+  (0/1, header length that is not read, width in units, height, title length), `T:`, the
+  title, a tab, `CM:` and 9 colour registers. Modes: `0e` one Graphics 15 frame, `1e` two
+  averaged, `10` two frames whose register sets swap on every line, `20` HIP with the
+  frames swapped (mode 10 first), `30` mode 10 with per-line-pair colour tables (8 bytes
+  per two lines after the frames) plus a mode 9 frame. The data is packed when it starts
+  with `PCK`. The packer is LZ77 with Huffman codes: 13 unread bytes, three canonical
+  Huffman tables of 4-bit lengths (64 symbols for match lengths, 256 for distances, 256
+  for literals), then tokens of a flag bit followed by a literal, or by a distance symbol
+  + 2 and a length symbol + 2. Found by probing with uniform tables, where the bit layout
+  shows directly, and confirmed by decoding GOSTBUST byte for byte. A truncated stream
+  leaves the rest blank, like RECOIL. Modes `0f` (Graphics 8) and the other mode bytes
+  `recoil2png` accepts are not decoded; no sample uses them.
+- **RM2 / RM4** (`rambrandt.rs`): RM2 is exactly 8192 bytes: a Graphics 10 screen, the 9
+  registers, 119 unread bytes and three 128-byte change tables. RM4 is a Koala file
+  (Graphics 15) plus the 9 registers 464 bytes before the end and the same tables as the
+  last 384 bytes. The tables hold line codes, register numbers and colours per pair of
+  lines; the module doc explains how line codes map to lines. RM4 reuses the Koala
+  unpacker. RM0, RM1 and RM3 are not done (no samples). Koala PIC is still not detected
+  by content, since RM files start with a Koala header.
+
+### 9.4 Bitmaps with per-line colours
+
+Everything here was reverse engineered from the corpus and from `recoil2png` run on
+hand-made files, so the layouts are what RECOIL reads and no more. Sources are cited in
+each module (`xl_paint.rs`, `cpi.rs`, `hcm.rs`, `fwa.rs`, `mcs.rs`, `ged.rs`). All corpus
+samples of these formats match `recoil2png`: XLP 8, MAX 7, RAW 8, CPI 5, HCM 2, FWA 8,
+MCS 5, GED 8. Random files that change colours, tables, objects or packed data render
+identically too, except GED files whose PRIOR selects a GTIA mode.
+
+- **XLP, MAX, RAW** (XL-Paint, `xl_paint.rs`). A picture is two 2-bit frames shown
+  alternately, so the output averages them. RAW is `XLPB`, 7680 + 7680 bytes of
+  row-major frame data, then two colour sets (playfield 0-2, background); lines
+  alternate which set each frame uses. MAX is `XLPM`, nine 192-byte tables (the doc's
+  193 is wrong), then packed data. Tables 4-7 give the background and playfield 0-2
+  colours of stored frame 0 (a luminance frame in practice) and tables 0-3 those of
+  stored frame 1 (the hue frame); table 8 is ignored. The BIRD and GOLDENB samples exist
+  as both MAX and RAW and render identically, which pinned the layout: RAW line `y` of
+  frame `f` is stored frame `(f + y) % 2`. The packer (shared with XLP) is byte-oriented:
+  `00-3F` copies that many bytes, `40` copies the number in the next byte, `80-BF` repeats
+  the next byte `n & 3F` times, `C0-FF` repeats the byte after a 14-bit count, `41-7F` is
+  invalid. The output is column-major: for each of 40 columns, the lines of stored frame 0
+  then those of frame 1. XLP is 4 colours (playfield 0-2, background) shared by both
+  frames; the line count is 200 when the data unpacks to 16000 or more bytes, 192 for
+  15360 or more, and rejected below that. An `XLPC` prefix forces 192 lines and RECOIL then
+  tolerates bad or missing data (we do the same for the obvious cases only). A literal cut
+  short by the end of the data counts in full. STAIRS.XLP relies on that. RECOIL's exact
+  handling of other malformed streams (e.g. `50` as the last byte) is not reproduced.
+- **CPI** (Marco Pixel Editor, `cpi.rs`). A byte equal to the one before it takes a count
+  byte `n` and stands for `n + 1` copies; other bytes are literals. The data must unpack to
+  at least 7936 bytes (`31 * 256`, so every sample ends in `00 00 FE` + one more byte);
+  the first 7680 are 160x192 at 2 bits per pixel, and pixel values 0-3 show the greys
+  `00 0C 08 04`. Nothing else in the file matters.
+- **HCM** (Hard Color Map, `hcm.rs`). `HCMA 38 01`, a mode byte (0 or 2), colours
+  background, A, B, PF0-2, eight 256-byte tables of 192 lines at offset 48, a 128x192
+  2-bit bitmap at 2064. Each 4-pixel column of a line is marked A and/or B by table bits
+  (they behave like quad-width players and missiles; the layouts of the two modes differ,
+  see the module). The pixels are drawn over A/B with the GTIA priority rules; mode 0 is
+  PRIOR 0 with B acting as player 2, mode 2 is PRIOR `24`.
+- **FWA** (Fun with Art, `fwa.rs`). A memory image: `FE FE`, four colours, a fixed display
+  list (192 mode E lines in two chunks, any line may carry the DLI bit), unread viewer
+  code, the screen, a 16-bit length, then one DLI handler (6502 code `PHA TXA PHA`,
+  `LDA #c`, `STA WSYNC`, `STA reg` and more `LDA`/`STA` pairs, `JSR $06CA`) per DLI line.
+  RECOIL only accepts that exact code shape and it parses to the end of the file, so we do
+  too. The registers the n-th handler writes take effect from the line after the n-th DLI
+  line. advert.fwa in the hostile set is truncated (6000 bytes) and rejected by both.
+- **MCS** (`mcs.rs`). Exactly 10185 bytes: COLPM0-3, COLPF0-3, COLBK, eight character
+  sets of 128 characters (one per three character rows), a 40x24 screen, and 128 bytes
+  each for the missiles and players 0-3 (two scanlines per byte). The characters are
+  ANTIC 4 (bit 7 of a code: `11` pixels use playfield 3). The objects sit at x = 80 * n
+  (players 64 pixels wide) and 80 * n + 64 (missiles, 16 pixels) behind the playfield. The
+  last 400 bytes are never read.
+- **GED** (`ged.rs`). Binary-load header `FF FF 30 53 4F 7F`, then per line a GTIA
+  register number and value (the DLI's write, applied before the line; `$D000 +` the low 5
+  bits), eight per-line colour tables for playfield 0-2 whose later entries take over at
+  fixed pixels that depend on a timing byte (the table in the module), 1280 bytes of
+  player/missile data and 16 initial registers (note the sizes byte lists player 0 in its
+  high bits and the missiles are placed one after the other), then the screen. The writes
+  can change any GTIA register, so we run a small GTIA model with the shared priority and
+  object code. A PRIOR value with bits 6-7 (GTIA modes) is rejected: RECOIL draws them,
+  but no sample uses one and the rendering isn't worked out.
+- **Not done**:
+  - **A4R**: the corpus decodes (RECOIL shows 320x256 GR9 greys) but the packer is
+    unsolved. What is known: a 5-byte header `b0 b1 00 90 4f` (`b1` needs bits 7 and 3, `00`
+    and `90`/`4F` are checked loosely: `4D`-`50` are accepted), then a stream ending in
+    `01 00`; literals are single bytes and map one to one to output bytes, `01 nn` appears
+    to give a run of `nn + 4` bytes of `FF`, and many bytes are neither (`FA`, `E1`, `06`,
+    `1E`, the periodic `EB`). The header's first byte changes which later bytes are
+    literals. RECOIL's output (the unpacked bytes) can be recovered from its image, but
+    no consistent token grammar fits.
+  - **PGR** (PowerGraphics): a memory image from `$8206` whose header (`FF FF 06 82
+    end`) must match the file size; bytes 6-7 give the address of an event stream after
+    the screen; `PowerGFX` at offset 8; a display list at `$8210` (blank lines, mode E/F
+    lines with `LMS $8800/$9000/$A000`, `JVB $8210`; output row = display list line; lines
+    after it are black; mode F lines of 32 bytes give a 256-pixel picture, mode E lines
+    of 40 bytes 160). Without its events a picture is a two-colour drawing; the events
+    (`1C` = nothing, `reg+flags value` pairs such as `A2 68` and `AF F0`, which look
+    like HPOSP2/HPOSP3 and GRAFP2 writes) paint the colours with players, like GED. Not
+    worked out.
+  - **SPC** (Graphics Magician Picture Painter, Atari version): `LE16 length`, then a
+    command stream (`80 x y` start, `A0 x y` line, `60 n` pattern, `E0 x y` fill, ...). RECOIL
+    draws brush, pattern and fill shapes whose data and the exact fill algorithm are not
+    documented for the Atari port; a guess would not match pixel for pixel.
+
+### 9.5 Player/missile graphics, shapes, fonts and maps
+
+All layouts below were found by flipping or setting single bytes of corpus files and
+hand-made files and reading back what `recoil2png` changes. Each decoder was also compared
+with `recoil2png` on random synthetic files (60 to 400 per format) until none differed.
+
+- **4MI, 4PL, 4PM** (`atari8/pmg.rs`). The colours of players or missiles 0-3, then 240 lines
+  of one byte per line for each player (8 pixels, bit 7 left), or one byte per line for the four
+  missiles (missile 0 in bits 1-0, the left pixel of a pair in the high bit). 4MI is 4 + 240
+  bytes, 4PL 4 + 4 x 240, 4PM 4 + 4 x 240 + 240. Players sit 20 pixels apart (16 wide), the
+  missiles of 4PM start right of the fourth player, 8 pixels apart. Missile colours are used
+  as given (luminance bit 0 shows), player colours lose bit 0.
+- **APL** (Atari Player Editor). Exactly 1677 bytes: `9A F8 39 21`, frame count (1-16), height
+  (1-48), the X distance of player 1 from player 0 (0-8 player pixels), then per player 16 frame
+  colours plus a spare byte (at 7 and 24), one spare byte, and per player 17 slots of 48 lines
+  (at 42 and 858). The last 3 bytes are left over. A sheet frame is 20 + 2 x distance image
+  pixels wide; overlapping players OR their colour bytes.
+- **PMD** (PMG Designer). `F0 ED E4`, four colours, `players` (2 or 4), two factors that
+  multiply to the frame count (at most 160), the height (1-48), then `players x frames` blocks of
+  `height` lines, player-major, exactly. Players 0 and 1 make one sprite, 2 and 3 the next;
+  sprites go 16 to a row, 20 pixels apart with 2 blank lines between rows. RECOIL also accepts
+  1 or 3 players with odd results; we don't.
+- **LDM** (Ludek Maker). The inverse-ATASCII text `Ludek Maker data file`, the colours of
+  players 0/2 and 1/3, a number of unshown frames, the frame count (1-100), a 256-byte
+  animation script RECOIL ignores, then at least `count` frames of 120 bytes (players 0-3, 30
+  lines). Frames 0 to `count - skip - 1` are shown, 8 to a row, 40 pixels apart.
+- **LEO** (`atari8/leo.rs`). Exactly 2580 bytes: 256 glyphs, a 256-byte table with a glyph and
+  an inverse bit per cell, a 256-byte table RECOIL ignores, COLPF0-3 and COLBK, 15 ignored
+  bytes. The picture is 256 x 64: a cell index has the column parity in bit 7, the row parity
+  in bit 6, the row pair in bits 5-4 and the column pair in bits 3-0, and cells whose index
+  has bit 6 show glyphs 128-255.
+- **MAP, Envision** (`atari8/envision.rs`). Mode byte (2-7, bit 7 ignored), width-1, height-1
+  (at most 204 rows), COLPF0-3 and COLBK, the map, a 256-byte table RECOIL ignores, a 208-byte
+  table (entry `y` = font number of row `y`, entry 206 the font count, entry 207 = 1), an
+  8-byte name and 1024-byte font, then for each further font its number, an 8-byte name and its
+  1024 bytes. The length is exact. Mode 2/3 are 8x8/8x10 monochrome (ink = COLPF2's hue with
+  COLPF1's luminance; mode 3 moves the first two glyph lines of codes 0x60-0x7F to the bottom),
+  4/5 4-colour (5 doubles the lines), 6/7 five colours chosen by the top code bits, 16 wide.
+- **MAP, EnvisionPC**. Mode, width and height (16 bits each), COLBK and COLPF0-3, the map, one
+  font, then only zero bytes. No sample exists; this was probed with synthetic files only. The
+  other layout (with the "..." gap of the manual) is not understood. RECOIL takes widths up to
+  32767; we cap the picture at 2^25 pixels.
+- **SHP, Movie Maker** (`atari8/shapes.rs`). 4384 bytes: a 528-byte directory RECOIL ignores,
+  then a BKG picture (3856 bytes). All 7 corpus samples match.
+- **G2F with VBXE colours** (`atari8/graph2font/g2f.rs`; platform "Atari 8-bit VBXE"). The
+  array that follows the flag at end+146753 is 48 columns of 240 records of 12 bytes (first two
+  bytes 8 and the number of scanlines per record, normally 8). Bytes 4, 6 and 8 of a record
+  replace COLPF0-2 for that column and those scanlines, luminance bit 0 included; COLBK, COLPF3,
+  players and PRIOR work as before, GTIA modes 9 and 11 ignore the array, and in ANTIC 2 rows
+  set pixels show the COLPF1 colour over everything. A file too short for the whole array is
+  rendered without it. athena (ANTIC 2), sergeantseymour-robotcop and Blinkys match, and so do
+  300 randomly modified variants (row modes, GTIA, inverse, players, PRIOR, colours, split,
+  fonts, random attribute bytes, short files).
+- **SHP (Blazing Paddles shape table) and CHR (Blazing Paddles font)**
+  (`atari8/blazing_paddles.rs`). One pen-drawing code serves both; the manual says nothing
+  about the files, so this was worked out from BLDGS.SHP and ITALIC8.CHR (both match) and
+  from synthetic files (about 700 random ones agree with `recoil2png`, rejections included).
+  SHP is exactly 1024 bytes, a memory image at $7C00; CHR exactly 3072 bytes at $7000. The file
+  starts with a table of little-endian pointers ended by a zero word, then streams. A
+  pointer minus the base is a file offset; its stream runs to the next `08` byte. The table
+  also ends at the first pointer that is outside the file or leads to no `08`; a table with
+  no stream is rejected. In a font each glyph is `A 08 commands`, the pointer is to
+  `commands`, and the previous stream swallows `A` (a pen-up move), so a glyph's pen travel
+  includes its successor's `A`. A command has the repeat count minus one in its high
+  nibble and a direction in its low two bits (0 right, 1 left, 2 up, 3 down); bit 2 moves
+  without plotting; bit 3 does nothing; a step plots at the pen, then moves it. The pen starts
+  at (0, 0). Units are 2 pixels wide, white on black. Streams are placed like text: the next
+  one starts at the furthest pen x reached plus 2, shifted right by how far left of its start
+  its pen went; a stream whose end position would pass 160 units starts a new row (it is
+  rejected if it doesn't fit even then). A row's height is the pen's travel over all its
+  streams (from its highest point to its lowest, pen-up moves and the position after the
+  last step included), rows are 1 unit apart, the sheet is as wide as the largest end
+  position and at most 240 high.
+- **Not done: VSC + G2F vertical scroll.** A `.VSC` file is a text list of file names, each
+  ended by CR LF (a last name without CR LF is dropped, so is any list with a missing, non-G2F
+  or MCH file). RECOIL's picture is the full 336 x 240 renders of the listed G2F files
+  stacked, without limit on the count (VBXE files work too); names are matched case
+  sensitively. The companion API cannot fetch these, because `Companions::get` takes an
+  extension and returns the file with the main file's stem. Decoding it needs one new method,
+  for example `fn get_named(&self, file_name: &str) -> Option<Vec<u8>>` on `Companions` (looking
+  the name up in the main file's directory, ignoring directory parts), implemented by
+  `SiblingFiles` in `tests/common` over *all* files in the directory, and `tests/oracle.rs`
+  would have to copy every file the VSC names next to it before running `recoil2png`. The
+  decoder itself is then a loop over `graph2font::decode_g2f` and stacking the images.

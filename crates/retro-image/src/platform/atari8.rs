@@ -7,23 +7,42 @@
 
 mod antic;
 mod apac;
+mod blazing_paddles;
+mod colorview;
+mod cpi;
+mod envision;
 mod font;
+mod fwa;
+mod ged;
 mod graph2font;
 mod gtia;
+mod hcm;
 mod hip;
+mod ice;
 mod inflate;
 mod interlace;
+mod interlace2;
 mod koala;
+mod leo;
 mod mad_studio;
+mod mcs;
+mod misc_screen;
+mod packed;
 mod palette;
+mod pmg;
 mod portfolio;
+mod rambrandt;
+mod rip;
 mod rom_font;
 mod screen;
 mod sfdn;
+mod shapes;
 mod technicolor;
 mod text;
+mod text_art;
 mod tip;
 mod vbxe;
+mod xl_paint;
 
 use crate::Format;
 
@@ -233,4 +252,164 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
+    // Wave 4: charset interlace
+    Format::new(ATARI8, "ICE MIN", &["imn"], ice::decode_imn),
+    Format::new(ATARI8, "ICE CIN", &["icn"], ice::decode_icn),
+    Format::new(ATARI8, "ICE PCIN", &["ipc"], ice::decode_ipc),
+    Format::new(ATARI8, "ICE PCIN+", &["ip2"], ice::decode_ip2),
+    Format::new(ATARI8, "Super IRG", &["irg"], ice::decode_irg),
+    Format::new(ATARI8, "Super IRG 2", &["ir2"], ice::decode_ir2),
+    Format::new(ATARI8, "DIN", &["din"], ice::decode_din),
+    Format::new(
+        ATARI8,
+        "Interlace Character Editor font",
+        &["ice"],
+        ice::decode_ice,
+    ),
+    // Wave 4: small screens
+    Format::new(ATARI8, "TXS", &["txs"], misc_screen::decode_txs),
+    Format::new(ATARI8, "Floor Designer", &["fge"], misc_screen::decode_fge),
+    Format::new(ATARI8, "KFX", &["kfx"], misc_screen::decode_kfx),
+    Format::new(ATARI8, "Cut Creator", &["cut"], misc_screen::decode_cut),
+    Format::new(ATARI8, "Graphics 9+", &["gr9p"], misc_screen::decode_gr9p),
+    Format::new(ATARI8, "Mamut", &["rys"], misc_screen::decode_rys),
+    Format::new(ATARI8, "KSS-Paint", &["kss"], misc_screen::decode_kss),
+    Format::new(
+        ATARI8,
+        "Gephard Hires Graphics",
+        &["ghg"],
+        misc_screen::decode_ghg,
+    ),
+    Format::new(ATARI8, "PI8", &["pi8"], misc_screen::decode_pi8),
+    Format::new(ATARI8, "PI9", &["pi9"], misc_screen::decode_pi9),
+    Format::new(ATARI8, "Trzmiel (compressed)", &["cpr"], packed::decode_cpr),
+    Format::new(
+        ATARI8,
+        "Kompresor do Animatora",
+        &["kpr"],
+        packed::decode_kpr,
+    ),
+    Format::new(ATARI8, "Graph", &["all"], text_art::decode_all),
+    Format::new(
+        ATARI8,
+        "Atari Graphics Studio",
+        &["ags"],
+        misc_screen::decode_ags,
+    ),
+    // ART is also an Atari ST and Commodore extension; the sizes and
+    // headers below keep those files out.
+    Format::new(
+        ATARI8,
+        "Monochrome ART",
+        &["art"],
+        misc_screen::decode_mono_art,
+    ),
+    Format::new(
+        ATARI8,
+        "Artist by David Eaton",
+        &["art"],
+        misc_screen::decode_artist_art,
+    ),
+    Format::new(
+        ATARI8,
+        "Ascii-Art Editor",
+        &["art"],
+        text_art::decode_ascii_art,
+    ),
+    // Wave 4: interlace and multi-frame bitmaps
+    Format::new(
+        ATARI8,
+        "Interlace Graphics Editor",
+        &["ige"],
+        interlace2::decode_ige,
+    ),
+    Format::new(
+        ATARI8,
+        "Interlace Logo Designer",
+        &["ild"],
+        interlace2::decode_ild,
+    ),
+    Format::new(ATARI8, "ING 15", &["ing"], interlace2::decode_ing),
+    Format::new(ATARI8, "Atari HR", &["hr"], interlace2::decode_hr),
+    Format::new(ATARI8, "MegaColor 80x96", &["mga"], interlace2::decode_mga),
+    Format::new(
+        ATARI8,
+        "Bugbiter APAC239i",
+        &["bgp"],
+        interlace2::decode_bgp,
+    ),
+    Format::new(
+        ATARI8,
+        "Champions' Interlace (packed)",
+        &["cci"],
+        interlace2::decode_cci,
+    ),
+    Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
+    Format::new(ATARI8, "Rocky Interlace Picture", &["rip"], rip::decode_rip),
+    Format::new(ATARI8, "Rambrandt GTIA 10", &["rm2"], rambrandt::decode_rm2),
+    Format::new(
+        ATARI8,
+        "Rambrandt Graphics 15",
+        &["rm4"],
+        rambrandt::decode_rm4,
+    ),
+    // Wave 4: headered bitmaps with per-line colours
+    Format::new(ATARI8, "Hard Color Map", &["hcm"], hcm::decode_hcm).signature(),
+    Format::new(ATARI8, "XL-Paint MAX raw", &["raw"], xl_paint::decode_raw),
+    Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),
+    Format::new(ATARI8, "XL-Paint", &["xlp"], xl_paint::decode_xlp),
+    Format::new(ATARI8, "Marco Pixel Editor", &["cpi"], cpi::decode_cpi),
+    Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
+    Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
+    Format::new(ATARI8, "GED", &["ged"], ged::decode_ged),
+    // Wave 4: player/missile graphics, shapes, fonts and maps
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 missiles",
+        &["4mi"],
+        pmg::decode_4mi,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players",
+        &["4pl"],
+        pmg::decode_4pl,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players and missiles",
+        &["4pm"],
+        pmg::decode_4pm,
+    ),
+    Format::new(ATARI8, "Atari Player Editor", &["apl"], pmg::decode_apl),
+    Format::new(ATARI8, "Ludek Maker", &["ldm"], pmg::decode_ldm).signature(),
+    Format::new(ATARI8, "Larka Edytor Obiektow", &["leo"], leo::decode_leo),
+    Format::new(ATARI8, "PMG Designer", &["pmd"], pmg::decode_pmd).signature(),
+    Format::new(ATARI8, "Envision", &["map"], envision::decode_map),
+    Format::new(ATARI8, "EnvisionPC", &["map"], envision::decode_map_pc),
+    Format::new(
+        ATARI8,
+        "Movie Maker shapes",
+        &["shp"],
+        shapes::decode_movie_maker,
+    ),
+    Format::new(
+        VBXE,
+        "Graph2Font VBXE",
+        &["g2f"],
+        graph2font::decode_g2f_vbxe,
+    )
+    .signature(),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles shape table",
+        &["shp"],
+        blazing_paddles::decode_shp,
+    ),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles font",
+        &["chr"],
+        blazing_paddles::decode_chr,
+    ),
 ];

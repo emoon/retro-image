@@ -32,7 +32,7 @@
 mod g2f;
 mod mch;
 
-pub(super) use g2f::decode_g2f;
+pub(super) use g2f::{decode_g2f, decode_g2f_vbxe};
 pub(super) use mch::decode_mch;
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
@@ -55,8 +55,33 @@ struct Picture<'a> {
     split: bool,
     /// Whether inverse ANTIC 4 cells show `11` pixels in COLPF3.
     antic4_inverse: bool,
+    /// VBXE colour attributes, which replace COLPF0-2 (see [`g2f`]).
+    vbxe: Option<Vbxe<'a>>,
     /// Per-scanline registers.
     lines: Vec<Line>,
+}
+
+/// VBXE colour attributes: 12-byte records, 240 for each of 48 screen
+/// columns (a 40-column screen uses the middle 40), the record of a scanline
+/// being its number divided by `height`. A record's bytes 4, 6 and 8 are the
+/// colours standing for COLPF0-2. The first two bytes of the array are 8 and
+/// `height`.
+struct Vbxe<'a> {
+    records: &'a [u8],
+    /// Screen columns before the first of the picture.
+    first_column: usize,
+    /// Scanlines per record.
+    height: usize,
+}
+
+const VBXE_RECORD: usize = 12;
+const VBXE_COLUMN: usize = LINES * VBXE_RECORD;
+
+impl Vbxe<'_> {
+    fn colors(&self, column: usize, y: usize) -> [u8; 3] {
+        let record = (self.first_column + column) * VBXE_COLUMN + y / self.height * VBXE_RECORD;
+        [4, 6, 8].map(|field| self.records[record + field])
+    }
 }
 
 /// How a character row is displayed.
@@ -101,6 +126,13 @@ impl Picture<'_> {
             let fifth = line.prior & 0x10 != 0;
             for x in 0..WIDTH {
                 let pixel = self.playfield(x, y, row, mode, &colors);
+                // A VBXE cell supplies its own playfield colours 0-2, which
+                // keep their luminance bit 0 where the registers lose it.
+                let colors = pixel.vbxe.map_or(colors, |[pf0, pf1, pf2]| Colors {
+                    player: colors.player.map(|color| color & 0xfe),
+                    playfield: [pf0, pf1, pf2, colors.playfield[3] & 0xfe],
+                    background: colors.background & 0xfe,
+                });
                 let objs = objects.pixels[x];
                 let mut players = pixel.players | objs & 0x0f;
                 let mut playfield = pixel.playfield;
@@ -115,9 +147,13 @@ impl Picture<'_> {
                 if let Some(luminance) = pixel.luminance {
                     color = color & 0xf0 | luminance;
                 }
+                if let Some(ink) = pixel.ink {
+                    color = ink;
+                }
                 // Luminance bit 0 only shows in GTIA mode 9 pixels, which
                 // like mode 11 pixels apply only where no player is.
                 color = match (mode, pixel.nibble) {
+                    _ if pixel.vbxe.is_some() => color,
                     (1, value) if players == 0 => color & 0xfe | value,
                     (3, 0) if players == 0 => color & 0xf0,
                     (3, value) if players == 0 => (color | value << 4) & 0xfe,
@@ -143,11 +179,20 @@ impl Picture<'_> {
         let bit = position.rem_euclid(8) as u32;
         // GTIA modes take 4-bit pixels, 0 outside the screen data.
         let nibble = byte.map_or(0, |(byte, _)| (byte >> (4 - bit / 4 * 4)) & 0x0f);
+        // VBXE colours replace the playfield colours of ANTIC modes 2 and 4
+        // and GTIA mode 10; modes 9 and 11 don't show them.
+        let vbxe = if matches!(mode, 0 | 2) {
+            self.vbxe_colors(position, y)
+        } else {
+            None
+        };
         let empty = Pixel {
             players: 0,
             playfield: 0,
             luminance: None,
             nibble,
+            vbxe,
+            ink: None,
         };
         match (mode, byte) {
             (0, None) | (1 | 3, _) => empty,
@@ -160,11 +205,24 @@ impl Picture<'_> {
                 };
                 Pixel { playfield, ..empty }
             }
-            (0, Some((byte, _))) => Pixel {
-                playfield: 4,
-                luminance: (byte >> (7 - bit) & 1 != 0).then_some(colors.playfield[1] & 0x0f),
-                ..empty
-            },
+            (0, Some((byte, _))) => {
+                let set = byte >> (7 - bit) & 1 != 0;
+                if let Some([_, pf1, _]) = vbxe {
+                    // Set pixels show COLPF1's VBXE colour whatever is
+                    // above them; the rest is COLPF2 for the priorities.
+                    Pixel {
+                        playfield: 4,
+                        ink: set.then_some(pf1),
+                        ..empty
+                    }
+                } else {
+                    Pixel {
+                        playfield: 4,
+                        luminance: set.then_some(colors.playfield[1] & 0x0f),
+                        ..empty
+                    }
+                }
+            }
             // GTIA mode 10 selects registers through the priority logic.
             _ => match nibble {
                 0..=3 => Pixel {
@@ -178,6 +236,15 @@ impl Picture<'_> {
                 _ => empty,
             },
         }
+    }
+
+    /// The VBXE colours of the cell at pixel `position` of scanline `y`.
+    fn vbxe_colors(&self, position: isize, y: usize) -> Option<[u8; 3]> {
+        let column = usize::try_from(position.div_euclid(8)).ok()?;
+        if column >= self.columns {
+            return None;
+        }
+        Some(self.vbxe.as_ref()?.colors(column, y))
     }
 
     /// The byte at pixel `position` of the screen data on scanline `y`
@@ -210,4 +277,8 @@ struct Pixel {
     luminance: Option<u8>,
     /// The GTIA mode 9-11 pixel.
     nibble: u8,
+    /// The VBXE colours of the pixel's cell, if it has any.
+    vbxe: Option<[u8; 3]>,
+    /// An ANTIC 2 set pixel's VBXE colour, which replaces the result.
+    ink: Option<u8>,
 }

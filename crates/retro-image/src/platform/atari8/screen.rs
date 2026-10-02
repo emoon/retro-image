@@ -78,7 +78,7 @@ pub(super) const OS_COLORS: [u8; 4] = [0x00, 0x28, 0xca, 0x94];
 pub(super) const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
 
 /// Splits a dump of whole 40-byte lines (1 to 240) from the bytes after them.
-fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
+pub(super) fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
     let lines = data.len() / LINE;
     if !(1..=MAX_LINES).contains(&lines) {
         return Err(DecodeError::Unrecognized);
@@ -88,7 +88,7 @@ fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
 }
 
 /// A bitmap of whole `bytes_per_line` lines; trailing bytes are ignored.
-fn bitmap(data: &[u8], bytes_per_line: usize, bits: u8) -> Bitmap<'_> {
+pub(super) fn bitmap(data: &[u8], bytes_per_line: usize, bits: u8) -> Bitmap<'_> {
     Bitmap {
         data,
         bytes_per_line,
@@ -98,7 +98,7 @@ fn bitmap(data: &[u8], bytes_per_line: usize, bits: u8) -> Bitmap<'_> {
 }
 
 /// `data` if it is exactly `len` bytes long.
-fn exactly(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
+pub(super) fn exactly(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     if data.len() == len {
         Ok(data)
     } else {
@@ -107,7 +107,7 @@ fn exactly(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
 }
 
 /// ANTIC mode F (Graphics 8): 1 bit per pixel, background and foreground.
-fn hires(bitmap: Bitmap<'_>, background: u32, foreground: u32) -> Image {
+pub(super) fn hires(bitmap: Bitmap<'_>, background: u32, foreground: u32) -> Image {
     bitmap.render(
         1,
         1,
@@ -118,7 +118,12 @@ fn hires(bitmap: Bitmap<'_>, background: u32, foreground: u32) -> Image {
 }
 
 /// 2 bits per pixel (Graphics 3, 7, 15) indexing background, playfield 0-2.
-fn four_color(bitmap: Bitmap<'_>, pixel_width: u32, pixel_height: u32, colors: [u8; 4]) -> Image {
+pub(super) fn four_color(
+    bitmap: Bitmap<'_>,
+    pixel_width: u32,
+    pixel_height: u32,
+    colors: [u8; 4],
+) -> Image {
     Bitmap { bits: 2, ..bitmap }.render(pixel_width, pixel_height, |_, value| {
         register_rgb(colors[usize::from(value)])
     })
@@ -131,7 +136,7 @@ pub(super) fn gtia9(bitmap: Bitmap<'_>, background: u8) -> Image {
 }
 
 /// GTIA mode 10: values index registers 704-712.
-fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
+pub(super) fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
     Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
         register_rgb(registers[gtia10_register(value)])
     })
