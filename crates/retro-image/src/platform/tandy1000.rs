@@ -5,8 +5,7 @@
 //!   MIT licence): signature `$13 "PNT"`, pixels from offset 22, 312x176 at
 //!   4 bits per pixel (high nibble first), stored raw or as (value, count)
 //!   byte pairs.
-//! - Palette: observed from `recoil2png` output, except colours 5 and 13,
-//!   which no sample uses (guessed as magentas).
+//! - Palette: observed from `recoil2png` output.
 
 use alloc::vec::Vec;
 
@@ -14,8 +13,8 @@ use crate::{DecodeError, Format, Image};
 
 /// DeskMate's 16 colours.
 const PALETTE: [u32; 16] = [
-    0x000000, 0x000099, 0x009900, 0x339999, 0x990000, 0x990099, 0xcc6600, 0x999999, 0x996633,
-    0x6633ff, 0x33cc00, 0x66cccc, 0xffcccc, 0xff66ff, 0xffff00, 0xffffff,
+    0x000000, 0x000099, 0x009900, 0x339999, 0x990000, 0xcc33cc, 0xcc6600, 0x999999, 0x996633,
+    0x6633ff, 0x33cc00, 0x66cccc, 0xffcccc, 0xff99ff, 0xffff00, 0xffffff,
 ];
 
 pub(super) static FORMATS: &[Format] = &[Format::new(
