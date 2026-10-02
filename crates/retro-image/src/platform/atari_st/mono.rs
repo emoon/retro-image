@@ -1,5 +1,6 @@
-//! Compressed monochrome formats: Public Painter (`CMP`), STAD (`PAC`),
-//! MegaPaint (`BLD`) and Calamus Raster Graphic (`CRG`).
+//! Monochrome formats: Public Painter (`CMP`), STAD (`PAC`), MegaPaint
+//! (`BLD`), DEGAS Elite fonts (`FNT`) and brushes (`BRU`), and Calamus
+//! Raster Graphic (`CRG`).
 //!
 //! Sources:
 //! - STAD: <https://temlib.org/AtariForumWiki/index.php/STAD_file_format>
@@ -133,6 +134,43 @@ fn decode_bld_inner(data: &[u8]) -> Option<Image> {
         body.get(..len)?.to_vec()
     };
     mono_image(&bitmap, width as u32, height as u32, row_len)
+}
+
+/// DEGAS Elite 8x16 font: 128 (or 256) characters of 16 bytes, optionally
+/// followed by a flag word; shown as a sheet 32 characters wide.
+/// Source: <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Font_file_format>;
+/// the 256-character size and the sheet layout are observed from
+/// `recoil2png` output.
+pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
+    let chars = match data.len() {
+        2048 | 2050 => 128,
+        4096 | 4098 => 256,
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    let rows = chars / 32;
+    let mut bitmap = alloc::vec![0u8; chars * 16];
+    for (c, glyph) in data[..chars * 16].chunks_exact(16).enumerate() {
+        for (line, &bits) in glyph.iter().enumerate() {
+            // Set bits are white (observed from `recoil2png` output).
+            bitmap[(c / 32 * 16 + line) * 32 + c % 32] = !bits;
+        }
+    }
+    mono_image(&bitmap, 256, (rows * 16) as u32, 32).ok_or(DecodeError::Unrecognized)
+}
+
+/// DEGAS Elite brush: 8x8 pixels, one byte (0 or 1) each.
+/// Source: <http://fileformats.archiveteam.org/wiki/DEGAS_Elite_brush> (size);
+/// the byte-per-pixel layout is derived from the sample file.
+pub(super) fn decode_bru(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 64 || data.iter().any(|&b| b > 1) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(8, 8);
+    for (i, &b) in data.iter().enumerate() {
+        // Set pixels are white (observed from `recoil2png` output).
+        image.set(i as u32 % 8, i as u32 / 8, u32::from(b) * 0xffffff);
+    }
+    Ok(image)
 }
 
 /// Calamus Raster Graphic: 42-byte header, byte RLE.

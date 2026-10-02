@@ -120,6 +120,8 @@ pub(super) static FORMATS: &[Format] = &[
     st("PL4", &["pl4"], blend::decode_pl4),
     st("QuantumPaint", &["pbx"], quantumpaint::decode_pbx),
     st("MegaPaint", &["bld"], mono::decode_bld),
+    st("DEGAS Elite font", &["fnt"], mono::decode_fnt),
+    st("DEGAS Elite brush", &["bru"], mono::decode_bru),
     st(
         "Paintworks",
         &[
