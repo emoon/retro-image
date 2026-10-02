@@ -41,7 +41,9 @@ use alloc::vec::Vec;
 
 use crate::{DecodeError, Image};
 
-const MAX_COLORS: usize = 512;
+/// The format allows 512, but `Image` palettes hold 256; larger icons fall
+/// back to the classic image.
+const MAX_COLORS: usize = 256;
 
 /// Decodes the `IM1=` lines among `tool_types`; transparent pixels get
 /// `background`.
@@ -71,9 +73,8 @@ pub(super) fn decode(tool_types: &[&[u8]], background: u32) -> Result<Image, Dec
     let mut palette: Vec<u32> = rgb
         .chunks_exact(3)
         .map(|c| c[0] << 16 | c[1] << 8 | c[2])
-        .take(256)
         .collect();
-    palette.resize(256, 0);
+    palette.resize(MAX_COLORS, 0);
     if transparent {
         palette[0] = background;
     }

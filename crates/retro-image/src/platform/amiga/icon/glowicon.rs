@@ -7,7 +7,7 @@
 //!   (0 one byte per entry, 1 run-length), bits per pixel, image and palette
 //!   byte counts - 1, image data, then RGB palette; the run-length scheme is
 //!   ByteRun1 over a bit stream of `depth`-bit pixels or 8-bit palette
-//!   bytes): Dirk Stöcker, "Amiga Icon Format" (2002), OS3.5 extension
+//!   bytes, with control byte 128 a no-op): Dirk Stöcker, "Amiga Icon Format" (2002), OS3.5 extension
 //!   section (<http://www.evillabs.net/index.php/Amiga_Icon_Formats>).
 //! - Palette entries the palette data doesn't define are black: Deark's
 //!   `modules/amigaicon.c` (<https://github.com/jsummers/deark>, MIT
