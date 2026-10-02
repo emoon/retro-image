@@ -289,7 +289,16 @@ pub(super) fn decode_advanced_art_studio(data: &[u8]) -> Result<Image, DecodeErr
     ADVANCED_ART_STUDIO.decode(data)
 }
 
+/// Saracen Paint: `$7800-$9FE8`. Some files stop at `$9F1F`, before the
+/// last five rows of colour RAM; one such sample is a byte-exact prefix of
+/// a full file whose missing tail is all zeros, so the tail is zero-filled.
 pub(super) fn decode_saracen_paint(data: &[u8]) -> Result<Image, DecodeError> {
+    const SHORT_LEN: usize = 2 + 0x9f20 - 0x7800;
+    if data.len() == SHORT_LEN && data[..2] == [0x00, 0x78] {
+        let mut full = data.to_vec();
+        full.resize(SARACEN_PAINT.sizes[0], 0);
+        return SARACEN_PAINT.decode(&full);
+    }
     SARACEN_PAINT.decode(data)
 }
 
