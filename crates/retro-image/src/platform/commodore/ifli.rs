@@ -15,8 +15,9 @@
 //! | Flash FLI (FFLI), Big FLI (BFLI) | Pasi Ojala's `ffli.doc`, `bfli.doc` and "BFLI - New graphics modes 2" (linecrunch counter wrap-around) in C64Gfx, <http://www.zimmers.net/anonftp/pub/cbm/crossplatform/graphics/Amiga/C64Gfx.lha> (documentation only) |
 //!
 //! Observed from `recoil2png` output: the second frame of the multicolour
-//! formats is shown one pixel to the right; Gunpaint and Funpaint use a
-//! black background (their `$D021` tables are unused here).
+//! formats is shown one pixel to the right, so the FLI bug's background
+//! enters the first visible column; Gunpaint's `$D021` table is split
+//! between `$7F4F` (177 lines) and `$87E8`; Funpaint uses black.
 
 use super::fli::{Bg, Fli};
 use super::prg::Prg;
@@ -50,7 +51,7 @@ impl Ifli {
             .zip(second.frame(&prg))
             .ok_or(DecodeError::Unrecognized)?;
         let second = if self.shift {
-            second.shift_right()
+            second.shift_right(0)
         } else {
             second
         };
@@ -75,10 +76,17 @@ const GUNPAINT: Ifli = Ifli {
     load: 0x4000,
     sizes: &[33603],
     frames: [
-        fli(0x6000, 0x4000, Some(0x8000), Bg::Black),
-        fli(0xa400, 0x8400, Some(0x8000), Bg::Black),
+        fli(0x6000, 0x4000, Some(0x8000), GUNPAINT_BACKGROUND),
+        fli(0xa400, 0x8400, Some(0x8000), GUNPAINT_BACKGROUND),
     ],
     shift: true,
+};
+
+/// 177 entries at `$7F4F`, the rest at `$87E8`.
+const GUNPAINT_BACKGROUND: Bg = Bg::SplitTable {
+    first: 0x7f4f,
+    len: 177,
+    rest: 0x87e8,
 };
 
 pub(super) fn decode_gunpaint(data: &[u8]) -> Result<Image, DecodeError> {

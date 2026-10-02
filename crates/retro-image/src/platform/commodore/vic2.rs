@@ -72,7 +72,7 @@ pub(super) enum Background<'a> {
 }
 
 impl Background<'_> {
-    fn get(&self, y: usize) -> u8 {
+    pub(super) fn get(&self, y: usize) -> u8 {
         match *self {
             Self::Fixed(color) => color,
             Self::PerLine(table) => table.get(y).or(table.last()).copied().unwrap_or(0),
@@ -195,13 +195,20 @@ impl Frame {
         self
     }
 
-    /// Moves the picture one pixel right; black enters at the left edge.
-    pub(super) fn shift_right(mut self) -> Self {
+    /// Moves the picture one pixel right; `fill` enters at the left edge.
+    pub(super) fn shift_right(mut self, fill: u8) -> Self {
         for row in self.pixels.chunks_exact_mut(WIDTH) {
             row.copy_within(..WIDTH - 1, 1);
-            row[0] = 0;
+            row[0] = fill;
         }
         self
+    }
+
+    /// Paints the leftmost `width` pixels of each line `y` in `color(y)`.
+    pub(super) fn fill_left(&mut self, width: usize, color: impl Fn(usize) -> u8) {
+        for (y, row) in self.pixels.chunks_exact_mut(WIDTH).enumerate() {
+            row[..width].fill(color(y));
+        }
     }
 
     pub(super) fn get(&self, x: usize, y: usize) -> u8 {
