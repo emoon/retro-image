@@ -11,7 +11,9 @@
 //!   readme (<https://github.com/uniskie/MSX_MISC_TOOLS/tree/main/GSRLE>).
 //! - Observed from `recoil2png` output: picture height follows the amount of
 //!   data (up to 212 lines); 512-wide modes are output with doubled lines; a
-//!   missing or all-zero palette table selects the default palette; Graph Saurus
+//!   bitmap dump uses its palette table whenever the table is complete, a
+//!   Screen 2-4 dump only when it is not all zeros, otherwise the default
+//!   palette applies; Screen 10/11 dumps without a palette are rejected; Graph Saurus
 //!   pages ignore the palette table; Screen 3 dumps that stop before the name
 //!   table use the BASIC default name table; `SHx` files decode like `GLx`, and
 //!   `GLA`/`GLB`/`SHA`/`SHB` hold YAE pixels (synthesized files).
@@ -220,7 +222,12 @@ fn bsave_body(data: &[u8]) -> Option<&[u8]> {
 /// BSAVE dump of a bitmap screen.
 pub(super) fn decode_bitmap_dump(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeError> {
     let body = bsave_body(data).ok_or(DecodeError::Unrecognized)?;
-    render_bitmap(mode, &Vram::new(body), true)
+    let vram = Vram::new(body);
+    // YAE pictures are only accepted with their palette.
+    if mode == Bitmap::Yae && vram.palette(0xfa80, 16).is_none() {
+        return Err(DecodeError::Unrecognized);
+    }
+    render_bitmap(mode, &vram, true)
 }
 
 /// Graph Saurus page: a BSAVE-like header, `FE` for raw data or `FD` for RLE.
@@ -296,10 +303,13 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
     if vram.loaded() < minimum {
         return Err(DecodeError::Unrecognized);
     }
-    let palette = vram.palette(palette_table, 16).unwrap_or(match mode {
-        Tiled::Graphic3 => vdp::MSX2_PALETTE,
-        _ => vdp::MSX1_PALETTE,
-    });
+    let palette = vram
+        .palette(palette_table, 16)
+        .filter(|_| !vram.is_zero(palette_table, 32))
+        .unwrap_or(match mode {
+            Tiled::Graphic3 => vdp::MSX2_PALETTE,
+            _ => vdp::MSX1_PALETTE,
+        });
     if mode == Tiled::Multicolour && vram.loaded() <= 0x800 {
         // BASIC's name table: each pattern covers 4 character rows.
         for i in 0..0x300 {

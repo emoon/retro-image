@@ -56,15 +56,15 @@ impl Vram {
         self.data[address & (Self::SIZE - 1)] = value;
     }
 
-    /// Whether `len` bytes from `address` were loaded and are not all zero.
-    fn has_nonzero(&self, address: usize, len: usize) -> bool {
-        address + len <= self.loaded && self.data[address..address + len].iter().any(|&b| b != 0)
+    /// Whether `len` bytes from `address` are all zero.
+    pub(super) fn is_zero(&self, address: usize, len: usize) -> bool {
+        (address..address + len).all(|a| self.get(a) == 0)
     }
 
     /// The `count`-entry palette table at `address`, or `None` if the dump
-    /// stops before it or it is all zeros (an unset palette).
+    /// stops before its end.
     pub(super) fn palette(&self, address: usize, count: usize) -> Option<Palette> {
-        if !self.has_nonzero(address, count * 2) {
+        if address + count * 2 > self.loaded {
             return None;
         }
         let mut palette = [0; 16];
