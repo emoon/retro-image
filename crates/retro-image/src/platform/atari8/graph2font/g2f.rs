@@ -29,7 +29,7 @@
 //!   end+139201  bit 6: split inverse; low 2 bits 3: inverse ANTIC 4
 //!               cells don't use COLPF3 (1 and 2 do)
 //!   end+145216  30 row modes: 1 ANTIC 2, 2 ANTIC 4, 4 GTIA, 0xFF blank
-//!   end+146753  1: VBXE colour attributes follow (not supported here)
+//!   end+146753  1: VBXE colour attributes follow (see below)
 //!   end+284997  30 rows of W bytes, bit 7: inverse of the bottom half
 //!   ```
 //!
@@ -39,8 +39,24 @@
 //!   2: 1, 3: 8, 4: 0) even when it is off, player 1's bit 4 is the fifth
 //!   player and bit 5 multicolour players. Files end right after the row
 //!   modes at the shortest; the later fields are read when present.
+//!
+//! VBXE colour attributes (wave 4; athena, sergeantseymour-robotcop and
+//! Blinkys, probed by changing one byte at a time and comparing the
+//! `recoil2png` renders, then checked on random synthetic files): when the
+//! flag at end+146753 is 1 and the inflated data holds 138242 more bytes, they
+//! start there as 48 columns of 240 records of 12 bytes. The first two bytes
+//! are 8 (column width, required) and the number of scanlines a record
+//! covers (1-255, normally 8). A 40-column screen is the middle 40 columns
+//! of the 48. Bytes 4, 6 and 8 of a record are the colours that replace
+//! COLPF0, COLPF1 and COLPF2 for that column and those scanlines, as full
+//! colour values (luminance bit 0 counts); the other bytes make no
+//! difference. COLBK, COLPF3 (inverse ANTIC 4 pixels), the players and the
+//! priorities work as without attributes, and GTIA modes 9 and 11 don't use the
+//! attributes. In ANTIC 2 rows the set pixels are COLPF1's colour whatever is
+//! above them and the rest counts as COLPF2. A flag other than 0 or 1 is
+//! rejected; a flag of 1 with less data than that is ignored.
 
-use super::{LINES, Line, Picture, ROWS, Row};
+use super::{LINES, Line, Picture, ROWS, Row, Vbxe};
 use crate::platform::atari8::gtia::Pmg;
 use crate::platform::atari8::inflate;
 use crate::{DecodeError, Image};
@@ -54,13 +70,30 @@ const OPTIONS: usize = 139201;
 const ROW_MODES: usize = 145216;
 const VBXE: usize = 146753;
 const LOWER_INVERSE: usize = 284997;
+/// Screen columns of the VBXE attribute array, and its size: the records and
+/// 2 more bytes.
+const VBXE_COLUMNS: usize = 48;
+const VBXE_LENGTH: usize = 2 + VBXE_COLUMNS * LINES * 12;
 
 pub(in crate::platform::atari8) fn decode_g2f(data: &[u8]) -> Result<Image, DecodeError> {
+    decode(data, false)
+}
+
+/// A G2F with VBXE colour attributes.
+pub(in crate::platform::atari8) fn decode_g2f_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
+    decode(data, true)
+}
+
+fn decode(data: &[u8], vbxe: bool) -> Result<Image, DecodeError> {
     let packed = data
         .strip_prefix(b"G2FZLIB")
         .ok_or(DecodeError::Unrecognized)?;
     let raw = inflate::zlib(packed, MAX_INFLATED).ok_or(DecodeError::Unrecognized)?;
-    Ok(parse(&raw).ok_or(DecodeError::Unrecognized)?.render())
+    let picture = parse(&raw).ok_or(DecodeError::Unrecognized)?;
+    if picture.vbxe.is_some() != vbxe {
+        return Err(DecodeError::Unrecognized);
+    }
+    Ok(picture.render())
 }
 
 fn parse(raw: &[u8]) -> Option<Picture<'_>> {
@@ -94,10 +127,21 @@ fn parse(raw: &[u8]) -> Option<Picture<'_>> {
     if !matches!(options & 0x3f, 1..=3) || (split && (options & 0x3f != 2 || lower.is_none())) {
         return None;
     }
-    // VBXE colour attributes aren't decoded.
-    if tail.get(VBXE).is_some_and(|&vbxe| vbxe != 0) {
-        return None;
-    }
+    let vbxe = match tail.get(VBXE) {
+        Some(0) | None => None,
+        // A file too short for the whole attribute array is shown without
+        // attributes.
+        Some(1) => match tail.get(VBXE + 1..VBXE + 1 + VBXE_LENGTH) {
+            Some(records @ &[8, height @ 1..=255, ..]) => Some(Vbxe {
+                records,
+                first_column: (VBXE_COLUMNS - columns) / 2,
+                height: usize::from(height),
+            }),
+            Some(_) => return None,
+            None => None,
+        },
+        Some(_) => return None,
+    };
     let mut rows = [Row {
         antic4: false,
         gtia: 0,
@@ -142,6 +186,7 @@ fn parse(raw: &[u8]) -> Option<Picture<'_>> {
         glyphs,
         split,
         antic4_inverse: options & 3 != 3,
+        vbxe,
         lines,
     })
 }
@@ -247,6 +292,33 @@ mod tests {
         assert_eq!(image.get(10, 0), rgb(0x46));
         assert_eq!(image.get(12, 0), rgb(0x88));
         assert_eq!(image.get(14, 0), rgb(0xca));
+    }
+
+    #[test]
+    fn vbxe_attributes_replace_playfield_colors() {
+        let mut raw = raw();
+        raw.resize(END + VBXE + 1 + VBXE_LENGTH, 0);
+        raw[END + VBXE] = 1;
+        let records = END + VBXE + 1;
+        raw[records..records + 2].copy_from_slice(&[8, 8]);
+        // Column 0 of a 40-column screen is column 4 of the array.
+        let record = records + 4 * 240 * 12;
+        for (field, color) in [(4, 0x22), (6, 0x44), (8, 0x66)] {
+            raw[record + field] = color;
+        }
+        raw[3] = 1; // cell 0: character 1
+        raw[3 + 1200 + 8] = 0b0001_1011; // character 1, scanline 0
+        let data = g2f(&raw);
+        // Not a plain G2F, but a VBXE one.
+        assert!(decode_g2f(&data).is_err());
+        let image = decode_g2f_vbxe(&data).unwrap();
+        assert_eq!(image.get(8, 0), rgb(0x00));
+        assert_eq!(image.get(10, 0), rgb(0x22));
+        assert_eq!(image.get(12, 0), rgb(0x44));
+        assert_eq!(image.get(14, 0), rgb(0x66));
+        // Without the whole array the flag is ignored.
+        raw.pop();
+        assert!(decode_g2f(&g2f(&raw)).is_ok());
     }
 
     #[test]

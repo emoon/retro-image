@@ -72,6 +72,7 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
         codes,
         glyphs: cells.chunks_exact(9).map(|cell| &cell[1..]).collect(),
         antic4_inverse: true,
+        vbxe: None,
         lines,
     };
     Ok(picture.render())

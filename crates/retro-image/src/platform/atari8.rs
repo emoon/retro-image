@@ -23,6 +23,7 @@ mod portfolio;
 mod rom_font;
 mod screen;
 mod sfdn;
+mod shapes;
 mod technicolor;
 mod text;
 mod tip;
@@ -261,4 +262,18 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "PMG Designer", &["pmd"], pmg::decode_pmd).signature(),
     Format::new(ATARI8, "Envision", &["map"], envision::decode_map),
     Format::new(ATARI8, "EnvisionPC", &["map"], envision::decode_map_pc),
+    Format::new(
+        ATARI8,
+        "Movie Maker shapes",
+        &["shp"],
+        shapes::decode_movie_maker,
+    ),
+    // Wave 4: Graph2Font VBXE
+    Format::new(
+        VBXE,
+        "Graph2Font VBXE",
+        &["g2f"],
+        graph2font::decode_g2f_vbxe,
+    )
+    .signature(),
 ];
