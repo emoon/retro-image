@@ -9,14 +9,12 @@
 //! - Only the first bitmap is shown, set bit = black: observed from
 //!   `recoil2png` output.
 
+use alloc::vec::Vec;
+
 use crate::{DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] = &[Format::new(
-    "Psion Series 3",
-    "mono",
-    &["pic", "icn"],
-    decode_pic,
-)];
+pub(super) static FORMATS: &[Format] =
+    &[Format::new("Psion Series 3", "mono", &["pic", "icn"], decode_pic).signature()];
 
 fn le16(b: &[u8]) -> usize {
     usize::from(u16::from_le_bytes([b[0], b[1]]))
@@ -24,7 +22,8 @@ fn le16(b: &[u8]) -> usize {
 
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
-    if data.len() < 20 || data[..4] != *b"PIC\xdc" || le16(&data[6..8]) == 0 {
+    // "PIC" $DC, then format version "00".
+    if data.len() < 20 || data[..6] != *b"PIC\xdc00" || le16(&data[6..8]) == 0 {
         return Err(fail);
     }
     let record = &data[8..20];
@@ -36,12 +35,8 @@ fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 {
         return Err(fail);
     }
-    let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let set = pixels[y * row_len + x / 8] >> (x % 8) & 1 != 0;
-            image.set(x as u32, y as u32, if set { 0 } else { 0xffffff });
-        }
-    }
-    Ok(image)
+    let indices: Vec<u8> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| pixels[y * row_len + x / 8] >> (x % 8) & 1))
+        .collect();
+    Image::from_indexed(width as u32, height as u32, &indices, &[0xffffff, 0])
 }
