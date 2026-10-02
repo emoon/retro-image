@@ -391,3 +391,38 @@ New since wave 1 (all checked against `recoil2png` unless listed as a divergence
   sergeantseymour-robotcop, Blinkys; 12-byte records per character column and row
   from end+146754), VSC (a text list of G2F file names, which the companion API, keyed
   by extension, can't fetch).
+
+## 9.x Wave 4: small and packed screens
+
+Everything here was reverse engineered from the corpus samples and from hand-made files fed
+to `recoil2png` (black box); the modules `misc_screen.rs`, `packed.rs` and `text_art.rs` list the
+sources and layouts. All corpus samples match RECOIL; no divergences recorded.
+
+- **Raw screens** (`misc_screen.rs`): TXS (6-byte `FF FF 00 06 FF 06` header, 256 grey levels
+  0-15, 16x16 drawn 4x4), FGE (6 unchecked header bytes, 64x40 greys, 4x4), KFX 56x60 and CUT 96x99
+  (bare 1-bit bitmaps, black and `0E`), GR9P (2400 bytes, 80x60 greys, 4x4), RYS (3840 bytes,
+  Graphics 7 in the OS colours), KSS (6400 + 4 colour bytes, 160x160), GHG (LE16 width 1-320,
+  height 1-200, 1-bit lines; bit 0 = `0C`, bit 1 = `02`), PI8 (7680 = Graphics 15 in greys, 7685 =
+  Graphics 8 plus 5 ignored bytes), PI9 (7684/7808/7936 = Graphics 9 with an ignored tail, 7720 =
+  interleaved APAC). Two PI9 samples sit in the Atari ST directory but are 8-bit files.
+- **ART** has three variants and is also an Atari ST/Commodore extension. Atari 8-bit ones are
+  told apart by exact checks: Artist (3206 bytes, first byte 7, then registers 708-710, an unused
+  byte, 712, 80 Graphics 7 lines), monochrome (width-1, height-1, bitmap, one spare byte; width at
+  most 30 bytes, height at most 64; RECOIL tries it before the text variant), Ascii-Art Editor
+  (ATASCII lines ended by `9B`, at most 24 lines of 64, ROM font). ST files (32000+ bytes) fail all
+  three.
+- **ALL** (Graph): 24 per-row font numbers, `n` 1024-byte fonts, 40x24 screen codes, COLOR0-3
+  and COLOR4, i.e. 989 + 1024 n bytes, ANTIC mode 4.
+- **AGS**: 16-byte header (`AGS`, mode, row bytes, LE16 height, 9 registers) plus two planes. Mode
+  `13` shows plane 1 as Graphics 9, 4x4. Mode `0B` shows two Graphics 15 frames on alternate
+  scanlines, each with its own register set.
+- **CPR** (Trzmiel): mode byte 1 or 2, then literal (`80|n`), run (`n v`) and long run (`00 hi lo v`)
+  tokens producing 7680 bytes. Mode 1 stores byte columns (even lines, then odd lines). A set bit is
+  black on `0C`. ROBO.CPR is one byte short, RECOIL rejects it and so do we.
+- **KPR**: binary-load header, `KB`, bands/cells/rows, tile map band by band, 8-byte tiles, in greys.
+- **Not done**: PIX (no Atari 8-bit sample; every PIX in the corpus is TRS-80 or another platform,
+  and RECOIL rejects zero-, random- and pattern-filled files of all sizes up to 12000 bytes, so the
+  header is unknown). HPM (Grass' Slideshow): the stream unpacks as `00 v n` runs and `n` literals
+  into 7680 bytes of Graphics 15 data, but the colours come from the bytes after it in a way that
+  depends on their value (only a handful of values give colours, the others give greys), which
+  samples alone cannot explain; DRAGON.HPM (19203 bytes) is a different program's format.
