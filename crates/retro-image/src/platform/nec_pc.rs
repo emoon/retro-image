@@ -4,6 +4,7 @@
 //! and Sharp X68000 modules reuse. Sources are listed per submodule; the
 //! platform survey is `docs/research/msx-japanese.md`.
 
+mod ebd;
 pub(super) mod maki;
 pub(super) mod pi;
 mod precision;
@@ -62,5 +63,6 @@ pub(super) static FORMATS: &[Format] = &[
     })
     .signature(),
     // Wave 5: Japanese
+    Format::new("NEC PC-98", "EBD", &["ebd"], ebd::decode_ebd),
     Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
 ];
