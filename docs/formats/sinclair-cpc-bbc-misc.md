@@ -550,4 +550,15 @@ Checked against corpus samples and `recoil2png` output (black box).
 - **BK BKS**: 16384 bytes mono (512x256, LSB left, rows doubled), plus one palette byte per screen for colour
   (BK-0011M palettes 0-15, colours observed from RECOIL); 2 screens blended.
 - **Vector-06C SPR**: compressed and in a scheme not recognised from the samples. Its only description sits in a
-  GPL archive, so it is not implemented.
+  GPL archive, so it is not implemented. (Solved from samples in wave 3, see below.)
+
+## 21. Findings from implementation (wave 3)
+
+Checked against corpus samples and `recoil2png` output (black box, including hand-made probe files).
+
+- **Vector-06C SPR**: 16 palette bytes (`BBGGGRRR`), then a run-length stream read *backwards* from the last byte
+  of the file: `0x80 | n` repeats the byte before it `n` times, `n` < 0x80 takes the `n` bytes before it. Output
+  fills the 32768-byte screen from its end, so the file's first plane holds the highest index bit. Each plane is
+  32 columns of 256 bytes, rows bottom to top. Decoding stops when the screen is full: bytes between the palette and
+  the stream (2 in every sample) and trailing zero padding (literals of 0) are ignored; RECOIL rejects a stream that
+  needs the palette bytes. Colours: red `round(r * 255 / 7)`, green `g * 36`, blue `b * 85`. 256x256 output.
