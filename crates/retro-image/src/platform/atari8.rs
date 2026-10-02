@@ -7,8 +7,10 @@
 
 mod antic;
 mod apac;
+mod blazing_paddles;
 mod colorview;
 mod cpi;
+mod envision;
 mod font;
 mod fwa;
 mod ged;
@@ -21,17 +23,20 @@ mod inflate;
 mod interlace;
 mod interlace2;
 mod koala;
+mod leo;
 mod mad_studio;
 mod mcs;
 mod misc_screen;
 mod packed;
 mod palette;
+mod pmg;
 mod portfolio;
 mod rambrandt;
 mod rip;
 mod rom_font;
 mod screen;
 mod sfdn;
+mod shapes;
 mod technicolor;
 mod text;
 mod text_art;
@@ -357,4 +362,54 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
     Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
     Format::new(ATARI8, "GED", &["ged"], ged::decode_ged),
+    // Wave 4: player/missile graphics, shapes, fonts and maps
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 missiles",
+        &["4mi"],
+        pmg::decode_4mi,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players",
+        &["4pl"],
+        pmg::decode_4pl,
+    ),
+    Format::new(
+        ATARI8,
+        "AtariTools-800 4 players and missiles",
+        &["4pm"],
+        pmg::decode_4pm,
+    ),
+    Format::new(ATARI8, "Atari Player Editor", &["apl"], pmg::decode_apl),
+    Format::new(ATARI8, "Ludek Maker", &["ldm"], pmg::decode_ldm).signature(),
+    Format::new(ATARI8, "Larka Edytor Obiektow", &["leo"], leo::decode_leo),
+    Format::new(ATARI8, "PMG Designer", &["pmd"], pmg::decode_pmd).signature(),
+    Format::new(ATARI8, "Envision", &["map"], envision::decode_map),
+    Format::new(ATARI8, "EnvisionPC", &["map"], envision::decode_map_pc),
+    Format::new(
+        ATARI8,
+        "Movie Maker shapes",
+        &["shp"],
+        shapes::decode_movie_maker,
+    ),
+    Format::new(
+        VBXE,
+        "Graph2Font VBXE",
+        &["g2f"],
+        graph2font::decode_g2f_vbxe,
+    )
+    .signature(),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles shape table",
+        &["shp"],
+        blazing_paddles::decode_shp,
+    ),
+    Format::new(
+        ATARI8,
+        "Blazing Paddles font",
+        &["chr"],
+        blazing_paddles::decode_chr,
+    ),
 ];
