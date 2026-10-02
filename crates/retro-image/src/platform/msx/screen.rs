@@ -20,6 +20,14 @@
 //!   drawn only for dumps of exactly 0x4000 (Screens 2/3), 0x4000 or more
 //!   (Screen 4), exactly 0x8000 (Screens 5/6) or exactly 0xFAA0 bytes (Screens
 //!   7-12 and Graph Saurus Screen 8; other Graph Saurus pages never).
+//! - Companion files, observed from `recoil2png` given the same files
+//!   (corpus sets and synthesized edge cases): Graph Saurus and `COPY`
+//!   pictures take their palette from the first 32 bytes (bank 0, V9938
+//!   register format) of `PL5`/`PL6`/`PL7`/`PLA` when the file has them, and
+//!   BSAVE dumps never do; an interlaced dump pairs `SCx` (even lines) with
+//!   `S1x` (odd lines), both in the even page's palette, without sprites,
+//!   256-wide modes doubled horizontally, and falls back to the even page
+//!   when the odd one is missing, invalid or shorter.
 //! - Reverse engineered from samples: Sunrise and msx.org Screen 12 dumps use
 //!   the extension `S12`; the MSX Photoshop Graphic Kit wrote a Screen 8 `PIC`
 //!   with its 7 header bytes zeroed (accepted only with exactly 212 lines).
@@ -27,7 +35,7 @@
 use alloc::vec::Vec;
 
 use super::vdp::{self, Palette, SpriteTables, Vram};
-use crate::{DecodeError, Image};
+use crate::{Companions, DecodeError, Image};
 
 /// Bitmap screen modes (V9938 Graphic 4 and up, V9958 YJK).
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -67,6 +75,29 @@ impl Bitmap {
         match self {
             Self::Graphic5 | Self::Graphic6 => image.scaled(1, 2),
             _ => image,
+        }
+    }
+
+    /// Companion file holding the odd lines of an interlaced dump.
+    fn interlace_extension(self) -> &'static str {
+        match self {
+            Self::Graphic4 => "s15",
+            Self::Graphic5 => "s16",
+            Self::Graphic6 => "s17",
+            Self::Graphic7 => "s18",
+            Self::Yae => "s1a",
+            Self::Yjk => "s1c",
+        }
+    }
+
+    /// Companion palette file of Graph Saurus and `COPY` pictures.
+    fn palette_extension(self) -> Option<&'static str> {
+        match self {
+            Self::Graphic4 => Some("pl5"),
+            Self::Graphic5 => Some("pl6"),
+            Self::Graphic6 => Some("pl7"),
+            Self::Yae => Some("pla"),
+            Self::Graphic7 | Self::Yjk => None,
         }
     }
 
@@ -162,26 +193,29 @@ fn draw_bitmap_sprites(mode: Bitmap, vram: &Vram, image: &mut Image, palette: &P
     }
 }
 
-/// Renders a bitmap-mode VRAM image.
-fn render_bitmap(mode: Bitmap, vram: &Vram, use_palette_table: bool) -> Result<Image, DecodeError> {
-    let width = mode.screen_width();
-    let bytes_per_line = width * mode.bits_per_pixel() / 8;
-    let height = (vram.loaded() / bytes_per_line).min(212);
+/// Complete lines in `vram`, up to 212.
+fn page_height(mode: Bitmap, vram: &Vram) -> usize {
+    let bytes_per_line = mode.screen_width() * mode.bits_per_pixel() / 8;
+    (vram.loaded() / bytes_per_line).min(212)
+}
+
+/// Renders one page of a bitmap-mode VRAM image, before line doubling.
+fn render_page(
+    mode: Bitmap,
+    vram: &Vram,
+    palette: &Palette,
+    sprites: bool,
+) -> Result<Image, DecodeError> {
+    let height = page_height(mode, vram);
     if height == 0 {
         return Err(DecodeError::Unrecognized);
     }
-    let palette = mode
-        .palette_table()
-        .filter(|_| use_palette_table)
-        .and_then(|(address, count)| vram.palette(address, count))
-        .unwrap_or_else(|| mode.default_palette());
-    let mut image = Image::new(width as u32, height as u32);
-    draw_packed(mode, vram.bytes(), &mut image, &palette);
-    // Graph Saurus pages show no sprites, except Screen 8 ones.
-    if use_palette_table || mode == Bitmap::Graphic7 {
-        draw_sprites_if_dumped(mode, vram, &mut image, &palette);
+    let mut image = Image::new(mode.screen_width() as u32, height as u32);
+    draw_packed(mode, vram.bytes(), &mut image, palette);
+    if sprites {
+        draw_sprites_if_dumped(mode, vram, &mut image, palette);
     }
-    Ok(mode.output(image))
+    Ok(image)
 }
 
 /// Draws sprites only for dumps of exactly 0x8000 (Screens 5/6) or 0xFAA0
@@ -218,31 +252,103 @@ fn zeroed_header_body(data: &[u8]) -> Option<&[u8]> {
     (header.iter().all(|&b| b == 0) && body.len() == GRAPHIC7_BITMAP).then_some(body)
 }
 
-/// BSAVE dump of a bitmap screen.
-pub(super) fn decode_bitmap_dump(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeError> {
-    let body = bsave_body(data)
-        .or_else(|| {
-            (mode == Bitmap::Graphic7)
-                .then(|| zeroed_header_body(data))
-                .flatten()
-        })
-        .ok_or(DecodeError::Unrecognized)?;
-    let vram = Vram::new(body);
-    // YAE pictures are only accepted with their palette.
-    if mode == Bitmap::Yae && vram.palette(0xfa80, 16).is_none() {
-        return Err(DecodeError::Unrecognized);
-    }
-    render_bitmap(mode, &vram, true)
+/// A BSAVE dump of a bitmap screen, with the palette it is shown in.
+struct Dump {
+    vram: Vram,
+    palette: Palette,
 }
 
-/// Graph Saurus page: a BSAVE-like header, `FE` for raw data or `FD` for RLE.
-pub(super) fn decode_graph_saurus(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeError> {
+impl Dump {
+    fn load(mode: Bitmap, data: &[u8]) -> Result<Self, DecodeError> {
+        let body = bsave_body(data)
+            .or_else(|| {
+                (mode == Bitmap::Graphic7)
+                    .then(|| zeroed_header_body(data))
+                    .flatten()
+            })
+            .ok_or(DecodeError::Unrecognized)?;
+        let vram = Vram::new(body);
+        let table = mode
+            .palette_table()
+            .and_then(|(address, count)| vram.palette(address, count));
+        // YAE pictures are only accepted with their palette.
+        if mode == Bitmap::Yae && table.is_none() {
+            return Err(DecodeError::Unrecognized);
+        }
+        let palette = table.unwrap_or_else(|| mode.default_palette());
+        Ok(Self { vram, palette })
+    }
+}
+
+/// BSAVE dump of a bitmap screen. An interlaced picture's odd lines are a
+/// second dump in the companion file `S1x` (`x` being the screen number),
+/// shown in the first dump's palette and without sprites, as observed from
+/// `recoil2png`; an odd page shorter than the even one is ignored.
+pub(super) fn decode_bitmap_dump(
+    mode: Bitmap,
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
+    let even = Dump::load(mode, data)?;
+    let odd = companions
+        .get(mode.interlace_extension())
+        .and_then(|odd| Dump::load(mode, &odd).ok())
+        .filter(|odd| page_height(mode, &odd.vram) >= page_height(mode, &even.vram));
+    match odd {
+        Some(odd) => {
+            let even_page = render_page(mode, &even.vram, &even.palette, false)?;
+            let odd_page = render_page(mode, &odd.vram, &even.palette, false)?;
+            Ok(interlace(mode, &even_page, &odd_page))
+        }
+        None => Ok(mode.output(render_page(mode, &even.vram, &even.palette, true)?)),
+    }
+}
+
+/// Interleaves the lines of two pages (the odd page may be longer), widening
+/// 256-pixel modes so that pixels keep their shape.
+fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Image {
+    let (width, height) = (even.width(), even.height());
+    let mut image = Image::new(width, height * 2);
+    for y in 0..height * 2 {
+        let page = if y % 2 == 0 { even } else { odd };
+        for x in 0..width {
+            image.set(x, y, page.get(x, y / 2));
+        }
+    }
+    match mode.screen_width() {
+        256 => image.scaled(2, 1),
+        _ => image,
+    }
+}
+
+/// The first 16 entries (bank 0) of a Graph Saurus palette file `PLx`, in
+/// the V9938 register format, if `companions` has one for `mode`.
+fn palette_file(mode: Bitmap, companions: &dyn Companions) -> Option<Palette> {
+    let data = companions.get(mode.palette_extension()?)?;
+    let table = data.get(..32)?;
+    let mut palette = [0; 16];
+    for (entry, bytes) in palette.iter_mut().zip(table.chunks_exact(2)) {
+        *entry = vdp::palette_entry(bytes[0], bytes[1]);
+    }
+    Some(palette)
+}
+
+/// Graph Saurus page: a BSAVE-like header, `FE` for raw data or `FD` for RLE,
+/// with its palette in the companion file `PLx`.
+pub(super) fn decode_graph_saurus(
+    mode: Bitmap,
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
     let vram = match data.first() {
         Some(0xfe) => Vram::new(bsave_body(data).ok_or(DecodeError::Unrecognized)?),
         Some(0xfd) if data.len() > 7 => Vram::new(&unpack_graph_saurus(&data[7..])),
         _ => return Err(DecodeError::Unrecognized),
     };
-    render_bitmap(mode, &vram, false)
+    let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
+    // Graph Saurus pages show no sprites, except Screen 8 ones.
+    let page = render_page(mode, &vram, &palette, mode == Bitmap::Graphic7)?;
+    Ok(mode.output(page))
 }
 
 /// Graph Saurus RLE: a byte of 16 or more is a literal, 1-15 repeats the next
@@ -269,7 +375,12 @@ fn unpack_graph_saurus(packed: &[u8]) -> Vec<u8> {
 }
 
 /// BASIC `COPY` file: width and height (LE16) followed by packed pixels.
-pub(super) fn decode_copy(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeError> {
+/// Its palette is in the companion file `PLx`, as for Graph Saurus.
+pub(super) fn decode_copy(
+    mode: Bitmap,
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
     let header = data.get(..4).ok_or(DecodeError::Unrecognized)?;
     let width = u16::from_le_bytes([header[0], header[1]]) as usize;
     let height = u16::from_le_bytes([header[2], header[3]]) as usize;
@@ -282,7 +393,8 @@ pub(super) fn decode_copy(mode: Bitmap, data: &[u8]) -> Result<Image, DecodeErro
         return Err(DecodeError::Unrecognized);
     }
     let mut image = Image::new(width as u32, height as u32);
-    draw_packed(mode, pixels, &mut image, &mode.default_palette());
+    let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
+    draw_packed(mode, pixels, &mut image, &palette);
     Ok(mode.output(image))
 }
 
@@ -379,6 +491,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::NoCompanions;
     use alloc::vec;
 
     #[test]
@@ -399,7 +512,7 @@ mod tests {
     fn screen5_height_follows_data() {
         let mut data = vec![0xfe, 0, 0, 0xff, 0xff, 0, 0];
         data.extend(core::iter::repeat_n(0x12, 128 * 3 + 5));
-        let image = decode_bitmap_dump(Bitmap::Graphic4, &data).unwrap();
+        let image = decode_bitmap_dump(Bitmap::Graphic4, &data, &NoCompanions).unwrap();
         assert_eq!((image.width(), image.height()), (256, 3));
         assert_eq!(&image.rgb()[..6], &[0, 0, 0, 0x24, 0xdb, 0x24]);
     }
@@ -408,22 +521,74 @@ mod tests {
     fn screen8_accepts_zeroed_header_only_when_complete() {
         let mut data = vec![0u8; 7 + GRAPHIC7_BITMAP];
         data[7] = 0xff;
-        let image = decode_bitmap_dump(Bitmap::Graphic7, &data).unwrap();
+        let image = decode_bitmap_dump(Bitmap::Graphic7, &data, &NoCompanions).unwrap();
         assert_eq!((image.width(), image.height()), (256, 212));
-        assert!(decode_bitmap_dump(Bitmap::Graphic7, &data[..data.len() - 1]).is_err());
-        assert!(decode_bitmap_dump(Bitmap::Graphic4, &data).is_err());
+        assert!(
+            decode_bitmap_dump(Bitmap::Graphic7, &data[..data.len() - 1], &NoCompanions).is_err()
+        );
+        assert!(decode_bitmap_dump(Bitmap::Graphic4, &data, &NoCompanions).is_err());
         data[3] = 1;
-        assert!(decode_bitmap_dump(Bitmap::Graphic7, &data).is_err());
+        assert!(decode_bitmap_dump(Bitmap::Graphic7, &data, &NoCompanions).is_err());
     }
 
     #[test]
     fn copy_file_doubles_wide_mode_lines() {
         let data = [2, 0, 1, 0, 0x1b];
-        let image = decode_copy(Bitmap::Graphic5, &data).unwrap();
+        let image = decode_copy(Bitmap::Graphic5, &data, &NoCompanions).unwrap();
         assert_eq!((image.width(), image.height()), (2, 2));
         assert_eq!(
-            decode_copy(Bitmap::Graphic5, &data[..4]),
+            decode_copy(Bitmap::Graphic5, &data[..4], &NoCompanions),
             Err(DecodeError::Unrecognized)
         );
+    }
+
+    /// Companion files keyed by extension.
+    struct Files<'a>(&'a [(&'a str, &'a [u8])]);
+
+    impl Companions for Files<'_> {
+        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+            let (_, data) = self.0.iter().find(|(e, _)| *e == extension)?;
+            Some(data.to_vec())
+        }
+    }
+
+    #[test]
+    fn copy_file_takes_bank_0_of_palette_file() {
+        let data = [2, 0, 1, 0, 0x10];
+        let mut palette = [0u8; 256];
+        palette[2..4].copy_from_slice(&[0x70, 0x07]); // colour 1: red 7, green 7
+        palette[32..34].copy_from_slice(&[0x07, 0]); // bank 1 is ignored
+        let image = decode_copy(Bitmap::Graphic4, &data, &Files(&[("pl5", &palette)])).unwrap();
+        assert_eq!(image.rgb(), &[0xff, 0xff, 0, 0, 0, 0]);
+        // Too short for 16 entries: the default palette applies.
+        let alone = decode_copy(Bitmap::Graphic4, &data, &NoCompanions).unwrap();
+        let short = Files(&[("pl5", &palette[..31])]);
+        assert_eq!(decode_copy(Bitmap::Graphic4, &data, &short), Ok(alone));
+    }
+
+    /// Screen 5 BSAVE dump of `lines` lines filled with `pixels`.
+    fn screen5(lines: usize, pixels: u8) -> Vec<u8> {
+        let end = (lines * 128 - 1) as u16;
+        let mut data = vec![0xfe, 0, 0];
+        data.extend(end.to_le_bytes());
+        data.extend([0, 0]);
+        data.extend(core::iter::repeat_n(pixels, lines * 128));
+        data
+    }
+
+    #[test]
+    fn interlaced_dump_interleaves_pages() {
+        let even = screen5(2, 0xff);
+        let odd = screen5(3, 0x22);
+        let image = decode_bitmap_dump(Bitmap::Graphic4, &even, &Files(&[("s15", &odd)])).unwrap();
+        assert_eq!((image.width(), image.height()), (512, 4));
+        assert_eq!(image.get(0, 0), vdp::MSX2_PALETTE[15]);
+        assert_eq!(image.get(511, 1), vdp::MSX2_PALETTE[2]);
+        assert_eq!(image.get(0, 3), vdp::MSX2_PALETTE[2]);
+        // A shorter odd page is ignored.
+        let short = screen5(1, 0x22);
+        let image =
+            decode_bitmap_dump(Bitmap::Graphic4, &even, &Files(&[("s15", &short)])).unwrap();
+        assert_eq!((image.width(), image.height()), (256, 2));
     }
 }
