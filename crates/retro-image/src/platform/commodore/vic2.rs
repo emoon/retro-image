@@ -1,0 +1,306 @@
+//! VIC-II building blocks shared by the C64 formats: palette, hires and
+//! multicolour bitmap rendering (optionally with per-line FLI screens and
+//! `$D021` tables) and interlace blending.
+//!
+//! Sources:
+//! - Bitmap, screen RAM and colour RAM semantics: Christian Bauer, "The MOS
+//!   6567/6569 video controller (VIC-II)", <https://www.cebix.net/VIC-Article.txt>,
+//!   and the C64 Programmer's Reference Guide.
+//! - Palette: Pepto's 2001 VIC-II palette,
+//!   <https://www.pepto.de/projects/colorvic/2001/>; that `recoil2png` uses it
+//!   was observed from its output.
+//! - Output conventions, observed from `recoil2png` output: images are
+//!   320 pixels wide with multicolour pixels doubled; FLI pictures drop the
+//!   leftmost 24 pixels (the FLI bug), giving 296; interlaced pictures are
+//!   the per-channel average of both frames.
+
+use crate::Image;
+use alloc::vec::Vec;
+
+/// Pepto's PAL VIC-II palette.
+const PALETTE: [u32; 16] = [
+    0x000000, 0xffffff, 0x68372b, 0x70a4b2, 0x6f3d86, 0x588d43, 0x352879, 0xb8c76f, 0x6f4f25,
+    0x433900, 0x9a6759, 0x444444, 0x6c6c6c, 0x9ad284, 0x6c5eb5, 0x959595,
+];
+
+pub(super) fn rgb(color: u8) -> u32 {
+    PALETTE[usize::from(color & 15)]
+}
+
+/// Width of a full C64 bitmap in hires pixels.
+pub(super) const WIDTH: usize = 320;
+/// Bytes of a 320×200 bitmap.
+pub(super) const BITMAP_LEN: usize = 8000;
+/// Bytes of a screen or colour RAM.
+pub(super) const SCREEN_LEN: usize = 1000;
+/// Leftmost pixels hidden by the FLI bug that `recoil2png` crops away.
+pub(super) const FLI_BUG: usize = 24;
+
+/// Where the per-line screen RAM comes from.
+#[derive(Clone, Copy)]
+pub(super) enum Screens<'a> {
+    /// One screen RAM for the whole picture.
+    Single(&'a [u8]),
+    /// FLI: eight screen RAMs, `stride` bytes apart; line `y` uses screen `y % 8`.
+    Fli { data: &'a [u8], stride: usize },
+}
+
+impl Screens<'_> {
+    fn get(&self, y: usize, cell: usize) -> u8 {
+        match *self {
+            Self::Single(data) => data[cell],
+            Self::Fli { data, stride } => data[(y & 7) * stride + cell],
+        }
+    }
+
+    fn fits(&self) -> bool {
+        match *self {
+            Self::Single(data) => data.len() >= SCREEN_LEN,
+            Self::Fli { data, stride } => {
+                stride >= SCREEN_LEN && data.len() >= 7 * stride + SCREEN_LEN
+            }
+        }
+    }
+}
+
+/// Background colour (`$D021`) source.
+#[derive(Clone, Copy)]
+pub(super) enum Background<'a> {
+    Fixed(u8),
+    /// One entry per pixel line; lines past the end use the last entry.
+    PerLine(&'a [u8]),
+}
+
+impl Background<'_> {
+    fn get(&self, y: usize) -> u8 {
+        match *self {
+            Self::Fixed(color) => color,
+            Self::PerLine(table) => table.get(y).or(table.last()).copied().unwrap_or(0),
+        }
+    }
+}
+
+/// The memory a VIC-II bitmap mode reads.
+#[derive(Clone, Copy)]
+pub(super) struct Bitmap<'a> {
+    /// 8 bytes per 8×8 cell, cells in row-major order.
+    pub bitmap: &'a [u8],
+    pub screens: Screens<'a>,
+    /// Colour RAM (multicolour only).
+    pub color: &'a [u8],
+    pub background: Background<'a>,
+}
+
+impl<'a> Bitmap<'a> {
+    pub(super) fn hires(bitmap: &'a [u8], screen: &'a [u8]) -> Self {
+        Self {
+            bitmap,
+            screens: Screens::Single(screen),
+            color: &[],
+            background: Background::Fixed(0),
+        }
+    }
+
+    pub(super) fn multicolor(
+        bitmap: &'a [u8],
+        screen: &'a [u8],
+        color: &'a [u8],
+        background: u8,
+    ) -> Self {
+        Self {
+            bitmap,
+            screens: Screens::Single(screen),
+            color,
+            background: Background::Fixed(background),
+        }
+    }
+
+    fn fits(&self, height: usize, multicolor: bool) -> bool {
+        let cells = height.div_ceil(8) * 40;
+        self.bitmap.len() >= cells * 8
+            && self.screens.fits()
+            && (!multicolor || self.color.len() >= SCREEN_LEN.min(cells))
+    }
+
+    fn byte(&self, x: usize, y: usize) -> (u8, usize) {
+        let cell = y / 8 * 40 + x / 8;
+        (self.bitmap[cell * 8 + y % 8], cell)
+    }
+
+    /// Hires colour of pixel (`x`, `y`): set bits use the screen's high nibble.
+    fn hires_pixel(&self, x: usize, y: usize) -> u8 {
+        let (byte, cell) = self.byte(x, y);
+        let screen = self.screens.get(y, cell);
+        if byte & (0x80 >> (x % 8)) != 0 {
+            screen >> 4
+        } else {
+            screen & 15
+        }
+    }
+
+    /// Multicolour colour of hires pixel (`x`, `y`) (each bit pair covers two).
+    fn multicolor_pixel(&self, x: usize, y: usize) -> u8 {
+        let (byte, cell) = self.byte(x, y);
+        match byte >> (6 - (x & 6)) & 3 {
+            0 => self.background.get(y),
+            1 => self.screens.get(y, cell) >> 4,
+            2 => self.screens.get(y, cell) & 15,
+            _ => self.color[cell] & 15,
+        }
+    }
+}
+
+/// A picture as C64 colour indices, 320 hires pixels wide.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Frame {
+    height: usize,
+    pixels: Vec<u8>,
+}
+
+impl Frame {
+    pub(super) fn new(height: usize) -> Self {
+        Self {
+            height,
+            pixels: alloc::vec![0; WIDTH * height],
+        }
+    }
+
+    pub(super) fn hires(bitmap: &Bitmap, height: usize) -> Option<Self> {
+        bitmap
+            .fits(height, false)
+            .then(|| Self::from_fn(height, |x, y| bitmap.hires_pixel(x, y)))
+    }
+
+    pub(super) fn multicolor(bitmap: &Bitmap, height: usize) -> Option<Self> {
+        bitmap
+            .fits(height, true)
+            .then(|| Self::from_fn(height, |x, y| bitmap.multicolor_pixel(x, y)))
+    }
+
+    pub(super) fn from_fn(height: usize, pixel: impl Fn(usize, usize) -> u8) -> Self {
+        let mut frame = Self::new(height);
+        for y in 0..height {
+            for x in 0..WIDTH {
+                frame.pixels[y * WIDTH + x] = pixel(x, y);
+            }
+        }
+        frame
+    }
+
+    /// Drops the top `lines` pixel lines.
+    pub(super) fn skip_lines(mut self, lines: usize) -> Self {
+        let lines = lines.min(self.height);
+        self.pixels.drain(..lines * WIDTH);
+        self.height -= lines;
+        self
+    }
+
+    /// Moves the picture one pixel right; black enters at the left edge.
+    pub(super) fn shift_right(mut self) -> Self {
+        for row in self.pixels.chunks_exact_mut(WIDTH) {
+            row.copy_within(..WIDTH - 1, 1);
+            row[0] = 0;
+        }
+        self
+    }
+
+    pub(super) fn get(&self, x: usize, y: usize) -> u8 {
+        self.pixels[y * WIDTH + x]
+    }
+
+    /// Converts to RGB, dropping the leftmost `crop` pixels.
+    pub(super) fn to_image(&self, crop: usize) -> Image {
+        to_image(crop, WIDTH - crop, self.height, |x, y| rgb(self.get(x, y)))
+    }
+
+    /// Converts the leftmost `width` pixels to RGB.
+    pub(super) fn to_image_width(&self, width: usize) -> Image {
+        to_image(0, width.min(WIDTH), self.height, |x, y| rgb(self.get(x, y)))
+    }
+
+    /// Blends two interlace frames into one picture, dropping the leftmost `crop` pixels.
+    pub(super) fn blend(&self, other: &Frame, crop: usize) -> Image {
+        let height = self.height.min(other.height);
+        to_image(crop, WIDTH - crop, height, |x, y| {
+            mix(rgb(self.get(x, y)), rgb(other.get(x, y)))
+        })
+    }
+}
+
+/// Per-channel average of two `0xRRGGBB` colours, rounding down.
+pub(super) fn mix(a: u32, b: u32) -> u32 {
+    ((a & 0xfefefe) >> 1) + ((b & 0xfefefe) >> 1) + (a & b & 0x010101)
+}
+
+fn to_image(
+    crop: usize,
+    width: usize,
+    height: usize,
+    pixel: impl Fn(usize, usize) -> u32,
+) -> Image {
+    let mut image = Image::new(width as u32, height as u32);
+    for y in 0..height {
+        for x in 0..width {
+            image.set(x as u32, y as u32, pixel(x + crop, y));
+        }
+    }
+    image
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multicolor_bit_pairs_select_sources() {
+        let mut bitmap = [0u8; BITMAP_LEN];
+        bitmap[0] = 0b00_01_10_11;
+        let screen = [0x23u8; SCREEN_LEN];
+        let color = [0x04u8; SCREEN_LEN];
+        let frame =
+            Frame::multicolor(&Bitmap::multicolor(&bitmap, &screen, &color, 5), 200).unwrap();
+        let row: Vec<u8> = (0..8).map(|x| frame.get(x, 0)).collect();
+        assert_eq!(row, [5, 5, 2, 2, 3, 3, 4, 4]);
+    }
+
+    #[test]
+    fn hires_uses_screen_nibbles() {
+        let mut bitmap = [0u8; BITMAP_LEN];
+        bitmap[8] = 0x80; // cell 1, first pixel
+        let screen = [0x61u8; SCREEN_LEN];
+        let frame = Frame::hires(&Bitmap::hires(&bitmap, &screen), 200).unwrap();
+        assert_eq!(frame.get(8, 0), 6);
+        assert_eq!(frame.get(9, 0), 1);
+    }
+
+    #[test]
+    fn fli_line_selects_screen() {
+        let bitmap = [0xffu8; BITMAP_LEN];
+        let mut screens = alloc::vec![0u8; 8 * 1024];
+        screens[3 * 1024] = 0x70;
+        let bitmap = Bitmap {
+            bitmap: &bitmap,
+            screens: Screens::Fli {
+                data: &screens,
+                stride: 1024,
+            },
+            color: &[],
+            background: Background::Fixed(0),
+        };
+        let frame = Frame::hires(&bitmap, 200).unwrap();
+        assert_eq!(frame.get(0, 3), 7);
+        assert_eq!(frame.get(0, 2), 0);
+    }
+
+    #[test]
+    fn short_data_is_rejected() {
+        let bitmap = [0u8; 100];
+        assert!(Frame::hires(&Bitmap::hires(&bitmap, &bitmap), 200).is_none());
+    }
+
+    #[test]
+    fn mix_averages_channels() {
+        assert_eq!(mix(0xffffff, 0x000000), 0x7f7f7f);
+        assert_eq!(mix(0x020406, 0x020406), 0x020406);
+    }
+}
