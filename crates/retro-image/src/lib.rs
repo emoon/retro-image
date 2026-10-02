@@ -4,7 +4,7 @@
 //!
 //! This file holds no external format knowledge: it is the public API.
 //! Each decoder module cites the documents its layouts come from; the
-//! platform surveys are in `docs/formats/`.
+//! platform surveys are in `docs/research/`.
 //!
 //! ```
 //! fn to_rgb(filename: &str, data: &[u8]) -> Result<Vec<u8>, retro_image::DecodeError> {

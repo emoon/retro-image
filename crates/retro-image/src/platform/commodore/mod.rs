@@ -1,7 +1,7 @@
 //! Commodore 64, VIC-20, C16/116/Plus4 and C128.
 //!
 //! Layout sources are listed per submodule; the platform survey is
-//! `docs/formats/commodore.md`.
+//! `docs/research/commodore.md`.
 //!
 //! Generic C64 pictures (`.vic`, listed at
 //! <http://fileformats.archiveteam.org/wiki/Commodore_graphics_formats>) are

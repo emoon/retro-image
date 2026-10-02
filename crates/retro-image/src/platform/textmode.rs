@@ -2,7 +2,7 @@
 //! iCE Draw, TundraDraw, PCBoard and Avatar. RECOIL doesn't decode these.
 //!
 //! This file only registers the formats. The documentation survey with
-//! every source per format is `docs/formats/textmode.md`; each submodule
+//! every source per format is `docs/research/textmode.md`; each submodule
 //! cites the sources of its own formats. SAUCE metadata is read by
 //! [`sauce`], cells are drawn by [`screen`] with the fonts in [`font`].
 //!

@@ -3,7 +3,7 @@
 //! Maki-chan and Pi pictures saved on the X68000 are decoded by the shared
 //! modules `nec_pc::maki` and `nec_pc::pi`; PIC, whose home is the X68000, is
 //! decoded here and shared with the FM Towns, PC-88 VA and MSX modules. Each
-//! module lists its sources. Platform survey: `docs/formats/msx-japanese.md`.
+//! module lists its sources. Platform survey: `docs/research/msx-japanese.md`.
 
 pub(super) mod pic;
 

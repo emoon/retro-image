@@ -11,7 +11,7 @@ derivative work, so every decoder must be written independently.
   release tarballs, forks, ports, or patches attached to its bug tracker.
 - Any other GPL/LGPL decoder (TRSE, SevenuP, view64, abydos, GrafX2, Altirra/Atari800 source,
   format198x, ...). The full list is in each platform file's "To avoid" section in
-  [docs/formats/](docs/formats/README.md).
+  [docs/research/](docs/research/README.md).
 - Code derived from RECOIL even if permissively licensed (e.g. stb_gemras).
 - Code with no licence, or an unverified one. Its prose documentation is fine.
 

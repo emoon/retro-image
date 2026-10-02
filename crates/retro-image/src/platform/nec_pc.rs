@@ -2,7 +2,7 @@
 //!
 //! Also home of the Japanese cross-platform formats (Maki-chan, Pi), which the MSX
 //! and Sharp X68000 modules reuse. Sources are listed per submodule; the
-//! platform survey is `docs/formats/msx-japanese.md`.
+//! platform survey is `docs/research/msx-japanese.md`.
 
 pub(super) mod maki;
 pub(super) mod pi;

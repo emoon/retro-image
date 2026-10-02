@@ -2,7 +2,7 @@
 //! formats as `FORMATS`; a module may grow into a directory of submodules.
 //!
 //! No external format knowledge: the list of platform modules. Each module
-//! cites its own sources; the platform surveys are in `docs/formats/`.
+//! cites its own sources; the platform surveys are in `docs/research/`.
 
 mod amiga;
 mod amstrad_cpc;

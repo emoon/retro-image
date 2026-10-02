@@ -1,7 +1,7 @@
 //! FM Towns.
 //!
 //! PIC pictures saved on the FM Towns are decoded by `sharp_x68000::pic`, which
-//! lists its sources. Platform survey: `docs/formats/msx-japanese.md`.
+//! lists its sources. Platform survey: `docs/research/msx-japanese.md`.
 
 use super::nec_pc::Machine;
 use super::sharp_x68000::pic;

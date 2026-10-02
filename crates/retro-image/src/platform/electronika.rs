@@ -5,7 +5,7 @@
 //!   per pixel, black/blue/green/red): Electronika BK hardware overviews,
 //!   <https://en.wikipedia.org/wiki/Electronika_BK> and
 //!   <https://alemorf.github.io/retro_computers/computer.html?id=BK0010>
-//!   (more in `docs/formats/sinclair-cpc-bbc-misc.md`).
+//!   (more in `docs/research/sinclair-cpc-bbc-misc.md`).
 //! - BK pixel order (lowest bits leftmost): reverse engineered from samples
 //!   and `recoil2png` output.
 //! - BKS screens (16384 bytes mono 512x256, or 16384 + a palette number 0-15

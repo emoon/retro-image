@@ -13,7 +13,7 @@
 //!   screens: Lomont, "Color Computer 1/2/3 Hardware Programming",
 //!   <https://www.lomont.org/software/misc/coco/Lomont_CoCoHardware.pdf>;
 //!   files are RS-DOS binaries with a 5-byte preamble (0, length, load
-//!   address), see the platform survey `docs/formats/amiga-apple-misc.md`.
+//!   address), see the platform survey `docs/research/amiga-apple-misc.md`.
 //! - CLP: 40x56 1-bit clip with a 25-byte header: reverse engineered from a
 //!   sample.
 //! - Colours (set bit white, except black in CLP; the PMODE 1 colour set),

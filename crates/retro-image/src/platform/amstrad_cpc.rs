@@ -2,7 +2,7 @@
 //! pictures, FutureOS wallpapers and SymbOS graphics.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/formats/sinclair-cpc-bbc-misc.md`.
+//! survey is `docs/research/sinclair-cpc-bbc-misc.md`.
 
 mod amsdos;
 mod fnt;

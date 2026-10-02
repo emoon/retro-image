@@ -15,7 +15,7 @@
 //! - PaintShop `DA4`: <https://temlib.org/AtariForumWiki/index.php/PaintShop_file_format>
 //! - RGB Intermediate: <https://temlib.org/AtariForumWiki/index.php/RGB_Intermediate_file_format>
 //! - ColorSTar `BIL` is GFA Artist or DEGAS by size: survey notes in
-//!   `docs/formats/atari-st-tt-falcon.md`; checked against `recoil2png` output.
+//!   `docs/research/atari-st-tt-falcon.md`; checked against `recoil2png` output.
 //! - Cyber Paint Cell: <https://temlib.org/AtariForumWiki/index.php/Cyber_Paint_Cell_file_format>,
 //!   <http://fileformats.archiveteam.org/wiki/Cyber_Paint_Cell>
 //! - DeskPic: <https://temlib.org/AtariForumWiki/index.php/DeskPic_file_format>,
@@ -27,7 +27,7 @@
 //!   the palette layout is derived from the sample file.
 //! - Pablo Paint: <https://temlib.org/AtariForumWiki/index.php/Pablo_Paint_file_format>
 //! - Graphics Processor: <http://fileformats.archiveteam.org/wiki/Graphics_Processor>
-//!   and survey notes in `docs/formats/atari-st-tt-falcon.md` (raw and RLE
+//!   and survey notes in `docs/research/atari-st-tt-falcon.md` (raw and RLE
 //!   modes); offsets and RLE records derived from sample files.
 //! - Atari Image Manager (`IM`, `COL`): no documentation found; derived from
 //!   sample files and `recoil2png` output.
@@ -332,7 +332,7 @@ pub(super) fn decode_pablo(data: &[u8]) -> Result<Image, DecodeError> {
 /// the screen, or a data length word and records of a count byte and a
 /// unit of one byte per plane: bit 7 set = `count & 0x7f` literal units,
 /// else the unit repeated `count` times.
-/// Source: survey notes (`docs/formats/atari-st-tt-falcon.md`, raw and RLE
+/// Source: survey notes (`docs/research/atari-st-tt-falcon.md`, raw and RLE
 /// modes); the offsets and the RLE records are derived from sample files.
 pub(super) fn decode_graphics_processor(data: &[u8]) -> Result<Image, DecodeError> {
     ok(decode_graphics_processor_inner(data))

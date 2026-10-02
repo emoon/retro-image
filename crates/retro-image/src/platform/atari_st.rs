@@ -1,7 +1,7 @@
 //! Atari ST/STE, TT and Falcon.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/formats/atari-st-tt-falcon.md`.
+//! survey is `docs/research/atari-st-tt-falcon.md`.
 
 mod blend;
 mod canvas;
