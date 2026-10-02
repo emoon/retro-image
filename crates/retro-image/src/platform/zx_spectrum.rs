@@ -121,6 +121,7 @@ pub(super) static FORMATS: &[Format] = &[
         chars::decode_font,
     ),
     Format::new("ZX Spectrum", "CHR$", &["ch$"], chars::decode_chr).signature(),
+    Format::new("ZX Spectrum", "Big font", &["chx"], chars::decode_chx).signature(),
     Format::new(
         "ZX Spectrum Next",
         "Layer 2 image",

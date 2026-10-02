@@ -1,4 +1,4 @@
-//! Character-based files: fonts and `chr$` cell arrays.
+//! Character-based files: fonts, `chr$` cell arrays and CHX big fonts.
 //!
 //! Sources:
 //! - CH4/CH6/CH8 fonts (2048 bytes, 256 characters of 8 bytes, MSB left):
@@ -7,6 +7,15 @@
 //!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section chr$.
 //! - Font sheet layout (32 characters per row, white on black): observed
 //!   from `recoil2png` output.
+//! - CHX (ZX-Editor / ZX-Paintbrush big fonts): `CHX` signature, characters
+//!   of 1x1 to 4x4 cells, coloured or not: ZX-Paintbrush page above. Byte
+//!   layout (256 little-endian file offsets at 5, 0 for a missing
+//!   character; each character: a flag, 0 with an attribute after each
+//!   cell or 1 without, width and height in cells, then the cells row by
+//!   row), the sheet of 16 characters per row in slots of the largest size,
+//!   black on white (non-bright) without attributes, and the checkerboard
+//!   behind and between characters: reverse engineered from samples and
+//!   `recoil2png` output.
 
 use alloc::vec::Vec;
 
@@ -76,4 +85,92 @@ fn draw_cell(frame: &mut Frame, left: usize, top: usize, rows: &[u8], ink: u32, 
             frame.set(left + bit, top + y, color);
         }
     }
+}
+
+const CHX_TABLE: usize = 5;
+const CHX_CHARACTERS: usize = 256;
+const CHX_PER_ROW: usize = 16;
+
+/// One CHX character: its code, size in cells and its cells.
+struct BigChar<'a> {
+    code: usize,
+    width: usize,
+    height: usize,
+    colored: bool,
+    cells: &'a [u8],
+}
+
+impl BigChar<'_> {
+    fn cell_len(&self) -> usize {
+        if self.colored { 9 } else { 8 }
+    }
+}
+
+/// CHX: big characters drawn on a 16-wide sheet over a checkerboard.
+pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
+    let table = data
+        .get(CHX_TABLE..CHX_TABLE + 2 * CHX_CHARACTERS)
+        .filter(|_| data.starts_with(b"CHX"))
+        .ok_or(DecodeError::Unrecognized)?;
+    let mut chars = Vec::new();
+    for (code, entry) in table.chunks_exact(2).enumerate() {
+        let offset = usize::from(u16::from_le_bytes([entry[0], entry[1]]));
+        if offset != 0 {
+            chars.push(big_char(data, code, offset).ok_or(DecodeError::Unrecognized)?);
+        }
+    }
+    let slot_width = 8 * chars
+        .iter()
+        .map(|c| c.width)
+        .max()
+        .ok_or(DecodeError::Unrecognized)?;
+    let slot_height = 8 * chars.iter().map(|c| c.height).max().unwrap_or(1);
+    let (width, height) = (
+        CHX_PER_ROW * slot_width,
+        CHX_CHARACTERS / CHX_PER_ROW * slot_height,
+    );
+    let mut frame = Frame::new(width, height);
+    let white = attribute_color(0x38, false);
+    for y in 0..height {
+        for x in 0..width {
+            frame.set(x, y, if (x + y) % 2 == 1 { white } else { 0 });
+        }
+    }
+    for c in &chars {
+        let left = c.code % CHX_PER_ROW * slot_width;
+        let top = c.code / CHX_PER_ROW * slot_height;
+        for (i, cell) in c.cells.chunks_exact(c.cell_len()).enumerate() {
+            // Without attributes: black ink on white paper.
+            let attribute = if c.colored { cell[8] } else { 0x38 };
+            let ink = attribute_color(attribute, true);
+            let paper = attribute_color(attribute, false);
+            let (x, y) = (left + i % c.width * 8, top + i / c.width * 8);
+            draw_cell(&mut frame, x, y, &cell[..8], ink, paper);
+        }
+    }
+    Ok(frame.into_image())
+}
+
+/// The character at `offset`: flag (0 coloured, 1 not), width and height in
+/// cells (1-4), then the cells.
+fn big_char(data: &[u8], code: usize, offset: usize) -> Option<BigChar<'_>> {
+    let header = data.get(offset..offset + 3)?;
+    let colored = match header[0] {
+        0 => true,
+        1 => false,
+        _ => return None,
+    };
+    let (width, height) = (usize::from(header[1]), usize::from(header[2]));
+    if !(1..=4).contains(&width) || !(1..=4).contains(&height) {
+        return None;
+    }
+    let mut c = BigChar {
+        code,
+        width,
+        height,
+        colored,
+        cells: &[],
+    };
+    c.cells = data.get(offset + 3..offset + 3 + width * height * c.cell_len())?;
+    Some(c)
 }
