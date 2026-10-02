@@ -1,3 +1,5 @@
 /target
 # Sample images are copyrighted by their authors; never commit them.
 /corpus
+# Claude Code local state (agent worktrees etc.)
+/.claude

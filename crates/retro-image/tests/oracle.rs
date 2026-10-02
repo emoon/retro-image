@@ -6,9 +6,11 @@
 //! - `$RETRO_IMAGE_PLATFORMS`: optional comma-separated `Format::platform`
 //!   names; only formats of those platforms are tried.
 //!
-//! Skips (passes) when either is missing. Reference PNGs are cached under the
-//! cargo target dir; delete it after upgrading RECOIL.
+//! Skips (passes) when either is missing. RECOIL renders each file on its own,
+//! without its companion files. Reference PNGs are cached under the cargo
+//! target dir; delete it after upgrading RECOIL.
 
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -29,8 +31,8 @@ fn matches_recoil_on_corpus() {
         return;
     }
     let platforms = PlatformFilter::from_env();
-    let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle");
-    std::fs::create_dir_all(&cache).unwrap();
+    let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("oracle-single-file");
+    std::fs::create_dir_all(cache.join("isolated")).unwrap();
 
     let mut paths: Vec<PathBuf> = entries
         .map(|e| e.unwrap().path())
@@ -48,19 +50,10 @@ fn matches_recoil_on_corpus() {
         else {
             continue; // not supported yet
         };
-        let reference_path = cache.join(format!("{name}.png"));
-        if !reference_path.exists() {
-            let status = Command::new(&recoil)
-                .arg("-o")
-                .arg(&reference_path)
-                .arg(path)
-                .status()
-                .unwrap();
-            if !status.success() {
-                failures.push(format!("{name}: we decode it but recoil2png rejects it"));
-                continue;
-            }
-        }
+        let Some(reference_path) = reference_png(&recoil, path, &cache) else {
+            failures.push(format!("{name}: we decode it but recoil2png rejects it"));
+            continue;
+        };
         match compare(&ours, &read_png(&reference_path)) {
             Ok(()) => matched += 1,
             Err(why) => failures.push(format!("{name}: {why}")),
@@ -72,6 +65,30 @@ fn matches_recoil_on_corpus() {
         paths.len()
     );
     assert!(failures.is_empty(), "mismatches:\n{}", failures.join("\n"));
+}
+
+/// Renders `path` with recoil2png, caching the PNG in `cache`.
+///
+/// recoil2png also reads companion files next to its input (e.g. `.S15`
+/// next to `.SC5`), which a single-buffer decoder can't see, so it runs on a
+/// lone copy of the file in `cache/isolated`. Returns `None` if RECOIL
+/// rejects the file.
+fn reference_png(recoil: &OsStr, path: &Path, cache: &Path) -> Option<PathBuf> {
+    let name = path.file_name().unwrap();
+    let png = cache.join(format!("{}.png", name.to_string_lossy()));
+    if png.exists() {
+        return Some(png);
+    }
+    let lone = cache.join("isolated").join(name);
+    std::fs::copy(path, &lone).unwrap();
+    let status = Command::new(recoil)
+        .arg("-o")
+        .arg(&png)
+        .arg(&lone)
+        .status()
+        .unwrap();
+    std::fs::remove_file(&lone).unwrap();
+    status.success().then_some(png)
 }
 
 struct PlatformFilter(Option<Vec<String>>);
