@@ -88,3 +88,39 @@ is already taken on crates.io by an unrelated project.
    ZX Spectrum SCR, Amiga IFF/ILBM/HAM, Apple II/IIGS, MSX screen dumps, MAG/PI.
 3. **Partial and hardware-only formats**: fill gaps by comparing against RECOIL's output.
 4. **Reverse engineering**: SFDN first (unlocks 8 formats), then FLF, then the long tail of Atari 8-bit formats.
+
+## Wave 5 sample hunt (2026-10-02)
+
+We searched for samples of every uncovered format that had none. A file only counted if
+`recoil2png` decoded it, and each one found is recorded in `corpus/extra/<group>/MANIFEST.tsv`.
+
+Found: EMC (1, Magic Disk 64 12/1990), MWIN (5, Art Studio 2 disk), MUI (5, CSDb 93314),
+MUP (8, CSDb 35737), KT4 (3, Sembiance) and 4 extra PC-98 Pi files (RECOIL ticket #12). ARV
+was never missing: `TAIHO (from Gr.lzh).ARV` in RECOIL's own set is a real sample; only the
+files under `hostile/` fail. Four NUFLI `.nuf` files from CSDb 93314 also exist; they weren't saved.
+recoil2png rejects four other Art Studio 2 windows on the same disks (PORTAL, FLAG, WINDOW,
+MOAT SECTION). They may be valid files that RECOIL fails on.
+
+Not found, after name-scanning about 21,000 CSDb releases, archive.org's d64 collection,
+funet, c64.rulez.org and Sembiance:
+
+- C64 BDP, ESH, FED, FLM, FP, HCB, HLE, ILE, MUF, MWI, NUP, PDR, RPH, SH1/SH2/SHE/SHS, UIF,
+  VHI, XFL, ZOM. Only the editors turn up, never saved pictures. Don't brute-force: recoil2png
+  accepts many of these on file size alone (BDP takes any 10003-byte file, SHS any 14338-byte
+  file, ILE any 4098-byte file), so random PRGs "decode". Real samples would have to be made in
+  VICE with the editors. Mufflon (CSDb 93314) can write MUF/NUF/MUI, but it ships source with a
+  GPL-like licence, so treat it as a black box only.
+- Turbo Silver RGB8/RGBN: Aminet has only the datatype. The spec is public: the
+  [AmigaOS wiki](https://wiki.amigaos.net/wiki/RGBN_and_RGB8_IFF_Image_Data) and
+  `RGBN-RGB8.doc` inside Aminet's `util/dtype/RGBx_DT.lha`. We could write a decoder from the spec,
+  but there'd be nothing to test it against.
+- Rambrandt RM0/RM1/RM3 (savetz/RAMbrandt and the Antic disks hold no pictures), Atari 8-bit
+  PIX, Graph Saurus SRI (only the program disk), PC-88 KTY, FM Towns PI.
+- SpecSCII ZXS: only SpectraLab's two `.specscii` exports, which RECOIL rejects. It's still
+  unclear what RECOIL's ZXS layout is.
+
+Prose docs found along the way: GoDot's [Magic Disk page](https://www.godot64.de/german/l_mdisk.htm)
+for EMC (GoDot is MIT; its sizes give 17410 bytes, the sample has 17412), the Codebase64 grafix
+spec list (Wayback) for Hireslace Editor, a [note.com article](https://note.com/ftz/n/n84d9dd98c1e2)
+on Kitty (the `rururutan/ifkty` plugin has no checked licence; don't read it), and a Japanese Pi
+document with a machine translation attached to RECOIL ticket #12 (prose, licence unstated).
