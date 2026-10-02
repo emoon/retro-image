@@ -6,6 +6,10 @@
 //! - GR7, GR8, GR9: Just Solve "GR*" and AtariWiki File Suffix (sizes).
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
+//! - TXE (96 doubled GR9 lines) and ZM4 (64x64 greys drawn 4x4): sizes
+//!   and layouts observed from `recoil2png` output.
+//! - G09: sizes (7680, 15360) and the two screens side by side: observed
+//!   from `recoil2png` output.
 //! - MIC: Graph2Font manual (screen + colours 712, 708, 709, 710; COL =
 //!   5 x 256 per-line colours). Which MIC sizes and COL sizes RECOIL pairs,
 //!   and the table order: observed from `recoil2png` output.
@@ -165,6 +169,36 @@ pub(super) fn decode_psf(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_gr9(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, _) = lines(data)?;
     Ok(gtia9(bitmap, 0x00))
+}
+
+/// Graphics 9 from a G09 file: one 192-line screen, or two shown side by
+/// side (left first).
+pub(super) fn decode_g09(data: &[u8]) -> Result<Image, DecodeError> {
+    match data.len() {
+        7680 => Ok(gtia9(bitmap(data, LINE, 4), 0x00)),
+        15360 => {
+            let (left, right) = data.split_at(7680);
+            let mut wide = alloc::vec::Vec::with_capacity(data.len());
+            for (l, r) in left.chunks_exact(LINE).zip(right.chunks_exact(LINE)) {
+                wide.extend_from_slice(l);
+                wide.extend_from_slice(r);
+            }
+            Ok(gtia9(bitmap(&wide, 2 * LINE, 4), 0x00))
+        }
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// TXE: 96 lines of Graphics 9 greys, each shown twice.
+pub(super) fn decode_txe(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen = exactly(data, 3840)?;
+    Ok(bitmap(screen, LINE, 4).render(4, 2, |_, value| rgb(value)))
+}
+
+/// Zoom 4: 64x64 greys, one nibble per pixel, drawn 4x4.
+pub(super) fn decode_zm4(data: &[u8]) -> Result<Image, DecodeError> {
+    let screen = exactly(data, 2048)?;
+    Ok(bitmap(screen, 32, 4).render(4, 4, |_, value| rgb(value)))
 }
 
 /// Graphics 10: screen, then the 9 registers 704-712.

@@ -11,7 +11,8 @@
 //! - ACS: Just Solve "AtariTools-800" (4 colours). Size 1028, the colour
 //!   bytes and the 16-character rows: observed from `recoil2png` output.
 //! - JGP: Just Solve "Jet Graphics Planner" (exactly 2054 bytes, 4 colours).
-//!   The binary-load header, the two charsets stacked as 8x16 characters
+//!   The binary-load header (any 2048-byte segment), the two charsets
+//!   stacked as 8x16 characters
 //!   and the grey colours: observed from `recoil2png` output.
 //! - NLQ: Just Solve "Daisy-Dot font" and the Daisy-Dot II reader of
 //!   monobit (MIT, <https://github.com/robhagemans/monobit>): signature,
@@ -20,6 +21,10 @@
 //!   variable widths, optional 32-dot characters, 3-byte trailer) from the
 //!   same monobit reader; RECOIL rejects it, so its sheet (32x16 or 32x32
 //!   cells) is our own extension of the Daisy-Dot II one.
+//! - SXS (1024-byte font of 16x16 characters as a DOS binary-load file), ODF (OD Font Editor,
+//!   8x10 characters), F80 (The Last Word, 4x8 characters, two per 8-byte
+//!   group): layouts reverse engineered from samples and checked against
+//!   `recoil2png` output.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
@@ -86,22 +91,101 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Jet Graphics Planner: a DOS binary-load header for $A000-$A7FF, then two
-/// ANTIC mode 4 charsets shown as 8x16 characters (first charset on top),
-/// in greys.
+/// Jet Graphics Planner: a DOS binary-load header for one 2048-byte
+/// segment (at any address), then two ANTIC mode 4 charsets shown as 8x16
+/// characters (first charset on top), in greys.
 pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
-    let Some(charsets) = data.strip_prefix(&[0xff, 0xff, 0x00, 0xa0, 0xff, 0xa7]) else {
-        return Err(DecodeError::Unrecognized);
-    };
-    if charsets.len() != 2048 {
-        return Err(DecodeError::Unrecognized);
-    }
+    let charsets = binary_load(data, 2048).ok_or(DecodeError::Unrecognized)?;
     let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);
     for (part, charset) in charsets.chunks_exact(1024).enumerate() {
         for (index, glyph) in charset.chunks_exact(8).enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * 16 + part as u32 * 8;
             draw_multicolor_glyph(&mut image, x, y, glyph, GREY_COLORS);
+        }
+    }
+    Ok(image)
+}
+
+/// The contents of a DOS binary-load file holding one segment of exactly
+/// `len` bytes: `FF FF`, start and end address (little-endian), data.
+fn binary_load(data: &[u8], len: usize) -> Option<&[u8]> {
+    let [
+        0xff,
+        0xff,
+        start_low,
+        start_high,
+        end_low,
+        end_high,
+        ref segment @ ..,
+    ] = *data
+    else {
+        return None;
+    };
+    let start = u16::from_le_bytes([start_low, start_high]);
+    let end = u16::from_le_bytes([end_low, end_high]);
+    let last = u16::try_from(len.checked_sub(1)?).ok()?;
+    (start.checked_add(last) == Some(end) && segment.len() == len).then_some(segment)
+}
+
+/// SXS: a 1024-byte font saved as a DOS binary-load file, holding 32
+/// characters of 16x16 pixels; each is 4 consecutive glyphs (top left, top
+/// right, bottom left, bottom right). Drawn 16 to a row.
+pub(super) fn decode_sxs(data: &[u8]) -> Result<Image, DecodeError> {
+    let font = binary_load(data, 1024).ok_or(DecodeError::Unrecognized)?;
+    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
+    let mut image = Image::new(256, 32);
+    for (index, glyph) in font.chunks_exact(8).enumerate() {
+        let (big, quarter) = (index / 4, index % 4);
+        let x = (big % 16 * 16 + quarter % 2 * 8) as u32;
+        let y = (big / 16 * 16 + quarter / 2 * 8) as u32;
+        draw_glyph(&mut image, x, y, glyph, |set| {
+            if set { foreground } else { background }
+        });
+    }
+    Ok(image)
+}
+
+/// OD Font Editor: 128 characters of 8x10 pixels, 10 bytes each, drawn 32
+/// to a row.
+pub(super) fn decode_odf(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 1280 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40);
+    for (index, glyph) in data.chunks_exact(10).enumerate() {
+        let x = (index % CHARS_PER_ROW) as u32 * 8;
+        let y = (index / CHARS_PER_ROW) as u32 * 10;
+        draw_glyph(&mut image, x, y, glyph, |set| {
+            if set { foreground } else { background }
+        });
+    }
+    Ok(image)
+}
+
+/// The Last Word 80-column font: 128 characters of 4x8 pixels; each
+/// 8-byte group holds two characters, the even one in the high nibbles.
+/// Drawn 32 to a row.
+pub(super) fn decode_f80(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 512 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32);
+    for (pair, rows) in data.chunks_exact(8).enumerate() {
+        for half in 0..2 {
+            let index = 2 * pair + half;
+            let x0 = (index % CHARS_PER_ROW) as u32 * 4;
+            let y0 = (index / CHARS_PER_ROW) as u32 * 8;
+            for (row, &bits) in rows.iter().enumerate() {
+                let nibble = if half == 0 { bits >> 4 } else { bits & 0x0f };
+                for column in 0..4 {
+                    let set = nibble & (8 >> column) != 0;
+                    let color = if set { foreground } else { background };
+                    image.set(x0 + column, y0 + row as u32, color);
+                }
+            }
         }
     }
     Ok(image)
@@ -299,6 +383,25 @@ mod tests {
             [true, true, false, false, true]
         );
         assert!(decode_nlq(&data[..data.len() - 1]).is_err());
+    }
+
+    #[test]
+    fn binary_load_needs_matching_addresses() {
+        let mut data = alloc::vec![0xff, 0xff, 0x00, 0xb4, 0xff, 0xb7];
+        data.resize(6 + 1024, 0);
+        assert!(binary_load(&data, 1024).is_some());
+        data[4] = 0xfe;
+        assert!(binary_load(&data, 1024).is_none());
+        assert!(binary_load(&data, 1023).is_none());
+    }
+
+    #[test]
+    fn f80_packs_two_characters_per_group() {
+        let mut data = [0u8; 512];
+        data[0] = 0x81; // char 0 row 0: leftmost dot; char 1 row 0: rightmost
+        let image = decode_f80(&data).unwrap();
+        let lit = |x| image.get(x, 0) == 0xeeeeee;
+        assert_eq!([lit(0), lit(3), lit(4), lit(7)], [true, false, false, true]);
     }
 
     #[test]
