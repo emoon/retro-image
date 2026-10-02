@@ -8,30 +8,25 @@
 //! - A sprite file is a sprite area without its first word (the area
 //!   size): PRM, "Appendix E: File formats",
 //!   <http://www.riscos.com/support/developers/prm/fileformats.html>.
-//! - Width from the first/last used bits, palette length
-//!   `(min(image, mask) - 44) / 8`, which palette lengths count, new format
-//!   sprites having no left-hand wastage: RISC OS Open, "Format Of Sprite",
-//!   <https://www.riscosopen.org/wiki/documentation/show/Format%20Of%20Sprite>.
-//! - Mode words (mode numbers below 256; RISC OS 3.5 words with the sprite
-//!   type in bits 27-30, horizontal DPI in bits 1-13, vertical DPI in bits
-//!   14-26; RISC OS 5 words with type bits 20-26 and eigen values in bits
-//!   4-7) and the pixel formats of the sprite types: RISC OS Open, "Sprite
-//!   Mode Word",
-//!   <https://www.riscosopen.org/wiki/documentation/show/Sprite%20Mode%20Word>.
+//! - New format sprites (RISC OS 3.5): the mode word (sprite type in bits
+//!   27-31, vertical DPI in bits 14-26, horizontal DPI in bits 1-13, bit 0
+//!   set), no left-hand wastage, sprite types 1-6 with the 16 bpp (red bits
+//!   0-4, green 5-9, blue 10-14) and 32 bpp (red, green, blue bytes)
+//!   pixels, DPI 180/90/45/22 as eigen factors 0-3, palettes for up to
+//!   8 bpp from RISC OS 3.6: PRM volume 5a, "Video",
+//!   <http://www.riscos.com/support/developers/prm/video.html>.
 //! - Mode numbers 0-46 (pixel resolution, OS-unit resolution, colours):
 //!   PRM volume 4, "Table B: Modes",
 //!   <http://www.riscos.com/support/developers/prm/modes.html>; the eigen
-//!   factors are log2(OS units / pixels). Modes 47-53 (RISC OS 3.5 and
-//!   later): RISC OS Open, "Screen Modes",
-//!   <https://www.riscosopen.org/wiki/documentation/show/Screen%20Modes>;
-//!   their eigen factors are inferred from the resolution on a 4:3 display.
+//!   factors are log2(OS units / pixels).
 //! - Default 256-colour palette (bits 0-1 tint, 2 red bit 2, 3 blue bit 2,
 //!   4 red bit 3, 5 green bit 2, 6 green bit 3, 7 blue bit 3), and 16-entry
 //!   (VIDC1) palettes of 256-colour sprites (the low 4 bits of a pixel pick
 //!   the entry, the high 4 override red bit 3, green bits 2-3 and blue bit
 //!   3): PRM, "VDU drivers",
-//!   <http://www.riscos.com/support/developers/prm/vdu.html>; that such
-//!   palettes exist: "Format Of Sprite" above.
+//!   <http://www.riscos.com/support/developers/prm/vdu.html>. Such palettes
+//!   were found in mode 28 sprites (sembiance samples `*.bin,FF9`), where
+//!   they hold the default palette's first 16 entries.
 //! - Palettes of sprites without one: the Wimp colours, as RISC OS's Paint
 //!   shows them (2 colours: Wimp colours 0 and 7; 4 colours: 0, 2, 4, 7),
 //!   PRM, "The Window Manager", "Colour handling",
@@ -117,7 +112,7 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
     let width_words = word(16)? as usize + 1;
     let height = word(20)? as usize + 1;
     let (first_bit, last_bit) = (word(24)? as usize, word(28)? as usize);
-    let (image_at, mask_at) = (word(32)? as usize, word(36)? as usize);
+    let image_at = word(32)? as usize;
     let format = PixelFormat::from_mode_word(word(40)?).ok_or(fail)?;
     let bpp = format.bits_per_pixel();
     // New format sprites have no left-hand wastage.
@@ -140,13 +135,8 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || width > u32::MAX as usize || height > u32::MAX as usize {
         return Err(fail);
     }
-    // The palette runs from the header to the image or mask, whichever is first.
-    let palette_end = if mask_at >= HEADER_LEN {
-        image_at.min(mask_at)
-    } else {
-        image_at
-    };
-    let palette = &sprite[HEADER_LEN..palette_end];
+    // The palette runs from the header to the image.
+    let palette = &sprite[HEADER_LEN..image_at];
 
     let mut image = Image::new(width as u32, height as u32);
     match format.kind {
@@ -160,11 +150,11 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
                 }
             }
         }
-        Kind::Tbgr1555 | Kind::Tbgr565 => {
+        Kind::Tbgr1555 => {
             for (y, row) in pixels.chunks_exact(stride).enumerate() {
                 for x in 0..width {
                     let value = le16(row, x * 2).ok_or(fail)?;
-                    image.set(x as u32, y as u32, format.kind.rgb16(value));
+                    image.set(x as u32, y as u32, rgb555(value));
                 }
             }
         }
@@ -199,30 +189,15 @@ enum Kind {
     Indexed,
     /// 16 bits: red in bits 0-4, green 5-9, blue 10-14.
     Tbgr1555,
-    /// 16 bits: red in bits 0-4, green 5-10, blue 11-15.
-    Tbgr565,
     /// 32 bits: bytes red, green, blue, unused.
     Tbgr8888,
 }
 
-impl Kind {
-    fn rgb16(self, value: u16) -> u32 {
-        let value = u32::from(value);
-        let (green_bits, blue_shift) = match self {
-            Kind::Tbgr565 => (6, 11),
-            _ => (5, 10),
-        };
-        let green_max = (1 << green_bits) - 1;
-        let r = scale(value & 0x1f, 31);
-        let g = scale(value >> 5 & green_max, green_max);
-        let b = scale(value >> blue_shift & 0x1f, 31);
-        r << 16 | g << 8 | b
-    }
-}
-
-/// `value` out of `max`, scaled to 0-255 and rounded.
-fn scale(value: u32, max: u32) -> u32 {
-    (value * 255 + max / 2) / max
+/// A 16 bpp pixel: red in bits 0-4, green 5-9, blue 10-14, each scaled to
+/// 0-255 and rounded.
+fn rgb555(value: u16) -> u32 {
+    let scale = |shift: u16| (u32::from(value >> shift & 0x1f) * 255 + 15) / 31;
+    scale(0) << 16 | scale(5) << 8 | scale(10)
 }
 
 /// The pixel format and shape a sprite's mode word describes.
@@ -241,7 +216,7 @@ impl PixelFormat {
     fn bits_per_pixel(&self) -> usize {
         match self.kind {
             Kind::Indexed => self.indexed_bpp,
-            Kind::Tbgr1555 | Kind::Tbgr565 => 16,
+            Kind::Tbgr1555 => 16,
             Kind::Tbgr8888 => 32,
         }
     }
@@ -256,16 +231,8 @@ impl PixelFormat {
         if mode & 1 == 0 {
             return None; // a pointer to a mode selector block: not valid in a file
         }
-        if mode >> 27 & 0xf == 0xf {
-            // RISC OS 5: w111 1ttt tttt 0000 ffff ffff yyxx 0001.
-            if mode & 0x000f_000f != 1 {
-                return None;
-            }
-            let sprite_type = mode >> 20 & 0x7f;
-            return Self::new(sprite_type, mode >> 4 & 3, mode >> 6 & 3);
-        }
-        // RISC OS 3.5: wttt tyyy yyyy yyyy yyxx xxxx xxxx xxx1.
-        let sprite_type = mode >> 27 & 0xf;
+        // RISC OS 3.5: tttt tyyy yyyy yyyy yyxx xxxx xxxx xxx1.
+        let sprite_type = mode >> 27;
         let x_dpi = mode >> 1 & 0x1fff;
         let y_dpi = mode >> 14 & 0x1fff;
         if x_dpi == 0 || y_dpi == 0 {
@@ -284,7 +251,6 @@ impl PixelFormat {
             1..=4 => (Kind::Indexed, 1 << (sprite_type - 1)),
             5 => (Kind::Tbgr1555, 0),
             6 => (Kind::Tbgr8888, 0),
-            10 => (Kind::Tbgr565, 0),
             _ => return None,
         };
         Some(Self {
@@ -354,7 +320,6 @@ const MODES: &[(u8, u8, u32, u32)] = &[
     (29, 1, 1, 1),
     (30, 2, 1, 1),
     (31, 4, 1, 1),
-    (32, 8, 1, 1),
     (33, 1, 1, 2),
     (34, 2, 1, 2),
     (35, 4, 1, 2),
@@ -369,13 +334,6 @@ const MODES: &[(u8, u8, u32, u32)] = &[
     (44, 1, 1, 2),
     (45, 2, 1, 2),
     (46, 4, 1, 2),
-    (47, 8, 2, 1),
-    (48, 4, 2, 1),
-    (49, 8, 2, 1),
-    (50, 1, 2, 2),
-    (51, 2, 2, 2),
-    (52, 4, 2, 2),
-    (53, 8, 2, 2),
 ];
 
 /// The value of the pixel starting at bit `bit` of a row: pixels fill each
@@ -521,16 +479,6 @@ mod tests {
     }
 
     #[test]
-    fn risc_os_5_mode_words_give_type_and_eigen_values() {
-        // Type 10 (5:6:5), x eigen 1, y eigen 2.
-        let word = 0x7800_0001 | 10 << 20 | 2 << 6 | 1 << 4;
-        let format = PixelFormat::from_mode_word(word).unwrap();
-        assert_eq!((format.kind, format.pixel_scale), (Kind::Tbgr565, (1, 2)));
-        // The fixed bits must be 0x78000001.
-        assert_eq!(PixelFormat::from_mode_word(word | 0x10000), None);
-    }
-
-    #[test]
     fn pixels_fill_bytes_from_the_low_bits() {
         let row = [0b1110_0100, 0x5a];
         assert_eq!(
@@ -547,12 +495,11 @@ mod tests {
 
     #[test]
     fn deep_colour_pixels_expand_to_8_bits() {
-        assert_eq!(Kind::Tbgr1555.rgb16(0x7fff), 0xffffff);
-        assert_eq!(Kind::Tbgr1555.rgb16(0x001f), 0xff0000);
-        assert_eq!(Kind::Tbgr1555.rgb16(0x7c00), 0x0000ff);
-        assert_eq!(Kind::Tbgr1555.rgb16(0x0010), 0x840000);
-        assert_eq!(Kind::Tbgr565.rgb16(0x07e0), 0x00ff00);
-        assert_eq!(Kind::Tbgr565.rgb16(0xf800), 0x0000ff);
+        assert_eq!(rgb555(0x7fff), 0xffffff);
+        assert_eq!(rgb555(0x001f), 0xff0000);
+        assert_eq!(rgb555(0x03e0), 0x00ff00);
+        assert_eq!(rgb555(0x7c00), 0x0000ff);
+        assert_eq!(rgb555(0x0010), 0x840000);
     }
 
     #[test]
