@@ -23,6 +23,7 @@ mod psion;
 mod sam_coupe;
 mod sharp_x68000;
 mod tandy1000;
+mod textmode;
 mod trs80;
 mod vector06c;
 mod zx_spectrum;
@@ -49,6 +50,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,
     tandy1000::FORMATS,
+    textmode::FORMATS,
     trs80::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
