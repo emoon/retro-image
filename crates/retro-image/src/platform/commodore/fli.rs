@@ -16,6 +16,7 @@
 //! | Hires FLI Designer (HFC, HFD) | CB "Hires FLI" |
 //! | Flip (FBI), FLI Graph packed | GD Flip <https://www.godot64.de/german/l_flipr.htm>, CB "FLI Graph 2.2" |
 //! | Hires Manager (HIM) | CB "Hires Manager", GD HiManRaw; for the packed form, the exclusive end address and literal lengths were checked against a sample that exists both packed and unpacked |
+//! | CFLI Designer (CFLI) | Reverse engineered from 3 samples: load `$4000`, eight screen RAMs and no bitmap; the picture is hires FLI over a bitmap of `$AA` bytes, so each pixel pair shows both screen nibbles. Checked against `recoil2png` output |
 //!
 //! Picture heights of Hires FLI Designer (112 lines) and Hires Manager
 //! (192 lines, starting at the second character row) observed from
@@ -205,6 +206,27 @@ pub(super) fn decode_hires_fli_designer(data: &[u8]) -> Result<Image, DecodeErro
 }
 
 /// Hires Manager: plain (`$FF` at `$4001`) or packed.
+/// CFLI Designer: eight screen RAMs from `$4000`, shown as hires FLI over
+/// a fixed `$AA` bitmap.
+pub(super) fn decode_cfli(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2 + SCREENS_LEN || data[..2] != [0x00, 0x40] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let bitmap = [0xaa; BITMAP_LEN];
+    let bitmap = Bitmap {
+        bitmap: &bitmap,
+        screens: Screens::Fli {
+            data: &data[2..],
+            stride: 1024,
+        },
+        color: &[],
+        background: Background::Fixed(0),
+    };
+    Frame::hires(&bitmap, 200)
+        .map(|frame| frame.to_image(FLI_BUG))
+        .ok_or(DecodeError::Unrecognized)
+}
+
 pub(super) fn decode_hires_manager(data: &[u8]) -> Result<Image, DecodeError> {
     if HIRES_MANAGER.sizes.contains(&data.len()) {
         return HIRES_MANAGER.decode(data);

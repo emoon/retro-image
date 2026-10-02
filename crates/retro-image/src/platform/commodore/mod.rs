@@ -19,6 +19,7 @@ mod godot;
 mod ifli;
 mod interlace;
 mod loadstar;
+mod logo;
 mod petscii;
 mod prg;
 mod printfox;
@@ -171,6 +172,7 @@ pub(super) static FORMATS: &[Format] = &[
         fli::decode_hires_fli_designer,
     ),
     Format::new(C64, "Hires Manager", &["him"], fli::decode_hires_manager),
+    Format::new(C64, "CFLI Designer", &["cfli"], fli::decode_cfli),
     Format::new(C64, "Drazlace", &["drl", "dlp"], interlace::decode_drazlace),
     Format::new(
         C64,
@@ -225,6 +227,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "Generic C64 picture", &["vic"], decode_generic),
     Format::new(C64, "Loadstar SHP", &["shp"], loadstar::decode_shp),
+    Format::new(C64, "Logo Painter", &["lp3"], logo::decode_logo_painter),
     Format::new(C64, "Character set", &["64c"], charset::decode_font),
     Format::new(C64, "SEUCK font", &["g"], charset::decode_seuck_font),
     Format::new(
