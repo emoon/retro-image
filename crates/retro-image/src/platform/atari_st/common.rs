@@ -287,6 +287,20 @@ pub(super) fn line_planes_to_interleaved(
     Some(out)
 }
 
+/// Whole planes stored one after another become word-interleaved data.
+pub(super) fn separate_planes_to_interleaved(data: &[u8], planes: usize) -> Vec<u8> {
+    let plane_len = data.len() / planes;
+    let mut out = alloc::vec![0; plane_len * planes];
+    for plane in 0..planes {
+        for word in 0..plane_len / 2 {
+            let from = plane * plane_len + word * 2;
+            let to = (word * planes + plane) * 2;
+            out[to..to + 2].copy_from_slice(&data[from..from + 2]);
+        }
+    }
+    out
+}
+
 /// Unpacks PackBits data until `out_len` bytes are produced. Returns the
 /// unpacked bytes and the number of input bytes consumed.
 pub(super) fn unpack_bits(data: &[u8], out_len: usize) -> Option<(Vec<u8>, usize)> {

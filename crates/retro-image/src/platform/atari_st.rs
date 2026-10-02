@@ -10,6 +10,7 @@ mod crackart;
 mod dali;
 mod degas;
 mod duo;
+mod falcon;
 mod gem_img;
 mod mono;
 mod mpp;
@@ -18,10 +19,23 @@ mod paintworks;
 mod simple;
 mod spectrum;
 mod tiny;
+mod tt;
 
 use crate::{DecodeError, Format, Image};
 
 type Decoder = fn(&[u8]) -> Result<Image, DecodeError>;
+
+const fn tt(name: &'static str, extensions: &'static [&'static str], decoder: Decoder) -> Format {
+    Format::new("Atari TT", name, extensions, decoder)
+}
+
+const fn falcon(
+    name: &'static str,
+    extensions: &'static [&'static str],
+    decoder: Decoder,
+) -> Format {
+    Format::new("Atari Falcon", name, extensions, decoder)
+}
 
 const fn st(name: &'static str, extensions: &'static [&'static str], decoder: Decoder) -> Format {
     Format::new("Atari ST", name, extensions, decoder)
@@ -100,4 +114,24 @@ pub(super) static FORMATS: &[Format] = &[
         ],
         paintworks::decode_paintworks,
     ),
+    tt("DEGAS (TT low resolution)", &["pi4"], tt::decode_pi4),
+    tt("DEGAS (TT medium resolution)", &["pi5"], tt::decode_pi5),
+    falcon("ImageLab", &["b&w", "b_w"], falcon::decode_bw),
+    falcon("DuneGraph", &["dg1"], falcon::decode_dg1),
+    falcon("DuneGraph compressed", &["dc1"], falcon::decode_dc1),
+    falcon(
+        "FuckPaint",
+        &["pi4", "pi7", "pi9"],
+        falcon::decode_fuckpaint,
+    ),
+    falcon("GodPaint", &["god"], falcon::decode_god),
+    falcon("Print-Technik", &["hir"], falcon::decode_hir),
+    falcon("InShape", &["iim"], falcon::decode_iim),
+    falcon("IMG Scan", &["raw", "rwh", "rwl"], falcon::decode_img_scan),
+    falcon("Rembrandt", &["tcp"], falcon::decode_tcp),
+    falcon("COKE", &["tg1"], falcon::decode_tg1),
+    falcon("EggPaint / Spooky Sprites", &["trp"], falcon::decode_trp),
+    falcon("IndyPaint", &["tru"], falcon::decode_tru),
+    falcon("Falcon True Color", &["ftc"], falcon::decode_ftc),
+    falcon("XGA", &["xga"], falcon::decode_xga),
 ];
