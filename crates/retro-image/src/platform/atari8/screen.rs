@@ -32,7 +32,7 @@ const MAX_LINES: usize = 240;
 /// The OS power-up colours: background, playfield 0-2.
 pub(super) const OS_COLORS: [u8; 4] = [0x00, 0x28, 0xca, 0x94];
 /// Grey ramp used when a GR15 file has no colours.
-const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
+pub(super) const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
 
 /// Splits a dump of whole 40-byte lines (1 to 240) from the bytes after them.
 fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
