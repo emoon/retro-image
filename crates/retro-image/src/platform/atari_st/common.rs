@@ -307,6 +307,10 @@ pub(super) fn separate_planes_to_interleaved(data: &[u8], planes: usize) -> Vec<
 /// Unpacks PackBits data until `out_len` bytes are produced. Returns the
 /// unpacked bytes and the number of input bytes consumed.
 pub(super) fn unpack_bits(data: &[u8], out_len: usize) -> Option<(Vec<u8>, usize)> {
+    // Each input byte yields at most 64 output bytes.
+    if out_len / 64 > data.len() {
+        return None;
+    }
     let mut out = Vec::with_capacity(out_len);
     let mut pos = 0;
     while out.len() < out_len {

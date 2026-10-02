@@ -230,6 +230,9 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
     let bits = usize::from(be16(data, 12)?);
     let compressed = be16(data, 14)? != 0;
     check_size(width, height)?;
+    if !matches!(bits, 1 | 2 | 4 | 8 | 16 | 24) {
+        return None;
+    }
     let padded = width.next_multiple_of(16);
     let line_len = padded / 8 * bits;
     let body = data.get(128 + palette_len * 6..)?;
