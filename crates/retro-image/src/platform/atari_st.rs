@@ -58,6 +58,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     st("EZ-Art Professional", &["eza"], degas::decode_eza),
     st("NEOchrome", &["neo"], simple::decode_neo),
+    st("NEOchrome Master", &["neo"], iff::decode_block),
     st("Doodle", &["doo"], simple::decode_doo),
     st(
         "Art Director / GFA Artist / Palette Master",
