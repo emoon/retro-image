@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # With no argument, rustup installs the toolchain in rust-toolchain.toml.
+      - run: rustup toolchain install
+      - run: rustup target add thumbv7em-none-eabihf
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            fuzz
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      # The core crate is no_std + alloc; build it for a target without std.
+      - run: cargo build -p retro-image --target thumbv7em-none-eabihf
+      # Keep the fuzz targets compiling (cargo-fuzz itself needs nightly).
+      - run: cargo check --manifest-path fuzz/Cargo.toml
+        env:
+          RUSTFLAGS: --cfg fuzzing
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux and Windows run the x86_64 SIMD paths, macOS (arm64) the
+        # scalar fallback.
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      # RECOIL's public sample set. The pictures are copyrighted, so they are
+      # fetched here and never committed (see CLEANROOM.md). recoil2png isn't
+      # installed, so the oracle test skips itself; robustness runs on them.
+      - name: Restore corpus
+        id: corpus
+        uses: actions/cache@v4
+        with:
+          path: corpus
+          key: recoil-examples-v1
+      - name: Fetch corpus
+        if: steps.corpus.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p corpus && cd corpus
+          curl -fsSL --retry 3 -o examples.zip https://recoil.sourceforge.net/examples.zip
+          # Windows runners have 7-Zip but not always unzip.
+          if command -v unzip >/dev/null; then unzip -q examples.zip; else 7z x -y examples.zip >/dev/null; fi
+          rm examples.zip
+      - run: cargo test --workspace

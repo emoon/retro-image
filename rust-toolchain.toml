@@ -1,0 +1,5 @@
+# Pinned so CI and local builds agree: new clippy lints arrive with each Rust
+# release. Bump deliberately and fix the new lints in the same change.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]

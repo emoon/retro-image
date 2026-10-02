@@ -28,6 +28,10 @@ shows how to fetch RECOIL's example set into `corpus/`.
 Both tests skip the corpus silently when it isn't at `<workspace>/corpus`. In a git
 worktree, set `RETRO_IMAGE_CORPUS=/path/to/corpus`.
 
+CI (`.github/workflows/ci.yml`) has no `recoil2png` and only RECOIL's example set, so it
+runs the robustness test but not the oracle. Run the oracle locally before merging a
+decoder.
+
 ## Adding a format
 
 Follow [adding-a-format.md](adding-a-format.md). The per-platform research notes are in
