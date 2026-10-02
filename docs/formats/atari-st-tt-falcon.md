@@ -333,8 +333,9 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
     and the lengths of two streams of high-entropy, LZW-like bit-packed data. No
     documentation was found; it needs a full reverse-engineering effort.
   - Pablo Paint compressed (type 29): no Atari sample exists. `proudnbeauty.ppp` and
-    `pabloPaint/glance .ppp` are Commodore 64 pictures (RECOIL renders them 296x200 with
-    120 colours; `.PPP` is also a C64 extension).
+    `glance .ppp` (from sembiance's pabloPaint set, moved to `extra/commodore/`) are
+    Commodore 64 pictures (RECOIL renders them 296x200 with 120 colours; `.PPP` is also a
+    C64 extension).
   - FSNAP-style IMG files and 8-plane IMG without palette.
 
 <!-- link definitions -->
