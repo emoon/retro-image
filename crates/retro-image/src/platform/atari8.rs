@@ -9,6 +9,7 @@ mod antic;
 mod apac;
 mod cpi;
 mod font;
+mod fwa;
 mod graph2font;
 mod gtia;
 mod hcm;
@@ -17,6 +18,7 @@ mod inflate;
 mod interlace;
 mod koala;
 mod mad_studio;
+mod mcs;
 mod palette;
 mod portfolio;
 mod rom_font;
@@ -242,4 +244,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),
     Format::new(ATARI8, "XL-Paint", &["xlp"], xl_paint::decode_xlp),
     Format::new(ATARI8, "Marco Pixel Editor", &["cpi"], cpi::decode_cpi),
+    Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
+    Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
 ];
