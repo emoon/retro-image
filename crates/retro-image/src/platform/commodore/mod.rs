@@ -341,8 +341,20 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     // Wave 5b: C64
     Format::new(C64, "EMC-editor", &["emc"], emc::decode_emc),
-    Format::new(C64, "MUFLI Editor (compressed)", &["mup"], mufli::decode_mup),
-    Format::new(C64, "Art Studio window", &["mwi", "mwin"], mwin::decode_mwin),
+    Format::new(C64, "MUFLI Editor", &["muf"], mufli::decode_muf),
+    Format::new(C64, "MUIFLI Editor", &["mui"], mufli::decode_mui),
+    Format::new(
+        C64,
+        "MUFLI Editor (compressed)",
+        &["mup"],
+        mufli::decode_mup,
+    ),
+    Format::new(
+        C64,
+        "Art Studio window",
+        &["mwi", "mwin"],
+        mwin::decode_mwin,
+    ),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

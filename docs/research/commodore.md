@@ -326,3 +326,50 @@ Eight more formats, all reverse engineered by mutating bytes in copies of the sa
 - Multi-Lace Editor (`.mle`, 1 sample): 4098 bytes, load `$2000`. Two 2048-byte multicolour bitmaps at `$2000` and `$2800`, each covering 256 cells (six cell rows and 16 cells of the seventh; the rest of the 320x56 image is background). Fixed colours: `00` black, `01` brown (9), `10` orange (8), `11` green (5). The first frame is shown one pixel to the right (`recoil2png` fills black at the left edge), the second is not.
 
 Left over from the Wave 4 list: M.C.S., the remaining Super Hires editors, NUP, UIFLI, MUFLI/MUIFLI, Botticelli 128x64 and PetDraw64. Not touched here. Apart from CLE and Face Painter, each format rests on a single sample. Other CLE file sizes, ECP files with other escape values and long runs, and `.bed` files are unverified.
+
+### Wave 5b: C64
+
+Reverse engineered from the new corpus samples by black-box probing of `recoil2png`. For MUI
+and MUP every byte of a sample was flipped in turn and the changed pixels recorded, which
+gives a byte-to-pixel map without any decoder source.
+
+- **EMC-editor (`.emc`, done, 1 sample).** Load `$4000`, eight screen RAMs, bitmap `$6000`,
+  colour RAM `$8000`, black background (GoDot's Magic Disk page). GoDot gives 17410 bytes; the
+  sample has 17412 (two trailing bytes) and `recoil2png` rejects 17410, 17411 and 17413, so
+  only 17412 is accepted. The picture is 296×192 and shows lines 4-195 (found by sliding our
+  full 200-line decode over the reference; the same size and skip as no other FLI format
+  here).
+- **Art Studio window (`.mwin`/`.mwi`, done, 5 samples).** 5-byte header: an ignored byte, the
+  window's x position in multicolour pixels (multiple of 4) and y position (multiple of 8)
+  (both checked but unused, no bounds), the width in multicolour pixels and the height in
+  lines (both nonzero). Then one 10-byte record per 4×8-pixel cell, row-major: screen RAM
+  byte, colour RAM byte (low nibble), 8 bitmap bytes. Multicolour with a black background,
+  each pixel drawn two wide, so the image is `2*width` × `height`. The length must be exactly
+  `5 + 10 * ceil(width/4) * ceil(height/8)`. The four other windows on the same disks that
+  `recoil2png` rejected were not in the corpus; their problem is probably one of those
+  checks (unaligned position, size not matching the cell count), not confirmed.
+- **MUFLI Editor (`.mup`, 8 samples), MUFLI (`.muf`, no samples), MUIFLI (`.mui`, 5
+  samples): done.** One frame is the memory `$2100-$75FF`; the layout is NUFLI's (see above)
+  without the FLI-bug sprites and with a different file wrapper:
+  - Screen RAM per line pair, bitmap `$6000`+`$3400`, sprite pointers in bytes 1-6 of each bank's
+    pointer row (`recoil2png` rejects changed pointers; we only fail when a fetch leaves the
+    frame), `sprite_rows`, six colour tables `$2400/$2480/$2800/$2880/$2C00/$2C80`.
+  - New compared with NUFLI: a mask page at `$3300`. Entry `ceil(y/2)` bit `s+1` paints
+    underlay sprite `s` white on that line, overriding the colour table. All samples have the
+    mask zero except where it matters; the bits were found by writing single bits into a
+    synthetic frame.
+  - The picture is 296 wide: columns 0-2 (the FLI-bug area) are cut.
+  - `.mup`: 2 ignored bytes, an escape, the frame packed backwards (`value count ESC`, count
+    0 = 256) to exactly `$5500` bytes. The two bytes are `00 10` in all samples.
+  - `.muf`: found by sweeping the length of a synthetic file: `recoil2png` accepts only 2 +
+    `$5500` + 64 = 21826 bytes (the load address and the last 64 bytes are ignored). Built
+    from all eight unpacked `.mup` samples with random header/tail bytes, `recoil2png` gives
+    the same pixels as the `.mup`, and our decoder matches. No real `.muf` exists in the
+    corpus; the 64 tail bytes are probably the editor's extra data.
+  - `.mui`: 2 ignored bytes + `$AC00` bytes, two frames blended. Frame 1 is the first `$5500`
+    bytes. Frame 2 uses the same layout in the same virtual addresses but is stored in pieces:
+    `$4D00-$75FF` at file offset `$5600`, `$2100-$4CFF` at `$8000` (the bytes between are
+    unused; the file is a memory dump of two VIC banks). The two shifts were found by matching
+    the per-byte pixel footprints of frame 1 and frame 2.
+  - Probed layouts not yet needed: the `$0F00-$12FF` area (code in `.mui`, zero in `.mup`)
+    does not affect pixels.
