@@ -70,7 +70,9 @@ fn palette(data: &[u8], kind: u16, bits: usize) -> Option<(Vec<u32>, &[u8])> {
         1 => st_palette(&words(table)),
         2 => words(table).into_iter().map(super::tt::tt_rgb).collect(),
         3 => table
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|e| u32::from_be_bytes([0, e[0], e[1], e[3]]))
             .collect(),
         _ => vdi_palette(table, entries)?,

@@ -83,8 +83,10 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let mut codes = [0; ROWS * COLUMNS];
     for (line, cells) in data
-        .chunks_exact(COLUMNS + 1)
-        .zip(codes.chunks_exact_mut(COLUMNS))
+        .as_chunks::<{ COLUMNS + 1 }>()
+        .0
+        .iter()
+        .zip(codes.as_chunks_mut::<COLUMNS>().0)
     {
         let text = line
             .strip_suffix(&[NEWLINE])
@@ -101,7 +103,7 @@ pub(super) fn decode_zp1(data: &[u8]) -> Result<Image, DecodeError> {
         .get(..2 * ROWS * COLUMNS)
         .ok_or(DecodeError::Unrecognized)?;
     let mut codes = [0; ROWS * COLUMNS];
-    for (code, pair) in codes.iter_mut().zip(digits.chunks_exact(2)) {
+    for (code, pair) in codes.iter_mut().zip(digits.as_chunks::<2>().0) {
         let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Unrecognized);
         *code = (hex(pair[0])? << 4 | hex(pair[1])?) as u8;
     }
@@ -396,7 +398,7 @@ mod tests {
     #[test]
     fn raw_needs_a_newline_after_every_line() {
         let mut raw = [0u8; ROWS * (COLUMNS + 1)];
-        for line in raw.chunks_exact_mut(COLUMNS + 1) {
+        for line in raw.as_chunks_mut::<{ COLUMNS + 1 }>().0 {
             line[COLUMNS] = NEWLINE;
         }
         raw[COLUMNS + 1] = 0x80; // Inverse space at the start of row 1.

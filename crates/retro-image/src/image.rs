@@ -137,7 +137,7 @@ impl Image {
                 if sx == 1 {
                     rgb.extend_from_slice(row);
                 } else {
-                    for pixel in row.chunks_exact(3) {
+                    for pixel in row.as_chunks::<3>().0 {
                         for _ in 0..sx {
                             rgb.extend_from_slice(pixel);
                         }

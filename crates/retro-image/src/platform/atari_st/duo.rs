@@ -44,7 +44,9 @@ pub(super) fn decode_kid(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let palette = st_palette(&palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?);
     let bitmap: alloc::vec::Vec<u8> = data[34..]
-        .chunks_exact(LINE)
+        .as_chunks::<LINE>()
+        .0
+        .iter()
         .flat_map(|line| &line[..224])
         .copied()
         .collect();

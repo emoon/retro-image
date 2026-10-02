@@ -32,7 +32,12 @@ pub(super) fn decode_star_painter_font(data: &[u8]) -> Result<Image, DecodeError
         return Err(DecodeError::Unrecognized);
     }
     let mut glyphs = alloc::vec![0u8; 128 * 8];
-    for (glyph, record) in glyphs.chunks_exact_mut(8).zip(data[2..].chunks(RECORD)) {
+    for (glyph, record) in glyphs
+        .as_chunks_mut::<8>()
+        .0
+        .iter_mut()
+        .zip(data[2..].chunks(RECORD))
+    {
         let rows = record.get(1..).unwrap_or_default();
         glyph[..rows.len()].copy_from_slice(rows);
     }

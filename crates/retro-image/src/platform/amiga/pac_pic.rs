@@ -30,7 +30,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let mode = be16(screen, 20).ok_or(fail)?;
     let mut palette = [0u32; 64];
-    for (i, word) in screen[26..90].chunks_exact(2).enumerate() {
+    for (i, word) in screen[26..90].as_chunks::<2>().0.iter().enumerate() {
         palette[i] = rgb12(u16::from_be_bytes([word[0], word[1]]));
         palette[i + 32] = (palette[i] >> 1) & 0x7f7f7f;
     }

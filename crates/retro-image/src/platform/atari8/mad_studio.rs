@@ -176,7 +176,7 @@ pub(super) fn decode_tl4(data: &[u8]) -> Result<Image, DecodeError> {
     let [background, pf0, pf1, pf2] = OS_COLORS;
     let pf3 = 0x46;
     let mut image = Image::new(width as u32 * 8, height as u32 * 8);
-    for (index, char) in chars.chunks_exact(9).enumerate() {
+    for (index, char) in chars.as_chunks::<9>().0.iter().enumerate() {
         let colors = [background, pf0, pf1, if char[8] != 0 { pf3 } else { pf2 }];
         let x = (index % width) as u32 * 8;
         let y = (index / width) as u32 * 8;

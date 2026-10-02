@@ -188,7 +188,7 @@ fn bgr_literals(data: &[u8], h: &Header) -> Option<Image> {
         let n = usize::from(*data.get(pos + 1)?);
         let run = data.get(pos + 2..pos + 2 + n * 3)?;
         pos += 2 + n * 3;
-        for p in run.chunks_exact(3) {
+        for p in run.as_chunks::<3>().0 {
             if pixel < total {
                 let color = u32::from_be_bytes([0, p[2], p[1], p[0]]);
                 image.set((pixel % h.width) as u32, (pixel / h.width) as u32, color);

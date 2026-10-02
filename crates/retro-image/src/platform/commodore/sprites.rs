@@ -45,7 +45,7 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Image {
             image.set(x as u32, y as u32, background);
         }
     }
-    for (i, sprite) in sprites.chunks_exact(64).enumerate() {
+    for (i, sprite) in sprites.as_chunks::<64>().0.iter().enumerate() {
         let left = i % PER_ROW * (SPRITE_WIDTH + GAP);
         let top = i / PER_ROW * (SPRITE_HEIGHT + GAP);
         let attribute = sprite[63];
@@ -128,7 +128,7 @@ pub(super) fn decode_seuck(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let mut sprites = data[2..].to_vec();
-    for sprite in sprites.chunks_exact_mut(64) {
+    for sprite in sprites.as_chunks_mut::<64>().0 {
         sprite[63] |= 0x80;
     }
     let colors = Colors {

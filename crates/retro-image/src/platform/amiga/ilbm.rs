@@ -142,7 +142,9 @@ impl Palette {
         let cmap = &cmap[..cmap.len() / 3 * 3];
         let four_bit = cmap.len() <= 32 * 3 && cmap.iter().all(|&c| c & 0x0f == 0);
         Self(
-            cmap.chunks_exact(3)
+            cmap.as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| {
                     c.iter().fold(0, |rgb, &v| {
                         let v = if four_bit { v | v >> 4 } else { v };

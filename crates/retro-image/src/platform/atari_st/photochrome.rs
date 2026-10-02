@@ -64,7 +64,9 @@ impl Frame {
             screen[y * 160 + byte / 2 * 8 + plane * 2 + byte % 2] = b;
         }
         let palette = palette
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|w| u16::from_be_bytes([w[0], w[1]]))
             .collect();
         Self { screen, palette }

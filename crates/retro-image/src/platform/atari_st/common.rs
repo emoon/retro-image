@@ -185,7 +185,7 @@ fn interleaved_indices(bitmap: &[u8], width: u32, height: u32, planes: u32) -> V
     let mut grouped = alloc::vec![0; plane_len * planes];
     let bitmap = &bitmap[..grouped.len()];
     for (group, words) in bitmap.chunks_exact(planes * 2).enumerate() {
-        for (plane, word) in words.chunks_exact(2).enumerate() {
+        for (plane, word) in words.as_chunks::<2>().0.iter().enumerate() {
             grouped[plane * plane_len + group * 2..][..2].copy_from_slice(word);
         }
     }
@@ -237,7 +237,9 @@ pub(super) const MAX_PIXELS: usize = 1 << 24;
 
 /// Big-endian words of `data` (a trailing odd byte is ignored).
 pub(super) fn words(data: &[u8]) -> Vec<u16> {
-    data.chunks_exact(2)
+    data.as_chunks::<2>()
+        .0
+        .iter()
         .map(|w| u16::from_be_bytes([w[0], w[1]]))
         .collect()
 }

@@ -55,7 +55,9 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let frames: Vec<Image> = pixels
-        .chunks_exact(BK_SCREEN_LEN)
+        .as_chunks::<BK_SCREEN_LEN>()
+        .0
+        .iter()
         .enumerate()
         .map(|(i, screen)| {
             if color {

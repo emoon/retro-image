@@ -62,7 +62,7 @@ fn plane(data: &[u8]) -> Option<Vec<u8>> {
         return Some(body.to_vec());
     }
     let mut plane = Vec::with_capacity(PLANE + 255);
-    for pair in body.chunks_exact(2) {
+    for pair in body.as_chunks::<2>().0 {
         if plane.len() >= PLANE {
             break;
         }

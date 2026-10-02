@@ -42,7 +42,7 @@ fn decode(data: &[u8]) -> Option<Image> {
 pub(super) fn from_columns(columns: &[u8]) -> Option<Vec<u8>> {
     let columns = columns.get(..SCREEN_LEN)?;
     let mut bitmap = alloc::vec![0u8; SCREEN_LEN];
-    for (i, word) in columns.chunks_exact(2).enumerate() {
+    for (i, word) in columns.as_chunks::<2>().0.iter().enumerate() {
         let (y, column) = column_position(i);
         let offset = (y * 80 + column) * 2;
         bitmap[offset..offset + 2].copy_from_slice(word);
@@ -63,7 +63,9 @@ fn column_position(i: usize) -> (usize, usize) {
 fn unpack(control: &[u8], values: &[u8]) -> Option<Vec<u16>> {
     let mut out = Vec::with_capacity(WORDS);
     let mut values = values
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|w| u16::from_be_bytes([w[0], w[1]]));
     let mut pos = 0;
     let word_at = |pos: usize| be16(control, pos);

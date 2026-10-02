@@ -36,7 +36,9 @@ fn unpack_plane(vdat: &[u8], len: usize) -> Option<Vec<u16>> {
     let command_len = usize::from(be16(vdat, 0)?);
     let commands = vdat.get(2..command_len)?;
     let mut data = vdat[command_len..]
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|w| u16::from_be_bytes([w[0], w[1]]));
     let mut out = Vec::with_capacity(len);
     for &command in commands {

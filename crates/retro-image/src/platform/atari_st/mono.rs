@@ -162,7 +162,7 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let rows = chars / 32;
     let mut bitmap = alloc::vec![0u8; chars * 16];
-    for (c, glyph) in data[..chars * 16].chunks_exact(16).enumerate() {
+    for (c, glyph) in data[..chars * 16].as_chunks::<16>().0.iter().enumerate() {
         for (line, &bits) in glyph.iter().enumerate() {
             // Set bits are white (observed from `recoil2png` output).
             bitmap[(c / 32 * 16 + line) * 32 + c % 32] = !bits;
@@ -274,7 +274,7 @@ pub(super) fn decode_cp3(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_cp3_inner(data: &[u8]) -> Option<Image> {
     let count = usize::from(be16(data, 0)?);
     let units = data.get(4 + 4 * count..)?;
-    let mut units = units.chunks_exact(8);
+    let mut units = units.as_chunks::<8>().0.iter();
     let mut bitmap = Vec::with_capacity(32000);
     for record in 0..count {
         let literals = be16(data, 4 + record * 4)?;

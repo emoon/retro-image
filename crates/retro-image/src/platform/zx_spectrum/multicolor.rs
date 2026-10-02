@@ -103,7 +103,9 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
             return Err(DecodeError::Unrecognized);
         }
         bitmaps
-            .chunks_exact(BITMAP_LEN)
+            .as_chunks::<BITMAP_LEN>()
+            .0
+            .iter()
             .zip(attributes.chunks_exact(len))
             .map(|(bitmap, attributes)| {
                 multicolor_frame(bitmap, attributes, usize::from(cell_height))

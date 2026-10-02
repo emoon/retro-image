@@ -65,7 +65,7 @@ fn unpack(packed: &[u8], len: usize) -> Option<Vec<u8>> {
 /// Renders `columns`×`rows` tiles stored row by row.
 fn render(tiles: &[u8], columns: usize, rows: usize) -> Image {
     let mut image = Image::new((columns * 8) as u32, (rows * 8) as u32);
-    for (i, tile) in tiles.chunks_exact(32).enumerate() {
+    for (i, tile) in tiles.as_chunks::<32>().0.iter().enumerate() {
         let (tx, ty) = (i % columns * 8, i / columns * 8);
         for (j, &byte) in tile.iter().enumerate() {
             let (x, y) = (tx + j % 4 * 2, ty + j / 4);

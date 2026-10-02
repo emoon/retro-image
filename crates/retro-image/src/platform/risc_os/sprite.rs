@@ -160,7 +160,7 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
         }
         Kind::Tbgr8888 => {
             for (y, row) in pixels.chunks_exact(stride).enumerate() {
-                for (x, px) in row.chunks_exact(4).take(width).enumerate() {
+                for (x, px) in row.as_chunks::<4>().0.iter().take(width).enumerate() {
                     let color = u32::from(px[0]) << 16 | u32::from(px[1]) << 8 | u32::from(px[2]);
                     image.set(x as u32, y as u32, color);
                 }
@@ -381,7 +381,9 @@ impl Colors {
 fn sprite_palette(palette: &[u8], bpp: usize) -> Colors {
     let colors = 1usize << bpp;
     let entries: Vec<u32> = palette
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .take(256)
         .map(|entry| {
             let channel = |word: usize, byte: usize| u32::from(entry[word * 4 + byte]);

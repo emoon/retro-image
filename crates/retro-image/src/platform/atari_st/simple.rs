@@ -133,7 +133,7 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_palette_master(data: &[u8]) -> Option<Image> {
     let all = super::common::words(&data[32768..]);
     let mut palettes: alloc::vec::Vec<(usize, &[u16])> = alloc::vec![(0, &all[..16])];
-    for record in all[16..].chunks_exact(16) {
+    for record in all[16..].as_chunks::<16>().0 {
         if record[0] == 0xffff {
             break;
         }

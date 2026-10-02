@@ -232,7 +232,7 @@ pub(super) fn attribute_cells(
         return Err(DecodeError::Unrecognized);
     }
     let mut cells = vec![Cell::from_attribute(0, 0, palette, ice); rows * width];
-    for (cell, pair) in cells.iter_mut().zip(pairs.chunks_exact(2)) {
+    for (cell, pair) in cells.iter_mut().zip(pairs.as_chunks::<2>().0) {
         *cell = Cell::from_attribute(pair[0], pair[1], palette, ice);
     }
     Ok((cells, rows))
@@ -242,7 +242,7 @@ pub(super) fn attribute_cells(
 /// each, scaled to 8 bits; `None` if a value exceeds 63.
 pub(super) fn vga_palette(rgb: &[u8]) -> Option<[u32; 16]> {
     let mut palette = [0; 16];
-    for (color, c) in palette.iter_mut().zip(rgb.chunks_exact(3)) {
+    for (color, c) in palette.iter_mut().zip(rgb.as_chunks::<3>().0) {
         if c.iter().any(|&v| v > 63) {
             return None;
         }

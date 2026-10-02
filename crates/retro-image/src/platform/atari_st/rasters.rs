@@ -17,7 +17,9 @@ const RECORD_LEN: usize = 34;
 /// lines, or `None` if there is no record.
 pub(super) fn line_palette_words(records: &[u8], height: usize) -> Option<Vec<u16>> {
     let records: Vec<(u16, Vec<u16>)> = records
-        .chunks_exact(RECORD_LEN)
+        .as_chunks::<RECORD_LEN>()
+        .0
+        .iter()
         .map(|r| (u16::from_be_bytes([r[0], r[1]]), words(&r[2..])))
         .take_while(|&(line, _)| line != 0xffff)
         .collect();

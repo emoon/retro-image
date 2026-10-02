@@ -111,7 +111,7 @@ pub(super) const INTERLACED: &[bool] = &[false, true];
 /// Splits alternating lines (hue first) into two planes.
 pub(super) fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
     let mut planes = ([0; 3840], [0; 3840]);
-    for (i, pair) in data.chunks_exact(2 * LINE).enumerate() {
+    for (i, pair) in data.as_chunks::<{ 2 * LINE }>().0.iter().enumerate() {
         planes.0[i * LINE..][..LINE].copy_from_slice(&pair[..LINE]);
         planes.1[i * LINE..][..LINE].copy_from_slice(&pair[LINE..]);
     }

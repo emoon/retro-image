@@ -93,7 +93,7 @@ impl Vdp {
                 0x00 => {
                     let count = *stream.get(pos + 1)? as usize;
                     let writes = stream.get(pos + 2..pos + 2 + 3 * count)?;
-                    for write in writes.chunks_exact(3) {
+                    for write in writes.as_chunks::<3>().0 {
                         let register = vdp.registers.get_mut(write[0] as usize)?;
                         *register = *register & !write[2] | write[1] & write[2];
                     }
@@ -104,7 +104,7 @@ impl Vdp {
                     let count = *stream.get(pos + 2)? as usize;
                     let entries = stream.get(pos + 3..pos + 3 + 2 * count)?;
                     let palette = vdp.palette.get_or_insert([0; 16]);
-                    for (i, entry) in entries.chunks_exact(2).enumerate() {
+                    for (i, entry) in entries.as_chunks::<2>().0.iter().enumerate() {
                         *palette.get_mut(first + i)? = vdp::palette_entry(entry[0], entry[1]);
                     }
                     pos += 3 + 2 * count;

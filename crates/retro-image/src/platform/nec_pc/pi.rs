@@ -269,7 +269,9 @@ pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Im
     let precision = header.precision();
     let palette: Vec<u32> = header
         .palette
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| precision.rgb(c[0], c[1], c[2]))
         .collect();
     let image = Image::from_indexed(

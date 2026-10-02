@@ -72,7 +72,7 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
     const COLORS: [u8; 4] = [0x00, 0x4c, 0xcc, 0x8c];
     let charset = |font: &[u8]| {
         let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32);
-        for (index, glyph) in font.chunks_exact(8).enumerate() {
+        for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * 8;
             draw_multicolor_glyph(&mut image, x, y, glyph, COLORS);
@@ -94,7 +94,7 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
     let (colors, charset) = data.split_at(4);
     let colors = [colors[0], colors[1], colors[2], colors[3]];
     let mut image = Image::new(128, 64);
-    for (index, glyph) in charset.chunks_exact(8).enumerate() {
+    for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
         let (x, y) = ((index % 16) as u32 * 8, (index / 16) as u32 * 8);
         draw_multicolor_glyph(&mut image, x, y, glyph, colors);
     }
@@ -107,8 +107,8 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
     let charsets = binary_load(data, 2048).ok_or(DecodeError::Unrecognized)?;
     let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);
-    for (part, charset) in charsets.chunks_exact(1024).enumerate() {
-        for (index, glyph) in charset.chunks_exact(8).enumerate() {
+    for (part, charset) in charsets.as_chunks::<1024>().0.iter().enumerate() {
+        for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * 16 + part as u32 * 8;
             draw_multicolor_glyph(&mut image, x, y, glyph, GREY_COLORS);
@@ -145,7 +145,7 @@ pub(super) fn decode_sxs(data: &[u8]) -> Result<Image, DecodeError> {
     let font = binary_load(data, 1024).ok_or(DecodeError::Unrecognized)?;
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     let mut image = Image::new(256, 32);
-    for (index, glyph) in font.chunks_exact(8).enumerate() {
+    for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
         let (big, quarter) = (index / 4, index % 4);
         let x = (big % 16 * 16 + quarter % 2 * 8) as u32;
         let y = (big / 16 * 16 + quarter / 2 * 8) as u32;
@@ -164,7 +164,7 @@ pub(super) fn decode_odf(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40);
-    for (index, glyph) in data.chunks_exact(10).enumerate() {
+    for (index, glyph) in data.as_chunks::<10>().0.iter().enumerate() {
         let x = (index % CHARS_PER_ROW) as u32 * 8;
         let y = (index / CHARS_PER_ROW) as u32 * 10;
         draw_glyph(&mut image, x, y, glyph, |set| {
@@ -183,7 +183,7 @@ pub(super) fn decode_f80(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32);
-    for (pair, rows) in data.chunks_exact(8).enumerate() {
+    for (pair, rows) in data.as_chunks::<8>().0.iter().enumerate() {
         for half in 0..2 {
             let index = 2 * pair + half;
             let x0 = (index % CHARS_PER_ROW) as u32 * 4;
@@ -336,7 +336,7 @@ fn sheet(fonts: &[&[u8]]) -> Image {
     let mut image = Image::new(CHARS_PER_ROW as u32 * 8, rows * char_height);
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     for (part, font) in fonts.iter().enumerate() {
-        for (index, glyph) in font.chunks_exact(8).enumerate() {
+        for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * char_height + part as u32 * 8;
             draw_glyph(&mut image, x, y, glyph, |set| {
