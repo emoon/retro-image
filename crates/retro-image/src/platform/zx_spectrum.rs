@@ -13,6 +13,7 @@ mod multicolor;
 mod screen;
 mod standard;
 mod timex;
+mod zx81;
 mod zxp;
 
 use crate::{DecodeError, Format, Image};
@@ -132,5 +133,6 @@ pub(super) static FORMATS: &[Format] = &[
         enhanced::decode_sxg,
     )
     .signature(),
+    Format::new("ZX81", "Program with screen", &["p"], zx81::decode_p),
     Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp).signature(),
 ];
