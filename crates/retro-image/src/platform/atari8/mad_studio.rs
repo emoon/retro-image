@@ -4,6 +4,8 @@
 //! - Mad Studio file formats PDF (MIT-licensed project),
 //!   <https://raw.githubusercontent.com/Gury8/Mad-Studio/master/docs/mad-studio-file-formats.pdf>.
 //! - Player/missile pixel widths: Atari Player-Missile Graphics in BASIC, ch. 2.
+//! - PLA/MIS (AtariTools-800 player and missile, Just Solve "AtariTools-800"):
+//!   sizes, colour byte and bit order observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the fixed SPR/MSL heights, the MPL
 //!   variant with a 9-byte header (height, 4 X positions, 4 colours) that the
 //!   sample uses, the MPL canvas (from the leftmost to the rightmost player)
@@ -11,7 +13,7 @@
 
 use super::antic::{Bitmap, fill};
 use super::font::draw_multicolor_glyph;
-use super::palette::register_rgb;
+use super::palette::{register_rgb, rgb};
 use super::screen::OS_COLORS;
 use crate::{DecodeError, Image};
 
@@ -53,6 +55,63 @@ pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
     let color = register_rgb(color);
     let mut image = Image::new(2 * PLAYER_PIXEL, 34);
     for (y, &line) in lines.iter().enumerate() {
+        for x in 0..2 {
+            if line & (2 >> x) != 0 {
+                fill(
+                    &mut image,
+                    x * PLAYER_PIXEL,
+                    y as u32,
+                    PLAYER_PIXEL,
+                    1,
+                    color,
+                );
+            }
+        }
+    }
+    Ok(image)
+}
+
+/// AtariTools-800 player: colour, then 240 lines of 8 pixels.
+pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
+    let [color, ref lines @ ..] = *data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if lines.len() != 240 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let bitmap = Bitmap {
+        data: lines,
+        bytes_per_line: 1,
+        lines: 240,
+        bits: 1,
+    };
+    let color = register_rgb(color);
+    Ok(bitmap.render(
+        PLAYER_PIXEL,
+        1,
+        |_, value| if value == 0 { 0 } else { color },
+    ))
+}
+
+/// AtariTools-800 missile: colour (all 8 bits used), then 240 lines of
+/// 2 pixels, 4 lines to a byte, first line in the high bits.
+pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
+    let [color, ref lines @ ..] = *data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    if lines.len() != 60 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let bitmap = Bitmap {
+        data: lines,
+        bytes_per_line: 1,
+        lines: 60,
+        bits: 2,
+    };
+    let color = rgb(color);
+    let mut image = Image::new(2 * PLAYER_PIXEL, 240);
+    for y in 0..240 {
+        let line = bitmap.pixel(y % 4, y / 4);
         for x in 0..2 {
             if line & (2 >> x) != 0 {
                 fill(
@@ -135,6 +194,18 @@ mod tests {
         let image = decode_mpl(&data).unwrap();
         assert_eq!(image.width(), 32);
         assert!(decode_mpl(&data[..12]).is_err());
+    }
+
+    #[test]
+    fn missile_lines_start_in_high_bits() {
+        let mut data = [0u8; 61];
+        data[0] = 0x0f;
+        data[1] = 0b0100_0010; // line 0: right pixel; line 3: left pixel
+        let image = decode_mis(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (4, 240));
+        assert_eq!(image.get(0, 0), 0);
+        assert_ne!(image.get(2, 0), 0);
+        assert_ne!(image.get(0, 3), 0);
     }
 
     #[test]

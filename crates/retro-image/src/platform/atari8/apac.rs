@@ -16,9 +16,10 @@
 //!   luminance lines are Graphics 15 lines; on scanline 0, which has no hue
 //!   line above, the Graphics 15 colour is shown unchanged.
 
-use super::palette::{average, register_rgb, rgb};
+use super::palette::{register_rgb, rgb};
 use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
+use alloc::vec::Vec;
 
 const LINE: usize = 40;
 
@@ -140,18 +141,21 @@ where
     /// Renders 320 pixels wide, averaging one frame per entry of `frames`;
     /// an entry tells whether even scanlines are hue lines in that frame.
     fn render(&self, frames: &[bool]) -> Image {
-        let mut image = Image::new(320, self.lines as u32);
-        for y in 0..self.lines {
-            for x in 0..160 {
-                let colors = frames
-                    .iter()
-                    .map(|&even_hue| self.color(y, x, (y % 2 == 0) == even_hue));
-                let rgb = colors.reduce(average).unwrap_or(0);
-                image.set(x as u32 * 2, y as u32, rgb);
-                image.set(x as u32 * 2 + 1, y as u32, rgb);
-            }
-        }
-        image
+        let frames: Vec<Image> = frames
+            .iter()
+            .map(|&even_hue| {
+                let mut image = Image::new(160, self.lines as u32);
+                for y in 0..self.lines {
+                    for x in 0..160 {
+                        let rgb = self.color(y, x, (y % 2 == 0) == even_hue);
+                        image.set(x as u32, y as u32, rgb);
+                    }
+                }
+                image
+            })
+            .collect();
+        let frames: Vec<&Image> = frames.iter().collect();
+        Image::blend(&frames).scaled(2, 1)
     }
 
     /// Colour of half-pixel `x` on scanline `y`, shown as a hue or luminance line.
@@ -187,10 +191,9 @@ mod tests {
         data[3840] = 0x30; // luminance line 0, pixel 0: 3
         let image = decode_planar(&data).unwrap();
         // Scanline 0 is a hue line: luminance (0 + 3) / 2 = 1.
-        assert_eq!(&image.rgb()[..3], &rgb_bytes(rgb(0x21)));
+        assert_eq!(image.get(0, 0), rgb(0x21));
         // Scanline 1 is a luminance line under hue 2.
-        let i = 320 * 3;
-        assert_eq!(&image.rgb()[i..i + 3], &rgb_bytes(rgb(0x23)));
+        assert_eq!(image.get(0, 1), rgb(0x23));
     }
 
     #[test]
@@ -200,12 +203,7 @@ mod tests {
         data[16000..].copy_from_slice(&[0x00, 0x24, 0x46, 0x88]);
         let image = decode_cin(&data).unwrap();
         // Frame 1 shows 0x88 itself, frame 2 a hue line with luminance (0 + 0) / 2.
-        assert_eq!(&image.rgb()[..3], &[0x24, 0x4a, 0x76]);
-    }
-
-    fn rgb_bytes(rgb: u32) -> [u8; 3] {
-        let [_, r, g, b] = rgb.to_be_bytes();
-        [r, g, b]
+        assert_eq!(image.get(0, 0), 0x244a76);
     }
 
     #[test]

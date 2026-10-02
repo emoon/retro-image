@@ -38,29 +38,18 @@ impl Bitmap<'_> {
         pixel_height: u32,
         color: impl Fn(usize, u8) -> u32,
     ) -> Image {
-        let width = self.width() as u32 * pixel_width;
-        let mut image = Image::new(width, self.lines as u32 * pixel_height);
+        let mut image = Image::new(self.width() as u32, self.lines as u32);
         for y in 0..self.lines {
             for x in 0..self.width() {
-                let rgb = color(y, self.pixel(x, y));
-                fill(
-                    &mut image,
-                    x as u32 * pixel_width,
-                    y as u32 * pixel_height,
-                    pixel_width,
-                    pixel_height,
-                    rgb,
-                );
+                image.set(x as u32, y as u32, color(y, self.pixel(x, y)));
             }
         }
-        image
+        if (pixel_width, pixel_height) == (1, 1) {
+            image
+        } else {
+            image.scaled(pixel_width, pixel_height)
+        }
     }
-}
-
-/// Two interlaced frames of equal size shown as one picture: the average
-/// of their colours.
-pub(super) fn mix(a: &Image, b: &Image) -> Image {
-    Image::blend(&[a, b])
 }
 
 /// Fills a `width` x `height` block at (`x`, `y`).
