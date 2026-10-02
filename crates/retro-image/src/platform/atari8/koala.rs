@@ -12,10 +12,11 @@
 //!
 //! Observed from `recoil2png` output: header byte 8 is the ANTIC mode;
 //! 0x0E is Graphics 15, 0x0F is drawn as GTIA mode 9 with the background
-//! hue. Other modes (text) are rejected here.
+//! register. Other modes (text) are rejected here.
 
 use super::antic::Bitmap;
-use super::palette::{register_rgb, rgb};
+use super::palette::register_rgb;
+use super::screen::gtia9;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -57,9 +58,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
             let colors = [background, data[13], data[14], data[15]];
             Ok(bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)])))
         }
-        ANTIC_F => Ok(
-            Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| rgb(background & 0xf0 | value))
-        ),
+        ANTIC_F => Ok(gtia9(bitmap, background)),
         _ => Err(DecodeError::Unrecognized),
     }
 }

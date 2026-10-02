@@ -37,6 +37,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "AtariCAD", &["drg"], screen::decode_drg),
     Format::new(ATARI8, "Mad Designer", &["mbg"], screen::decode_mbg),
     Format::new(ATARI8, "Graphics 9", &["gr9"], screen::decode_gr9),
+    Format::new(ATARI8, "Vidig Paint", &["rap"], screen::decode_rap),
     Format::new(ATARI8, "APAC 80x96", &["256", "ap2"], apac::decode_planar),
     Format::new(
         ATARI8,

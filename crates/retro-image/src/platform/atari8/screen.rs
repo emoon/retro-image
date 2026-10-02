@@ -16,10 +16,11 @@
 //! - GR3: Mad Studio file formats PDF (240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3" (40x24, 4 colours).
 //! - AGP: Just Solve "AtariTools-800" (exactly 7690 bytes).
+//! - RAP: Just Solve "Vidig Paint" (7681 bytes = 7680 + 1).
 //! - Observed from `recoil2png` output: accepted sizes, the 5-byte MIC tail,
 //!   the GR8 colour tail, default colours, the fixed GR9/G11 luminances, the
-//!   tail orders of DIT, BKG and MGP, and the AGP header (mode, then
-//!   registers 704-712).
+//!   tail orders of DIT, BKG and MGP, the AGP header (mode, then
+//!   registers 704-712), and GTIA mode 9 ORing pixels into the background.
 
 use super::antic::Bitmap;
 use super::palette::{register_rgb, rgb};
@@ -80,9 +81,10 @@ fn four_color(bitmap: Bitmap<'_>, pixel_width: u32, pixel_height: u32, colors: [
     })
 }
 
-/// GTIA mode 9: 16 luminances of the background hue.
-fn gtia9(bitmap: Bitmap<'_>, background: u8) -> Image {
-    Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| rgb(background & 0xf0 | value))
+/// GTIA mode 9: each pixel's luminance ORed into the background register
+/// (whose luminance bit 0 is ignored).
+pub(super) fn gtia9(bitmap: Bitmap<'_>, background: u8) -> Image {
+    Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| rgb(background & 0xfe | value))
 }
 
 /// GTIA mode 10: values index registers 704-712.
@@ -133,6 +135,12 @@ pub(super) fn decode_drg(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_mbg(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 16384)?;
     Ok(hires(bitmap(screen, 64, 1), rgb(0x00), rgb(0x0e)))
+}
+
+/// Vidig Paint: 192 lines of Graphics 9, then the background colour.
+pub(super) fn decode_rap(data: &[u8]) -> Result<Image, DecodeError> {
+    let (bitmap, tail) = lines(exactly(data, 7681)?)?;
+    Ok(gtia9(bitmap, tail[0]))
 }
 
 /// Graphics 9: 80 pixels of 16 grey luminances.
