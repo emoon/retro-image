@@ -328,8 +328,14 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
   next zero byte; `n≥3, v` = `n + 1` × `v`. The unpacked bytes fill 160 columns of 200
   bytes, top to bottom, in every resolution; a full screen needs no end marker, and
   trailing bytes and the length word are ignored.
-- Still unsupported: Grafix compressed, Pablo Paint compressed (type 29), FSNAP-style IMG files
-  and 8-plane IMG without palette.
+- Still unsupported:
+  - Grafix compressed (word 28 = 1): the 14 bytes before the data hold the unpacked size
+    and the lengths of two streams of high-entropy, LZW-like bit-packed data. No
+    documentation was found; it needs a full reverse-engineering effort.
+  - Pablo Paint compressed (type 29): no Atari sample exists. `proudnbeauty.ppp` and
+    `pabloPaint/glance .ppp` are Commodore 64 pictures (RECOIL renders them 296x200 with
+    120 colours; `.PPP` is also a C64 extension).
+  - FSNAP-style IMG files and 8-plane IMG without palette.
 
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
