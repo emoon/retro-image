@@ -16,6 +16,7 @@
 mod hires;
 mod macpaint;
 mod pack_bytes;
+mod sprites;
 mod super_hires;
 
 use crate::{DecodeError, Format, Image};
@@ -70,6 +71,8 @@ pub(super) static FORMATS: &[Format] = &[
         macpaint::decode_mac_binary,
     )
     .signature(),
+    // Wave 5: Amiga and misc
+    Format::new("Apple II", "Sprites", &["spr"], sprites::decode),
 ];
 
 /// Brooks pictures, also accepting the other 3200-colour and screen-dump

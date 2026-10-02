@@ -237,6 +237,8 @@ pub(super) static FORMATS: &[Format] = &[
         flf::decode_flf,
     )
     .signature(),
+    // Wave 5: Amiga and misc
+    falcon("TrueColor IMG", &["timg"], gem_img::decode_img),
 ];
 
 #[cfg(test)]

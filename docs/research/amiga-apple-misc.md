@@ -295,3 +295,114 @@ What to know:
 - The platform for the paletted types 0x0c, 0x0d, 0x16 and 0x1b is a guess. `recoil2png` draws 0x0c, 0x16 and 0x1b identically, and the only evidence for Amiga (0x0d, 320x256) and PC (0x1b, 256 colours) is the size and palette. 0x0c and 0x16 went to Atari ST because they carry 16 colours at 320x200.
 - BBC pictures: `recoil2png` shows the stream starting at the mode byte, so pixel 0 is the mode number (drawn black) and the final stored byte is dropped. If the mode byte is really a header, the picture is one pixel shifted and loses its last pixel. The samples can't tell which side is right, so this follows `recoil2png`.
 - Not covered by any sample: other BBC modes, CPC modes 1 and 2, other Spectrum or CGA layouts, VIC-20 hires, and C64 type 6 beyond the synthetic check. `recoil2png` also accepts type 0x07 on `image1-1.flf` (changing byte 11) as a tiny 80x16 picture, so more type numbers exist than the samples show. Producing TRSE-made samples is the way to continue.
+
+## Wave 5: Amiga and misc
+
+Everything here was reverse engineered from the corpus samples and by feeding `recoil2png`
+hand-built or byte-mutated files (kept outside `corpus/`). All decoded samples match its
+output pixel for pixel; no divergences were recorded. The decoders cite this section.
+
+### Amiga DCTV (`amiga/dctv.rs`, platform "Amiga DCTV")
+
+All 10 samples match (the 11th, `hostile/.../Crop.dctv`, is a truncated file that RECOIL
+rejects and we do too).
+
+- Container: a 3- or 4-plane hires ILBM with CAMG `0x8000`. Colours are not in the palette;
+  they are encoded in the pixels. The existing ILBM reader already refused such files, and
+  now `decode_form` tries DCTV, then HAM-E, when the plain ILBM decode refuses.
+- Signature: the top plane of the first 256 pixels of row 0 spells a fixed 32-byte string
+  (`00 49 87 28 de 11 0b ef ...`, see `dctv.rs`); other planes there are ignored, as are the
+  rest of the row. Interlaced files (CAMG bit 2) repeat it on row 1 and need both. Flipping
+  any signature bit makes RECOIL fall back to a plain ILBM. RECOIL also falls back for CAMG
+  values like `0x9000` or `0x18000` that we still decode as DCTV; those are not in the corpus.
+- Samples: two pixels `(a, b)` form one 8-bit value with interleaved bits `a3 b3 a2 b2 a1 b1
+  a0 b0` (a is the more significant of each pair). 3-plane files are the 4-plane layout without
+  the lowest plane, so each pixel is shifted left by one. Luma is `(((v[m] + v[m-1]) >> 1) - 64)
+  * 8 / 5`, clamped to 0..255 before chroma is added.
+- Chroma: `(e[m] + 2 e[m-1] + e[m-2]) / 4` (truncating) of `e[j] = (-1)^j v[j]`. Scan lines
+  alternate between two phases. In phase A (even lines of a field) pixels pair as `(2j, 2j+1)`
+  and the chroma is the red difference; in phase B pairs start one pixel later, the line is shifted
+  one pixel right, there is a final zero pair, and the chroma is the blue difference. Each line takes the
+  other component from the line before it in the same field (nothing before the first line).
+  Interlaced pictures are two such fields in alternate rows; progressive ones show each line
+  twice (height `(h - 1) * 2`, interlaced `h - 2`). The first four pixels of each line are
+  ordinary samples (they set up the filter); column 0 of phase B lines is black.
+- RGB: `R = Y - 1164 cr / 640`, `G = Y + (593 cr - 404 cb) / 640`, `B = Y + 4143 cb / 1280`
+  with truncating division. Black-box fitting narrowed these to `R in [1.8182, 1.8194)`,
+  `B in [3.2364, 3.2368)`, `G` coefficients `0.926562..0.926585` and `0.63125..0.631265`; the
+  rationals are in every interval and match about 4 million real pixels plus random full-range
+  tests. The exact constants RECOIL uses are unknown.
+- Not understood: what CAMG values besides `0x8000` plus lace RECOIL requires, and what the
+  program's NTSC or PAL flag (`0x19000` vs `0x29000`) changes (nothing visible in the samples).
+
+### Amiga HAM-E (`amiga/ham_e.rs`, platform "Amiga HAM-E")
+
+All 5 samples (`beautyfc`, `hameset1/2`, `breakfst`, `nishi`) match.
+
+- Detection: row 0 starts with the 16-pixel cookie `a 2 f 5 8 4 d c 6 d b 0 7 f 1` and a mode
+  pixel. RECOIL additionally needs the standard 16-colour CMAP (bit 7 of every channel and the
+  low bit of blue's high nibble carry the pixel value back to the hardware) and only treats
+  hires pictures without the HAM flag as HAM-E. We check the cookie, hires and no HAM.
+- Palette lines: any row that starts with the cookie. Mode pixel 4 = register mode, 8 =
+  hold-and-modify. The rest of the row is 192 bytes (one byte per pixel pair, high nibble
+  first) = 64 RGB colours of 8 bits each. Palette lines fill 4 banks in turn and wrap; interlaced
+  files carry every palette line twice and each field keeps its own banks. A palette line is drawn black.
+- Data lines: pairs of pixels make a byte. Register mode: `bank[byte >> 6][byte & 63]`. Modify
+  mode: HAM8 control in the top 2 bits (0 = bank 0 colour, 1 blue, 2 red, 3 green set to
+  `data << 2`, not bit-replicated), starting from black on every line.
+- Output is half the bitmap width; interlaced pictures are doubled again.
+
+### Apple II SPR "Sprites" (`apple/sprites.rs`)
+
+Only `test.spr` is this format: a text file of numbers (decimal or `$hex`, any whitespace)
+`width height kind x y` plus `width * height` bytes column by column, ended by a record
+with height 0. Sprites are ORed onto a 320x200 black canvas, bit 7 left, `x`/`y` in pixels;
+`kind` is ignored; every number must be below 320 and a sprite must fit. See the module
+comment for the accept/reject rules that were probed.
+
+`running-cat.spr`, `cinema-counter.spr` and `vial.spr` are not Apple II. They start with
+`Spr!` and are SprEd files (Atari 8-bit, RECOIL's "SprEd", 128 colours); see below.
+
+### Atari 8-bit SprEd (`atari8/spred.rs`)
+
+3 samples match. Header (all counted from the file start): `Spr!`, version (ignored), byte 9
+= lines shown twice, byte 10 bit 2 = second sprite column, bit 0 = missiles, byte 14 bit 0 =
+per-line colours, bytes 12/13 = width of the second column. Frames/lines come from bytes 17/18
+when byte 16 is 0, else from 16/17 (the one sample like that, `vial.spr`, also has byte 18 =
+extra canvas width). Data from byte 19: per-frame colour of each player, one plane per player
+(each frame x line bytes), missile planes if flagged (low 2 bits), 5 per-line colour planes if
+flagged (background, 4 players); extra bytes at the end are ignored. Only canvases of the
+shapes seen are accepted: byte 12 = 0 and byte 13 = width / 2 for two columns, byte 18 = 0
+for one. How RECOIL treats other widths (they shift the second column, clip, or fail) was
+not worked out.
+
+### PC "Image 72 font" (`pc/image72.rs`)
+
+`00 08 h` + 256 glyphs of `h` bytes (`3 + 256 h` bytes; any `h` from 1), or a headerless
+896-byte file of 8-byte glyphs of which the first 96 are shown (FATCAT.FNT is the CPC OCP
+font with 128 zero bytes added; AMSDOS-headed 896-byte files stay with the CPC decoder).
+Sheet of 32 glyphs per row, white on black. The name "Image 72" is RECOIL's; no program
+was identified.
+
+### TRS-80 MagicDraw SHR (`trs80/magicdraw.rs`)
+
+Run-length coded 640x240 mono screen (shown with doubled lines): control with bit 7 set repeats
+the next byte `control & 127` times, otherwise `control` literal bytes follow; zero counts are
+fine; at least 19200 bytes must come out, the rest (822 bytes in the sample, more image
+data) is ignored. `.SHR` is shared with Apple IIGS and C64, and RECOIL takes any stream that
+reaches 19200 bytes, so we also require the operations to end exactly at the end of the
+file (only the sample and one 32 KB IIGS dump pass of the 19 SHR files in the corpus; the
+platform order lets the IIGS decoder win).
+
+### Atari Falcon TIMG
+
+Already decoded by the GEM IMG decoder (see the implementation notes in
+`atari-st-tt-falcon.md`); the only gap was that RECOIL lists the extension under Atari Falcon,
+so a second registry entry was added for that platform.
+
+### Left undone
+
+- "Atari ST/STE IFF" (uncovered in `docs/coverage.md`): none of the corpus IFFs turned out to
+  be a separate Atari ST format; the five IFFs RECOIL alone decoded were HAM-E.
+- DCTV: the CAMG variants above; `Crop.dctv` could be decoded partially (missing rows
+  black) but RECOIL does not.

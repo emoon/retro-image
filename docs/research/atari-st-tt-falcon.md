@@ -543,3 +543,11 @@ decoders live in `crates/retro-image/src/platform/atari_st/`.
 [gfa-archive]: http://gfa.atari-users.net/gfx/
 [nofrag-egg]: http://no-fragments.atari.org/no_fragments_04/archive/work/gfx/
 [deark]: https://github.com/jsummers/deark
+
+## Wave 5: Amiga and misc (TIMG)
+
+`FSNAP32K.TIMG` (225697 bytes, 480x400) needed no new decoding: the GEM IMG decoder
+already reads TIMG (`TIMG`, 3, red/green/blue bit counts; real bitplanes holding the
+colour fields, FSNAP's extra run records) and matches `recoil2png`. RECOIL lists the
+extension under Atari Falcon, so `atari_st.rs` now registers "TrueColor IMG" for that
+platform too, pointing at the same decoder.

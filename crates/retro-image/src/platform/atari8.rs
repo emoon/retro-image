@@ -37,6 +37,7 @@ mod rom_font;
 mod screen;
 mod sfdn;
 mod shapes;
+mod spred;
 mod technicolor;
 mod text;
 mod text_art;
@@ -412,4 +413,6 @@ pub(super) static FORMATS: &[Format] = &[
         &["chr"],
         blazing_paddles::decode_chr,
     ),
+    // Wave 5: Amiga and misc
+    Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
 ];
