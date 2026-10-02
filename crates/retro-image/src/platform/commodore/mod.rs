@@ -187,6 +187,8 @@ pub(super) static FORMATS: &[Format] = &[
         ifli::decode_pixel_perfect_packed,
     ),
     Format::new(C64, "ECI Graphic Editor", &["eci"], ifli::decode_eci),
+    Format::new(C64, "Flash FLI", &["ffli", "ffl"], ifli::decode_ffli),
+    Format::new(C64, "Big FLI", &["bfli", "bfl"], ifli::decode_bfli),
     Format::new(
         C64,
         "Micro Illustrator",

@@ -12,6 +12,7 @@
 //! | Funpaint II (FUN, FP2) | CB "Funpaint 2", GD IFLI |
 //! | Pixel Perfect (PP) | GD IFLI, GD Pixel Perfect saver |
 //! | ECI Graphic Editor (ECI) | CB "ECI Graphic Editor v1.0" |
+//! | Flash FLI (FFLI), Big FLI (BFLI) | Pasi Ojala's `ffli.doc`, `bfli.doc` and "BFLI - New graphics modes 2" (linecrunch counter wrap-around) in C64Gfx, <http://www.zimmers.net/anonftp/pub/cbm/crossplatform/graphics/Amiga/C64Gfx.lha> (documentation only) |
 //!
 //! Observed from `recoil2png` output: the second frame of the multicolour
 //! formats is shown one pixel to the right; Gunpaint and Funpaint use a
@@ -20,7 +21,7 @@
 use super::fli::{Bg, Fli};
 use super::prg::Prg;
 use super::unpack::{Run, escape_rle};
-use super::vic2::FLI_BUG;
+use super::vic2::{FLI_BUG, Frame};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -132,6 +133,52 @@ const ECI: Ifli = Ifli {
 
 pub(super) fn decode_eci(data: &[u8]) -> Result<Image, DecodeError> {
     ECI.decode(data)
+}
+
+/// Flash FLI: one bitmap shown with two sets of FLI screens and
+/// backgrounds.
+const FFLI: Ifli = Ifli {
+    load: 0x3aff,
+    sizes: &[26115],
+    frames: [
+        fli(0x6000, 0x4000, Some(0x3c00), Bg::Table(0x3b00)),
+        fli(0x6000, 0x8000, Some(0x3c00), Bg::Table(0xa000)),
+    ],
+    shift: false,
+};
+
+pub(super) fn decode_ffli(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.get(..3) != Some(&[0xff, 0x3a, b'f']) {
+        return Err(DecodeError::Unrecognized);
+    }
+    FFLI.decode(data)
+}
+
+/// Big FLI: a 400-line multicolour FLI picture shown with linecrunch. The
+/// top half uses the bank at `$4000`, the bottom half the bank at `$8000`;
+/// as the VIC-II's counters run on past the end of the first bank, the
+/// bottom half's video matrix, colour RAM and bitmap offsets continue
+/// from 1000 (8000 for the bitmap) and wrap at 1024 (8192).
+pub(super) fn decode_bfli(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 33795 || data[..3] != [0xff, 0x3b, b'b'] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let memory = &data[3..];
+    // Offsets from $3C00: colour RAM, then two banks of screens and bitmap.
+    let color = &memory[..1024];
+    let frame = Frame::from_fn(400, |x, y| {
+        let bank = &memory[1024 + y / 200 * 0x4000..];
+        let cell = (y / 8 * 40 + x / 8) & 1023;
+        let screen = bank[(y & 7) * 1024 + cell];
+        let byte = bank[0x2000 + ((cell * 8 + y % 8) & 8191)];
+        match byte >> (6 - (x & 6)) & 3 {
+            0 => 0,
+            1 => screen >> 4,
+            2 => screen & 15,
+            _ => color[cell] & 15,
+        }
+    });
+    Ok(frame.to_image(FLI_BUG))
 }
 
 const FUNPAINT: Ifli = Ifli {
