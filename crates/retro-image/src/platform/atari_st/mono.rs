@@ -169,6 +169,90 @@ pub(super) fn decode_bru(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
+/// Picworks: record count, a spare word, `count` (literal units, repeated
+/// units) word pairs, then a table of 8-byte units filling a 640x400
+/// screen. Source (including Lonny Pursell's public-domain decoder):
+/// <https://temlib.org/AtariForumWiki/index.php/Picworks_file_format>.
+pub(super) fn decode_cp3(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_cp3_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_cp3_inner(data: &[u8]) -> Option<Image> {
+    let count = usize::from(super::common::be16(data, 0)?);
+    let units = data.get(4 + 4 * count..)?;
+    let mut units = units.chunks_exact(8);
+    let mut bitmap = Vec::with_capacity(32000);
+    for record in 0..count {
+        let literals = super::common::be16(data, 4 + record * 4)?;
+        let repeats = super::common::be16(data, 6 + record * 4)?;
+        for _ in 0..literals {
+            bitmap.extend_from_slice(units.next()?);
+        }
+        let unit = units.next()?;
+        for _ in 0..repeats {
+            bitmap.extend_from_slice(unit);
+        }
+        if bitmap.len() > 32000 {
+            return None;
+        }
+    }
+    while bitmap.len() < 32000 {
+        bitmap.extend_from_slice(units.next()?);
+    }
+    mono_image(&bitmap, 640, 400, 80)
+}
+
+/// DEGAS Elite icon: C source with `ICON_W`, `ICON_H` and `ICONSIZE`
+/// defines and an array of hexadecimal words, one row of words per line
+/// of the icon. Source:
+/// <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Icon_file_format>.
+pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
+    decode_icn_inner(data).ok_or(DecodeError::Unrecognized)
+}
+
+fn decode_icn_inner(data: &[u8]) -> Option<Image> {
+    let text = core::str::from_utf8(data).ok()?;
+    let define = |name: &str| -> Option<usize> {
+        let line = text.lines().find(|l| {
+            let mut parts = l.split_whitespace();
+            parts.next() == Some("#define") && parts.next() == Some(name)
+        })?;
+        parse_hex(line.split_whitespace().nth(2)?)
+    };
+    let width = define("ICON_W")?;
+    let height = define("ICON_H")?;
+    let size = define("ICONSIZE")?;
+    let row_words = width.div_ceil(16);
+    if width == 0 || height == 0 || width > 4096 || size != row_words * height {
+        return None;
+    }
+    let body = &text[text.find('{')? + 1..];
+    let words = body
+        .split(|c: char| c == ',' || c == '}' || c.is_whitespace())
+        .filter(|t| !t.is_empty())
+        .take(size)
+        .map(parse_hex)
+        .collect::<Option<Vec<usize>>>()?;
+    if words.len() != size {
+        return None;
+    }
+    let bitmap: Vec<u8> = words
+        .iter()
+        .flat_map(|&w| (w as u16).to_be_bytes())
+        .collect();
+    mono_image(&bitmap, width as u32, height as u32, row_words * 2)
+}
+
+/// Parses `0x`-prefixed hexadecimal.
+fn parse_hex(token: &str) -> Option<usize> {
+    let digits = token
+        .strip_prefix("0x")
+        .or_else(|| token.strip_prefix("0X"))?;
+    usize::from_str_radix(digits, 16)
+        .ok()
+        .filter(|&v| v <= 0xffff)
+}
+
 /// Calamus Raster Graphic: 42-byte header, byte RLE.
 pub(super) fn decode_crg(data: &[u8]) -> Result<Image, DecodeError> {
     decode_crg_inner(data).ok_or(DecodeError::Unrecognized)

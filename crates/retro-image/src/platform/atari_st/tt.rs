@@ -13,6 +13,8 @@ use super::common::{be16, palette_words, planar_image};
 use crate::{DecodeError, Image};
 
 const BITMAP_LEN: usize = 153600;
+const TT_MEDIUM_LEN: usize = 34 + BITMAP_LEN;
+const ST_240_LEN: usize = 34 + 38400;
 
 /// TT palette word `....RRRR GGGGBBBB` to `0xRRGGBB`.
 pub(super) fn tt_rgb(word: u16) -> u32 {
@@ -35,15 +37,34 @@ pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(super::common::double_width(&image))
 }
 
-/// TT medium: resolution word 4, 16 palette words, 640x480 in 4 planes.
-pub(super) fn decode_pi5(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != 2 + 32 + BITMAP_LEN || be16(data, 0) != Some(4) {
+/// TT high (`PI6`): resolution word 6, two palette words, 1280x960
+/// monochrome. Source: <http://fileformats.archiveteam.org/wiki/Extended_DEGAS_image>
+/// (extension only); the layout is derived from sample files.
+pub(super) fn decode_pi6(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 6 + BITMAP_LEN || be16(data, 0) != Some(6) {
         return Err(DecodeError::Unrecognized);
     }
-    let palette: alloc::vec::Vec<u32> = palette_words(data, 2, 16)
-        .ok_or(DecodeError::Unrecognized)?
-        .into_iter()
-        .map(tt_rgb)
-        .collect();
-    planar_image(&data[34..], 640, 480, 4, &palette, 1).ok_or(DecodeError::Unrecognized)
+    super::common::mono_image(&data[6..], 1280, 960, 160).ok_or(DecodeError::Unrecognized)
+}
+
+/// TT medium: resolution word 4, 16 palette words, 640x480 in 4 planes;
+/// files of 320x240 in 4 planes exist too (derived from sample files).
+pub(super) fn decode_pi5(data: &[u8]) -> Result<Image, DecodeError> {
+    let (width, height) = match data.len() {
+        TT_MEDIUM_LEN => (640, 480),
+        ST_240_LEN => (320, 240),
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    if be16(data, 0) != Some(4) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let words = palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?;
+    // The 320x240 variant uses ST/STE palette words (observed from
+    // `recoil2png` output).
+    let palette: alloc::vec::Vec<u32> = if width == 320 {
+        super::common::st_palette(&words)
+    } else {
+        words.into_iter().map(tt_rgb).collect()
+    };
+    planar_image(&data[34..], width, height, 4, &palette, 1).ok_or(DecodeError::Unrecognized)
 }

@@ -181,4 +181,15 @@ pub(super) static FORMATS: &[Format] = &[
         &["bp6", "bp8", "c06", "c08", "c16", "c24", "c32"],
         uimg::decode_uimg,
     ),
+    st("Pablo Paint", &["pa3", "ppp"], simple::decode_pablo),
+    st(
+        "Graphics Processor",
+        &["pg1", "pg2", "pg3"],
+        simple::decode_graphics_processor,
+    ),
+    st("Atari Image Manager", &["im"], simple::decode_im),
+    st("Picworks", &["cp3"], mono::decode_cp3),
+    st("DEGAS Elite icon", &["icn"], mono::decode_icn),
+    tt("DEGAS (TT high resolution)", &["pi6"], tt::decode_pi6),
+    falcon("Spooky Sprites RLE", &["tre"], falcon::decode_tre),
 ];

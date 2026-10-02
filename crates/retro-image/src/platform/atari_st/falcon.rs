@@ -258,6 +258,50 @@ fn decode_tcp_inner(data: &[u8]) -> Option<Image> {
     high_color(data.get(pict + header_len..)?, width, height, 1)
 }
 
+/// Spooky Sprites RLE: `tre1`, width, height, chunk count, then
+/// alternating raw and repeat chunks of RGB565 pixels; counts of 255
+/// continue in a following word.
+pub(super) fn decode_tre(data: &[u8]) -> Result<Image, DecodeError> {
+    ok(decode_tre_inner(data))
+}
+
+fn decode_tre_inner(data: &[u8]) -> Option<Image> {
+    if data.get(..4)? != b"tre1" {
+        return None;
+    }
+    let width = usize::from(be16(data, 4)?);
+    let height = usize::from(be16(data, 6)?);
+    check_size(width, height)?;
+    let total = width * height;
+    let mut pixels: Vec<u16> = Vec::with_capacity(total);
+    let mut pos = 12;
+    let mut raw = true;
+    while pixels.len() < total {
+        let mut n = usize::from(*data.get(pos)?);
+        pos += 1;
+        if n == 255 {
+            n += usize::from(be16(data, pos)?);
+            pos += 2;
+        }
+        if raw {
+            for _ in 0..n {
+                pixels.push(be16(data, pos)?);
+                pos += 2;
+            }
+        } else {
+            let last = *pixels.last()?;
+            let n = n.min(total - pixels.len());
+            pixels.extend(core::iter::repeat_n(last, n));
+        }
+        raw = !raw;
+    }
+    let mut image = Image::new(width as u32, height as u32);
+    for (i, &word) in pixels.iter().take(total).enumerate() {
+        image.set((i % width) as u32, (i / width) as u32, rgb565(word));
+    }
+    Some(image)
+}
+
 /// Falcon True Color: raw 384x240 RGB565.
 pub(super) fn decode_ftc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 384 * 240 * 2 {

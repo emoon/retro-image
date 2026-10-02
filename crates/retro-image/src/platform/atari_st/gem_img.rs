@@ -189,7 +189,8 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
         // Longer monochrome headers belong to other, unsupported dialects.
         return extra.is_empty().then(|| alloc::vec![0xffffff, 0x000000]);
     }
-    if extra.is_empty() && h.planes <= 4 {
+    // One extra word (seen as 0 or 1) still means no palette.
+    if extra.len() <= 2 && h.planes <= 4 {
         // No palette: the default GEM VDI colours, in pen order (observed
         // from `recoil2png` output).
         const DEFAULT_PENS: [u32; 16] = [

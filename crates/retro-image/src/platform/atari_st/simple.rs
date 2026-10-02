@@ -237,6 +237,59 @@ fn decode_gfb_inner(data: &[u8]) -> Option<Image> {
     planar_image(bitmap, width, height, planes, &palette, 1)
 }
 
+/// Pablo Paint (uncompressed only): 36-byte id line, ASCII data size line,
+/// resolution byte (0 low, 2 high), compression byte (0), size word,
+/// palette, screen.
+/// Source: <https://temlib.org/AtariForumWiki/index.php/Pablo_Paint_file_format>
+/// (the id line is 36 bytes long in sample files, not 43).
+pub(super) fn decode_pablo(data: &[u8]) -> Result<Image, DecodeError> {
+    if !data.starts_with(b"PABLO PACKED PICTURE: Groupe CDND \r\n") {
+        return Err(DecodeError::Unrecognized);
+    }
+    let line_end = data[36..]
+        .windows(2)
+        .position(|w| w == b"\r\n")
+        .ok_or(DecodeError::Unrecognized)?;
+    let pos = 36 + line_end + 2;
+    let resolution = data
+        .get(pos)
+        .and_then(|&r| Resolution::from_index(r.into()))
+        .ok_or(DecodeError::Unrecognized)?;
+    if data.get(pos + 1) != Some(&0) {
+        // Compression type 29 is undocumented.
+        return Err(DecodeError::Unrecognized);
+    }
+    let words = words(data, pos + 4)?;
+    ok(decode_screen(resolution, &data[pos + 36..], &words))
+}
+
+/// Graphics Processor (uncompressed modes 0-2 only): mode word, palette,
+/// more palettes and settings, screen at 331.
+/// Source: survey notes (`docs/formats/atari-st-tt-falcon.md`); the
+/// screen offset is derived from sample files.
+pub(super) fn decode_graphics_processor(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 331 + SCREEN_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let resolution = be16(data, 0)
+        .and_then(Resolution::from_index)
+        .ok_or(DecodeError::Unrecognized)?;
+    ok(decode_screen(resolution, &data[331..], &words(data, 2)?))
+}
+
+/// Atari Image Manager `IM`: raw 256x256 8-bit grey (observed from
+/// `recoil2png` output).
+pub(super) fn decode_im(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 256 * 256 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(256, 256);
+    for (i, &v) in data.iter().enumerate() {
+        image.set(i as u32 % 256, i as u32 / 256, u32::from(v) * 0x010101);
+    }
+    Ok(image)
+}
+
 /// Sinbad Slideshow: low-resolution screen, palette, padding to 32768.
 pub(super) fn decode_ssb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 32768 {
