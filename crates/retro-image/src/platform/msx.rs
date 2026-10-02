@@ -6,6 +6,8 @@ mod bitbuster;
 mod dot_designer;
 mod dynamic_publisher;
 mod g9b;
+mod mif;
+mod mig;
 mod screen;
 mod ukp;
 mod vdp;
@@ -104,6 +106,8 @@ pub(super) static FORMATS: &[Format] = &[
     })
     .signature(),
     Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode).signature(),
+    Format::new("MSX2", "MIG", &["mig"], mig::decode).signature(),
+    Format::new("MSX2", "MIF", &["mif"], mif::decode).signature(),
     Format::with_companions(
         "MSX2",
         "Dot Designer's Club",
