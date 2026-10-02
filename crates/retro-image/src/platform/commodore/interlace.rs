@@ -13,11 +13,13 @@
 //! |---|---|
 //! | Drazlace (DRL, DLP) | CB "Drazlace", GD Draz |
 //! | True Paint (MCI) | CB "True Paint", GD TruePaint |
+//! | Interlace Hires Editor (IHE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two bare bitmaps at `$2000` and `$4000`, set bits black and clear bits grey (`$0C`) in both frames |
+//! | Multi-Lace Editor (MLE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two 2048-byte multicolour bitmaps at `$2000` and `$2800` (6 rows of cells and 16 cells of the 7th, 56 lines), fixed colours; the first frame is shown one pixel to the right |
 //! | Hires-Interlace (HLF) | CB "Hires-Interlace v1.0"; which screen RAM pairs with which bitmap checked against `recoil2png` output |
 
 use super::bitmap::{Hires, Multicolor};
 use super::prg::Prg;
-use super::vic2::Frame;
+use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
 
 /// Blends two frames; `shift` moves the second one right by a hires pixel,
@@ -136,4 +138,43 @@ pub(super) fn decode_hires_interlace(data: &[u8]) -> Result<Image, DecodeError> 
         HIRES_INTERLACE[1].frame(&prg),
         None,
     )
+}
+
+/// Interlace Hires Editor: two 8000-byte bitmaps at `$2000` and `$4000`
+/// (the 192 bytes between them are unused), with fixed colours.
+pub(super) fn decode_interlace_hires_editor(data: &[u8]) -> Result<Image, DecodeError> {
+    const LEN: usize = 2 + 0x3f40;
+    const SECOND: usize = 2 + 0x2000;
+    if data.len() != LEN || data[..2] != [0x00, 0x20] {
+        return Err(DecodeError::Unrecognized);
+    }
+    // Set bits use the screen's high nibble (black), clear bits its low one.
+    let screen = [0x0c; SCREEN_LEN];
+    let frame = |start: usize| {
+        Frame::hires(
+            &Bitmap::hires(&data[start..start + BITMAP_LEN], &screen),
+            200,
+        )
+    };
+    blend(frame(2), frame(SECOND), None)
+}
+
+/// Multi-Lace Editor: two multicolour bitmaps of 256 cells each (the cells
+/// after them, up to 7 rows, are blank) at `$2000` and `$2800`, drawn in
+/// fixed colours: `01` brown, `10` orange, `11` green on black. The first
+/// frame is shifted one pixel right.
+pub(super) fn decode_multi_lace(data: &[u8]) -> Result<Image, DecodeError> {
+    const FRAME_LEN: usize = 0x800;
+    const HEIGHT: usize = 56;
+    if data.len() != 2 + 2 * FRAME_LEN || data[..2] != [0x00, 0x20] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let screen = [0x98; SCREEN_LEN];
+    let color = [5; SCREEN_LEN];
+    let frame = |start: usize| {
+        let mut bitmap = data[start..start + FRAME_LEN].to_vec();
+        bitmap.resize(HEIGHT / 8 * 40 * 8, 0);
+        Frame::multicolor(&Bitmap::multicolor(&bitmap, &screen, &color, 0), HEIGHT)
+    };
+    blend(frame(2 + FRAME_LEN), frame(2), Some(0))
 }
