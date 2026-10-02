@@ -44,7 +44,7 @@ fn widen(image: Image) -> Image {
     if image.height() * 2 < image.width() * 3 {
         return image;
     }
-    super::common::double_width(&image)
+    image.scaled(2, 1)
 }
 
 /// Renders chunky pixels (`bytes` per pixel) through `color`.

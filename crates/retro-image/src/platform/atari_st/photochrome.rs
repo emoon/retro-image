@@ -11,7 +11,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, interleaved_index, mix_images, st_rgb, uses_ste_bits};
+use super::common::{be16, interleaved_index, st_rgb, uses_ste_bits};
 use crate::{DecodeError, Image};
 
 const SCREEN_LEN: usize = 32000;
@@ -44,7 +44,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     let second = Frame::new(&screen2, &palette2);
     let a = first.render();
     let b = second.render();
-    Some(mix_images(&a, &b))
+    Some(Image::blend(&[&a, &b]))
 }
 
 struct Frame {

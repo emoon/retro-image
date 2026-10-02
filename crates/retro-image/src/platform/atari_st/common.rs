@@ -1,5 +1,5 @@
 //! Shared Atari ST building blocks: palette words, screen modes,
-//! word-interleaved bitplanes and the PackBits run-length scheme.
+//! word-interleaved bitplanes.
 //!
 //! Sources:
 //! - Palette word layouts (ST `.....RRR .GGG.BBB`, STE extra LSB above the
@@ -8,7 +8,6 @@
 //!   and <http://fileformats.archiveteam.org/wiki/Atari_ST_color_palette>.
 //! - Word-interleaved bitplanes: Atari Compendium chapter 5,
 //!   <http://cd.textfiles.com/ataricompendium/BOOK/HTML/CHAP5.HTM>.
-//! - PackBits: <https://temlib.org/AtariForumWiki/index.php/PackBits_Compression_Algorithm>.
 //! - Observed from `recoil2png` output: 3-bit components are scaled by bit
 //!   replication (7 -> 0xff); a palette that uses any STE bit is decoded as
 //!   12-bit STE (4-bit components times 0x11); medium resolution is shown
@@ -17,6 +16,7 @@
 use alloc::vec::Vec;
 
 use crate::Image;
+use crate::codec::packbits;
 
 /// Big-endian 16-bit word at `offset`, if in range.
 pub(super) fn be16(data: &[u8], offset: usize) -> Option<u16> {
@@ -181,17 +181,18 @@ pub(super) fn planar_image(
     if !width.is_multiple_of(16) || bitmap.len() < stride * height as usize {
         return None;
     }
-    let mut image = Image::new(width, height * y_scale);
-    for y in 0..height {
-        let line = &bitmap[y as usize * stride..][..stride];
+    let mut indices = Vec::with_capacity(width as usize * height as usize);
+    for line in bitmap.chunks_exact(stride.max(1)).take(height as usize) {
         for x in 0..width {
-            let color = *palette.get(interleaved_index(line, x, planes))?;
-            for dy in 0..y_scale {
-                image.set(x, y * y_scale + dy, color);
-            }
+            indices.push(u8::try_from(interleaved_index(line, x, planes)).ok()?);
         }
     }
-    Some(image)
+    let image = Image::from_indexed(width, height, &indices, palette).ok()?;
+    Some(if y_scale == 1 {
+        image
+    } else {
+        image.scaled(1, y_scale)
+    })
 }
 
 /// Upper bound on a picture's area, so corrupt headers can't make a
@@ -205,42 +206,12 @@ pub(super) fn words(data: &[u8]) -> Vec<u16> {
         .collect()
 }
 
-/// Colour of pixel `i` (row-major) of `image`.
-fn pixel(image: &Image, i: usize) -> u32 {
-    let p = &image.rgb()[i * 3..i * 3 + 3];
-    u32::from_be_bytes([0, p[0], p[1], p[2]])
-}
-
-/// Per-component average of two colours, rounding down: how two screens
-/// shown on alternate frames are rendered (observed from `recoil2png`
-/// output).
-pub(super) fn mix(a: u32, b: u32) -> u32 {
-    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
-    channel(16) | channel(8) | channel(0)
-}
-
-/// Mixes two images of the same size, see [`mix`].
-pub(super) fn mix_images(a: &Image, b: &Image) -> Image {
-    Image::blend(&[a, b])
-}
-
-/// Doubles every pixel horizontally.
-pub(super) fn double_width(image: &Image) -> Image {
-    let mut wide = Image::new(image.width() * 2, image.height());
-    for i in 0..(image.width() * image.height()) as usize {
-        let (x, y) = (i as u32 % image.width(), i as u32 / image.width());
-        wide.set(x * 2, y, pixel(image, i));
-        wide.set(x * 2 + 1, y, pixel(image, i));
-    }
-    wide
-}
-
 /// Copies the top-left `width` x `height` pixels of `image`.
 pub(super) fn crop(image: &Image, width: u32, height: u32) -> Image {
     let mut out = Image::new(width, height);
     for y in 0..height.min(image.height()) {
         for x in 0..width.min(image.width()) {
-            out.set(x, y, pixel(image, (y * image.width() + x) as usize));
+            out.set(x, y, image.get(x, y));
         }
     }
     out
@@ -298,15 +269,13 @@ pub(super) fn mono_image(bitmap: &[u8], width: u32, height: u32, row_len: usize)
     if bitmap.len() < row_len * height as usize || row_len * 8 < width as usize {
         return None;
     }
-    let mut image = Image::new(width, height);
-    for y in 0..height {
-        let line = &bitmap[y as usize * row_len..];
-        for x in 0..width {
-            let bit = line[x as usize / 8] >> (7 - x % 8) & 1;
-            image.set(x, y, MONO_PALETTE[usize::from(bit)]);
-        }
-    }
-    Some(image)
+    let indices: Vec<u8> = (0..height as usize)
+        .flat_map(|y| {
+            let line = &bitmap[y * row_len..];
+            (0..width as usize).map(move |x| line[x / 8] >> (7 - x % 8) & 1)
+        })
+        .collect();
+    Image::from_indexed(width, height, &indices, &MONO_PALETTE).ok()
 }
 
 /// Reorders bitplanes stored line by line, each line holding one complete
@@ -351,35 +320,14 @@ pub(super) fn separate_planes_to_interleaved(data: &[u8], planes: usize) -> Vec<
     out
 }
 
-/// Unpacks PackBits data until `out_len` bytes are produced. Returns the
-/// unpacked bytes and the number of input bytes consumed.
+/// [`packbits::unpack`], rejecting up front an `out_len` that `data` could
+/// never produce (one input byte yields at most 64 output bytes), so a
+/// corrupt header can't force a huge allocation.
 pub(super) fn unpack_bits(data: &[u8], out_len: usize) -> Option<(Vec<u8>, usize)> {
-    // Each input byte yields at most 64 output bytes.
     if out_len / 64 > data.len() {
         return None;
     }
-    let mut out = Vec::with_capacity(out_len);
-    let mut pos = 0;
-    while out.len() < out_len {
-        let control = *data.get(pos)? as i8;
-        pos += 1;
-        match control {
-            0..=127 => {
-                let count = control as usize + 1;
-                out.extend_from_slice(data.get(pos..pos + count)?);
-                pos += count;
-            }
-            -128 => {}
-            _ => {
-                let value = *data.get(pos)?;
-                pos += 1;
-                let count = (1 - isize::from(control)) as usize;
-                out.extend(core::iter::repeat_n(value, count));
-            }
-        }
-    }
-    out.truncate(out_len);
-    Some((out, pos))
+    packbits::unpack(data, out_len)
 }
 
 #[cfg(test)]
@@ -401,15 +349,5 @@ mod tests {
         let line = [0x80, 0, 0, 0, 0x80, 0, 0, 1];
         assert_eq!(interleaved_index(&line, 0, 4), 0b0101);
         assert_eq!(interleaved_index(&line, 15, 4), 0b1000);
-    }
-
-    #[test]
-    fn packbits_literal_and_run() {
-        let data = [2, 1, 2, 3, 0xfe, 9, 0x80];
-        assert_eq!(
-            unpack_bits(&data, 6),
-            Some((alloc::vec![1, 2, 3, 9, 9, 9], 6))
-        );
-        assert_eq!(unpack_bits(&data[..3], 3), None);
     }
 }
