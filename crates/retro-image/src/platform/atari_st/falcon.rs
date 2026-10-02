@@ -220,6 +220,11 @@ pub(super) fn decode_tg1(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// EggPaint (`TRUP`) and Spooky Sprites (`tru?`): id, width, height, RGB565.
 pub(super) fn decode_trp(data: &[u8]) -> Result<Image, DecodeError> {
+    // EggPaint files are often Pack-Ice packed (EggPaint page above).
+    if super::pack_ice::is_packed(data) {
+        let unpacked = super::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
+        return decode_trp(&unpacked);
+    }
     match data.get(..4) {
         Some(b"TRUP" | b"tru?") => {}
         _ => return Err(DecodeError::Unrecognized),
