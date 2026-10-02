@@ -20,15 +20,11 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    be16, be32, line_planes_to_interleaved, palette_words, planar_image, st_palette, unpack_bits,
-    vdi_palette,
+    MAX_PIXELS, be16, be32, line_planes_to_interleaved, palette_words, planar_image, st_palette,
+    unpack_bits, vdi_palette,
 };
 use super::falcon::{rgb565, videl_palette};
 use crate::{DecodeError, Image};
-
-/// Upper bound on the picture area, so corrupt headers can't make us
-/// allocate gigabytes.
-const MAX_PIXELS: usize = 1 << 24;
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
@@ -48,14 +44,7 @@ fn widen(image: Image) -> Image {
     if image.height() * 2 < image.width() * 3 {
         return image;
     }
-    let mut wide = Image::new(image.width() * 2, image.height());
-    for (i, p) in image.rgb().chunks_exact(3).enumerate() {
-        let color = u32::from_be_bytes([0, p[0], p[1], p[2]]);
-        let (x, y) = (i as u32 % image.width(), i as u32 / image.width());
-        wide.set(x * 2, y, color);
-        wide.set(x * 2 + 1, y, color);
-    }
-    wide
+    super::common::double_width(&image)
 }
 
 /// Renders chunky pixels (`bytes` per pixel) through `color`.

@@ -194,18 +194,58 @@ pub(super) fn planar_image(
     Some(image)
 }
 
+/// Upper bound on a picture's area, so corrupt headers can't make a
+/// decoder allocate gigabytes.
+pub(super) const MAX_PIXELS: usize = 1 << 24;
+
+/// Big-endian words of `data` (a trailing odd byte is ignored).
+pub(super) fn words(data: &[u8]) -> Vec<u16> {
+    data.chunks_exact(2)
+        .map(|w| u16::from_be_bytes([w[0], w[1]]))
+        .collect()
+}
+
+/// Colour of pixel `i` (row-major) of `image`.
+fn pixel(image: &Image, i: usize) -> u32 {
+    let p = &image.rgb()[i * 3..i * 3 + 3];
+    u32::from_be_bytes([0, p[0], p[1], p[2]])
+}
+
+/// Per-component average of two colours, rounding down: how two screens
+/// shown on alternate frames are rendered (observed from `recoil2png`
+/// output).
+pub(super) fn mix(a: u32, b: u32) -> u32 {
+    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
+    channel(16) | channel(8) | channel(0)
+}
+
+/// Mixes two images of the same size, see [`mix`].
+pub(super) fn mix_images(a: &Image, b: &Image) -> Image {
+    let mut image = Image::new(a.width(), a.height());
+    for i in 0..(a.width() * a.height()) as usize {
+        let (x, y) = (i as u32 % a.width(), i as u32 / a.width());
+        image.set(x, y, mix(pixel(a, i), pixel(b, i)));
+    }
+    image
+}
+
+/// Doubles every pixel horizontally.
+pub(super) fn double_width(image: &Image) -> Image {
+    let mut wide = Image::new(image.width() * 2, image.height());
+    for i in 0..(image.width() * image.height()) as usize {
+        let (x, y) = (i as u32 % image.width(), i as u32 / image.width());
+        wide.set(x * 2, y, pixel(image, i));
+        wide.set(x * 2 + 1, y, pixel(image, i));
+    }
+    wide
+}
+
 /// Copies the top-left `width` x `height` pixels of `image`.
 pub(super) fn crop(image: &Image, width: u32, height: u32) -> Image {
     let mut out = Image::new(width, height);
-    let rgb = image.rgb();
     for y in 0..height.min(image.height()) {
         for x in 0..width.min(image.width()) {
-            let i = ((y * image.width() + x) * 3) as usize;
-            out.set(
-                x,
-                y,
-                u32::from_be_bytes([0, rgb[i], rgb[i + 1], rgb[i + 2]]),
-            );
+            out.set(x, y, pixel(image, (y * image.width() + x) as usize));
         }
     }
     out

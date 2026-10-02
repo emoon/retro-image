@@ -11,7 +11,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, interleaved_index, st_rgb, uses_ste_bits};
+use super::common::{be16, interleaved_index, mix_images, st_rgb, uses_ste_bits};
 use crate::{DecodeError, Image};
 
 const SCREEN_LEN: usize = 32000;
@@ -44,21 +44,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     let second = Frame::new(&screen2, &palette2);
     let a = first.render();
     let b = second.render();
-    let mut image = Image::new(320, 199);
-    for (i, (pa, pb)) in a
-        .rgb()
-        .chunks_exact(3)
-        .zip(b.rgb().chunks_exact(3))
-        .enumerate()
-    {
-        let mix = |k: usize| (u32::from(pa[k]) + u32::from(pb[k])) / 2;
-        image.set(
-            i as u32 % 320,
-            i as u32 / 320,
-            mix(0) << 16 | mix(1) << 8 | mix(2),
-        );
-    }
-    Some(image)
+    Some(mix_images(&a, &b))
 }
 
 struct Frame {

@@ -14,7 +14,8 @@ use crate::{DecodeError, Image};
 
 const BITMAP_LEN: usize = 153600;
 
-fn tt_rgb(word: u16) -> u32 {
+/// TT palette word `....RRRR GGGGBBBB` to `0xRRGGBB`.
+pub(super) fn tt_rgb(word: u16) -> u32 {
     let word = u32::from(word);
     ((word >> 8 & 0xf) * 0x110000) | ((word >> 4 & 0xf) * 0x1100) | ((word & 0xf) * 0x11)
 }
@@ -31,14 +32,7 @@ pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
         .collect();
     let image = planar_image(&data[514..], 320, 480, 8, &palette, 1);
     let image = image.ok_or(DecodeError::Unrecognized)?;
-    let mut wide = Image::new(640, 480);
-    for (i, p) in image.rgb().chunks_exact(3).enumerate() {
-        let color = u32::from_be_bytes([0, p[0], p[1], p[2]]);
-        let (x, y) = ((i % 320) as u32, (i / 320) as u32);
-        wide.set(x * 2, y, color);
-        wide.set(x * 2 + 1, y, color);
-    }
-    Ok(wide)
+    Ok(super::common::double_width(&image))
 }
 
 /// TT medium: resolution word 4, 16 palette words, 640x480 in 4 planes.

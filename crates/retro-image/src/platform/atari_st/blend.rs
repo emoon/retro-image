@@ -14,29 +14,10 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, palette_words,
-    separate_planes_to_interleaved, st_rgb, uses_ste_bits,
+    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, mix, mix_images, palette_words,
+    separate_planes_to_interleaved, st_rgb, uses_ste_bits, words,
 };
 use crate::{DecodeError, Image};
-
-fn average(a: &Image, b: &Image) -> Image {
-    let mut image = Image::new(a.width(), a.height());
-    for (i, (pa, pb)) in a
-        .rgb()
-        .chunks_exact(3)
-        .zip(b.rgb().chunks_exact(3))
-        .enumerate()
-    {
-        let mix = |k: usize| (u32::from(pa[k]) + u32::from(pb[k])) / 2;
-        let i = i as u32;
-        image.set(
-            i % a.width(),
-            i / a.width(),
-            mix(0) << 16 | mix(1) << 8 | mix(2),
-        );
-    }
-    image
-}
 
 /// Unpacks Pack-Ice data; `None` if `data` is not packed.
 fn unpack_ice(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
@@ -46,12 +27,6 @@ fn unpack_ice(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     super::pack_ice::unpack(data)
         .map(Some)
         .ok_or(DecodeError::Unrecognized)
-}
-
-fn words(data: &[u8]) -> Vec<u16> {
-    data.chunks_exact(2)
-        .map(|w| u16::from_be_bytes([w[0], w[1]]))
-        .collect()
 }
 
 const PCI_WIDTH: usize = 352;
@@ -85,7 +60,7 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
         }
         image
     };
-    Ok(average(&frame(0), &frame(1)))
+    Ok(mix_images(&frame(0), &frame(1)))
 }
 
 /// HighresMedium: 400 medium-resolution lines (pairs of alternating
@@ -113,8 +88,7 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
         let a = line_image(y * 2).ok_or(DecodeError::Unrecognized)?;
         let b = line_image(y * 2 + 1).ok_or(DecodeError::Unrecognized)?;
         for x in 0..640 {
-            let mix = |shift: u32| (((a[x] >> shift & 0xff) + (b[x] >> shift & 0xff)) / 2) << shift;
-            let color = mix(16) | mix(8) | mix(0);
+            let color = mix(a[x], b[x]);
             image.set(x as u32, y as u32 * 2, color);
             image.set(x as u32, y as u32 * 2 + 1, color);
         }
@@ -151,5 +125,5 @@ pub(super) fn decode_pl4(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let a = frame(0).ok_or(DecodeError::Unrecognized)?;
     let b = frame(34 + SCREEN_LEN + 2).ok_or(DecodeError::Unrecognized)?;
-    Ok(average(&a, &b))
+    Ok(mix_images(&a, &b))
 }

@@ -267,6 +267,29 @@ Permissive or non-GPL references that may be consulted:
 - Netpbm converters `pi1toppm`, `pi3topbm`, `pc1toppm`, `sputoppm`, `spctoppm` (per-file licenses; check each).
 - Licenses **not verified**: abydos (snisurset.net), wuimg (codeberg kaleido/wuimg) and ataripac2pbm. Check them before reading.
 
+## 7. Implementation notes (retro-image)
+
+Facts found while matching `recoil2png` output (black box) or reading sample files. The
+decoders live in `crates/retro-image/src/platform/atari_st/`.
+
+- Output conventions: 3-bit components are bit-replicated, a palette using any STE bit is
+  read as STE, medium resolution doubles lines, monochrome set bits are black. VDI levels
+  scale as `v * 255 / 1000` (truncated); VDI palettes are in pen order (register 15 shows
+  pen 255 in 256-colour mode). Two-screen formats (DUO, PCI, PL4, HRM, PCS, MPP, PBX 4096)
+  average the two screens per component.
+- GEM IMG: STTT files store whole planes one after another; others interleave plane rows
+  per line, and runs may cross line ends. Images without a palette use the default VDI
+  colours. 16/24/32-"plane" XIMG files are chunky; TIMG files are real bitplanes holding
+  R, G, B fields least significant bit first. FSNAP-style files contain `0, 0, n` records
+  whose meaning is still unknown.
+- Canvas CPT run offsets count 16-pixel units, not bytes. DuneGraph DC1 may stop after
+  the used planes. DelmPaint DPH has 10 blocks, all with lengths. MPP files hold 199 (273)
+  lines. Spectrum 512 Extended v2 match offsets are relative to the output position.
+- Still unsupported: Imagic (`IC1`-`IC3`; the stream does not map linearly onto the
+  screen), FSNAP-style IMG files, 8-plane IMG without palette, GFA Artist 1000-colour
+  mode, KID, NEOchrome Master IFF with `RAST`, ICDRAW, Pablo Paint, and Art Director files
+  whose display times are all zero.
+
 <!-- link definitions -->
 [recoil-list]: https://recoil.sourceforge.net/formats.html
 [recoil-examples]: http://recoil.sourceforge.net/examples.zip

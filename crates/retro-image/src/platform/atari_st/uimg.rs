@@ -9,15 +9,11 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, planar_image, st_palette, vdi_palette};
+use super::common::{MAX_PIXELS, be16, planar_image, st_palette, vdi_palette, words};
 use super::falcon::rgb565;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 14;
-
-/// Upper bound on the picture area, so corrupt headers can't make us
-/// allocate gigabytes.
-const MAX_PIXELS: usize = 1 << 24;
 
 pub(super) fn decode_uimg(data: &[u8]) -> Result<Image, DecodeError> {
     decode(data).ok_or(DecodeError::Unrecognized)
@@ -69,21 +65,9 @@ fn palette(data: &[u8], kind: u16, bits: usize) -> Option<(Vec<u32>, &[u8])> {
     };
     let len = entries * entry_len;
     let table = data.get(HEADER_LEN..HEADER_LEN + len)?;
-    let words = || -> Vec<u16> {
-        table
-            .chunks_exact(2)
-            .map(|w| u16::from_be_bytes([w[0], w[1]]))
-            .collect()
-    };
     let palette = match kind {
-        1 => st_palette(&words()),
-        2 => words()
-            .into_iter()
-            .map(|w| {
-                let w = u32::from(w);
-                ((w >> 8 & 0xf) * 0x110000) | ((w >> 4 & 0xf) * 0x1100) | ((w & 0xf) * 0x11)
-            })
-            .collect(),
+        1 => st_palette(&words(table)),
+        2 => words(table).into_iter().map(super::tt::tt_rgb).collect(),
         3 => table
             .chunks_exact(4)
             .map(|e| u32::from_be_bytes([0, e[0], e[1], e[3]]))

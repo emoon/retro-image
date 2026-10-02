@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, be32, interleaved_index, st_rgb, uses_ste_bits};
+use super::common::{be16, be32, interleaved_index, st_rgb, uses_ste_bits, words};
 use crate::{DecodeError, Image};
 
 const LINES: usize = 199;
@@ -86,12 +86,6 @@ fn st_depth(palettes: &[u16]) -> ColorDepth {
     ColorDepth::St {
         ste: uses_ste_bits(palettes.iter().copied()),
     }
-}
-
-fn words(data: &[u8]) -> Vec<u16> {
-    data.chunks_exact(2)
-        .map(|w| u16::from_be_bytes([w[0], w[1]]))
-        .collect()
 }
 
 pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {

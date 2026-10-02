@@ -10,8 +10,8 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    Resolution, SCREEN_LEN, be16, interleaved_index, palette_words, planar_image, st_palette,
-    st_rgb, unpack_bits,
+    Resolution, SCREEN_LEN, be16, interleaved_index, mix, palette_words, planar_image, st_palette,
+    st_rgb, unpack_bits, words,
 };
 use crate::{DecodeError, Image};
 
@@ -110,11 +110,6 @@ fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
 /// 32 ST colours per line chosen by `find_pbx_index`, optionally
 /// averaged with a second palette set.
 fn line_palettes(first: &[u8], second: Option<&[u8]>, screen: &[u8]) -> Option<Image> {
-    let words = |data: &[u8]| -> Vec<u16> {
-        data.chunks_exact(2)
-            .map(|w| u16::from_be_bytes([w[0], w[1]]))
-            .collect()
-    };
     let first = words(first);
     let second = second.map(words);
     let mut image = Image::new(320, 200);
@@ -126,17 +121,12 @@ fn line_palettes(first: &[u8], second: Option<&[u8]>, screen: &[u8]) -> Option<I
             let a = st_rgb(*first.get(i)?, false);
             let color = match &second {
                 None => a,
-                Some(second) => average(a, st_rgb(*second.get(i)?, false)),
+                Some(second) => mix(a, st_rgb(*second.get(i)?, false)),
             };
             image.set(x as u32, y as u32, color);
         }
     }
     Some(image)
-}
-
-fn average(a: u32, b: u32) -> u32 {
-    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
-    channel(16) | channel(8) | channel(0)
 }
 
 /// Hans Wessels' `find_pbx_index`.

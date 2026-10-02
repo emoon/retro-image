@@ -13,12 +13,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be32, mono_image};
+use super::common::{MAX_PIXELS, be32, mono_image};
 use crate::{DecodeError, Image};
-
-/// Upper bound on the picture area, so corrupt headers can't make us
-/// allocate gigabytes.
-const MAX_PIXELS: usize = 1 << 25;
 
 /// Public Painter: escape byte, size byte (0 = 640x400, 200 = 640x800),
 /// then literal bytes or `escape, count - 1, value` runs.

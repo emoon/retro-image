@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::be32;
+use super::common::{be32, mix};
 use crate::{DecodeError, Image};
 
 struct Mode {
@@ -98,7 +98,7 @@ fn decode(data: &[u8]) -> Option<Image> {
         first
             .iter()
             .zip(&second)
-            .map(|(&a, &b)| average(a, b))
+            .map(|(&a, &b)| mix(a, b))
             .collect()
     } else {
         first
@@ -110,11 +110,6 @@ fn decode(data: &[u8]) -> Option<Image> {
         }
     }
     Some(image)
-}
-
-fn average(a: u32, b: u32) -> u32 {
-    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
-    channel(16) | channel(8) | channel(0)
 }
 
 /// Converts a packed palette entry of `bits` bits to `0xRRGGBB`.

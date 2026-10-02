@@ -28,12 +28,8 @@
 
 use alloc::vec::Vec;
 
-use super::common::{be16, be32, planar_image, separate_planes_to_interleaved};
+use super::common::{MAX_PIXELS, be16, be32, planar_image, separate_planes_to_interleaved};
 use crate::{DecodeError, Image};
-
-/// Upper bound on the picture area, so corrupt headers can't make us
-/// allocate gigabytes.
-const MAX_PIXELS: usize = 1 << 24;
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
