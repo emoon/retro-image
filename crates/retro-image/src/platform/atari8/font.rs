@@ -21,7 +21,7 @@
 //!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
 
-use super::antic::{Bitmap, fill, mix};
+use super::antic::{Bitmap, fill};
 use super::palette::register_rgb;
 use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
@@ -60,7 +60,10 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
         }
         image
     };
-    Ok(mix(&charset(&data[..1024]), &charset(&data[1024..])))
+    Ok(Image::blend(&[
+        &charset(&data[..1024]),
+        &charset(&data[1024..]),
+    ]))
 }
 
 /// AtariTools-800 font: background and playfield 0-2, then an ANTIC mode 4
@@ -198,7 +201,7 @@ pub(super) fn draw_glyph(
     for (row, &bits) in glyph.iter().enumerate() {
         for column in 0..8 {
             let set = bits & (0x80 >> column) != 0;
-            fill(image, x + column, y + row as u32, 1, 1, color(set));
+            image.set(x + column, y + row as u32, color(set));
         }
     }
 }
@@ -213,8 +216,7 @@ mod tests {
         data[33 * 8] = 0x80; // character 33: row 1, column 1
         let image = decode_fnt(&data).unwrap();
         assert_eq!((image.width(), image.height()), (256, 32));
-        let i = (8 * 256 + 8) * 3;
-        assert_eq!(&image.rgb()[i..i + 3], &[0xee, 0xee, 0xee]);
+        assert_eq!(image.get(8, 8), 0xeeeeee);
     }
 
     #[test]

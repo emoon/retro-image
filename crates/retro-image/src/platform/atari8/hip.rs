@@ -16,7 +16,7 @@
 //!   placement: mode 9 pixels start 1 output pixel left of the 4-pixel grid,
 //!   mode 10 pixels 1 to the right, with black beyond the edges.
 
-use super::palette::{average, register_rgb, rgb};
+use super::palette::{register_rgb, rgb};
 use super::screen::gtia10_register;
 use crate::{DecodeError, Image};
 
@@ -64,16 +64,19 @@ fn half_pixel_pair(
     left: impl Fn(usize, usize) -> u32,
     right: impl Fn(usize, usize) -> u32,
 ) -> Image {
-    let mut image = Image::new(320, 200);
+    let mut left_frame = Image::new(320, 200);
+    let mut right_frame = Image::new(320, 200);
     for y in 0..200 {
         for x in 0..320 {
-            let left = (x + 1 < 320).then(|| left(y, (x + 1) / 4));
-            let right = x.checked_sub(1).map(|x| right(y, x / 4));
-            let rgb = average(left.unwrap_or(0), right.unwrap_or(0));
-            image.set(x as u32, y as u32, rgb);
+            if x + 1 < 320 {
+                left_frame.set(x as u32, y as u32, left(y, (x + 1) / 4));
+            }
+            if let Some(x1) = x.checked_sub(1) {
+                right_frame.set(x as u32, y as u32, right(y, x1 / 4));
+            }
         }
     }
-    image
+    Image::blend(&[&left_frame, &right_frame])
 }
 
 /// The 8000 bytes of a DOS binary-load segment (`FF FF`, start, end).
@@ -103,9 +106,9 @@ mod tests {
         let mut data = vec![0u8; 16000];
         data[0] = 0xf0; // mode 9 pixel 0: luminance 15
         let image = decode_hip(&data).unwrap();
-        let pixel = |x: usize| image.rgb()[x * 3];
+        let pixel = |x: u32| image.get(x, 0);
         // Mode 9 pixel 0 covers x = 0..=2 (one pixel left of the grid).
-        assert_eq!([pixel(0), pixel(2), pixel(3)], [0x7f, 0x7f, 0x00]);
+        assert_eq!([pixel(0), pixel(2), pixel(3)], [0x7f7f7f, 0x7f7f7f, 0]);
     }
 
     #[test]

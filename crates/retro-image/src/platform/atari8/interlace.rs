@@ -18,7 +18,7 @@
 //!   0-2, background) that swap between the frames on every line; MCPP's
 //!   frames are 100-line halves shown on alternate lines, not mixed.
 
-use super::antic::{Bitmap, mix};
+use super::antic::Bitmap;
 use super::palette::register_rgb;
 use crate::{DecodeError, Image};
 
@@ -40,10 +40,10 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
         .and_then(|c| c.try_into().ok())
         .ok_or(DecodeError::Unrecognized)?;
     let color = |_, value: u8| register_rgb(colors[usize::from(value)]);
-    Ok(mix(
+    Ok(Image::blend(&[
         &frame(data, 200).render(2, 1, color),
         &frame(&data[FRAME..], 200).render(2, 1, color),
-    ))
+    ]))
 }
 
 /// INT95a: `INT95a`, width in bytes, height, `0F 2B`, the colour sets
@@ -72,10 +72,10 @@ pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
         bitmap.render(2, 1, |_, value| register_rgb(set[usize::from(value)]))
     };
     let (first, second) = frames.split_at(frame_len);
-    Ok(mix(
+    Ok(Image::blend(&[
         &frame_image(first, &sets[..4]),
         &frame_image(second, &sets[4..]),
-    ))
+    ]))
 }
 
 /// HCI: a 320x200 Graphics 8 frame and a 160x200 Graphics 15 frame, then
@@ -100,7 +100,7 @@ pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
     let multicolor = frame(&data[FRAME..], 200).render(2, 1, |_, value| {
         register_rgb(colors[2 + usize::from(value)])
     });
-    Ok(mix(&hires, &multicolor))
+    Ok(Image::blend(&[&hires, &multicolor]))
 }
 
 /// Atari Interlace Studio: two 160x200 frames at offsets 16 and 8208, then
@@ -111,10 +111,10 @@ pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let tables = &data[16384..];
     let color = |line: usize, value: u8| register_rgb(tables[usize::from(value) * 200 + line]);
-    Ok(mix(
+    Ok(Image::blend(&[
         &frame(&data[16..], 200).render(2, 1, color),
         &frame(&data[8208..], 200).render(2, 1, color),
-    ))
+    ]))
 }
 
 /// McPainter: two 160x200 frames, then two colour sets. On even lines the
@@ -129,7 +129,7 @@ pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
             register_rgb(sets[(line + first) % 2][usize::from(value)])
         })
     };
-    Ok(mix(&frame_image(0, 0), &frame_image(FRAME, 1)))
+    Ok(Image::blend(&[&frame_image(0, 0), &frame_image(FRAME, 1)]))
 }
 
 /// Paradox: two 160x100 halves, then two colour sets. Even output lines
