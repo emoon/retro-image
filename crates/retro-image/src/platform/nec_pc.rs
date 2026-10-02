@@ -5,8 +5,10 @@
 //! platform survey is `docs/research/msx-japanese.md`.
 
 mod artmaster88;
+mod arv;
 mod davinci;
 mod ebd;
+mod kt4;
 pub(super) mod maki;
 mod pc88_planes;
 pub(super) mod pi;
@@ -76,4 +78,7 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     Format::new("NEC PC-98", "EBD", &["ebd"], ebd::decode_ebd),
     Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
+    // Wave 5b: Japanese
+    Format::new("NEC PC-98", "ARTV", &["arv"], arv::decode_arv).signature(),
+    Format::new("NEC PC-88 VA", "Kitty", &["kt4"], kt4::decode_kt4),
 ];

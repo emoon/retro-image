@@ -30,17 +30,17 @@ use crate::{DecodeError, Image};
 const SIGNATURE: &[u8] = b"SS_SIF    0.00";
 const RECORDS: usize = 0x28;
 
-/// Unpacks one plane from `data[*pos..]`, advancing `pos` past it.
-fn unpack_plane(data: &[u8], pos: &mut usize) -> Option<Vec<u8>> {
-    let mut plane = Vec::with_capacity(PLANE_BYTES);
-    while plane.len() < PLANE_BYTES {
+/// Unpacks one plane of `len` bytes from `data[*pos..]`, advancing `pos` past it.
+pub(super) fn unpack_plane(data: &[u8], pos: &mut usize, len: usize) -> Option<Vec<u8>> {
+    let mut plane = Vec::with_capacity(len);
+    while plane.len() < len {
         let byte = *data.get(*pos)?;
         if data.get(*pos + 1) == Some(&byte) {
             let count = match *data.get(*pos + 2)? {
                 0 => 256,
                 n => usize::from(n),
             };
-            if plane.len() + count > PLANE_BYTES {
+            if plane.len() + count > len {
                 return None;
             }
             plane.resize(plane.len() + count, byte);
@@ -71,9 +71,9 @@ pub(in crate::platform) fn decode_artmaster88(data: &[u8]) -> Result<Image, Deco
         }
         pos += length;
     }
-    let blue = unpack_plane(data, &mut pos).ok_or(bad)?;
-    let red = unpack_plane(data, &mut pos).ok_or(bad)?;
-    let green = unpack_plane(data, &mut pos).ok_or(bad)?;
+    let blue = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
+    let red = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
+    let green = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
 
     pc88_planes::image(&blue, &red, &green)
 }
@@ -88,7 +88,7 @@ mod tests {
         // Literal, a run of 3 zeros, a doubled byte with count 0 (256 copies).
         let mut data = vec![0x12, 0, 0, 3, 7, 7, 0];
         let mut pos = 0;
-        assert!(unpack_plane(&data, &mut pos).is_none());
+        assert!(unpack_plane(&data, &mut pos, PLANE_BYTES).is_none());
         // A plane of 16000 bytes: 62 runs of 256 and a final run of 128.
         data = Vec::new();
         for _ in 0..62 {
@@ -96,13 +96,13 @@ mod tests {
         }
         data.extend([5, 5, 128]);
         pos = 0;
-        let plane = unpack_plane(&data, &mut pos).unwrap();
+        let plane = unpack_plane(&data, &mut pos, PLANE_BYTES).unwrap();
         assert_eq!((plane.len(), pos), (PLANE_BYTES, data.len()));
         assert_eq!((plane[0], plane[PLANE_BYTES - 1]), (9, 5));
         // A run that overshoots the plane is refused.
         data.truncate(data.len() - 1);
         data.push(129);
         pos = 0;
-        assert!(unpack_plane(&data, &mut pos).is_none());
+        assert!(unpack_plane(&data, &mut pos, PLANE_BYTES).is_none());
     }
 }
