@@ -202,4 +202,5 @@ pub(super) static FORMATS: &[Format] = &[
         simple::decode_aim_col,
     ),
     st("ColorSTar object", &["obj"], mono::decode_obj),
+    st("Grafix", &["grx"], simple::decode_grx),
 ];

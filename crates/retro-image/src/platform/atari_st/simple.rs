@@ -370,6 +370,40 @@ pub(super) fn decode_aim_col(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
+/// Grafix (uncompressed only): `GRXP`, version, program name, then at 28
+/// a compression word (0), width, height and colour count, 256 VDI RGB
+/// triplets in pen order, 14 more bytes and word-interleaved planes.
+/// Derived from sample files and `recoil2png` output (the survey found no
+/// documentation).
+pub(super) fn decode_grx(data: &[u8]) -> Result<Image, DecodeError> {
+    ok(decode_grx_inner(data))
+}
+
+fn decode_grx_inner(data: &[u8]) -> Option<Image> {
+    if data.get(..4)? != b"GRXP" || be16(data, 28)? != 0 {
+        return None;
+    }
+    let width = u32::from(be16(data, 30)?);
+    let height = u32::from(be16(data, 32)?);
+    let colors = usize::from(be16(data, 34)?);
+    let planes = match colors {
+        2 => 1,
+        4 => 2,
+        16 => 4,
+        256 => 8,
+        _ => return None,
+    };
+    let palette = super::common::vdi_palette(data.get(36..)?, colors)?;
+    planar_image(
+        data.get(36 + 256 * 6 + 14..)?,
+        width,
+        height,
+        planes,
+        &palette,
+        1,
+    )
+}
+
 /// Sinbad Slideshow: low-resolution screen, palette, padding to 32768.
 pub(super) fn decode_ssb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 32768 {
