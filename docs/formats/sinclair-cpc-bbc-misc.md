@@ -562,3 +562,7 @@ Checked against corpus samples and `recoil2png` output (black box, including han
   32 columns of 256 bytes, rows bottom to top. Decoding stops when the screen is full: bytes between the palette and
   the stream (2 in every sample) and trailing zero padding (literals of 0) are ignored; RECOIL rejects a stream that
   needs the palette bytes. Colours: red `round(r * 255 / 7)`, green `g * 36`, blue `b * 85`. 256x256 output.
+- **ZX81 ZXpaintyONE**: `.RAW` is exactly 792 bytes, the display file without its first HALT (24 lines of 32 codes,
+  each ended by 0x76; RECOIL rejects any other size or a missing 0x76). `.ZP1` is the 768 codes as two hex digits
+  each, either case; RECOIL ignores whatever follows them. Codes 0x40-0x7F and 0xC0-0xFF show the glyph of their
+  low 6 bits (bit 7 inverse), black on white, 256x192.

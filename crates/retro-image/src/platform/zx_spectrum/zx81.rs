@@ -1,4 +1,5 @@
-//! ZX81 BASIC programs (`.P`) that draw a picture with `PRINT`.
+//! ZX81 BASIC programs (`.P`) that draw a picture with `PRINT`, and
+//! ZXpaintyONE character screens (`.ZP1`, `.RAW`).
 //!
 //! Sources:
 //! - A `.P` file is RAM from 0x4009 as `SAVE` writes it: system variables,
@@ -24,6 +25,10 @@
 //!   after that ends the picture. Anything else is a program, not a picture.
 //!   The display file saved with the program is blank in every sample, so
 //!   it is not used. Black on white, 256x192: observed from `recoil2png`.
+//! - ZXpaintyONE `.RAW` (792 bytes: 24 lines of 32 codes, each ended by
+//!   NEWLINE) and `.ZP1` (768 codes as hex digits, trailing data ignored),
+//!   and that codes 0x40-0x7F show their low 6 bits' glyph: reverse
+//!   engineered from samples and `recoil2png` probes.
 
 use crate::{DecodeError, Image};
 
@@ -67,13 +72,50 @@ pub(super) fn decode_p(data: &[u8]) -> Result<Image, DecodeError> {
         .and_then(|end| data.get(PROGRAM..end))
         .ok_or(DecodeError::Unrecognized)?;
     let screen = run(program).ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32);
-    for (row, codes) in screen.iter().enumerate() {
-        for (column, &code) in codes.iter().enumerate() {
-            draw_char(&mut image, column, row, code);
-        }
+    Ok(render(screen.as_flattened()))
+}
+
+/// ZXpaintyONE v2.0 `.RAW`: the display file without its leading HALT, 24
+/// lines of 32 character codes each ended by NEWLINE (0x76).
+pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != ROWS * (COLUMNS + 1) {
+        return Err(DecodeError::Unrecognized);
     }
-    Ok(image)
+    let mut codes = [0; ROWS * COLUMNS];
+    for (line, cells) in data
+        .chunks_exact(COLUMNS + 1)
+        .zip(codes.chunks_exact_mut(COLUMNS))
+    {
+        let text = line
+            .strip_suffix(&[NEWLINE])
+            .ok_or(DecodeError::Unrecognized)?;
+        cells.copy_from_slice(text);
+    }
+    Ok(render(&codes))
+}
+
+/// ZXpaintyONE `.ZP1`: the 768 character codes as two hex digits each
+/// (either case); anything after them is ignored.
+pub(super) fn decode_zp1(data: &[u8]) -> Result<Image, DecodeError> {
+    let digits = data
+        .get(..2 * ROWS * COLUMNS)
+        .ok_or(DecodeError::Unrecognized)?;
+    let mut codes = [0; ROWS * COLUMNS];
+    for (code, pair) in codes.iter_mut().zip(digits.chunks_exact(2)) {
+        let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Unrecognized);
+        *code = (hex(pair[0])? << 4 | hex(pair[1])?) as u8;
+    }
+    Ok(render(&codes))
+}
+
+/// A 32x24 character screen, row by row; codes 0x40-0x7F and 0xC0-0xFF
+/// show the glyph of their low 6 bits like the others.
+fn render(codes: &[u8]) -> Image {
+    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32);
+    for (i, &code) in codes.iter().enumerate() {
+        draw_char(&mut image, i % COLUMNS, i / COLUMNS, code);
+    }
+    image
 }
 
 /// The screen a picture program prints, or `None` if it isn't one.
@@ -349,5 +391,31 @@ mod tests {
         let image = decode_p(&p_file(&[&[PRINT], &let_a, &[LET, 0x38]])).unwrap();
         assert_eq!(image.get(0, 22 * 8), 0x000000);
         assert_eq!(image.get(0, 21 * 8), 0xffffff);
+    }
+
+    #[test]
+    fn raw_needs_a_newline_after_every_line() {
+        let mut raw = [0u8; ROWS * (COLUMNS + 1)];
+        for line in raw.chunks_exact_mut(COLUMNS + 1) {
+            line[COLUMNS] = NEWLINE;
+        }
+        raw[COLUMNS + 1] = 0x80; // Inverse space at the start of row 1.
+        let image = decode_raw(&raw).unwrap();
+        assert_eq!(image.get(0, 8), 0x000000);
+        assert_eq!(image.get(0, 0), 0xffffff);
+        raw[COLUMNS] = 0;
+        assert!(decode_raw(&raw).is_err());
+    }
+
+    #[test]
+    fn zp1_reads_hex_digits_and_ignores_the_rest() {
+        let mut zp1 = b"0a".repeat(ROWS * COLUMNS);
+        zp1[2..4].copy_from_slice(b"80");
+        zp1.extend_from_slice(b"\r\nanything");
+        let image = decode_zp1(&zp1).unwrap();
+        assert_eq!(image.get(8, 0), 0x000000); // Inverse space.
+        zp1[0] = b'g';
+        assert!(decode_zp1(&zp1).is_err());
+        assert!(decode_zp1(&zp1[1..2 * ROWS * COLUMNS]).is_err());
     }
 }
