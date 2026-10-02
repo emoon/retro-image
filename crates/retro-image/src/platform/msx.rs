@@ -2,6 +2,8 @@
 //!
 //! Sources are listed per submodule; see also `docs/formats/msx-japanese.md`.
 
+mod bitbuster;
+mod g9b;
 mod screen;
 mod vdp;
 
@@ -77,4 +79,5 @@ pub(super) static FORMATS: &[Format] = &[
         maki::decode_mki(d, Machine::Msx)
     }),
     Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
+    Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode),
 ];
