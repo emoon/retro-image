@@ -11,5 +11,12 @@ image set (see CLEANROOM.md), used read-only as seeds. Crashes land in
 `fuzz/artifacts/decode/`; reproduce one with `cargo +nightly fuzz run decode <file>`,
 then add a regression unit test for it in the decoder's module.
 
+The `simd` target runs every pixel primitive in `crates/retro-image/src/simd.rs` at
+each SIMD level the CPU supports and checks it against the scalar reference:
+
+```sh
+cargo +nightly fuzz run simd fuzz/corpus/simd -- -max_total_time=300 -max_len=4096
+```
+
 `cargo test` also runs `crates/retro-image/tests/robustness.rs`, a deterministic
 truncation/mutation pass that works on stable.
