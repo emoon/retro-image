@@ -94,7 +94,7 @@ pub(super) fn decode_cin(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// 80x96 APAC: every hue/luminance line pair is two scanlines, hue first.
-fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Image {
+pub(super) fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Image {
     let picture = Scanlines {
         lines: 192,
         luminance: |y, x| nibble(luminance, y / 2, x / 2),
@@ -106,10 +106,10 @@ fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Image {
 
 /// Both frames of an interlaced picture: one with hue lines on even
 /// scanlines, one on odd.
-const INTERLACED: &[bool] = &[false, true];
+pub(super) const INTERLACED: &[bool] = &[false, true];
 
 /// Splits alternating lines (hue first) into two planes.
-fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
+pub(super) fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
     let mut planes = ([0; 3840], [0; 3840]);
     for (i, pair) in data.chunks_exact(2 * LINE).enumerate() {
         planes.0[i * LINE..][..LINE].copy_from_slice(&pair[..LINE]);
@@ -119,7 +119,7 @@ fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
 }
 
 /// 4-bit pixel `x` of line `y` in a plane of 40-byte lines.
-fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
+pub(super) fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
     let byte = plane[y * LINE + x / 2];
     if x.is_multiple_of(2) {
         byte >> 4
@@ -132,11 +132,11 @@ fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
 /// each). `luminance` and `hue` give the values of half-pixel `x` on
 /// scanline `y` when shown as that kind of line; `top` gives the colour of
 /// scanline 0 shown as a luminance line.
-struct Scanlines<L, H, T> {
-    lines: usize,
-    luminance: L,
-    hue: H,
-    top: T,
+pub(super) struct Scanlines<L, H, T> {
+    pub lines: usize,
+    pub luminance: L,
+    pub hue: H,
+    pub top: T,
 }
 
 impl<L, H, T> Scanlines<L, H, T>
@@ -147,7 +147,7 @@ where
 {
     /// Renders 320 pixels wide, averaging one frame per entry of `frames`;
     /// an entry tells whether even scanlines are hue lines in that frame.
-    fn render(&self, frames: &[bool]) -> Image {
+    pub fn render(&self, frames: &[bool]) -> Image {
         let frames: Vec<Image> = frames
             .iter()
             .map(|&even_hue| {

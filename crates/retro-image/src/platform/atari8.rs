@@ -7,12 +7,14 @@
 
 mod antic;
 mod apac;
+mod colorview;
 mod font;
 mod graph2font;
 mod gtia;
 mod hip;
 mod inflate;
 mod interlace;
+mod interlace2;
 mod koala;
 mod mad_studio;
 mod palette;
@@ -233,4 +235,33 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
+    // Wave 4: interlace and multi-frame bitmaps
+    Format::new(
+        ATARI8,
+        "Interlace Graphics Editor",
+        &["ige"],
+        interlace2::decode_ige,
+    ),
+    Format::new(
+        ATARI8,
+        "Interlace Logo Designer",
+        &["ild"],
+        interlace2::decode_ild,
+    ),
+    Format::new(ATARI8, "ING 15", &["ing"], interlace2::decode_ing),
+    Format::new(ATARI8, "Atari HR", &["hr"], interlace2::decode_hr),
+    Format::new(ATARI8, "MegaColor 80x96", &["mga"], interlace2::decode_mga),
+    Format::new(
+        ATARI8,
+        "Bugbiter APAC239i",
+        &["bgp"],
+        interlace2::decode_bgp,
+    ),
+    Format::new(
+        ATARI8,
+        "Champions' Interlace (packed)",
+        &["cci"],
+        interlace2::decode_cci,
+    ),
+    Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
 ];

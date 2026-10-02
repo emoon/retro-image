@@ -131,7 +131,7 @@ pub(super) fn gtia9(bitmap: Bitmap<'_>, background: u8) -> Image {
 }
 
 /// GTIA mode 10: values index registers 704-712.
-fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
+pub(super) fn gtia10(bitmap: Bitmap<'_>, registers: &[u8; 9]) -> Image {
     Bitmap { bits: 4, ..bitmap }.render(4, 1, |_, value| {
         register_rgb(registers[gtia10_register(value)])
     })
