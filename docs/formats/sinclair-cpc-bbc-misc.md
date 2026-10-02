@@ -510,3 +510,44 @@ Checked against corpus samples and `recoil2png` output (black box). These settle
   `8` to 0x80; greys are 0xAA/0x55.
 - **Electronika BK PIC:** 16384 bytes, lowest bit pair leftmost. **MC 0515 SCR:** 16000 bytes linear, MSB left,
   rows doubled.
+
+## 20. Findings from implementation (wave 2)
+
+Checked against corpus samples and `recoil2png` output (black box).
+
+- **Content detection** (`.signature()`): SXG, BSP (border runs must use up their data exactly), MultiArtist,
+  CH$, CHX, ZX-Paintbrush, Profi GRF (fixed 10-byte header), Oric tape HIRES screens, LdPic (the bit stream ends
+  in the file's last byte in every sample) and AMSDOS-headed files whose header names them `.SCR`. Not marked: SGX
+  (no magic), Oric charset blocks (most program tapes carry one), SAM `SCREEN$` bodies and all headerless dumps.
+- **AMSDOS headers**: the 24-bit length at 64 excludes the disk record padding that files copied off disk images
+  keep; RECOIL counts the padding and rejects such files.
+- **CPC SCR/WIN + PAL**: SCR is 16384 or 16336 bytes, or four MJH blocks of 4096. MJH block: `MJH`, u16 unpacked
+  length, `01 count value` runs (count 0 = 256), other bytes literal. WIN trailer (last 5 bytes): width in mode 2
+  pixels as u16 at -4, height at -2. RECOIL needs a PAL of exactly 239 bytes, mode 0-2, and the first colour of
+  every pen in 0x40-0x5F; it rejects WIN with a mode 1/2 PAL. Output: mode 0 pixels doubled horizontally, mode 2
+  rows doubled. Without a PAL we show mode 1 with the power-on inks (RECOIL rejects; recorded as divergences).
+- **CPC Mode 5 (CM5 + GFX)**: GFX is 256 linear lines of 72 bytes (288 mode 1 pixels). CM5 is the pen 3 colour,
+  then per line pen 2, pen 1 and six pen 0 colours, one per 48-pixel band. RECOIL also rejects colours stored
+  without bit 6.
+- **Perfect Pix (PPH + ODD + EVE)**: PPH is kind (3 = R, 4 = B0, 5 = B1), width in mode 1 pixels and height
+  (u16), zone count, then per zone 16 (mode 0) or 4 (mode 1) firmware colours plus a line count (none after the
+  last). ODD/EVE are linear frames, blended. In mode R the second frame is shifted half a pixel left on even
+  lines and the first on odd lines; the gap is black.
+- **CPC FNT**: 768 bytes, shown as a 32x3 sheet, white on black.
+- **ZX81 P**: RECOIL doesn't show the saved display file (blank in every sample). It runs picture programs:
+  optional FAST/CLS/CLEAR/SLOW, then PRINT lines with string literals, `AT r,c` and `;`, ended by STOP, PAUSE
+  or GOTO. ZXpaintyONE programs also put a 64-character `A$` on the bottom two lines. Other programs are
+  rejected. Glyphs come from a ZX81 ROM dump (archive.org `ts1000-roms`).
+- **ZX80/ZX81 S80/S81**: RECOIL rejects them; not on its list.
+- **SpecSCII ZXS**: RECOIL rejects SpectraLab's `.specscii` text streams and simple test streams; its ZXS layout
+  is unknown, so it is not implemented.
+- **Profi GRF**: 128-byte header (RECOIL accepts only `00 02 F0 00 04 00 80 00 01 13...`), a GRB332 palette of 16
+  at offset 10, then 240 lines of 64 (bitmap, attribute) pairs. Ink is bits 2-0 plus bit 6, paper is bits 5-3
+  plus bit 7. Rows doubled.
+- **CHX**: `CHX`, 256 u16 file offsets at 5. Each character: flag (0 = attribute after each cell, 1 = none),
+  width and height in cells, then the cells row by row. Drawn 16 per row in slots of the largest size over a
+  black/0xCDCDCD checkerboard.
+- **BK BKS**: 16384 bytes mono (512x256, LSB left, rows doubled), plus one palette byte per screen for colour
+  (BK-0011M palettes 0-15, colours observed from RECOIL); 2 screens blended.
+- **Vector-06C SPR**: compressed and in a scheme not recognised from the samples. Its only description sits in a
+  GPL archive, so it is not implemented.
