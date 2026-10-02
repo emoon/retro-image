@@ -13,6 +13,7 @@ mod mad_studio;
 mod palette;
 mod portfolio;
 mod screen;
+mod tip;
 mod vbxe;
 
 use crate::Format;
@@ -57,6 +58,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
     Format::new(ATARI8, "Sketch-PadDles", &["skp"], screen::decode_skp),
     Format::new(ATARI8, "Hard Interlace Picture", &["hip"], hip::decode_hip),
+    Format::new(
+        ATARI8,
+        "Taquart Interlace Picture",
+        &["tip"],
+        tip::decode_tip,
+    ),
     Format::new(ATARI8, "VertiZontal Interlacing", &["vzi"], hip::decode_vzi),
     Format::new(ATARI8, "InterPainter", &["inp"], interlace::decode_inp),
     Format::new(ATARI8, "INT95a", &["int"], interlace::decode_int),
