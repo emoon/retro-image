@@ -84,6 +84,13 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(C64, "Vidcom 64", &["vid"], bitmap::decode_vidcom),
     Format::new(C64, "Picasso 64", &["p64"], bitmap::decode_picasso_64),
+    Format::new(C64, "Cheese", &["che"], bitmap::decode_cheese),
+    Format::new(
+        C64,
+        "Rainbow Painter",
+        &["rp"],
+        bitmap::decode_rainbow_painter,
+    ),
     Format::new(
         C64,
         "Image System (multicolor)",

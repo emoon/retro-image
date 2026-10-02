@@ -18,6 +18,8 @@
 //! | Hires-Bitmap (mono), Gigapaint hires, Giga-CAD, Mono Magic | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap, GD format table <https://www.godot64.de/german/formats.htm>; colours observed from `recoil2png` output |
 //! | Micro Illustrator (uncompressed only) | GD MIllustr8or <https://www.godot64.de/german/l_millu.htm> |
 //! | Picasso 64 | <http://fileformats.archiveteam.org/wiki/Picasso_64> (load `$1800`, size); Vidcom's layout at `$1800`, background at `$1FFF`: reverse engineered from 9 samples with different backgrounds and checked against `recoil2png` output |
+//! | Cheese | <http://fileformats.archiveteam.org/wiki/Cheese> (size); load `$8000`, bitmap `$8000`, screen `$C200`, colour `$C800`, background `$CFFD`: reverse engineered from 3 samples and checked against `recoil2png` output (changing `$CFFD` changes its background) |
+//! | Rainbow Painter | <http://fileformats.archiveteam.org/wiki/Rainbow_Painter> (size); load `$5C00`, screen `$5C00`, bitmap `$6000`, colour `$8000`: reverse engineered from 2 samples. No byte sets the background: `recoil2png` shows black whatever the unused bytes hold |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
@@ -148,6 +150,14 @@ const PICASSO_64: Multicolor = Multicolor {
     screen: 0x1c00,
     color: 0x1800,
     background: 0x1fff,
+};
+const CHEESE: Multicolor = Multicolor {
+    load: 0x8000,
+    sizes: &[20482],
+    bitmap: 0x8000,
+    screen: 0xc200,
+    color: 0xc800,
+    background: 0xcffd,
 };
 const IMAGE_SYSTEM_MULTI: Multicolor = Multicolor {
     load: 0x3c00,
@@ -292,6 +302,30 @@ pub(super) fn decode_vidcom(data: &[u8]) -> Result<Image, DecodeError> {
 
 pub(super) fn decode_picasso_64(data: &[u8]) -> Result<Image, DecodeError> {
     PICASSO_64.decode(data)
+}
+
+pub(super) fn decode_cheese(data: &[u8]) -> Result<Image, DecodeError> {
+    CHEESE.decode(data)
+}
+
+/// Rainbow Painter: screen, bitmap and colour RAM from `$5C00`, on black.
+pub(super) fn decode_rainbow_painter(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 10242 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let prg = Prg::new(data, 0x5c00);
+    let bitmap = Bitmap::multicolor(
+        prg.at(0x6000, BITMAP_LEN)
+            .ok_or(DecodeError::Unrecognized)?,
+        prg.at(0x5c00, SCREEN_LEN)
+            .ok_or(DecodeError::Unrecognized)?,
+        prg.at(0x8000, SCREEN_LEN)
+            .ok_or(DecodeError::Unrecognized)?,
+        0,
+    );
+    Frame::multicolor(&bitmap, HEIGHT)
+        .map(|frame| frame.to_image(0))
+        .ok_or(DecodeError::Unrecognized)
 }
 
 pub(super) fn decode_image_system_multi(data: &[u8]) -> Result<Image, DecodeError> {
