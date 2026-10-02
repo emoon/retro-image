@@ -5,6 +5,9 @@
 //!   atari-owner.com "Atari Software Graphic Modes" (frames flipped per VBI).
 //! - MCP: Just Solve "McPainter" (16008 bytes, 160x200, 2 frames).
 //! - MCPP: Just Solve "Paradox" (8008 bytes, 160x100).
+//! - IST: Just Solve "Atari Interlaced Studio" (exactly 17184 bytes,
+//!   160x200, 2 frames); the frame offsets and per-line colour tables are
+//!   observed from `recoil2png` output.
 //! - HCI: Just Solve "HCI" (exactly 16006 bytes, 2 frames); the frame modes
 //!   (Graphics 8 and 15) and colour layout observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the frames are shown as the average
@@ -64,6 +67,20 @@ pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
         register_rgb(colors[2 + usize::from(value)])
     });
     Ok(mix(&hires, &multicolor))
+}
+
+/// Atari Interlace Studio: two 160x200 frames at offsets 16 and 8208, then
+/// at 16384 four tables of 200 per-line colours: background, playfield 0-2.
+pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 17184 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let tables = &data[16384..];
+    let color = |line: usize, value: u8| register_rgb(tables[usize::from(value) * 200 + line]);
+    Ok(mix(
+        &frame(&data[16..], 200).render(2, 1, color),
+        &frame(&data[8208..], 200).render(2, 1, color),
+    ))
 }
 
 /// McPainter: two 160x200 frames, then two colour sets. On even lines the

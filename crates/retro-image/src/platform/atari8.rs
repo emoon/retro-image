@@ -64,6 +64,12 @@ pub(super) static FORMATS: &[Format] = &[
         &["hci", "hr2"],
         interlace::decode_hci,
     ),
+    Format::new(
+        ATARI8,
+        "Atari Interlace Studio",
+        &["ist"],
+        interlace::decode_ist,
+    ),
     Format::new(ATARI8, "McPainter", &["mcp"], interlace::decode_mcp),
     Format::new(ATARI8, "Paradox", &["mcpp"], interlace::decode_mcpp),
     Format::new(
