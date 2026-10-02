@@ -25,6 +25,7 @@ mod sam_coupe;
 mod sharp_x68000;
 mod sinclair_ql;
 mod tandy1000;
+mod thomson;
 mod trs80;
 mod vector06c;
 mod zx_spectrum;
@@ -53,6 +54,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     sharp_x68000::FORMATS,
     sinclair_ql::FORMATS,
     tandy1000::FORMATS,
+    thomson::FORMATS,
     trs80::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
