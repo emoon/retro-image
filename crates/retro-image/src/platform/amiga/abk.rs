@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 
 use super::ilbm::rgb12;
 use crate::bytes::be16;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 struct Object<'a> {
@@ -64,6 +65,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || width > 0xffff {
         return Err(fail);
     }
+    check_size(width, height)?;
     // Colour 0 where no object reaches.
     let mut indices = alloc::vec![0u8; width * height];
     let mut left = 0;
@@ -81,4 +83,22 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         left += object.width;
     }
     Image::from_indexed(width as u32, height as u32, &indices, &colors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn huge_zero_depth_objects_are_rejected_not_allocated() {
+        // Depth 0 makes every object's pixel data empty, so the header
+        // alone can claim 4096 x 65535 pixels per object.
+        let mut data = b"AmSp".to_vec();
+        data.extend_from_slice(&1u16.to_be_bytes());
+        for word in [256u16, 0xffff, 0, 0, 0] {
+            data.extend_from_slice(&word.to_be_bytes());
+        }
+        data.extend_from_slice(&[0; 64]);
+        assert!(decode(&data).is_err());
+    }
 }

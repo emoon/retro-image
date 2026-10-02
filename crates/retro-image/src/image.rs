@@ -16,6 +16,20 @@ pub(crate) enum BitOrder {
     LsbFirst,
 }
 
+/// Most pixels a decoder may allocate for one picture (192 MiB of RGB).
+/// Dimensions come from untrusted headers, so a few bytes of file must not
+/// be able to demand gigabytes.
+const MAX_PIXELS: usize = 1 << 26;
+
+/// Fails if a `width` x `height` picture exceeds [`MAX_PIXELS`]. Call before
+/// allocating anything sized from header dimensions.
+pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError> {
+    match width.checked_mul(height) {
+        Some(pixels) if pixels <= MAX_PIXELS => Ok(()),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
