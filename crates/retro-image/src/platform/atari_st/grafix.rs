@@ -16,7 +16,7 @@
 //!   by one bit, 257 clears the dictionary (back to 9 bits) and new entries
 //!   start at 258.
 
-use super::common::{crop, planar_image, vdi_palette};
+use super::common::{MAX_PIXELS, crop, planar_image, vdi_palette};
 use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -43,7 +43,7 @@ fn decode(data: &[u8]) -> Option<Image> {
         256 => 8,
         _ => return None,
     };
-    if width == 0 || height == 0 {
+    if width == 0 || height == 0 || width as usize * height as usize > MAX_PIXELS {
         return None;
     }
     let palette = vdi_palette(data.get(PALETTE..)?, colors)?;
@@ -74,8 +74,9 @@ fn unpack(data: &[u8], len: usize) -> Option<Vec<u8>> {
     }
     let first_len = be32(data, SIZES + 4)? as usize;
     let second_len = be32(data, SIZES + 8)? as usize;
-    let first = data.get(DATA..DATA.checked_add(first_len)?)?;
-    let second = data.get(DATA + first_len..(DATA + first_len).checked_add(second_len)?)?;
+    let middle = DATA.checked_add(first_len)?;
+    let first = data.get(DATA..middle)?;
+    let second = data.get(middle..middle.checked_add(second_len)?)?;
     let mut out = Vec::with_capacity(len);
     lzw(first, len / 2, &mut out)?;
     lzw(second, len - len / 2, &mut out)?;

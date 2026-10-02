@@ -218,7 +218,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "AtariTools-800 font", &["acs"], font::decode_acs),
     Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
     Format::new(ATARI8, "Graph2Font", &["mch"], graph2font::decode_mch),
-    Format::new(ATARI8, "Graph2Font", &["g2f"], graph2font::decode_g2f),
+    Format::new(ATARI8, "Graph2Font", &["g2f"], graph2font::decode_g2f).signature(),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,

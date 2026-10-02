@@ -85,6 +85,8 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 const SEV_HEADER_LEN: usize = 14;
+/// Far above any real sprite; caps the output allocation.
+const SEV_MAX_PIXELS: usize = 1 << 24;
 
 /// SevenuP sprite: `Sev\0`, 2 ignored bytes, a u16 that must be 1, a
 /// frame count (ignored), width and height in pixels as u16, then each
@@ -98,7 +100,7 @@ pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     };
     let (width, height) = (usize::from(width), usize::from(height));
-    if width == 0 || height == 0 {
+    if width == 0 || height == 0 || width * height > SEV_MAX_PIXELS {
         return Err(DecodeError::Unrecognized);
     }
     let columns = width.div_ceil(8);
