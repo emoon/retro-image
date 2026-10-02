@@ -16,6 +16,8 @@ mod inflate;
 mod interlace;
 mod koala;
 mod mad_studio;
+mod misc_screen;
+mod packed;
 mod palette;
 mod portfolio;
 mod rom_font;
@@ -23,6 +25,7 @@ mod screen;
 mod sfdn;
 mod technicolor;
 mod text;
+mod text_art;
 mod tip;
 mod vbxe;
 
@@ -247,5 +250,55 @@ pub(super) static FORMATS: &[Format] = &[
         "Interlace Character Editor font",
         &["ice"],
         ice::decode_ice,
+    ),
+    // Wave 4: small screens
+    Format::new(ATARI8, "TXS", &["txs"], misc_screen::decode_txs),
+    Format::new(ATARI8, "Floor Designer", &["fge"], misc_screen::decode_fge),
+    Format::new(ATARI8, "KFX", &["kfx"], misc_screen::decode_kfx),
+    Format::new(ATARI8, "Cut Creator", &["cut"], misc_screen::decode_cut),
+    Format::new(ATARI8, "Graphics 9+", &["gr9p"], misc_screen::decode_gr9p),
+    Format::new(ATARI8, "Mamut", &["rys"], misc_screen::decode_rys),
+    Format::new(ATARI8, "KSS-Paint", &["kss"], misc_screen::decode_kss),
+    Format::new(
+        ATARI8,
+        "Gephard Hires Graphics",
+        &["ghg"],
+        misc_screen::decode_ghg,
+    ),
+    Format::new(ATARI8, "PI8", &["pi8"], misc_screen::decode_pi8),
+    Format::new(ATARI8, "PI9", &["pi9"], misc_screen::decode_pi9),
+    Format::new(ATARI8, "Trzmiel (compressed)", &["cpr"], packed::decode_cpr),
+    Format::new(
+        ATARI8,
+        "Kompresor do Animatora",
+        &["kpr"],
+        packed::decode_kpr,
+    ),
+    Format::new(ATARI8, "Graph", &["all"], text_art::decode_all),
+    Format::new(
+        ATARI8,
+        "Atari Graphics Studio",
+        &["ags"],
+        misc_screen::decode_ags,
+    ),
+    // ART is also an Atari ST and Commodore extension; the sizes and
+    // headers below keep those files out.
+    Format::new(
+        ATARI8,
+        "Monochrome ART",
+        &["art"],
+        misc_screen::decode_mono_art,
+    ),
+    Format::new(
+        ATARI8,
+        "Artist by David Eaton",
+        &["art"],
+        misc_screen::decode_artist_art,
+    ),
+    Format::new(
+        ATARI8,
+        "Ascii-Art Editor",
+        &["art"],
+        text_art::decode_ascii_art,
     ),
 ];
