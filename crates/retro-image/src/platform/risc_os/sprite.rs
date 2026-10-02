@@ -4,8 +4,10 @@
 //! - Sprite area and sprite header layout, word-aligned rows, the least
 //!   significant pixel of a word being the leftmost, palette entries as two
 //!   `&BBGGRR00` words, masks: RISC OS PRM, "Sprites",
-//!   <http://www.riscos.com/support/developers/prm/sprites.html>. A sprite
-//!   file is a sprite area without its first word (the area size).
+//!   <http://www.riscos.com/support/developers/prm/sprites.html>.
+//! - A sprite file is a sprite area without its first word (the area
+//!   size): PRM, "Appendix E: File formats",
+//!   <http://www.riscos.com/support/developers/prm/fileformats.html>.
 //! - Width from the first/last used bits, palette length
 //!   `(min(image, mask) - 44) / 8`, which palette lengths count, new format
 //!   sprites having no left-hand wastage: RISC OS Open, "Format Of Sprite",
@@ -24,8 +26,12 @@
 //!   <https://www.riscosopen.org/wiki/documentation/show/Screen%20Modes>;
 //!   their eigen factors are inferred from the resolution on a 4:3 display.
 //! - Default 256-colour palette (bits 0-1 tint, 2 red bit 2, 3 blue bit 2,
-//!   4 red bit 3, 5 green bit 2, 6 green bit 3, 7 blue bit 3): PRM,
-//!   "VDU drivers", <http://www.riscos.com/support/developers/prm/vdu.html>.
+//!   4 red bit 3, 5 green bit 2, 6 green bit 3, 7 blue bit 3), and 16-entry
+//!   (VIDC1) palettes of 256-colour sprites (the low 4 bits of a pixel pick
+//!   the entry, the high 4 override red bit 3, green bits 2-3 and blue bit
+//!   3): PRM, "VDU drivers",
+//!   <http://www.riscos.com/support/developers/prm/vdu.html>; that such
+//!   palettes exist: "Format Of Sprite" above.
 //! - Palettes of sprites without one: the Wimp colours, as RISC OS's Paint
 //!   shows them (2 colours: Wimp colours 0 and 7; 4 colours: 0, 2, 4, 7),
 //!   PRM, "The Window Manager", "Colour handling",
