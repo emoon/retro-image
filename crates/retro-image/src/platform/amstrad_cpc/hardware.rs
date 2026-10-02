@@ -65,7 +65,7 @@ pub(super) fn hardware_color(value: u8) -> u32 {
 }
 
 /// Colour of a firmware colour number 0-26.
-const fn firmware_color(n: usize) -> u32 {
+pub(super) const fn firmware_color(n: usize) -> u32 {
     rgb(n / 3 % 3, n / 9, n % 3)
 }
 
