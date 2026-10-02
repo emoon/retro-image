@@ -105,7 +105,8 @@ pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Spectrum 512 Extended: `SPX`, version, two compression flags, screen
 /// count, author and description strings, data sizes, then a blank line,
-/// `screens * 199` lines and their palettes (unpacked, each part packed
+/// up to `screens * 199` lines (as many as the data holds: observed from
+/// `recoil2png` output) and their palettes (unpacked, each part packed
 /// with Pack-Ice, or version 2's backward LZ packer over both).
 pub(super) fn decode_spx(data: &[u8]) -> Result<Image, DecodeError> {
     decode_spx_inner(data).ok_or(DecodeError::Unrecognized)
@@ -117,10 +118,7 @@ fn decode_spx_inner(data: &[u8]) -> Option<Image> {
     }
     let version = *data.get(3)?;
     let packed = (*data.get(4)?, *data.get(5)?) != (0, 0);
-    let lines = usize::from(*data.get(6)?) * LINES;
-    if lines == 0 {
-        return None;
-    }
+    let max_lines = usize::from(*data.get(6)?) * LINES;
     // Skip the two NUL-terminated strings.
     let mut pos = 10;
     for _ in 0..2 {
@@ -131,9 +129,18 @@ fn decode_spx_inner(data: &[u8]) -> Option<Image> {
     let body = data.get(pos + 8..)?;
     let (bitmap, palettes) = match (version, packed) {
         (2, true) => {
+            // Lines: as many as fit (a blank line, then 160 + 96 bytes per
+            // line), at most 199 per screen; palettes end the data.
             let unpacked = unpack_spx2(body)?;
-            let split = unpacked.len().checked_sub(lines * 96)?;
-            let (bitmap, palettes) = unpacked.split_at(split);
+            let lines = max_lines.min(unpacked.len().checked_sub(LINE_LEN)? / 256);
+            let (bitmap, palettes) = unpacked.split_at(unpacked.len() - lines * 96);
+            // When the bitmap is exactly two lines longer than the picture,
+            // both extra lines lead (observed from `recoil2png` output).
+            let bitmap = if bitmap.len() == (lines + 2) * LINE_LEN {
+                &bitmap[LINE_LEN..]
+            } else {
+                bitmap
+            };
             (bitmap.to_vec(), palettes.to_vec())
         }
         (1, _) | (_, false) => {
@@ -152,6 +159,12 @@ fn decode_spx_inner(data: &[u8]) -> Option<Image> {
         _ => return None,
     };
     let palettes = words(&palettes);
+    let lines = max_lines
+        .min(bitmap.len() / LINE_LEN - 1)
+        .min(palettes.len() / 48);
+    if lines == 0 {
+        return None;
+    }
     render_lines(
         bitmap.get(LINE_LEN..)?,
         &palettes,
