@@ -228,6 +228,15 @@ mod tests {
     }
 
     #[test]
+    fn check_levels_handles_short_input() {
+        for len in 0..40 {
+            check_levels(&random_bytes(len as u64, len));
+        }
+    }
+
+    // Under Miri only the scalar level exists: nothing to compare.
+    #[test]
+    #[cfg_attr(miri, ignore)]
     fn every_level_matches_scalar_on_random_input() {
         for len in 0..=200 {
             for seed in 0..8 {
@@ -240,6 +249,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn every_level_matches_scalar_on_edge_values() {
         let all: Vec<u8> = (0..=255).collect();
         for control in 0..=255u8 {
@@ -253,6 +263,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn every_bit_and_tail_length_of_expand_plane() {
         let plane = random_bytes(7, 40);
         for skip in 0..4 {
