@@ -263,18 +263,50 @@ pub(super) fn decode_pablo(data: &[u8]) -> Result<Image, DecodeError> {
     ok(decode_screen(resolution, &data[pos + 36..], &words))
 }
 
-/// Graphics Processor (uncompressed modes 0-2 only): mode word, palette,
-/// more palettes and settings, screen at 331.
-/// Source: survey notes (`docs/formats/atari-st-tt-falcon.md`); the
-/// screen offset is derived from sample files.
+/// Graphics Processor: mode word (0-2 raw, 10-12 compressed low, medium
+/// or high resolution), palette, more palettes and settings, then at 331
+/// the screen, or a data length word and records of a count byte and a
+/// unit of one byte per plane: bit 7 set = `count & 0x7f` literal units,
+/// else the unit repeated `count` times.
+/// Source: survey notes (`docs/formats/atari-st-tt-falcon.md`, raw and RLE
+/// modes); the offsets and the RLE records are derived from sample files.
 pub(super) fn decode_graphics_processor(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != 331 + SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+    ok(decode_graphics_processor_inner(data))
+}
+
+fn decode_graphics_processor_inner(data: &[u8]) -> Option<Image> {
+    let mode = be16(data, 0)?;
+    let words = palette_words(data, 2, 16)?;
+    match mode {
+        0..=2 if data.len() == 331 + SCREEN_LEN => {
+            decode_screen(Resolution::from_index(mode)?, &data[331..], &words)
+        }
+        10..=12 => {
+            let resolution = Resolution::from_index(mode - 10)?;
+            let unit = resolution.planes() as usize;
+            let len = usize::from(be16(data, 331)?);
+            let packed = data.get(333..333 + len)?;
+            let mut bitmap = alloc::vec::Vec::with_capacity(SCREEN_LEN);
+            let mut pos = 0;
+            while bitmap.len() < SCREEN_LEN {
+                let count = usize::from(*packed.get(pos)?);
+                pos += 1;
+                if count & 0x80 != 0 {
+                    let n = (count & 0x7f) * unit;
+                    bitmap.extend_from_slice(packed.get(pos..pos + n)?);
+                    pos += n;
+                } else {
+                    let value = packed.get(pos..pos + unit)?;
+                    pos += unit;
+                    for _ in 0..count {
+                        bitmap.extend_from_slice(value);
+                    }
+                }
+            }
+            decode_screen(resolution, &bitmap, &words)
+        }
+        _ => None,
     }
-    let resolution = be16(data, 0)
-        .and_then(Resolution::from_index)
-        .ok_or(DecodeError::Unrecognized)?;
-    ok(decode_screen(resolution, &data[331..], &words(data, 2)?))
 }
 
 /// Atari Image Manager `IM`: raw 256x256 8-bit grey (observed from
