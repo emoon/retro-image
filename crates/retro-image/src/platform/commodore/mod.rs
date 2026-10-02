@@ -16,6 +16,7 @@ mod charpad;
 mod charset;
 mod cle;
 mod ecp;
+mod emc;
 mod flf;
 mod fli;
 mod godot;
@@ -23,6 +24,8 @@ mod ifli;
 mod interlace;
 mod loadstar;
 mod logo;
+mod mufli;
+mod mwin;
 mod nufli;
 mod petscii;
 mod prg;
@@ -336,6 +339,22 @@ pub(super) static FORMATS: &[Format] = &[
         flf::decode_vic20,
     )
     .signature(),
+    // Wave 5b: C64
+    Format::new(C64, "EMC-editor", &["emc"], emc::decode_emc),
+    Format::new(C64, "MUFLI Editor", &["muf"], mufli::decode_muf),
+    Format::new(C64, "MUIFLI Editor", &["mui"], mufli::decode_mui),
+    Format::new(
+        C64,
+        "MUFLI Editor (compressed)",
+        &["mup"],
+        mufli::decode_mup,
+    ),
+    Format::new(
+        C64,
+        "Art Studio window",
+        &["mwi", "mwin"],
+        mwin::decode_mwin,
+    ),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

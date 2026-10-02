@@ -67,7 +67,7 @@ const BUG_COLORS: [usize; 4] = [0x3ff7, 0x3ff1, 0x3ff0, 0x3ff6];
 const BUG_SWITCHES: [u8; 4] = [0x7, 0x5, 0x6, 0xe];
 
 /// The screen RAM row of line pair `lp` (two pixel lines).
-fn screen(lp: usize) -> usize {
+pub(super) fn screen(lp: usize) -> usize {
     let row = lp / 4 * 40;
     let base = if lp < 64 {
         [
@@ -82,7 +82,7 @@ fn screen(lp: usize) -> usize {
 
 /// Sprite row counter (byte offset in the 64-byte block) of each line: the
 /// sprites are Y-expanded and repositioned so the counter runs on.
-fn sprite_rows() -> [u8; HEIGHT] {
+pub(super) fn sprite_rows() -> [u8; HEIGHT] {
     let mut rows = [0; HEIGHT];
     let mut row = 5u8;
     for (y, slot) in rows.iter_mut().enumerate() {
