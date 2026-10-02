@@ -14,6 +14,7 @@ mod duo;
 mod falcon;
 mod falcon_paint;
 mod gem_img;
+mod iff;
 mod lz4;
 mod mono;
 mod mpp;
@@ -122,6 +123,11 @@ pub(super) static FORMATS: &[Format] = &[
     st("MegaPaint", &["bld"], mono::decode_bld),
     st("DEGAS Elite font", &["fnt"], mono::decode_fnt),
     st("DEGAS Elite brush", &["bru"], mono::decode_bru),
+    st(
+        "DEGAS Elite block",
+        &["bl1", "bl2", "bl3"],
+        iff::decode_block,
+    ),
     st(
         "Paintworks",
         &[
