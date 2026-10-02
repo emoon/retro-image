@@ -39,7 +39,7 @@ struct Mode {
     row_bytes: usize,
     bits_per_pixel: usize,
     /// Output scale of each pixel (width, height).
-    scale: (usize, usize),
+    scale: (u32, u32),
 }
 
 impl Mode {
@@ -97,21 +97,17 @@ fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
 fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Image {
     let pixels_per_byte = 8 / mode.bits_per_pixel;
     let width = mode.row_bytes / 8 * pixels_per_byte;
-    let (sx, sy) = mode.scale;
-    let mut image = Image::new((width * sx) as u32, (HEIGHT * sy) as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32);
     for y in 0..HEIGHT {
         for x in 0..width {
             let byte = data[y / 8 * mode.row_bytes + x / pixels_per_byte * 8 + y % 8];
             let logical = pixel(byte, x % pixels_per_byte, mode.bits_per_pixel);
             let color = physical_color(palette[usize::from(logical)]);
-            for dy in 0..sy {
-                for dx in 0..sx {
-                    image.set((x * sx + dx) as u32, (y * sy + dy) as u32, color);
-                }
-            }
+            image.set(x as u32, y as u32, color);
         }
     }
-    image
+    let (sx, sy) = mode.scale;
+    image.scaled(sx, sy)
 }
 
 /// Logical colour of pixel `n` in a byte: its bits are interleaved, with

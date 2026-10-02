@@ -43,7 +43,7 @@ fn decode_mc0515(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != MC0515_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(640, 400);
+    let mut image = Image::new(640, 200);
     for (i, &byte) in data.iter().enumerate() {
         let (x, y) = ((i % 80 * 8) as u32, (i / 80) as u32);
         for bit in 0..8 {
@@ -52,9 +52,8 @@ fn decode_mc0515(data: &[u8]) -> Result<Image, DecodeError> {
             } else {
                 0
             };
-            image.set(x + bit, 2 * y, color);
-            image.set(x + bit, 2 * y + 1, color);
+            image.set(x + bit, y, color);
         }
     }
-    Ok(image)
+    Ok(image.scaled(1, 2))
 }

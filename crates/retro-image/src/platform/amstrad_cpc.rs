@@ -68,7 +68,7 @@ fn decode_hgb(data: &[u8]) -> Result<Image, DecodeError> {
     if screen.len() != HGB_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(512, 512);
+    let mut image = Image::new(512, 256);
     for y in 0..256 {
         let line = (y & 7) * 0x800 + (y >> 3) * HGB_ROW_BYTES;
         for (column, &byte) in screen[line..line + HGB_ROW_BYTES].iter().enumerate() {
@@ -78,13 +78,11 @@ fn decode_hgb(data: &[u8]) -> Result<Image, DecodeError> {
                 } else {
                     0
                 };
-                let x = (column * 8 + bit) as u32;
-                image.set(x, 2 * y as u32, color);
-                image.set(x, 2 * y as u32 + 1, color);
+                image.set((column * 8 + bit) as u32, y as u32, color);
             }
         }
     }
-    Ok(image)
+    Ok(image.scaled(1, 2))
 }
 
 /// One SGX graphic part, placed at (`x`, `y`) on the canvas.

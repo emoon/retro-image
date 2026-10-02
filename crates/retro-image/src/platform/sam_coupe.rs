@@ -122,11 +122,12 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn interlace(fields: &[Image; 2]) -> Image {
     let mut image = Image::new(512, 2 * HEIGHT as u32);
     for (field, frame) in (0..).zip(fields) {
-        for (i, pixel) in frame.rgb().chunks_exact(3).enumerate() {
-            let (x, y) = ((i % 256) as u32, (i / 256) as u32);
-            let color = u32::from_be_bytes([0, pixel[0], pixel[1], pixel[2]]);
-            image.set(2 * x, 2 * y + field, color);
-            image.set(2 * x + 1, 2 * y + field, color);
+        for y in 0..frame.height() {
+            for x in 0..frame.width() {
+                let color = frame.get(x, y);
+                image.set(2 * x, 2 * y + field, color);
+                image.set(2 * x + 1, 2 * y + field, color);
+            }
         }
     }
     image
@@ -144,13 +145,12 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     // One SAM colour byte per pixel of the 512x192 display.
-    let mut image = Image::new(RAW_WIDTH as u32, 2 * HEIGHT as u32);
+    let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32);
     for (i, &value) in data.iter().enumerate() {
         let (x, y) = ((i % RAW_WIDTH) as u32, (i / RAW_WIDTH) as u32);
-        image.set(x, 2 * y, color(value));
-        image.set(x, 2 * y + 1, color(value));
+        image.set(x, y, color(value));
     }
-    Ok(image)
+    Ok(image.scaled(1, 2))
 }
 
 /// CLUT contents per scan line.
@@ -226,8 +226,7 @@ fn color(value: u8) -> u32 {
 /// Renders a screen. `attributes` is where mode 2 attributes start.
 fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Image {
     let width = if mode == Mode::Three { 512 } else { 256 };
-    let scale = if mode == Mode::Three { 2 } else { 1 };
-    let mut image = Image::new(width as u32, (HEIGHT * scale) as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32);
     for y in 0..HEIGHT {
         for x in 0..width {
             let entry = match mode {
@@ -254,13 +253,15 @@ fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Im
                 }
                 Mode::Four => (screen[y * 128 + x / 2] >> (4 - 4 * (x % 2))) & 15,
             };
-            let color = palette.get(y, entry);
-            for row in 0..scale {
-                image.set(x as u32, (y * scale + row) as u32, color);
-            }
+            image.set(x as u32, y as u32, palette.get(y, entry));
         }
     }
-    image
+    // Mode 3 pixels are half as wide as they are high.
+    if mode == Mode::Three {
+        image.scaled(1, 2)
+    } else {
+        image
+    }
 }
 
 #[cfg(test)]
