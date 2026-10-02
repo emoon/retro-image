@@ -273,6 +273,9 @@ pub(super) fn line_planes_to_interleaved(
     let row = (width / 8) as usize;
     let planes = planes as usize;
     let stride = row * planes;
+    if stride == 0 {
+        return None;
+    }
     let data = data.get(..stride * height as usize)?;
     let mut out = alloc::vec![0; data.len()];
     for (src, dst) in data.chunks_exact(stride).zip(out.chunks_exact_mut(stride)) {
@@ -289,7 +292,7 @@ pub(super) fn line_planes_to_interleaved(
 
 /// Whole planes stored one after another become word-interleaved data.
 pub(super) fn separate_planes_to_interleaved(data: &[u8], planes: usize) -> Vec<u8> {
-    let plane_len = data.len() / planes;
+    let plane_len = data.len() / planes.max(1);
     let mut out = alloc::vec![0; plane_len * planes];
     for plane in 0..planes {
         for word in 0..plane_len / 2 {

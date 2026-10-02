@@ -3,6 +3,7 @@
 //! Each submodule lists the documents its layouts come from; the platform
 //! survey is `docs/formats/atari-st-tt-falcon.md`.
 
+mod blend;
 mod canvas;
 mod common;
 mod computereyes;
@@ -13,6 +14,7 @@ mod duo;
 mod falcon;
 mod falcon_paint;
 mod gem_img;
+mod lz4;
 mod mono;
 mod mpp;
 mod paintshop;
@@ -110,6 +112,9 @@ pub(super) static FORMATS: &[Format] = &[
     st("DUO (medium resolution)", &["du2"], duo::decode_du2),
     st("STAD", &["pac"], mono::decode_pac),
     st("PhotoChrome", &["pcs"], photochrome::decode_pcs),
+    st("Overscan Interlaced", &["pci"], blend::decode_pci),
+    st("HighresMedium", &["hrm"], blend::decode_hrm),
+    st("PL4", &["pl4"], blend::decode_pl4),
     st("QuantumPaint", &["pbx"], quantumpaint::decode_pbx),
     st("MegaPaint", &["bld"], mono::decode_bld),
     st(

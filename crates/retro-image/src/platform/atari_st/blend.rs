@@ -1,0 +1,141 @@
+//! Two-screen pictures shown alternately so the eye blends them: Tobias
+//! Richter's overscan slideshow (`PCI`), HighresMedium (`HRM`) and PL4.
+//!
+//! Sources:
+//! - Overscan Interlaced: <https://temlib.org/AtariForumWiki/index.php/Overscan_Interlaced_file_format>
+//! - HighresMedium, including Hans Wessels' public-domain palette index
+//!   function: <https://temlib.org/AtariForumWiki/index.php/HighresMedium_file_format>
+//! - PL4: <https://temlib.org/AtariForumWiki/index.php/PL4_file_format>
+//!   (16-word palettes, as the 64070-byte total requires)
+//! - Observed from `recoil2png` output: the two screens are averaged per
+//!   component; HighresMedium's 400 lines pair up into 200 doubled lines.
+//!   Only already unpacked `PCI`/`HRM` files are supported (no Pack-Ice).
+
+use alloc::vec::Vec;
+
+use super::common::{
+    Resolution, SCREEN_LEN, be16, decode_screen, interleaved_index, palette_words,
+    separate_planes_to_interleaved, st_rgb, uses_ste_bits,
+};
+use crate::{DecodeError, Image};
+
+fn average(a: &Image, b: &Image) -> Image {
+    let mut image = Image::new(a.width(), a.height());
+    for (i, (pa, pb)) in a
+        .rgb()
+        .chunks_exact(3)
+        .zip(b.rgb().chunks_exact(3))
+        .enumerate()
+    {
+        let mix = |k: usize| (u32::from(pa[k]) + u32::from(pb[k])) / 2;
+        let i = i as u32;
+        image.set(
+            i % a.width(),
+            i / a.width(),
+            mix(0) << 16 | mix(1) << 8 | mix(2),
+        );
+    }
+    image
+}
+
+fn words(data: &[u8]) -> Vec<u16> {
+    data.chunks_exact(2)
+        .map(|w| u16::from_be_bytes([w[0], w[1]]))
+        .collect()
+}
+
+const PCI_WIDTH: usize = 352;
+const PCI_HEIGHT: usize = 278;
+const PCI_SCREEN_LEN: usize = PCI_WIDTH / 8 * PCI_HEIGHT * 4;
+const PCI_PALETTE_LEN: usize = PCI_HEIGHT * 32;
+
+/// Two 352x278 screens (separate plane blocks), then a 16-colour palette
+/// per line for each.
+pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 2 * (PCI_SCREEN_LEN + PCI_PALETTE_LEN) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (screens, palettes) = data.split_at(2 * PCI_SCREEN_LEN);
+    let all = words(palettes);
+    let ste = uses_ste_bits(all.iter().copied());
+    let frame = |i: usize| {
+        let screen =
+            separate_planes_to_interleaved(&screens[i * PCI_SCREEN_LEN..][..PCI_SCREEN_LEN], 4);
+        let palette = &all[i * PCI_HEIGHT * 16..][..PCI_HEIGHT * 16];
+        let mut image = Image::new(PCI_WIDTH as u32, PCI_HEIGHT as u32);
+        let stride = PCI_WIDTH / 2;
+        for y in 0..PCI_HEIGHT {
+            let line = &screen[y * stride..][..stride];
+            for x in 0..PCI_WIDTH as u32 {
+                let c = interleaved_index(line, x, 4);
+                image.set(x, y as u32, st_rgb(palette[y * 16 + c], ste));
+            }
+        }
+        image
+    };
+    Ok(average(&frame(0), &frame(1)))
+}
+
+/// HighresMedium: 400 medium-resolution lines (pairs of alternating
+/// lines), 35 palette words per line chosen by `find_hrm_index`.
+pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 64000 + 28000 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let palettes = words(&data[64000..]);
+    let ste = uses_ste_bits(palettes.iter().copied());
+    let line_image = |y: usize| -> Option<Vec<u32>> {
+        let line = &data[y * 160..][..160];
+        (0..640)
+            .map(|x| {
+                let c = interleaved_index(line, x as u32, 2);
+                let index = hrm_index(x, c)?;
+                Some(st_rgb(*palettes.get(y * 35 + index)?, ste))
+            })
+            .collect()
+    };
+    let mut image = Image::new(640, 400);
+    for y in 0..200 {
+        let a = line_image(y * 2).ok_or(DecodeError::Unrecognized)?;
+        let b = line_image(y * 2 + 1).ok_or(DecodeError::Unrecognized)?;
+        for x in 0..640 {
+            let mix = |shift: u32| (((a[x] >> shift & 0xff) + (b[x] >> shift & 0xff)) / 2) << shift;
+            let color = mix(16) | mix(8) | mix(0);
+            image.set(x as u32, y as u32 * 2, color);
+            image.set(x as u32, y as u32 * 2 + 1, color);
+        }
+    }
+    Ok(image)
+}
+
+/// Hans Wessels' `find_hrm_index`; `None` where it would be negative.
+fn hrm_index(x: usize, c: usize) -> Option<usize> {
+    let x = x as isize + 80;
+    let index = match c {
+        0 => -1 + 4 * (x / 80),
+        1 => 4 * ((x - 8) / 80),
+        2 => 1 + 4 * ((x - 40) / 80),
+        _ => 2 + 4 * ((x - 48) / 80),
+    };
+    usize::try_from(index).ok()
+}
+
+const PL4_LEN: usize = 64070;
+
+/// PL4: an LZ4 frame holding two DEGAS-like low-resolution screens.
+pub(super) fn decode_pl4(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = super::lz4::decompress_frame(data, PL4_LEN).ok_or(DecodeError::Unrecognized)?;
+    if unpacked.len() != PL4_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let frame = |at: usize| {
+        let words = palette_words(&unpacked, at + 2, 16)?;
+        if be16(&unpacked, at)? != 0 {
+            return None;
+        }
+        decode_screen(Resolution::Low, &unpacked[at + 34..][..SCREEN_LEN], &words)
+    };
+    let a = frame(0).ok_or(DecodeError::Unrecognized)?;
+    let b = frame(34 + SCREEN_LEN + 2).ok_or(DecodeError::Unrecognized)?;
+    Ok(average(&a, &b))
+}
