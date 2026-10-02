@@ -109,21 +109,20 @@ impl Image {
         if !fits || row_len.saturating_mul(8) < width as usize {
             return Err(DecodeError::Unrecognized);
         }
-        let pixels = width as usize;
-        let mut indices = alloc::vec![0; pixels * height as usize];
-        let mut reversed = Vec::new();
-        for (y, out) in indices.chunks_exact_mut(pixels.max(1)).enumerate() {
-            let row = &bitmap[y * row_len..][..pixels.div_ceil(8)];
-            let row = match order {
-                BitOrder::MsbFirst => row,
-                BitOrder::LsbFirst => {
-                    reversed.clear();
-                    reversed.extend(row.iter().map(|b| b.reverse_bits()));
-                    &reversed
-                }
-            };
-            simd::expand_plane(row, 0, out);
-        }
+        // The rows form one bit stream, so a single `expand_plane` call
+        // covers the image; the padding bits are cropped afterwards.
+        let bits = &bitmap[..row_len * height as usize];
+        let reversed: Vec<u8>;
+        let bits = match order {
+            BitOrder::MsbFirst => bits,
+            BitOrder::LsbFirst => {
+                reversed = bits.iter().map(|b| b.reverse_bits()).collect();
+                &reversed
+            }
+        };
+        let mut indices = alloc::vec![0; bits.len() * 8];
+        simd::expand_plane(bits, 0, &mut indices);
+        crop_rows(&mut indices, row_len * 8, width as usize);
         Self::from_indexed(width, height, &indices, &colors)
     }
 
@@ -182,32 +181,60 @@ impl Image {
     }
 }
 
-/// Pixel values of one row of bitplanes: the `p`th row from `planes`
-/// (most significant bit first) gives bit `p` of each value. At most 32
-/// planes. Panics unless `scratch` is as long as `out`.
-pub(crate) fn planar_values<'a>(
-    planes: impl IntoIterator<Item = &'a [u8]>,
-    scratch: &mut [u8],
-    out: &mut [u32],
-) {
-    assert_eq!(scratch.len(), out.len(), "scratch buffer size");
-    out.fill(0);
-    let mut planes = planes.into_iter();
-    for shift in [0, 8, 16, 24] {
-        scratch.fill(0);
-        let mut count = 0;
-        for (bit, plane) in planes.by_ref().take(8).enumerate() {
-            simd::expand_plane(plane, bit as u32, scratch);
-            count += 1;
-        }
-        for (value, &byte) in out.iter_mut().zip(&*scratch) {
-            *value |= u32::from(byte) << shift;
-        }
-        if count < 8 {
-            return;
+/// Pixel values of a `width` x `height` image stored as `planes`
+/// bitplanes of `row_len`-byte rows, most significant bit first:
+/// `row_start(plane, y)` is where a row starts in `data`, and plane `p` gives
+/// bit `p` of each value. At most 32 planes. Panics if a row is outside
+/// `data` or shorter than `width` bits.
+pub(crate) fn planar_pixels(
+    data: &[u8],
+    width: usize,
+    height: usize,
+    row_len: usize,
+    planes: usize,
+    row_start: impl Fn(usize, usize) -> usize,
+) -> Vec<u32> {
+    assert!(planes <= 32, "more than 32 planes");
+    assert!(row_len * 8 >= width, "rows too short");
+    // Regrouped plane by plane, each plane is one bit stream covering the
+    // whole image, so it takes a single `expand_plane` call.
+    let plane_len = row_len * height;
+    if plane_len == 0 {
+        return Vec::new();
+    }
+    let mut grouped = Vec::with_capacity(plane_len * planes);
+    for plane in 0..planes {
+        for y in 0..height {
+            grouped.extend_from_slice(&data[row_start(plane, y)..][..row_len]);
         }
     }
-    assert!(planes.next().is_none(), "more than 32 planes");
+    let stride = row_len * 8;
+    let mut values = alloc::vec![0u32; stride * height];
+    let mut bits = alloc::vec![0u8; values.len()];
+    for (shift, group) in (0..).step_by(8).zip(grouped.chunks(plane_len * 8)) {
+        bits.fill(0);
+        for (bit, plane) in group.chunks_exact(plane_len).enumerate() {
+            simd::expand_plane(plane, bit as u32, &mut bits);
+        }
+        for (value, &byte) in values.iter_mut().zip(&bits) {
+            *value |= u32::from(byte) << shift;
+        }
+    }
+    crop_rows(&mut values, stride, width);
+    values
+}
+
+/// Keeps the first `width` (at most `stride`) items of every `stride`-item
+/// row of `values`.
+fn crop_rows<T: Copy>(values: &mut Vec<T>, stride: usize, width: usize) {
+    if stride == width {
+        return;
+    }
+    let rows = values.len() / stride;
+    for y in 1..rows {
+        values.copy_within(y * stride..y * stride + width, y * width);
+    }
+    values.truncate(rows * width);
 }
 
 #[cfg(test)]
@@ -273,10 +300,11 @@ mod tests {
     }
 
     #[test]
-    fn planar_values_combines_up_to_32_planes() {
-        let planes: Vec<[u8; 1]> = (0..24).map(|p| [0x80 >> (p % 3)]).collect();
-        let mut out = [0; 3];
-        planar_values(planes.iter().map(|p| &p[..]), &mut [0; 3], &mut out);
-        assert_eq!(out, [0x24_9249, 0x49_2492, 0x92_4924]);
+    fn planar_pixels_combines_up_to_32_planes() {
+        // 24 planes of two 1-byte rows, cropped to 3 pixels.
+        let data: Vec<u8> = (0..48).map(|i| 0x80 >> (i / 2 % 3)).collect();
+        let values = planar_pixels(&data, 3, 2, 1, 24, |plane, y| plane * 2 + y);
+        let row = [0x24_9249, 0x49_2492, 0x92_4924];
+        assert_eq!(values, [row, row].concat());
     }
 }

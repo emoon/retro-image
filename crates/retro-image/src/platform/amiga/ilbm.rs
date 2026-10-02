@@ -11,7 +11,6 @@
 //! - Pixel doubling for interlaced low-res and non-interlaced high-res
 //!   screens: observed from `recoil2png` output.
 
-use alloc::vec;
 use alloc::vec::Vec;
 
 use super::iff::find;
@@ -19,7 +18,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::planar_values;
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 const CAMG_LACE: u32 = 0x4;
@@ -217,19 +216,17 @@ fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>,
             .ok_or(DecodeError::Unrecognized)?,
         _ => unpack_body(header, body, len)?,
     };
-    let mut indices = vec![0u32; header.width * header.height];
-    let mut scratch = vec![0; header.width];
-    for (y, pixels) in indices.chunks_exact_mut(header.width).enumerate() {
-        let planes = (0..header.planes).map(|plane| {
-            let start = match layout {
-                Layout::Contiguous => (plane * header.height + y) * row_len,
-                _ => (y * stored_planes + plane) * row_len,
-            };
-            &data[start..start + row_len]
-        });
-        planar_values(planes, &mut scratch, pixels);
-    }
-    Ok(indices)
+    Ok(planar_pixels(
+        &data,
+        header.width,
+        header.height,
+        row_len,
+        header.planes,
+        |plane, y| match layout {
+            Layout::Contiguous => (plane * header.height + y) * row_len,
+            _ => (y * stored_planes + plane) * row_len,
+        },
+    ))
 }
 
 fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {

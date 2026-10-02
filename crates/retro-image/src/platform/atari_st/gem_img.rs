@@ -18,7 +18,7 @@ use alloc::vec::Vec;
 
 use super::common::{MAX_PIXELS, st_rgb, vdi_level};
 use crate::bytes::be16;
-use crate::image::planar_values;
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
@@ -96,21 +96,18 @@ fn decode(data: &[u8]) -> Option<Image> {
     } else {
         pixel_scale(&h)
     };
+    let values = planar_pixels(&bitmap, h.width, h.height, row_len, h.planes, |plane, y| {
+        let row = if plane_major {
+            plane * h.height + y
+        } else {
+            y * h.planes + plane
+        };
+        row * row_len
+    });
     let mut image = Image::new(h.width as u32, h.height as u32);
-    let mut values = alloc::vec![0; h.width];
-    let mut scratch = alloc::vec![0; h.width];
-    for y in 0..h.height {
-        let planes = (0..h.planes).map(|plane| {
-            let row = if plane_major {
-                plane * h.height + y
-            } else {
-                y * h.planes + plane
-            };
-            &bitmap[row * row_len..][..row_len]
-        });
-        planar_values(planes, &mut scratch, &mut values);
-        for (x, &index) in values.iter().enumerate() {
-            let index = index as usize;
+    for (y, row) in values.chunks_exact(h.width).enumerate() {
+        for (x, &value) in row.iter().enumerate() {
+            let index = value as usize;
             let color = match timg {
                 Some(bits) => timg_color(index, bits),
                 None => *palette.get(index)?,
