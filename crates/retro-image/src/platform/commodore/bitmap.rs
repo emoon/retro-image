@@ -297,18 +297,20 @@ pub(super) fn decode_drazpaint(data: &[u8]) -> Result<Image, DecodeError> {
     DRAZPAINT.decode(data)
 }
 
-/// Drazpaint packed: `DRAZPAINT 1.4` header.
+/// Drazpaint packed: `DRAZPAINT 1.4` or `DRAZPAINT 2.0` header. Both
+/// versions pack the same `$5800-$7F40` memory image (samples of each
+/// unpack to exactly that length, using all their input).
 pub(super) fn decode_drazpaint_packed(data: &[u8]) -> Result<Image, DecodeError> {
-    // $5800-$7F40
-    DRAZPAINT.decode_unchecked(&draz_unpack(data, b"DRAZPAINT 1.4", 0x2741)?)
+    let unpacked = draz_unpack(data, &[b"DRAZPAINT 1.4", b"DRAZPAINT 2.0"], 0x2741)?;
+    DRAZPAINT.decode_unchecked(&unpacked)
 }
 
-/// Unpacks a Drazpaint/Drazlace file: load address, 13-byte `magic`,
-/// escape byte, then `ESC count value` RLE. Returns the data with a load
-/// address header, padded with zeros to `len` bytes.
+/// Unpacks a Drazpaint/Drazlace file: load address, a 13-byte magic (one
+/// of `magics`), escape byte, then `ESC count value` RLE. Returns the data
+/// with a load address header, padded with zeros to `len` bytes.
 pub(super) fn draz_unpack(
     data: &[u8],
-    magic: &[u8; 13],
+    magics: &[&[u8; 13]],
     len: usize,
 ) -> Result<Vec<u8>, DecodeError> {
     let header = data.get(2..15).ok_or(DecodeError::Unrecognized)?;
@@ -316,7 +318,7 @@ pub(super) fn draz_unpack(
         .get(15..)
         .and_then(|d| d.split_first())
         .ok_or(DecodeError::Unrecognized)?;
-    if header != magic {
+    if !magics.iter().any(|magic| header == *magic) {
         return Err(DecodeError::Unrecognized);
     }
     let mut unpacked =

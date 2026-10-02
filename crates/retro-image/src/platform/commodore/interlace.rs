@@ -95,7 +95,7 @@ pub(super) fn decode_drazlace(data: &[u8]) -> Result<Image, DecodeError> {
     let data = if data.len() == DRAZLACE[0].sizes[0] {
         data
     } else {
-        unpacked = super::bitmap::draz_unpack(data, b"DRAZLACE! 1.0", DRAZLACE_LEN)?;
+        unpacked = super::bitmap::draz_unpack(data, &[b"DRAZLACE! 1.0"], DRAZLACE_LEN)?;
         &unpacked
     };
     let prg = Prg::new(data, 0x5800);
