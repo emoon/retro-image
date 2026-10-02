@@ -20,10 +20,18 @@ use super::prg::Prg;
 use super::vic2::Frame;
 use crate::{DecodeError, Image};
 
-/// Blends two frames; `shift` moves the second one right by a hires pixel.
-fn blend(first: Option<Frame>, second: Option<Frame>, shift: bool) -> Result<Image, DecodeError> {
+/// Blends two frames; `shift` moves the second one right by a hires pixel,
+/// bringing in the given background colour at the left edge.
+fn blend(
+    first: Option<Frame>,
+    second: Option<Frame>,
+    shift: Option<u8>,
+) -> Result<Image, DecodeError> {
     let (first, second) = first.zip(second).ok_or(DecodeError::Unrecognized)?;
-    let second = if shift { second.shift_right() } else { second };
+    let second = match shift {
+        Some(background) => second.shift_right(background),
+        None => second,
+    };
     Ok(first.blend(&second, 0))
 }
 
@@ -52,7 +60,12 @@ pub(super) fn decode_true_paint(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let prg = Prg::new(data, 0x9c00);
-    blend(TRUE_PAINT[0].frame(&prg), TRUE_PAINT[1].frame(&prg), true)
+    let background = prg.byte(0x9fe8).ok_or(DecodeError::Unrecognized)?;
+    blend(
+        TRUE_PAINT[0].frame(&prg),
+        TRUE_PAINT[1].frame(&prg),
+        Some(background),
+    )
 }
 
 const DRAZLACE: [Multicolor; 2] = [
@@ -87,6 +100,7 @@ pub(super) fn decode_drazlace(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let prg = Prg::new(data, 0x5800);
     let shift = prg.byte(0x7f42).ok_or(DecodeError::Unrecognized)? != 0;
+    let shift = shift.then_some(prg.byte(0x7f40).ok_or(DecodeError::Unrecognized)?);
     blend(DRAZLACE[0].frame(&prg), DRAZLACE[1].frame(&prg), shift)
 }
 
@@ -114,6 +128,6 @@ pub(super) fn decode_hires_interlace(data: &[u8]) -> Result<Image, DecodeError> 
     blend(
         HIRES_INTERLACE[0].frame(&prg),
         HIRES_INTERLACE[1].frame(&prg),
-        false,
+        None,
     )
 }
