@@ -8,9 +8,13 @@
 mod antic;
 mod apac;
 mod colorview;
+mod cpi;
 mod font;
+mod fwa;
+mod ged;
 mod graph2font;
 mod gtia;
+mod hcm;
 mod hip;
 mod ice;
 mod inflate;
@@ -18,6 +22,7 @@ mod interlace;
 mod interlace2;
 mod koala;
 mod mad_studio;
+mod mcs;
 mod misc_screen;
 mod packed;
 mod palette;
@@ -32,6 +37,7 @@ mod text;
 mod text_art;
 mod tip;
 mod vbxe;
+mod xl_paint;
 
 use crate::Format;
 
@@ -342,4 +348,13 @@ pub(super) static FORMATS: &[Format] = &[
         &["rm4"],
         rambrandt::decode_rm4,
     ),
+    // Wave 4: headered bitmaps with per-line colours
+    Format::new(ATARI8, "Hard Color Map", &["hcm"], hcm::decode_hcm).signature(),
+    Format::new(ATARI8, "XL-Paint MAX raw", &["raw"], xl_paint::decode_raw),
+    Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),
+    Format::new(ATARI8, "XL-Paint", &["xlp"], xl_paint::decode_xlp),
+    Format::new(ATARI8, "Marco Pixel Editor", &["cpi"], cpi::decode_cpi),
+    Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
+    Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
+    Format::new(ATARI8, "GED", &["ged"], ged::decode_ged),
 ];
