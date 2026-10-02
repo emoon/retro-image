@@ -16,6 +16,9 @@
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
+mod flf;
+mod image72;
+
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -28,6 +31,10 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
+    // Wave 5: FLF
+    Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
+    // Wave 5: Amiga and misc
+    Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.

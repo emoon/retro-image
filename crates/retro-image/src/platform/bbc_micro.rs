@@ -13,6 +13,8 @@
 
 use crate::{DecodeError, Format, Image};
 
+mod flf;
+
 pub(super) static FORMATS: &[Format] = &[
     Format::new("BBC Micro", "Mode 0 screen", &["bb0"], |data| {
         decode(data, &MODE0)
@@ -30,6 +32,14 @@ pub(super) static FORMATS: &[Format] = &[
         decode(data, &MODE5)
     }),
     Format::new("BBC Micro", "LdPic", &["bbg"], decode_ldpic).signature(),
+    // Wave 5: FLF
+    Format::new(
+        "BBC Micro",
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_flf,
+    )
+    .signature(),
 ];
 
 struct Mode {

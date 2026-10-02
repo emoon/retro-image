@@ -4,9 +4,16 @@
 //! and Sharp X68000 modules reuse. Sources are listed per submodule; the
 //! platform survey is `docs/research/msx-japanese.md`.
 
+mod artmaster88;
+mod arv;
+mod davinci;
+mod ebd;
+mod kt4;
 pub(super) mod maki;
+mod pc88_planes;
 pub(super) mod pi;
 mod precision;
+mod zim;
 
 use crate::Format;
 
@@ -60,4 +67,18 @@ pub(super) static FORMATS: &[Format] = &[
         super::sharp_x68000::pic::decode_pic(d, Machine::Pc88Va)
     })
     .signature(),
+    // Wave 5: Japanese
+    Format::new("NEC PC-88", "DaVinci", &["img"], davinci::decode_davinci),
+    Format::new(
+        "NEC PC-88",
+        "ArtMaster88",
+        &["img"],
+        artmaster88::decode_artmaster88,
+    )
+    .signature(),
+    Format::new("NEC PC-98", "EBD", &["ebd"], ebd::decode_ebd),
+    Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
+    // Wave 5b: Japanese
+    Format::new("NEC PC-98", "ARTV", &["arv"], arv::decode_arv).signature(),
+    Format::new("NEC PC-88 VA", "Kitty", &["kt4"], kt4::decode_kt4),
 ];

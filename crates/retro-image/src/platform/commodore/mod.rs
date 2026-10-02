@@ -14,12 +14,18 @@ mod c128;
 mod cgx;
 mod charpad;
 mod charset;
+mod cle;
+mod ecp;
+mod emc;
+mod flf;
 mod fli;
 mod godot;
 mod ifli;
 mod interlace;
 mod loadstar;
 mod logo;
+mod mufli;
+mod mwin;
 mod nufli;
 mod petscii;
 mod prg;
@@ -291,6 +297,64 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(VIC20, "Best Paint", &["bp"], vic20::decode_best_paint),
     Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
+    // Wave 5: C64
+    Format::new(C64, "Centauri Logo-Editor", &["cle"], cle::decode_cle),
+    Format::new(C64, "Hires-Editor", &["het"], bitmap::decode_hires_editor),
+    Format::new(
+        C64,
+        "Interlace Hires Editor",
+        &["ihe"],
+        interlace::decode_interlace_hires_editor,
+    ),
+    Format::new(
+        C64,
+        "Multi-Lace Editor",
+        &["mle"],
+        interlace::decode_multi_lace,
+    ),
+    Format::new(
+        C64,
+        "Dolphin Ed",
+        &["dol", "bed"],
+        bitmap::decode_dolphin_ed,
+    ),
+    Format::new(
+        C64,
+        "ECI Graphic Editor (compressed)",
+        &["ecp"],
+        ecp::decode_ecp,
+    ),
+    Format::new(
+        C64,
+        "Face Painter",
+        &["fcp", "fpt"],
+        bitmap::decode_face_painter,
+    ),
+    // Wave 5: FLF
+    Format::new(C64, "Turbo Rascal Syntax Error", &["flf"], flf::decode_c64).signature(),
+    Format::new(
+        VIC20,
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_vic20,
+    )
+    .signature(),
+    // Wave 5b: C64
+    Format::new(C64, "EMC-editor", &["emc"], emc::decode_emc),
+    Format::new(C64, "MUFLI Editor", &["muf"], mufli::decode_muf),
+    Format::new(C64, "MUIFLI Editor", &["mui"], mufli::decode_mui),
+    Format::new(
+        C64,
+        "MUFLI Editor (compressed)",
+        &["mup"],
+        mufli::decode_mup,
+    ),
+    Format::new(
+        C64,
+        "Art Studio window",
+        &["mwi", "mwin"],
+        mwin::decode_mwin,
+    ),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
