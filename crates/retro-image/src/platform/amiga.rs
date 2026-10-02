@@ -15,6 +15,7 @@
 
 mod abk;
 mod deep;
+mod flf;
 mod icon;
 mod iff;
 mod ilbm;
@@ -47,6 +48,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
+    // Wave 5: FLF
+    Format::new(
+        "Amiga",
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_flf,
+    )
+    .signature(),
 ];
 
 /// AMOS sprite, icon or picture bank.

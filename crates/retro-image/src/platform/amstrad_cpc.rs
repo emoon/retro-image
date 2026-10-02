@@ -5,6 +5,7 @@
 //! survey is `docs/research/sinclair-cpc-bbc-misc.md`.
 
 mod amsdos;
+mod flf;
 mod fnt;
 mod hardware;
 mod hgb;
@@ -58,4 +59,12 @@ pub(super) static FORMATS: &[Format] = &[
         hgb::decode_hgb,
     ),
     Format::new("Amstrad CPC", "SymbOS graphic", &["sgx"], sgx::decode_sgx),
+    // Wave 5: FLF
+    Format::new(
+        "Amstrad CPC",
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_flf,
+    )
+    .signature(),
 ];

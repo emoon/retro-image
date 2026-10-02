@@ -16,6 +16,7 @@ mod charpad;
 mod charset;
 mod cle;
 mod ecp;
+mod flf;
 mod fli;
 mod godot;
 mod ifli;
@@ -326,6 +327,15 @@ pub(super) static FORMATS: &[Format] = &[
         &["fcp", "fpt"],
         bitmap::decode_face_painter,
     ),
+    // Wave 5: FLF
+    Format::new(C64, "Turbo Rascal Syntax Error", &["flf"], flf::decode_c64).signature(),
+    Format::new(
+        VIC20,
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_vic20,
+    )
+    .signature(),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

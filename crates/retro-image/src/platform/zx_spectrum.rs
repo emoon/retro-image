@@ -13,6 +13,7 @@
 mod border;
 mod chars;
 mod enhanced;
+mod flf;
 mod multicolor;
 mod profi;
 mod screen;
@@ -151,4 +152,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("ZX81", "ZXpaintyONE", &["zp1"], zx81::decode_zp1),
     Format::new("ZX81", "ZXpaintyONE v2.0", &["raw"], zx81::decode_raw),
     Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp).signature(),
+    // Wave 5: FLF
+    Format::new(
+        "ZX Spectrum",
+        "Turbo Rascal Syntax Error",
+        &["flf"],
+        flf::decode_flf,
+    )
+    .signature(),
 ];

@@ -266,3 +266,32 @@ Two later extensions store a better picture in the same `.info` file. RECOIL sho
 - [svanderburg/libilbm](https://github.com/svanderburg/libilbm) and [amigazen/ifftools](https://github.com/amigazen/ifftools): licenses not checked; check before reading. libilbm's `doc/ACBM.asc` is a copy of the public ACBM spec.
 
 **Permissive references found:** Deark (MIT-style, from 1.4.x), [bitplane/datatypes](https://github.com/bitplane/datatypes) (MIT; AROS datatypes incl. MacPaint, MSP, CompuServe RLE, Amiga icon), [amos-abk](https://pypi.org/project/amos-abk/0.2.0/) (WTFPL), [Kaitai psx_tim.ksy](https://formats.kaitai.io/psx_tim/) (CC0), [CiderPress II](https://github.com/fadden/CiderPress2) (Apache-2.0 code; CC BY-SA 4.0 docs).
+
+## Wave 5: FLF
+
+FLF is implemented from the 17 samples (the 16 in RECOIL's set plus `corpus/extra/commodore/sembiance/flf/hflogo.flf`), all of which now match `recoil2png` pixel for pixel. TRSE's source was not read; the layout comes from mutating sample bytes and watching which pixels change in `recoil2png` output, plus synthetic cell data. The shared container is `crates/retro-image/src/codec/flf.rs`; each platform has a small `flf.rs` that claims only its own image types, and every registration uses `.signature()` (the magic is `FLUFF64`).
+
+Container: `FLUFF64`, four bytes that `recoil2png` ignores (`02 00 00 00` or `0a d7 23 3c`, which is the float 0.01), then the image type byte at offset 11. Everything after that depends on the type. Types with a palette or ink table end in a 256-byte block that starts `40 45 00 00`; it is optional for some types, required for others, and only the ink table at its offset 192 is ever used.
+
+| Type | Platform | Layout |
+|---|---|---|
+| 0x01 | C64 | 15-byte header, then 40x25 cells of 8 bitmap bytes + 4 colour numbers, multicolour |
+| 0x04, 0x05 | C64 | Same with an 18-byte header |
+| 0x06 | C64 | As 0x04 but hires (bit selects colour 0 or 1). Only seen with synthetic cells, no sample |
+| 0x07 | C64 | Text mode: byte 13 background, bytes 15/16 width/height in characters, colour RAM and screen codes from offset 29, 16 ignored bytes. C64 ROM upper case/graphics glyphs. `snowman.flf` is 22x23 and uses the C64 palette, not the VIC-20 one |
+| 0x09 | VIC-20 | 20-byte header, width/height in cells at 18/19, multicolour cells, colours 0-7 only (8 and up are rejected by `recoil2png`) |
+| 0x0b | PC (CGA) | byte 12 = 2..5 picks the CGA palette; 320x200 colour numbers from offset 13; closing block required |
+| 0x0c, 0x16 | Atari ST (guess) | 320x200, one index per byte from offset 13, then a colour count byte and RGB triples, then optional closing block |
+| 0x0d | Amiga | The same with 320x256 |
+| 0x1b | PC (VGA) | The same as 0x0c; a count byte of 0 means 256 colours |
+| 0x18 | Amstrad CPC | byte 12 = 0x0b; 160x200 pens from offset 13 (drawn double width); closing block required, its offsets 192-207 are the firmware ink of pens 0-15 |
+| 0x1a | BBC Micro | byte 13 = mode 4 (320x256, 2 colours) or 5 (160x256, 4 colours), pixels read from offset 13 on; closing block required, its ink table ignored |
+| 0x1c | ZX Spectrum | byte 12 = 0x0e; 256x192 colour numbers 0-7 from offset 13 |
+
+Multicolour cell pixels run from the low bits (the leftmost pixel is `byte & 3`) and value `v` takes colour number `v`. Colour numbers are only checked when a pixel uses them; a used number of `$ff` is rejected.
+
+What to know:
+
+- The platform for the paletted types 0x0c, 0x0d, 0x16 and 0x1b is a guess. `recoil2png` draws 0x0c, 0x16 and 0x1b identically, and the only evidence for Amiga (0x0d, 320x256) and PC (0x1b, 256 colours) is the size and palette. 0x0c and 0x16 went to Atari ST because they carry 16 colours at 320x200.
+- BBC pictures: `recoil2png` shows the stream starting at the mode byte, so pixel 0 is the mode number (drawn black) and the final stored byte is dropped. If the mode byte is really a header, the picture is one pixel shifted and loses its last pixel. The samples can't tell which side is right, so this follows `recoil2png`.
+- Not covered by any sample: other BBC modes, CPC modes 1 and 2, other Spectrum or CGA layouts, VIC-20 hires, and C64 type 6 beyond the synthetic check. `recoil2png` also accepts type 0x07 on `image1-1.flf` (changing byte 11) as a tiny 80x16 picture, so more type numbers exist than the samples show. Producing TRSE-made samples is the way to continue.
