@@ -312,3 +312,17 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
   is the same.
 - **Saracen Paint:** a 10018-byte variant ends at `$9F1F`, five rows of colour RAM short of the
   full file; the missing tail is zero.
+
+## Wave 5: C64
+
+Eight more formats, all reverse engineered by mutating bytes in copies of the samples and watching `recoil2png`, then matched against it (corpus oracle, every sample pixel-exact). No divergences recorded.
+
+- Centauri Logo-Editor (`.cle`, 9 samples): 8194 bytes, load `$6000`. An 8000-byte multicolour bitmap in the usual cell order, then three colour bytes at offsets 8002-8004: bit pair `01` = high nibble of the first, `10` = its low nibble, `11` = low nibble of the second, background `00` = low nibble of the third. The remaining 189 bytes change nothing. There is no screen or colour RAM, so every picture uses four colours in total.
+- Face Painter (`.fcp`, `.fpt`, 3 samples): 10004 bytes, load `$4000`. Koala layout (bitmap, screen, colour, background at `$6710`) plus one trailing byte that changes nothing.
+- Dolphin Ed (`.dol`, 1 sample; `.bed` registered by extension only): 10242 bytes, load `$5800`. Drazpaint's map (colour RAM `$5800`, screen `$5C00`, bitmap `$6000`) with the background at `$5FE8` (offset 2026, low nibble). The earlier attempt missed it because the sample's own background is black; changing the byte moves the whole background.
+- ECI Graphic Editor packed (`.ecp`, 1 sample): load `$4000`, then the escape byte (`$F3` in the sample, varied freely when repacking), then `ESC count value` runs and literals, unpacking to the 32768 bytes of the unpacked ECI layout. Count 0 is an empty run (not 256, unlike the other escape-RLE formats here). Extra bytes after the 32768th are ignored (3 in the sample); a stream that ends early is rejected, even by 68 bytes.
+- Hires-Editor (`.het`, 1 sample): 9217 bytes, load `$5C00`. Doodle's screen (`$5C00`) and bitmap (`$6000`), one byte shorter than Doodle's file. Bytes after the bitmap change nothing.
+- Interlace Hires Editor (`.ihe`, 1 sample): 16194 bytes, load `$2000`. Two bare bitmaps at `$2000` and `$4000` (192 unused bytes between them); no screen RAM, set bits are black and clear bits grey (`$0C`) in both frames, averaged.
+- Multi-Lace Editor (`.mle`, 1 sample): 4098 bytes, load `$2000`. Two 2048-byte multicolour bitmaps at `$2000` and `$2800`, each covering 256 cells (six cell rows and 16 cells of the seventh; the rest of the 320x56 image is background). Fixed colours: `00` black, `01` brown (9), `10` orange (8), `11` green (5). The first frame is shown one pixel to the right (`recoil2png` fills black at the left edge), the second is not.
+
+Left over from the Wave 4 list: M.C.S., the remaining Super Hires editors, NUP, UIFLI, MUFLI/MUIFLI, Botticelli 128x64 and PetDraw64. Not touched here. Each of the new formats has one sample at most (CLE, FCP, FPT excepted), so layouts for variants, such as other CLE file sizes, other ECP escape values with long runs, or `.bed` files, are unverified.

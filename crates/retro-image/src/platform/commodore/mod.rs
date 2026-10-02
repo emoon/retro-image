@@ -304,6 +304,12 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(
         C64,
+        "Multi-Lace Editor",
+        &["mle"],
+        interlace::decode_multi_lace,
+    ),
+    Format::new(
+        C64,
         "Dolphin Ed",
         &["dol", "bed"],
         bitmap::decode_dolphin_ed,
