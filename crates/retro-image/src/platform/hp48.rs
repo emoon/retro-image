@@ -9,6 +9,11 @@
 //!   significant bit of each nibble is the leftmost pixel. Text objects read
 //!   `GROB width height hexdigits`, one hex digit per memory nibble.
 //! - Set bit = black: observed from `recoil2png` output.
+//! - Directory (`$02A96`) and program (`$02D9D`) objects holding GROBs: the
+//!   prologs are in the HP 48 FAQ ch. 8; the GROBs inside are found by their
+//!   prolog and a length field that matches their size (reverse engineered
+//!   from hpcalc.org samples). They are drawn side by side, top-aligned, on
+//!   white, like the objects of an AMOS bank.
 
 use alloc::vec::Vec;
 
@@ -17,7 +22,10 @@ use crate::{DecodeError, Format, Image};
 pub(super) static FORMATS: &[Format] =
     &[Format::new("HP 48", "GROB", &["grb", "gro"], decode_grob)];
 
-const PROLOG: usize = 0x02b1e;
+const GROB: usize = 0x02b1e;
+const DIRECTORY: usize = 0x02a96;
+const PROGRAM: usize = 0x02d9d;
+const WHITE: u32 = 0xffffff;
 
 fn decode_grob(data: &[u8]) -> Result<Image, DecodeError> {
     let nibbles = if data.starts_with(b"HPHP48-") && data.len() > 8 {
@@ -25,7 +33,12 @@ fn decode_grob(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         text_nibbles(data).ok_or(DecodeError::Unrecognized)?
     };
-    render(&nibbles).ok_or(DecodeError::Unrecognized)
+    let grobs = match field(&nibbles, 0) {
+        Some(GROB) => Vec::from_iter(Grob::parse(&nibbles)),
+        Some(DIRECTORY | PROGRAM) => embedded_grobs(&nibbles),
+        _ => Vec::new(),
+    };
+    render(&grobs).ok_or(DecodeError::Unrecognized)
 }
 
 /// The nibbles of a text GROB, with a binary-style header synthesised.
@@ -38,7 +51,7 @@ fn text_nibbles(data: &[u8]) -> Option<Vec<u8>> {
     let (width, height) = (number()?, number()?);
     let hex = words.next()?;
     let mut nibbles = Vec::with_capacity(20 + hex.len());
-    for value in [PROLOG, 0, height, width] {
+    for value in [GROB, 0, height, width] {
         nibbles.extend((0..5).map(|i| (value >> (4 * i) & 15) as u8));
     }
     for &c in hex {
@@ -47,26 +60,122 @@ fn text_nibbles(data: &[u8]) -> Option<Vec<u8>> {
     Some(nibbles)
 }
 
-fn render(nibbles: &[u8]) -> Option<Image> {
-    let field = |at: usize| -> Option<usize> {
-        let digits = nibbles.get(at..at + 5)?;
-        Some(digits.iter().rev().fold(0, |v, &n| v << 4 | usize::from(n)))
-    };
-    if field(0)? != PROLOG {
-        return None;
+/// A 5-nibble field, least significant nibble first.
+fn field(nibbles: &[u8], at: usize) -> Option<usize> {
+    let digits = nibbles.get(at..at.checked_add(5)?)?;
+    Some(digits.iter().rev().fold(0, |v, &n| v << 4 | usize::from(n)))
+}
+
+struct Grob<'a> {
+    width: usize,
+    height: usize,
+    /// The length field: the object's size in nibbles, minus the prolog.
+    length: usize,
+    pixels: &'a [u8],
+}
+
+impl<'a> Grob<'a> {
+    /// The GROB at the start of `nibbles`.
+    fn parse(nibbles: &'a [u8]) -> Option<Self> {
+        if field(nibbles, 0)? != GROB {
+            return None;
+        }
+        let (length, height, width) =
+            (field(nibbles, 5)?, field(nibbles, 10)?, field(nibbles, 15)?);
+        if width == 0 || height == 0 {
+            return None;
+        }
+        let pixel_len = width.div_ceil(8).checked_mul(2)?.checked_mul(height)?;
+        let pixels = nibbles.get(20..pixel_len.checked_add(20)?)?;
+        Some(Self {
+            width,
+            height,
+            length,
+            pixels,
+        })
     }
-    let (height, width) = (field(10)?, field(15)?);
-    let row_nibbles = width.div_ceil(8) * 2;
-    let pixels = nibbles.get(20..20 + row_nibbles.checked_mul(height)?)?;
-    if width == 0 || height == 0 {
+
+    fn row_nibbles(&self) -> usize {
+        self.width.div_ceil(8) * 2
+    }
+
+    /// Whether the length field matches the header and pixels.
+    fn length_matches(&self) -> bool {
+        self.length == 15 + self.pixels.len()
+    }
+
+    fn is_set(&self, x: usize, y: usize) -> bool {
+        self.pixels[y * self.row_nibbles() + x / 4] >> (x % 4) & 1 != 0
+    }
+}
+
+/// The GROBs stored in a directory or program, in order.
+fn embedded_grobs(nibbles: &[u8]) -> Vec<Grob<'_>> {
+    let mut grobs = Vec::new();
+    let mut at = 5;
+    while at + 20 <= nibbles.len() {
+        match Grob::parse(&nibbles[at..]).filter(Grob::length_matches) {
+            Some(grob) => {
+                at += 5 + grob.length;
+                grobs.push(grob);
+            }
+            None => at += 1,
+        }
+    }
+    grobs
+}
+
+/// Draws `grobs` side by side, top-aligned on white; `None` if empty.
+fn render(grobs: &[Grob]) -> Option<Image> {
+    let width: usize = grobs.iter().map(|g| g.width).sum();
+    let height = grobs.iter().map(|g| g.height).max()?;
+    if width > 0xffff {
         return None;
     }
     let mut image = Image::new(width as u32, height as u32);
-    for y in 0..height {
-        for x in 0..width {
-            let set = pixels[y * row_nibbles + x / 4] >> (x % 4) & 1 != 0;
-            image.set(x as u32, y as u32, if set { 0 } else { 0xffffff });
+    let mut left = 0;
+    for grob in grobs {
+        for y in 0..height {
+            for x in 0..grob.width {
+                let set = y < grob.height && grob.is_set(x, y);
+                image.set((left + x) as u32, y as u32, if set { 0 } else { WHITE });
+            }
         }
+        left += grob.width;
     }
     Some(image)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A binary GROB object's nibbles; `length` overrides the length field.
+    fn grob(width: usize, height: usize, length: Option<usize>, fill: u8) -> Vec<u8> {
+        let pixel_len = width.div_ceil(8) * 2 * height;
+        let length = length.unwrap_or(15 + pixel_len);
+        let mut nibbles = Vec::new();
+        for value in [GROB, length, height, width] {
+            nibbles.extend((0..5).map(|i| (value >> (4 * i) & 15) as u8));
+        }
+        nibbles.resize(nibbles.len() + pixel_len, fill);
+        nibbles
+    }
+
+    #[test]
+    fn finds_grobs_in_a_program_by_their_length_field() {
+        let mut program = alloc::vec![0xd, 0x9, 0xd, 0x2, 0x0, 0x7];
+        program.extend(grob(8, 2, None, 0xf));
+        program.extend([1, 2, 3]);
+        program.extend(grob(4, 3, Some(99), 0));
+        program.extend(grob(4, 3, None, 0));
+        let grobs = embedded_grobs(&program);
+        let sizes: Vec<_> = grobs.iter().map(|g| (g.width, g.height)).collect();
+        assert_eq!(sizes, [(8, 2), (4, 3)]);
+        let image = render(&grobs).unwrap();
+        assert_eq!((image.width(), image.height()), (12, 3));
+        assert_eq!(&image.rgb()[..3], [0, 0, 0]);
+        // Below the shorter first GROB: white background.
+        assert_eq!(&image.rgb()[2 * 12 * 3..2 * 12 * 3 + 3], [255, 255, 255]);
+    }
 }
