@@ -1,11 +1,12 @@
-//! The "Super Hires" family: 96-pixel-wide hires pictures with hires sprite
-//! layers on top, shown as two interlaced frames.
+//! The "Super Hires" family: hires pictures with one or two layers of hires
+//! sprites on top, some shown as two interlaced frames.
 //!
 //! Sources: no file documentation exists (Codebase64's grafix specs list,
 //! <http://codebase.c64.org/doku.php?id=base:c64_grafix_files_specs_list_v0.03>,
-//! only names the parts: "2 x hires bitmap, 2 x 2 x hires sprite layers").
-//! Everything below was reverse engineered from the sample files by
-//! feeding modified copies to `recoil2png` and watching which pixels change:
+//! only names the parts, e.g. "hires bitmap, 8 x screen RAM, 2 x hires
+//! sprite layers"). Everything below was reverse engineered from the sample
+//! files by feeding modified copies to `recoil2png` and watching which
+//! pixels change:
 //!
 //! - Super Hires Interlace (SHI, 15355 bytes, load `$7FFF`): a zero byte,
 //!   two 12×25-cell hires bitmaps (cells of 8 bytes, row by row), then the
@@ -17,34 +18,50 @@
 //!   then four colour bytes (upper and lower sprite layer of the first
 //!   frame, then of the second). Each section starts with `$9400` plus its
 //!   own length, then an escape byte; the rest unpacks backwards
-//!   (`value count escape` runs, count 0 = 256) to
-//!   8176 bytes holding four 2048-byte planes of 167 lines × 12 bytes: upper
-//!   sprite layer, lower sprite layer, hires bitmap, and one colour byte
-//!   per 8-pixel cell per line (FLI).
+//!   (`value count escape` runs, count 0 = 256) to 8176 bytes of planes.
+//! - Super Hires FLI (SHF) and SHF-XL (SHX), unpacked (load `$4000`): hires
+//!   FLI (eight screen RAMs from `$4000`, bitmap `$6000`) with sprites whose
+//!   pointers come from the screen RAM of the previous raster line, so each
+//!   line can show a different 64-byte block; line `y` of the picture shows
+//!   row `y % 21` of it. SHF: 26 columns from column 14, from bitmap line 1,
+//!   167 lines, sprites 0-3 (colour `$43E8`) over sprites 4-7 (`$43E9`).
+//!   SHX: 18 columns from column 11, 168 lines, sprites 1-6 (`$43E9`).
+//! - Packed SHF (any other size): two ignored bytes, an escape byte, then
+//!   `escape count value` runs unpacking forwards to the planes of one SIF
+//!   frame; the sprite colours are at offsets `$1FE8` and `$1FE9`.
+//!   `recoil2png` uses the first for both layers; running Crest's Super
+//!   Hires FLI Editor V1.0 (`SHF_V1_Fix.prg`,
+//!   <http://c64.rulez.org/pub/c64/Tools/Graphics/Bitmap/>) in VICE as a
+//!   black box showed the lower-layer sprites (4-7) take the second.
+//! - Packed SHX (any other size): two ignored bytes, data packed backwards
+//!   as in SIF, then the escape byte; it unpacks to three 3072-byte planes
+//!   of 168 lines × 18 bytes (sprites, bitmap, colours), with the sprite
+//!   colour at `$BD1`.
 //!
-//! In both, a set upper-layer bit wins over the lower layer, which wins over
-//! the bitmap; the frames are averaged per channel.
+//! The planes of SIF and packed SHF are 2048 bytes apart, with 167 lines ×
+//! 12 bytes each: upper sprite layer, lower sprite layer, hires bitmap, and
+//! a colour byte per 8-pixel cell per line (FLI).
+//!
+//! A set bit of an upper layer wins over lower layers, which win over the
+//! bitmap; interlaced frames are averaged per channel.
 
-use super::unpack::backward_rle_exact;
+use super::unpack::{Run, backward_rle_filled, escape_rle};
 use super::vic2;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
-/// Width of every Super Hires picture.
-const WIDTH: usize = 96;
+/// Width of the SHI, SIF and packed SHF pictures.
+const NARROW: usize = 96;
 /// Bytes of a 96-pixel line or row of cells.
-const ROW: usize = WIDTH / 8;
+const ROW: usize = NARROW / 8;
 
-/// Renders both interlace frames with `pixel(frame, x, y)` and blends them.
-fn interlace(height: usize, pixel: impl Fn(usize, usize, usize) -> u8) -> Image {
-    let frame = |f| {
-        let colors: Vec<u8> = (0..height)
-            .flat_map(|y| (0..WIDTH).map(move |x| (x, y)))
-            .map(|(x, y)| pixel(f, x, y))
-            .collect();
-        vic2::image(WIDTH, height, colors)
-    };
-    Image::blend(&[&frame(0), &frame(1)])
+/// An image from `pixel(x, y)` colour indices.
+fn render(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u8) -> Image {
+    let colors: Vec<u8> = (0..height)
+        .flat_map(|y| (0..width).map(move |x| (x, y)))
+        .map(|(x, y)| pixel(x, y))
+        .collect();
+    vic2::image(width, height, colors)
 }
 
 /// Whether bit `x` (MSB first) of a line of bytes is set.
@@ -55,6 +72,47 @@ fn bit(line: &[u8], x: usize) -> bool {
 /// A hires pixel: the high nibble of `color` if set, else the low nibble.
 fn hires(set: bool, color: u8) -> u8 {
     if set { color >> 4 } else { color & 15 }
+}
+
+/// Sprite layers over a hires bitmap, stored as planes of one byte per
+/// eight pixels per line, `spacing` bytes apart.
+struct Planes<'a> {
+    data: &'a [u8],
+    width: usize,
+    height: usize,
+    spacing: usize,
+    /// Plane index and colour of each sprite layer, topmost first.
+    layers: &'a [(usize, u8)],
+    bitmap: usize,
+    /// Plane of colour bytes: set pixels use the high nibble.
+    colors: usize,
+}
+
+impl Planes<'_> {
+    fn fits(&self) -> bool {
+        let last = self.layers.iter().map(|&(plane, _)| plane);
+        let last = last.chain([self.bitmap, self.colors]).max().unwrap_or(0);
+        self.data.len() >= last * self.spacing + self.height * self.width / 8
+    }
+
+    fn pixel(&self, x: usize, y: usize) -> u8 {
+        let row = self.width / 8;
+        let line = |plane: usize| &self.data[plane * self.spacing + y * row..][..row];
+        self.layers
+            .iter()
+            .find(|&&(plane, _)| bit(line(plane), x))
+            .map_or_else(
+                || hires(bit(line(self.bitmap), x), line(self.colors)[x / 8]),
+                |&(_, color)| color,
+            )
+    }
+
+    fn image(&self) -> Result<Image, DecodeError> {
+        if !self.fits() {
+            return Err(DecodeError::Unrecognized);
+        }
+        Ok(render(self.width, self.height, |x, y| self.pixel(x, y)))
+    }
 }
 
 const SHI_LEN: usize = 15355;
@@ -74,33 +132,49 @@ pub(super) fn decode_shi(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let colors = &data[SHI_COLORS..SHI_COLORS + 8];
-    Ok(interlace(200, |frame, x, y| {
-        let (band, line) = (y / 21, y % 21);
-        let column = x / 24;
-        let sprite = |layer: usize| {
-            let start = SHI_SPRITES
-                + frame * SHI_SPRITES_LEN
-                + band * 512
-                + layer * 256
-                + column * 64
-                + line * 3;
-            bit(&data[start..start + 3], x % 24)
-        };
-        if sprite(0) {
-            colors[column]
-        } else if sprite(1) {
-            colors[4 + column]
-        } else {
-            let cell = y / 8 * ROW + x / 8;
-            let byte = data[SHI_BITMAP + frame * SHI_BITMAP_LEN + cell * 8 + y % 8];
-            hires(bit(&[byte], x % 8), data[SHI_SCREEN + cell])
-        }
-    }))
+    let frame = |frame: usize| {
+        render(NARROW, 200, |x, y| {
+            let (band, line) = (y / 21, y % 21);
+            let column = x / 24;
+            let sprite = |layer: usize| {
+                let start = SHI_SPRITES
+                    + frame * SHI_SPRITES_LEN
+                    + band * 512
+                    + layer * 256
+                    + column * 64
+                    + line * 3;
+                bit(&data[start..start + 3], x % 24)
+            };
+            if sprite(0) {
+                colors[column]
+            } else if sprite(1) {
+                colors[4 + column]
+            } else {
+                let cell = y / 8 * ROW + x / 8;
+                let byte = data[SHI_BITMAP + frame * SHI_BITMAP_LEN + cell * 8 + y % 8];
+                hires(bit(&[byte], x % 8), data[SHI_SCREEN + cell])
+            }
+        })
+    };
+    Ok(Image::blend(&[&frame(0), &frame(1)]))
 }
 
-const SIF_HEIGHT: usize = 167;
-const SIF_PLANE: usize = 2048;
-const SIF_UNPACKED: usize = 4 * SIF_PLANE - 16;
+/// Unpacked size of a SIF frame or a packed SHF picture.
+const PLANES_LEN: usize = 4 * 2048 - 16;
+
+/// One frame of SIF or a packed SHF picture.
+fn four_planes(data: &[u8], colors: [u8; 2]) -> Result<Image, DecodeError> {
+    Planes {
+        data,
+        width: NARROW,
+        height: 167,
+        spacing: 2048,
+        layers: &[(0, colors[0]), (1, colors[1])],
+        bitmap: 2,
+        colors: 3,
+    }
+    .image()
+}
 
 /// Splits off one packed SIF section and unpacks it.
 fn sif_section(data: &[u8]) -> Option<(Vec<u8>, &[u8])> {
@@ -109,7 +183,8 @@ fn sif_section(data: &[u8]) -> Option<(Vec<u8>, &[u8])> {
     let [_, _, escape, packed @ ..] = section else {
         return None;
     };
-    Some((backward_rle_exact(packed, *escape, SIF_UNPACKED)?, rest))
+    let (planes, exact) = backward_rle_filled(packed, *escape, PLANES_LEN)?;
+    exact.then_some((planes, rest))
 }
 
 /// Super Hires Interlace FLI Editor.
@@ -119,23 +194,127 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
     let [c0, c1, c2, c3] = *rest else {
         return Err(DecodeError::Unrecognized);
     };
-    let frames = [(&first, [c0, c1]), (&second, [c2, c3])];
-    Ok(interlace(SIF_HEIGHT, |frame, x, y| {
-        let (planes, colors) = frames[frame];
-        let line = |plane: usize| &planes[plane * SIF_PLANE + y * ROW..][..ROW];
-        if bit(line(0), x) {
-            colors[0]
-        } else if bit(line(1), x) {
-            colors[1]
-        } else {
-            hires(bit(line(2), x), line(3)[x / 8])
+    Ok(Image::blend(&[
+        &four_planes(&first, [c0, c1])?,
+        &four_planes(&second, [c2, c3])?,
+    ]))
+}
+
+/// Unpacked SHF and SHX: hires FLI at `$4000` with sprites whose pointers
+/// change every line.
+struct SpriteFli {
+    len: usize,
+    first_column: usize,
+    columns: usize,
+    /// Bitmap line shown at the top.
+    first_line: usize,
+    height: usize,
+    /// Sprite numbers (one per 24-pixel column) and colour address of each
+    /// layer, topmost first.
+    layers: &'static [(&'static [usize], u16)],
+}
+
+impl SpriteFli {
+    fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
+        if data.len() != self.len {
+            return Err(DecodeError::Unrecognized);
         }
-    }))
+        // The VIC bank `$4000-$7FFF`; sprite pointers may reach past the file.
+        let mut mem = alloc::vec![0u8; 0x4000];
+        let body = &data[2..];
+        mem[..body.len()].copy_from_slice(body);
+        Ok(render(self.columns * 8, self.height, |x, y| {
+            let line = self.first_line + y;
+            let previous = (line + 7) % 8;
+            let column = x / 24;
+            for &(sprites, color) in self.layers {
+                let Some(&sprite) = sprites.get(column) else {
+                    continue;
+                };
+                let pointer = usize::from(mem[previous * 0x400 + 0x3f8 + sprite]);
+                let start = pointer * 64 + y % 21 * 3;
+                if bit(&mem[start..start + 3], x % 24) {
+                    return mem[usize::from(color) - 0x4000];
+                }
+            }
+            let cell = line / 8 * 40 + self.first_column + x / 8;
+            let byte = mem[0x2000 + cell * 8 + line % 8];
+            hires(bit(&[byte], x % 8), mem[line % 8 * 0x400 + cell])
+        }))
+    }
+}
+
+const SHF: SpriteFli = SpriteFli {
+    len: 2 + 0x3e00,
+    first_column: 14,
+    columns: 26,
+    first_line: 1,
+    height: 167,
+    layers: &[(&[0, 1, 2, 3], 0x43e8), (&[4, 5, 6, 7], 0x43e9)],
+};
+
+const SHX: SpriteFli = SpriteFli {
+    len: 2 + 0x3c00,
+    first_column: 11,
+    columns: 18,
+    first_line: 0,
+    height: 168,
+    layers: &[(&[1, 2, 3, 4, 5, 6], 0x43e9)],
+};
+
+/// Super Hires FLI Editor: unpacked, or packed forwards.
+pub(super) fn decode_shf(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() == SHF.len {
+        return SHF.decode(data);
+    }
+    let [_, _, escape, packed @ ..] = data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    let mut planes = escape_rle(packed, *escape, Run::CountValue, PLANES_LEN)
+        .ok_or(DecodeError::Unrecognized)?;
+    // Short data is accepted as long as the colours are there.
+    if planes.len() <= 0x1fe9 {
+        return Err(DecodeError::Unrecognized);
+    }
+    planes.resize(PLANES_LEN, 0);
+    // `recoil2png` paints both layers in the first colour; the editor
+    // itself uses the second for the lower layer (see the module notes).
+    four_planes(&planes, [planes[0x1fe8], planes[0x1fe9]])
+}
+
+/// SHF-XL Edit: unpacked, or packed backwards with the escape byte last.
+pub(super) fn decode_shx(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() == SHX.len {
+        return SHX.decode(data);
+    }
+    let [_, _, packed @ .., escape] = data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    let (planes, _) =
+        backward_rle_filled(packed, *escape, 3 * 3072 - 48).ok_or(DecodeError::Unrecognized)?;
+    Planes {
+        data: &planes,
+        width: 144,
+        height: 168,
+        spacing: 3072,
+        layers: &[(0, planes[0xbd1])],
+        bitmap: 1,
+        colors: 2,
+    }
+    .image()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn mix(a: u8, b: u8) -> u32 {
+        Image::blend(&[
+            &vic2::image(1, 1, alloc::vec![a]),
+            &vic2::image(1, 1, alloc::vec![b]),
+        ])
+        .get(0, 0)
+    }
 
     #[test]
     fn shi_layers_cover_the_bitmap() {
@@ -150,22 +329,13 @@ mod tests {
         data[SHI_SPRITES] = 0x40;
         data[SHI_SPRITES + SHI_SPRITES_LEN] = 0x40;
         let image = decode_shi(&data).unwrap();
-        let mix = |a, b| {
-            Image::blend(&[
-                &vic2::image(1, 1, alloc::vec![a]),
-                &vic2::image(1, 1, alloc::vec![b]),
-            ])
-            .get(0, 0)
-        };
         assert_eq!(image.get(0, 0), mix(2, 7));
         assert_eq!(image.get(1, 0), vic2::rgb(5));
         assert_eq!(image.get(2, 0), vic2::rgb(1));
     }
 
-    #[test]
-    fn sif_needs_two_exact_sections_and_colours() {
-        // One section: header, escape 0xEE, 8176 zero bytes as 31 full runs
-        // plus a run of 240.
+    /// A SIF section of `PLANES_LEN` zero bytes: 31 full runs and one of 240.
+    fn zero_section() -> Vec<u8> {
         let mut section = alloc::vec![0, 0, 0xee];
         for _ in 0..31 {
             section.extend_from_slice(&[0, 0, 0xee]);
@@ -173,11 +343,43 @@ mod tests {
         section.extend_from_slice(&[0, 240, 0xee]);
         let len = 0x9400 + section.len() as u16;
         section[..2].copy_from_slice(&len.to_le_bytes());
-        let mut data = [section.clone(), section].concat();
+        section
+    }
+
+    #[test]
+    fn sif_needs_two_exact_sections_and_colours() {
+        let mut data = [zero_section(), zero_section()].concat();
         data.extend_from_slice(&[1, 2, 3, 4]);
         assert!(decode_sif(&data).is_ok());
         assert!(decode_sif(&data[..data.len() - 1]).is_err());
         data.push(0);
         assert!(decode_sif(&data).is_err());
+    }
+
+    #[test]
+    fn sprite_pointers_follow_the_previous_line() {
+        let mut data = alloc::vec![0u8; SHF.len];
+        let mem = |addr: usize| addr - 0x4000 + 2;
+        // Picture line 0 is bitmap line 1: screen 1 colours, screen 0 pointers.
+        data[mem(0x4400 + 14)] = 0x34;
+        data[mem(0x43f8 + 4)] = 0x81; // lower layer, column 0 -> $6040
+        data[mem(0x6040)] = 0x40;
+        data[mem(0x43e8)] = 1;
+        data[mem(0x43e9)] = 2;
+        let image = decode_shf(&data).unwrap();
+        assert_eq!(image.get(0, 0), vic2::rgb(4));
+        assert_eq!(image.get(1, 0), vic2::rgb(2));
+    }
+
+    #[test]
+    fn packed_shf_needs_its_colours() {
+        let mut data = alloc::vec![0, 0, 0xee];
+        for _ in 0..31 {
+            data.extend_from_slice(&[0xee, 0, 0]);
+        }
+        data.extend_from_slice(&[0xee, 232, 0, 5]);
+        assert!(decode_shf(&data).is_err());
+        data.push(6);
+        assert!(decode_shf(&data).is_ok());
     }
 }

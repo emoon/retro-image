@@ -273,6 +273,13 @@ pub(super) static FORMATS: &[Format] = &[
         &["sif"],
         superhires::decode_sif,
     ),
+    Format::new(
+        C64,
+        "Super Hires FLI Editor",
+        &["shf"],
+        superhires::decode_shf,
+    ),
+    Format::new(C64, "SHF-XL Edit", &["shx"], superhires::decode_shx),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),
     Format::new(VIC20, "MiniPaint", &["mg"], vic20::decode_minipaint),

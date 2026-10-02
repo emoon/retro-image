@@ -83,26 +83,34 @@ pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<
     Some(out)
 }
 
-/// As [`backward_rle`], but only when `packed` unpacks to exactly `len`
-/// bytes: every byte used, the start reached, no run overflowing it.
-pub(super) fn backward_rle_exact(packed: &[u8], escape: u8, len: usize) -> Option<Vec<u8>> {
+/// Unpacks like [`backward_rle`] until the output's start is reached;
+/// `None` if `packed` runs out first. The flag tells whether `packed` was
+/// used up exactly: no bytes left over and no run crossing the start.
+pub(super) fn backward_rle_filled(
+    packed: &[u8],
+    escape: u8,
+    len: usize,
+) -> Option<(Vec<u8>, bool)> {
     let mut out = alloc::vec![0; len];
     let mut end = len;
     let mut bytes = packed.iter().rev().copied();
-    while let Some(byte) = bytes.next() {
+    let mut exact = true;
+    while end > 0 {
+        let byte = bytes.next()?;
         if byte == escape {
             let count = bytes.next()?;
             let value = bytes.next()?;
             let count = if count == 0 { 256 } else { usize::from(count) };
-            let start = end.checked_sub(count)?;
+            exact &= count <= end;
+            let start = end.saturating_sub(count);
             out[start..end].fill(value);
             end = start;
         } else {
-            end = end.checked_sub(1)?;
+            end -= 1;
             out[end] = byte;
         }
     }
-    (end == 0).then_some(out)
+    Some((out, exact && bytes.next().is_none()))
 }
 
 #[cfg(test)]
@@ -110,14 +118,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn backward_exact_needs_exact_length() {
+    fn backward_filled_reports_exact_use() {
         let packed = [5, 3, 0xfe, 9];
         assert_eq!(
-            backward_rle_exact(&packed, 0xfe, 4),
-            Some(alloc::vec![5, 5, 5, 9])
+            backward_rle_filled(&packed, 0xfe, 4),
+            Some((alloc::vec![5, 5, 5, 9], true))
         );
-        assert_eq!(backward_rle_exact(&packed, 0xfe, 5), None);
-        assert_eq!(backward_rle_exact(&packed, 0xfe, 3), None);
+        assert_eq!(backward_rle_filled(&packed, 0xfe, 5), None);
+        assert_eq!(
+            backward_rle_filled(&packed, 0xfe, 3),
+            Some((alloc::vec![5, 5, 9], false))
+        );
+        assert_eq!(
+            backward_rle_filled(&[1, 9], 0xfe, 1),
+            Some((alloc::vec![9], false))
+        );
     }
 
     #[test]
