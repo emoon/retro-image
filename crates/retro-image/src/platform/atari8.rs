@@ -7,9 +7,11 @@
 
 mod antic;
 mod apac;
+mod cpi;
 mod font;
 mod graph2font;
 mod gtia;
+mod hcm;
 mod hip;
 mod inflate;
 mod interlace;
@@ -24,6 +26,7 @@ mod technicolor;
 mod text;
 mod tip;
 mod vbxe;
+mod xl_paint;
 
 use crate::Format;
 
@@ -233,4 +236,10 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
+    // Wave 4: headered bitmaps with per-line colours
+    Format::new(ATARI8, "Hard Color Map", &["hcm"], hcm::decode_hcm).signature(),
+    Format::new(ATARI8, "XL-Paint MAX raw", &["raw"], xl_paint::decode_raw),
+    Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),
+    Format::new(ATARI8, "XL-Paint", &["xlp"], xl_paint::decode_xlp),
+    Format::new(ATARI8, "Marco Pixel Editor", &["cpi"], cpi::decode_cpi),
 ];
