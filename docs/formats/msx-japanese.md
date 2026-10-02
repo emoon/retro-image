@@ -396,3 +396,15 @@ Implemented, all corpus samples matching `recoil2png` (126 files):
 - PIC spec used: `pic_fmt.txt` from PIC_FMT (Vector), whose text allows free reproduction; `picl.c` in the same archive was not read.
 
 Skipped: MIG/MIF (undocumented VDP command stream), ML1/MX1/NL3, Q4, ZIM, EBD, ARV, KTY/KT4, ArtMaster88 IMG, CMP (no layout docs; need reverse engineering), interlaced pairs and +PLx palettes (multi-file), SRI (no sample).
+
+### Layouts observed in hostile samples (not yet supported)
+
+- **"ukp" packer** (MSX-FAN 03): `"ukp" 1A`, unpacked size LE32 at 0x0C, `0x20` at 0x10, escape
+  byte at 0x11, then RLE as `ESC value count` (count 0 = 256). Unpacks to exactly the stated size
+  in all three samples. Wraps other formats: CRUSADE → Graph Saurus SR7, DACYOU1 → SR5 saved
+  from VRAM page 1 (start 0x8000), TITLE.PIC → BASIC COPY Screen 7 (512x212). Needs a pre-decode
+  unpack layer; the palettes are in companion `.PLx` files.
+- **Sunrise Picture Disk CMP** (not T&E Dot Designer's Club CMP): no header, palette or mode; RLE
+  as `n v` = v repeated n times, `00 n` = n literal bytes.
+- **Punincess Maker `.MP`**: X68000 MAG variant with no machine name, header big-endian, machine
+  byte unreliable (0x00/0xFF/0x68 seen). Supported when named `.MAG`.
