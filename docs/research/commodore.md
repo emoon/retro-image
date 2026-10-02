@@ -373,3 +373,23 @@ gives a byte-to-pixel map without any decoder source.
     the per-byte pixel footprints of frame 1 and frame 2.
   - Probed layouts not yet needed: the `$0F00-$12FF` area (code in `.mui`, zero in `.mup`)
     does not affect pixels.
+
+### Wave 6: NUFLI packed
+
+**NUFLI Editor (compressed) (`.nup`): done.** The 5 corpus samples match `recoil2png`, and so
+do the other 8 `.nup` files on the same two disks (13 in all, every `.NUP` in the CSDb dump).
+
+- Layout: two ignored bytes (the load address, `$0FFF` in every file), the byte `$FD`, an
+  escape byte, then the NUFLI memory `$2000-$79FF` (`$5A00` bytes) packed backwards with the
+  `.mup` scheme: read from the last byte down, `ESC count value` (`value count ESC` in file
+  order), count 0 = 256. Saved unpacked as a `.nuf` (load address `$2000`), every file gives
+  the same pixels in `recoil2png` as the `.nup` does, so the NUFLI renderer is reused as is
+  (`nufli::decode_frame` now takes the memory slice).
+- The escape differs per file (`$B3`, `$73`, `$6C`...): some byte value the picture doesn't use.
+- Probing `recoil2png` with edited copies of `scream.nup`: bytes 0 and 1 are ignored, and
+  every value at offset 2 except `$FD` is rejected, so we require it too. It's checked in the
+  decoder rather than via `.signature()`, since one byte is weak magic. `recoil2png` ignores
+  extra bytes inserted at the start of the stream (it stops once the memory is full) and draws
+  a stream one literal short with the start left zero. We are stricter: the stream has to fill
+  the memory exactly, with no bytes left over and no run crossing the start
+  (`backward_rle_filled`). Every real file passes, and random `.nup` files stay out.
