@@ -89,15 +89,21 @@ const DRAZLACE: [Multicolor; 2] = [
 /// Bytes from `$5800` to the end of the second bitmap.
 const DRAZLACE_LEN: usize = 0x4740;
 
-/// Drazlace: plain, or packed behind a `DRAZLACE! 1.0` header.
+/// Drazlace, unpacked.
 pub(super) fn decode_drazlace(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked;
-    let data = if data.len() == DRAZLACE[0].sizes[0] {
-        data
-    } else {
-        unpacked = super::bitmap::draz_unpack(data, &[b"DRAZLACE! 1.0"], DRAZLACE_LEN)?;
-        &unpacked
-    };
+    if data.len() != DRAZLACE[0].sizes[0] {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode_drazlace_unchecked(data)
+}
+
+/// Drazlace, packed behind a `DRAZLACE! 1.0` header.
+pub(super) fn decode_drazlace_packed(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = super::bitmap::draz_unpack(data, &[b"DRAZLACE! 1.0"], DRAZLACE_LEN)?;
+    decode_drazlace_unchecked(&unpacked)
+}
+
+fn decode_drazlace_unchecked(data: &[u8]) -> Result<Image, DecodeError> {
     let prg = Prg::new(data, 0x5800);
     let shift = prg.byte(0x7f42).ok_or(DecodeError::Unrecognized)? != 0;
     let shift = shift.then_some(prg.byte(0x7f40).ok_or(DecodeError::Unrecognized)?);
