@@ -109,8 +109,8 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
     if !valid_name(&sprite[4..16]) {
         return Err(fail);
     }
-    let width_words = word(16)? as usize + 1;
-    let height = word(20)? as usize + 1;
+    let width_words = word(16)?.checked_add(1).ok_or(fail)? as usize;
+    let height = word(20)?.checked_add(1).ok_or(fail)? as usize;
     let (first_bit, last_bit) = (word(24)? as usize, word(28)? as usize);
     let image_at = word(32)? as usize;
     let format = PixelFormat::from_mode_word(word(40)?).ok_or(fail)?;
