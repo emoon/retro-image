@@ -1,0 +1,105 @@
+//! Desktop integration generated from the format list: a shared-mime-info
+//! package and a freedesktop `.thumbnailer` entry, so file managers (e.g.
+//! flea) classify retro images as images and thumbnail them with this CLI.
+//!
+//! Install with:
+//!
+//! ```sh
+//! retro-image --mime-xml > ~/.local/share/mime/packages/retro-image.xml
+//! update-mime-database ~/.local/share/mime
+//! retro-image --thumbnailer > ~/.local/share/thumbnailers/retro-image.thumbnailer
+//! ```
+
+use std::collections::BTreeSet;
+use std::fmt::Write;
+
+/// The single MIME type covering every supported extension.
+const MIME_TYPE: &str = "image/x-retro-image";
+
+/// Below shared-mime-info's default of 50, so established types for shared
+/// extensions (e.g. `.pic`, `.scr`, `.img`) keep priority.
+const GLOB_WEIGHT: u32 = 30;
+
+/// Every extension of every format, lower-case, sorted and deduplicated.
+fn extensions() -> BTreeSet<String> {
+    retro_image::formats()
+        .flat_map(|f| f.extensions.iter())
+        .map(|e| e.to_ascii_lowercase())
+        .collect()
+}
+
+/// One line per format: platform, name, extensions, flags.
+pub fn format_list() -> String {
+    let mut out = String::new();
+    for f in retro_image::formats() {
+        let mut flags = Vec::new();
+        if f.has_signature() {
+            flags.push("signature");
+        }
+        if f.uses_companions() {
+            flags.push("companions");
+        }
+        let _ = writeln!(
+            out,
+            "{}\t{}\t{}\t{}",
+            f.platform,
+            f.name,
+            f.extensions.join(","),
+            flags.join(",")
+        );
+    }
+    out
+}
+
+pub fn mime_xml() -> String {
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <mime-info xmlns=\"http://www.freedesktop.org/standards/shared-mime-info\">\n",
+    );
+    let _ = writeln!(out, "  <mime-type type=\"{MIME_TYPE}\">");
+    out.push_str("    <comment>Retro computer image</comment>\n");
+    out.push_str("    <generic-icon name=\"image-x-generic\"/>\n");
+    for ext in extensions() {
+        let _ = writeln!(
+            out,
+            "    <glob pattern=\"*.{}\" weight=\"{GLOB_WEIGHT}\"/>",
+            xml_escape(&ext)
+        );
+    }
+    out.push_str("  </mime-type>\n</mime-info>\n");
+    out
+}
+
+pub fn thumbnailer() -> String {
+    format!(
+        "[Thumbnailer Entry]\n\
+         TryExec=retro-image\n\
+         Exec=retro-image -i %i -o %o -s %s\n\
+         MimeType={MIME_TYPE};\n"
+    )
+}
+
+fn xml_escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mime_xml_lists_every_extension_once_and_escapes() {
+        let xml = mime_xml();
+        assert!(xml.contains("<glob pattern=\"*.scr\" weight=\"30\"/>"));
+        assert_eq!(xml.matches("pattern=\"*.scr\"").count(), 1);
+        assert!(!xml.contains("*.b&w"), "ampersands must be escaped");
+    }
+
+    #[test]
+    fn thumbnailer_runs_the_cli_with_size() {
+        assert!(thumbnailer().contains("Exec=retro-image -i %i -o %o -s %s"));
+    }
+}
