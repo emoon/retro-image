@@ -3,6 +3,7 @@
 //! Sources are listed per submodule; see also `docs/formats/msx-japanese.md`.
 
 mod bitbuster;
+mod dynamic_publisher;
 mod g9b;
 mod screen;
 mod vdp;
@@ -80,4 +81,22 @@ pub(super) static FORMATS: &[Format] = &[
     }),
     Format::new("MSX2", "Pi", &["pi"], |d| pi::decode_pi(d, Machine::Msx)),
     Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode),
+    Format::new(
+        "MSX2",
+        "Dynamic Publisher screen",
+        &["pct"],
+        dynamic_publisher::decode_pct,
+    ),
+    Format::new(
+        "MSX2",
+        "Dynamic Publisher font",
+        &["fnt"],
+        dynamic_publisher::decode_fnt,
+    ),
+    Format::new(
+        "MSX2",
+        "Dynamic Publisher stamp",
+        &["stp"],
+        dynamic_publisher::decode_stp,
+    ),
 ];
