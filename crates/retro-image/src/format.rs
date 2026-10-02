@@ -56,7 +56,6 @@ impl Format {
     }
 
     /// A format whose decoder can use companion files.
-    #[expect(dead_code, reason = "used once platforms adopt companion files")]
     pub(crate) const fn with_companions(
         platform: &'static str,
         name: &'static str,

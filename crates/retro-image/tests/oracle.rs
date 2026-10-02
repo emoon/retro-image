@@ -18,6 +18,8 @@
 
 mod common;
 
+use retro_image::Format;
+
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::File;
@@ -53,30 +55,44 @@ fn matches_recoil_on_corpus() {
             continue; // removed while the test ran (e.g. by a sample collector)
         };
         // Same order as `retro_image::decode`: extension, then signature.
-        let Some((format, ours)) = retro_image::candidates(&sample.name)
+        let candidates: Vec<&Format> = retro_image::candidates(&sample.name)
             .filter(|f| platforms.selects(f.platform))
-            .find_map(|f| f.decode(&data).ok().map(|image| (f, image)))
-        else {
-            continue; // not supported yet
-        };
-        oracle.check(&sample.id, &ours, &[sample.path.as_path()]);
+            .collect();
+        let alone = candidates
+            .iter()
+            .find_map(|f| f.decode(&data).ok().map(|image| (*f, image)));
+        if let Some((_, ours)) = &alone {
+            oracle.check(&sample.id, ours, &[sample.path.as_path()]);
+        }
 
         // Formats with companion files are also checked with them present,
-        // against RECOIL given the same files.
+        // against RECOIL given the same files. That includes formats whose
+        // main file doesn't decode alone (e.g. a picture without its colours).
         let siblings = sample.siblings();
-        if format.uses_companions() && !siblings.is_empty() {
-            let companions = common::SiblingFiles(&siblings);
-            let id = format!("{} +companions", sample.id);
-            match format.decode_with(&data, &companions) {
-                Ok(ours) => {
-                    let mut inputs = vec![sample.path.as_path()];
-                    inputs.extend(siblings.iter().map(PathBuf::as_path));
-                    oracle.check(&id, &ours, &inputs);
-                }
-                Err(_) => oracle
-                    .failures
-                    .push(format!("{id}: rejected with companions")),
+        if siblings.is_empty() {
+            continue;
+        }
+        let companions = common::SiblingFiles(&siblings);
+        let with_companions = match alone {
+            Some((format, _)) => Some(format).filter(|f| f.uses_companions()),
+            None => candidates
+                .iter()
+                .copied()
+                .find(|f| f.uses_companions() && f.decode_with(&data, &companions).is_ok()),
+        };
+        let Some(format) = with_companions else {
+            continue; // not supported yet
+        };
+        let id = format!("{} +companions", sample.id);
+        match format.decode_with(&data, &companions) {
+            Ok(ours) => {
+                let mut inputs = vec![sample.path.as_path()];
+                inputs.extend(siblings.iter().map(PathBuf::as_path));
+                oracle.check(&id, &ours, &inputs);
             }
+            Err(_) => oracle
+                .failures
+                .push(format!("{id}: rejected with companions")),
         }
     }
     eprintln!(
