@@ -276,3 +276,16 @@ Abbreviations: CB = Codebase64 grafix spec (link above), GD = GoDot loader page,
 - Plus/4 Botticelli: set/`01` pixels = high colour nibble + low luminance nibble, clear/`10` = low colour nibble + high luminance nibble, `00` = `$FF15`, `11` = `$FF16`.
 - VIC-20 MiniPaint: colour RAM packed two cells per byte, low nibble first, 20×12 cells of 8×16.
 - Not implemented (need reverse engineering or ROM data): FLI Profi sprites, packed ECI (ECP), CFLI, Dolphin Ed, Rainbow Painter, Picasso 64, Face Painter, Cheese, Hires Editor (HET), Centauri Logo Editor, Logo Painter 3, M.C.S., Interlace Hires Editor, SIF, Multi-Lace Editor, Star Painter font (ZS), Best Paint (VIC-20), Botticelli 128×64, PETSCII Editor and PETSCII BOT (need the C64 character ROM).
+
+### Corrections found while reviewing hostile samples
+
+- **BASIC 8 / IPaint (C128 VDC):** the alternate-line attribute layout (rows 0/2 and 1/3
+  sharing attributes) applies only to interlaced pictures taller than 200 lines. In pictures of
+  200 lines or fewer, each attribute row covers its own 8-line cell. GoDot's mode-1 page
+  describes the alternate-line layout for 200-line pictures too, and `recoil2png` renders that
+  way, but the samples show colour fringes at every shape edge unless each row covers its own
+  cell (`biplane.pict`'s signature "b.kane 1986" only reads cleanly this way).
+- **Drazpaint:** packed files can carry the header `DRAZPAINT 2.0` as well as `1.4`; the packing
+  is the same.
+- **Saracen Paint:** a 10018-byte variant ends at `$9F1F`, five rows of colour RAM short of the
+  full file; the missing tail is zero.
