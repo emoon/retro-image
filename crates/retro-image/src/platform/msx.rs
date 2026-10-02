@@ -3,6 +3,7 @@
 //! Sources are listed per submodule; see also `docs/formats/msx-japanese.md`.
 
 mod bitbuster;
+mod dot_designer;
 mod dynamic_publisher;
 mod g9b;
 mod screen;
@@ -96,6 +97,12 @@ pub(super) static FORMATS: &[Format] = &[
     })
     .signature(),
     Format::new("MSX V9990 VDP", "GFX9k library G9B", &["g9b"], g9b::decode).signature(),
+    Format::with_companions(
+        "MSX2",
+        "Dot Designer's Club",
+        &["cmp"],
+        screen::decode_dot_designer,
+    ),
     Format::new(
         "MSX2",
         "Dynamic Publisher screen",

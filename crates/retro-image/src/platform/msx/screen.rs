@@ -34,6 +34,7 @@
 
 use alloc::vec::Vec;
 
+use super::dot_designer;
 use super::vdp::{self, Palette, SpriteTables, Vram};
 use crate::{Companions, DecodeError, Image};
 
@@ -372,6 +373,21 @@ fn unpack_graph_saurus(packed: &[u8]) -> Vec<u8> {
         i += step;
     }
     out
+}
+
+/// Dot Designer's Club `CMP` picture (Screen 5), with its palette in the
+/// companion file `PL5`.
+pub(super) fn decode_dot_designer(
+    data: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
+    let unpacked = dot_designer::unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let mode = Bitmap::Graphic4;
+    let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
+    let width = unpacked.bytes_per_line * 2;
+    let mut image = Image::new(width as u32, unpacked.lines as u32);
+    draw_packed(mode, &unpacked.bitmap, &mut image, &palette);
+    Ok(image)
 }
 
 /// BASIC `COPY` file: width and height (LE16) followed by packed pixels.
