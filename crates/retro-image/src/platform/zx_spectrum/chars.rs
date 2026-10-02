@@ -1,4 +1,5 @@
-//! Character-based files: fonts, `chr$` cell arrays and CHX big fonts.
+//! Character-based files: fonts, `chr$` cell arrays, CHX big fonts and
+//! SevenuP sprites.
 //!
 //! Sources:
 //! - CH4/CH6/CH8 fonts (2048 bytes, 256 characters of 8 bytes, MSB left):
@@ -16,10 +17,17 @@
 //!   black on white (non-bright) without attributes, and the checkerboard
 //!   behind and between characters: reverse engineered from samples and
 //!   `recoil2png` output.
+//! - SevenuP `.SEV` sprites: the header (`Sev\0`, a u16 that must be 1 at 6,
+//!   width and height in pixels at 10 and 12), the 9-byte cells (8 bitmap
+//!   bytes, then the attribute) row by row, sizes that aren't a multiple of
+//!   8 cropped from whole cells, and that only the first frame is shown:
+//!   reverse engineered from samples (Sword of Ianna sources, Apache-2.0)
+//!   and `recoil2png` probes. SevenuP's own code (GPL) was not read.
 
 use alloc::vec::Vec;
 
 use super::screen::{Frame, attribute_color, blend};
+use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
 const FONT_LEN: usize = 2048;
@@ -72,6 +80,38 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
         })
         .collect();
     Ok(blend(&frames))
+}
+
+const SEV_HEADER_LEN: usize = 14;
+
+/// SevenuP sprite: `Sev\0`, 2 ignored bytes, a u16 that must be 1, a
+/// frame count (ignored), width and height in pixels as u16, then each
+/// frame's 8x8 cells row by row (8 bitmap bytes and an attribute). Only the
+/// first frame is shown, cropped to the size.
+pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
+    if !data.starts_with(b"Sev\0") || le16(data, 6) != Some(1) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let (Some(width), Some(height)) = (le16(data, 10), le16(data, 12)) else {
+        return Err(DecodeError::Unrecognized);
+    };
+    let (width, height) = (usize::from(width), usize::from(height));
+    if width == 0 || height == 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let columns = width.div_ceil(8);
+    let cells = data
+        .get(SEV_HEADER_LEN..SEV_HEADER_LEN + columns * height.div_ceil(8) * 9)
+        .ok_or(DecodeError::Unrecognized)?;
+    let mut frame = Frame::new(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let cell = &cells[(y / 8 * columns + x / 8) * 9..][..9];
+            let ink = cell[y % 8] & (0x80 >> (x % 8)) != 0;
+            frame.set(x, y, attribute_color(cell[8], ink));
+        }
+    }
+    Ok(frame.into_image())
 }
 
 fn draw_cell(frame: &mut Frame, left: usize, top: usize, rows: &[u8], ink: u32, paper: u32) {
@@ -173,4 +213,25 @@ fn big_char(data: &[u8], code: usize, offset: usize) -> Option<BigChar<'_>> {
     };
     c.cells = data.get(offset + 3..offset + 3 + width * height * c.cell_len())?;
     Some(c)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sev_crops_whole_cells_to_its_size() {
+        // 12x4: two cells side by side; the second cell's attribute is
+        // bright red ink on blue paper.
+        let mut sev = b"Sev\0\0\x08\x01\0\0\0\x0c\0\x04\0".to_vec();
+        sev.extend_from_slice(&[0; 9]);
+        sev.extend_from_slice(&[0x80, 0, 0, 0, 0, 0, 0, 0, 0x4a]);
+        let image = decode_sev(&sev).unwrap();
+        assert_eq!((image.width(), image.height()), (12, 4));
+        assert_eq!(image.get(8, 0), 0xff0000);
+        assert_eq!(image.get(9, 0), 0x0000ff);
+        assert!(decode_sev(&sev[..sev.len() - 1]).is_err());
+        sev[6] = 2;
+        assert!(decode_sev(&sev).is_err());
+    }
 }

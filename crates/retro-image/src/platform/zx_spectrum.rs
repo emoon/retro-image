@@ -122,6 +122,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new("ZX Spectrum", "CHR$", &["ch$"], chars::decode_chr).signature(),
     Format::new("ZX Spectrum", "Big font", &["chx"], chars::decode_chx).signature(),
+    Format::new("ZX Spectrum", "SevenuP", &["sev"], chars::decode_sev).signature(),
     Format::new(
         "ZX Spectrum Next",
         "Layer 2 image",
@@ -143,5 +144,7 @@ pub(super) static FORMATS: &[Format] = &[
     )
     .signature(),
     Format::new("ZX81", "Program with screen", &["p"], zx81::decode_p),
+    Format::new("ZX81", "ZXpaintyONE", &["zp1"], zx81::decode_zp1),
+    Format::new("ZX81", "ZXpaintyONE v2.0", &["raw"], zx81::decode_raw),
     Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp).signature(),
 ];

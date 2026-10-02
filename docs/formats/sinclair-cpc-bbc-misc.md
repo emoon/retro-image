@@ -550,4 +550,24 @@ Checked against corpus samples and `recoil2png` output (black box).
 - **BK BKS**: 16384 bytes mono (512x256, LSB left, rows doubled), plus one palette byte per screen for colour
   (BK-0011M palettes 0-15, colours observed from RECOIL); 2 screens blended.
 - **Vector-06C SPR**: compressed and in a scheme not recognised from the samples. Its only description sits in a
-  GPL archive, so it is not implemented.
+  GPL archive, so it is not implemented. (Solved from samples in wave 3, see below.)
+
+## 21. Findings from implementation (wave 3)
+
+Checked against corpus samples and `recoil2png` output (black box, including hand-made probe files).
+
+- **Vector-06C SPR**: 16 palette bytes (`BBGGGRRR`), then a run-length stream read *backwards* from the last byte
+  of the file: `0x80 | n` repeats the byte before it `n` times, `n` < 0x80 takes the `n` bytes before it. Output
+  fills the 32768-byte screen from its end, so the file's first plane holds the highest index bit. Each plane is
+  32 columns of 256 bytes, rows bottom to top. Decoding stops when the screen is full: bytes between the palette and
+  the stream (2 in every sample) and trailing zero padding (literals of 0) are ignored; RECOIL rejects a stream that
+  needs the palette bytes. Colours: red `round(r * 255 / 7)`, green `g * 36`, blue `b * 85`. 256x256 output.
+- **ZX81 ZXpaintyONE**: `.RAW` is exactly 792 bytes, the display file without its first HALT (24 lines of 32 codes,
+  each ended by 0x76; RECOIL rejects any other size or a missing 0x76). `.ZP1` is the 768 codes as two hex digits
+  each, either case; RECOIL ignores whatever follows them. Codes 0x40-0x7F and 0xC0-0xFF show the glyph of their
+  low 6 bits (bit 7 inverse), black on white, 256x192.
+- **SevenuP SEV** (from the samples only; SevenuP's GPL code was not read): `Sev\0`, 2 bytes RECOIL ignores
+  (`00 08` in every sample), a u16 at 6 that must be 1, a u16 frame count at 8 (ignored; `n - 1` in the samples),
+  width and height in pixels at 10 and 12 (non-zero), then each frame's 8x8 cells row by row, 8 bitmap bytes then
+  the attribute. RECOIL shows the first frame only, cropped to the size when it isn't a multiple of 8; data past it
+  may be missing. Flash is ignored. Content detection: yes (magic plus the fixed u16).
