@@ -4,6 +4,7 @@
 //! Sources are listed in each submodule.
 
 mod amsdos;
+mod fnt;
 mod hardware;
 mod hgb;
 mod mode5;
@@ -35,6 +36,12 @@ pub(super) static FORMATS: &[Format] = &[
         "Advanced OCP Art Studio window",
         &["win"],
         ocp::decode_win,
+    ),
+    Format::new(
+        "Amstrad CPC",
+        "Advanced OCP Art Studio font",
+        &["fnt"],
+        fnt::decode_fnt,
     ),
     Format::with_companions("Amstrad CPC", "Mode 5", &["cm5"], mode5::decode_cm5),
     Format::with_companions(
