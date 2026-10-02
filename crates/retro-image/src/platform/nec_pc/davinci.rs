@@ -15,11 +15,10 @@
 
 use alloc::vec::Vec;
 
+use super::pc88_planes::{self, PLANE_BYTES};
 use crate::{DecodeError, Image};
 
-const WIDTH: usize = 640;
-const LINES: usize = 200;
-const COLUMNS: usize = WIDTH / 8 * LINES;
+const COLUMNS: usize = PLANE_BYTES;
 const TRAILER: usize = 35;
 
 /// Expands the stream into `COLUMNS` (blue, red, green) triples.
@@ -48,17 +47,8 @@ fn unpack(data: &[u8]) -> Option<Vec<[u8; 3]>> {
 
 pub(in crate::platform) fn decode_davinci(data: &[u8]) -> Result<Image, DecodeError> {
     let columns = unpack(data).ok_or(DecodeError::Unrecognized)?;
-    let indices: Vec<u8> = (0..WIDTH * LINES)
-        .map(|i| {
-            let [blue, red, green] = columns[i / 8];
-            let shift = 7 - i % 8;
-            (blue >> shift & 1) | (red >> shift & 1) << 1 | (green >> shift & 1) << 2
-        })
-        .collect();
-    let palette: Vec<u32> = (0..8u32)
-        .map(|c| (c >> 1 & 1) * 0xff_0000 | (c >> 2 & 1) * 0xff00 | (c & 1) * 0xff)
-        .collect();
-    Ok(Image::from_indexed(WIDTH as u32, LINES as u32, &indices, &palette)?.scaled(1, 2))
+    let plane = |channel: usize| -> Vec<u8> { columns.iter().map(|c| c[channel]).collect() };
+    pc88_planes::image(&plane(0), &plane(1), &plane(2))
 }
 
 #[cfg(test)]

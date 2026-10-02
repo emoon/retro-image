@@ -40,7 +40,9 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
     let mut indices = Vec::with_capacity(WIDTH * height);
     for i in 0..WIDTH * height {
         let (byte, shift) = (i / 8, 7 - i % 8);
-        let value = (0..4).fold(0u8, |v, p| v | (body[p * plane_len + byte] >> shift & 1) << p);
+        let value = (0..4).fold(0u8, |v, p| {
+            v | (body[p * plane_len + byte] >> shift & 1) << p
+        });
         indices.push(value);
     }
     Image::from_indexed(WIDTH as u32, height as u32, &indices, &palette)

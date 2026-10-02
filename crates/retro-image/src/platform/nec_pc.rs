@@ -8,6 +8,7 @@ mod artmaster88;
 mod davinci;
 mod ebd;
 pub(super) mod maki;
+mod pc88_planes;
 pub(super) mod pi;
 mod precision;
 mod zim;
@@ -66,7 +67,13 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     // Wave 5: Japanese
     Format::new("NEC PC-88", "DaVinci", &["img"], davinci::decode_davinci),
-    Format::new("NEC PC-88", "ArtMaster88", &["img"], artmaster88::decode_artmaster88).signature(),
+    Format::new(
+        "NEC PC-88",
+        "ArtMaster88",
+        &["img"],
+        artmaster88::decode_artmaster88,
+    )
+    .signature(),
     Format::new("NEC PC-98", "EBD", &["ebd"], ebd::decode_ebd),
     Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
 ];

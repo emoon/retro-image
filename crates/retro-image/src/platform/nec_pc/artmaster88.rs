@@ -23,13 +23,11 @@
 
 use alloc::vec::Vec;
 
+use super::pc88_planes::{self, PLANE_BYTES};
 use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
 const SIGNATURE: &[u8] = b"SS_SIF    0.00";
-const WIDTH: usize = 640;
-const LINES: usize = 200;
-const PLANE_BYTES: usize = WIDTH / 8 * LINES;
 const RECORDS: usize = 0x28;
 
 /// Unpacks one plane from `data[*pos..]`, advancing `pos` past it.
@@ -60,8 +58,8 @@ pub(in crate::platform) fn decode_artmaster88(data: &[u8]) -> Result<Image, Deco
     if !data.starts_with(SIGNATURE)
         || data.get(0x10) != Some(&b'I')
         || data.get(0x12..0x16) != Some(b"BBRG")
-        || le16(data, 0x18) != Some(WIDTH as u16)
-        || le16(data, 0x1a) != Some(LINES as u16)
+        || le16(data, 0x18) != Some(pc88_planes::WIDTH as u16)
+        || le16(data, 0x1a) != Some(pc88_planes::LINES as u16)
     {
         return Err(bad);
     }
@@ -77,17 +75,7 @@ pub(in crate::platform) fn decode_artmaster88(data: &[u8]) -> Result<Image, Deco
     let red = unpack_plane(data, &mut pos).ok_or(bad)?;
     let green = unpack_plane(data, &mut pos).ok_or(bad)?;
 
-    let indices: Vec<u8> = (0..WIDTH * LINES)
-        .map(|i| {
-            let (byte, shift) = (i / 8, 7 - i % 8);
-            let bit = |plane: &[u8]| plane[byte] >> shift & 1;
-            bit(&blue) | bit(&red) << 1 | bit(&green) << 2
-        })
-        .collect();
-    let palette: Vec<u32> = (0..8u32)
-        .map(|c| (c >> 1 & 1) * 0xff_0000 | (c >> 2 & 1) * 0xff00 | (c & 1) * 0xff)
-        .collect();
-    Ok(Image::from_indexed(WIDTH as u32, LINES as u32, &indices, &palette)?.scaled(1, 2))
+    pc88_planes::image(&blue, &red, &green)
 }
 
 #[cfg(test)]

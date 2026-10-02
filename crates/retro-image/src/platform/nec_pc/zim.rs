@@ -81,7 +81,11 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
     if !data.starts_with(SIGNATURE) || data.len() < TABLE_COUNT + 2 {
         return Err(bad);
     }
-    let word = |at: usize| le16(data, at).map(usize::from).ok_or(DecodeError::Unrecognized);
+    let word = |at: usize| {
+        le16(data, at)
+            .map(usize::from)
+            .ok_or(DecodeError::Unrecognized)
+    };
     let height = word(0x206)? + 1;
     if word(0x1fa)? != 0
         || word(0x200)? != 0
