@@ -17,7 +17,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["dhgr", "dhr"],
         hires::decode_dhgr,
     ),
-    Format::new("Apple IIGS", "3201", &["3201"], super_hires::decode_3201),
+    Format::new("Apple IIGS", "3201", &["3201"], super_hires::decode_3201).signature(),
     Format::new(
         "Apple IIGS",
         "Multi-palette",
@@ -29,7 +29,8 @@ pub(super) static FORMATS: &[Format] = &[
         "Apple Preferred Format",
         &["gs", "iigs", "pnt", "shr"],
         super_hires::decode_apf,
-    ),
+    )
+    .signature(),
     Format::new(
         "Apple IIGS",
         "Paintworks",
@@ -44,6 +45,14 @@ pub(super) static FORMATS: &[Format] = &[
         &["mac", "pnt", "pntg"],
         macpaint::decode,
     ),
+    // The MacBinary header's file type makes these recognisable by content.
+    Format::new(
+        "Apple Macintosh",
+        "MacPaint in MacBinary",
+        &["mac", "pnt", "pntg"],
+        macpaint::decode_mac_binary,
+    )
+    .signature(),
 ];
 
 /// Brooks pictures, also accepting the other 3200-colour and screen-dump

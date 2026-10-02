@@ -32,8 +32,8 @@ pub(super) static FORMATS: &[Format] = &[
         &["dhr", "dr", "mp", "beam"],
         decode_iff,
     ),
-    Format::new("Amiga", "AMOS", &["abk"], decode_abk),
-    Format::new("Amiga", "Icon", &["info"], icon::decode),
+    Format::new("Amiga", "AMOS", &["abk"], decode_abk).signature(),
+    Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
 ];

@@ -11,7 +11,8 @@
 
 use crate::{DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] = &[Format::new("PlayStation", "TIM", &["tim"], decode_tim)];
+pub(super) static FORMATS: &[Format] =
+    &[Format::new("PlayStation", "TIM", &["tim"], decode_tim).signature()];
 
 fn le16(b: &[u8]) -> usize {
     usize::from(u16::from_le_bytes([b[0], b[1]]))
@@ -21,13 +22,13 @@ fn le32(b: &[u8]) -> usize {
     u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize
 }
 
-/// A block: returns (width in halfwords, height, data, bytes used).
+/// A block: returns (width in halfwords, height, data, length field).
 fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
     let header = data.get(..12)?;
     let len = le32(&header[0..4]);
     let (width, height) = (le16(&header[8..10]), le16(&header[10..12]));
     let body = data.get(12..12 + width * height * 2)?;
-    (len >= 12).then_some((width, height, body, len))
+    Some((width, height, body, len))
 }
 
 /// 15-bit colour: red in bits 0-4, green 5-9, blue 10-14.
@@ -54,7 +55,13 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     let mut pos = 8;
     let clut = if has_clut {
         let (w, h, body, len) = block(&data[pos..]).ok_or(fail)?;
-        pos = pos.checked_add(len).ok_or(fail)?;
+        // The length locates the pixel block, so it must match. (The pixel
+        // block's own length is wrong in some files, e.g. PSn00bSDK's
+        // texture.tim, and is not needed.)
+        if len != 12 + body.len() {
+            return Err(fail);
+        }
+        pos += len;
         // The first palette row.
         &body[..(w * 2).min(body.len()).min(w * h * 2)]
     } else {

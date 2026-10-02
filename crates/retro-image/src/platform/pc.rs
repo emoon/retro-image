@@ -22,9 +22,11 @@ use alloc::vec::Vec;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::new("PC", "Award BIOS logo", &["epa"], decode_epa),
+    // Version 2 first: its "AWBM" header would also pass as version 1 cells.
+    Format::new("PC", "Award BIOS logo version 2", &["epa"], decode_awbm).signature(),
+    Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
-    Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp),
+    Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette.
@@ -109,20 +111,13 @@ fn unpack_msp_line(src: &[u8], out: &mut [u8]) {
     }
 }
 
-fn decode_epa(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.starts_with(b"AWBM") {
-        decode_awbm(data)
-    } else {
-        decode_epa_cells(data)
-    }
-}
-
 /// Version 1: attribute bytes (background in the high nibble), then the
 /// 14-byte bitmaps of the cells, row by row.
 fn decode_epa_cells(data: &[u8]) -> Result<Image, DecodeError> {
     const CELL_HEIGHT: usize = 14;
     let fail = DecodeError::Unrecognized;
     let (columns, rows) = match data {
+        [b'A', b'W', b'B', b'M', ..] => return Err(fail),
         [c, r, ..] => (usize::from(*c), usize::from(*r)),
         _ => return Err(fail),
     };
@@ -153,7 +148,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let header = data.get(..8).ok_or(fail)?;
     let (width, height) = (le16(&header[4..6]), le16(&header[6..8]));
-    if width == 0 || height == 0 {
+    if &header[..4] != b"AWBM" || width == 0 || height == 0 {
         return Err(fail);
     }
     let palette_at = |bitmap_len: usize, colors: usize| {

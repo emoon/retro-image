@@ -13,12 +13,8 @@ use alloc::vec::Vec;
 
 use crate::{DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] = &[Format::new(
-    "Psion Series 3",
-    "mono",
-    &["pic", "icn"],
-    decode_pic,
-)];
+pub(super) static FORMATS: &[Format] =
+    &[Format::new("Psion Series 3", "mono", &["pic", "icn"], decode_pic).signature()];
 
 fn le16(b: &[u8]) -> usize {
     usize::from(u16::from_le_bytes([b[0], b[1]]))
@@ -26,7 +22,8 @@ fn le16(b: &[u8]) -> usize {
 
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
-    if data.len() < 20 || data[..4] != *b"PIC\xdc" || le16(&data[6..8]) == 0 {
+    // "PIC" $DC, then format version "00".
+    if data.len() < 20 || data[..6] != *b"PIC\xdc00" || le16(&data[6..8]) == 0 {
         return Err(fail);
     }
     let record = &data[8..20];

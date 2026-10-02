@@ -23,7 +23,7 @@ use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("TRS-80", "640x240", &["hr"], decode_hr),
-    Format::new("TRS-80", "CompuServe RLE", &["rle"], decode_rle),
+    Format::new("TRS-80", "CompuServe RLE", &["rle"], decode_rle).signature(),
     Format::new("TRS-80 Color Computer", "40x56", &["clp"], decode_clp),
     Format::new(
         "TRS-80 Color Computer",
@@ -61,13 +61,24 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
         Some(b"\x1bGM") => (128, 96),
         _ => return Err(DecodeError::Unrecognized),
     };
-    let mut image = Image::new(width, height);
     let total = (width * height) as usize;
+    // Printable run characters up to an escape or the end, covering the
+    // picture; one pixel short is accepted only before an escape. This is
+    // what recoil2png accepts (probed as a black box), and all samples are
+    // such 7-bit text.
+    let end = data[3..].iter().position(|&c| c == 0x1b);
+    let runs = &data[3..end.map_or(data.len(), |e| 3 + e)];
+    let covered: usize = runs.iter().map(|&c| usize::from(c.wrapping_sub(32))).sum();
+    let shortfall = total.saturating_sub(covered);
+    if runs.iter().any(|c| !(0x20..=0x7f).contains(c)) || shortfall > usize::from(end.is_some()) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(width, height);
     let mut pos = 0;
     let mut foreground = false;
     let mut color = 0;
-    for &c in &data[3..] {
-        if c == 0x1b || pos >= total {
+    for &c in runs {
+        if pos >= total {
             break;
         }
         let run = usize::from(c.saturating_sub(32));
@@ -120,4 +131,35 @@ fn decode_pmode1(data: &[u8]) -> Result<Image, DecodeError> {
         .flat_map(|&b| [b >> 6, b >> 4 & 3, b >> 2 & 3, b & 3])
         .collect();
     Ok(Image::from_indexed(128, 96, &indices, &PMODE1_COLORS)?.scaled(2, 2))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 256x192 RLE header and runs covering `pixels`, then `tail`.
+    fn rle(pixels: usize, tail: &[u8]) -> Vec<u8> {
+        let mut data = b"\x1bGH".to_vec();
+        let mut left = pixels;
+        while left > 0 {
+            let run = left.min(95);
+            data.push(32 + run as u8);
+            left -= run;
+        }
+        data.extend_from_slice(tail);
+        data
+    }
+
+    #[test]
+    fn rle_runs_must_cover_the_picture_in_printable_characters() {
+        let full = 256 * 192;
+        assert!(decode_rle(&rle(full, b"")).is_ok());
+        assert!(decode_rle(&rle(full + 500, b"\x1bGN")).is_ok());
+        assert!(decode_rle(&rle(full - 1, b"\x1bGN")).is_ok());
+        assert!(decode_rle(&rle(full - 1, b"")).is_err());
+        assert!(decode_rle(&rle(full - 2, b"\x1bGN")).is_err());
+        let mut control = rle(1000, b"\x05");
+        control.extend_from_slice(&rle(full, b"")[3..]);
+        assert!(decode_rle(&control).is_err());
+    }
 }

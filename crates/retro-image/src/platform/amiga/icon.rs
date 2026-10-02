@@ -25,7 +25,8 @@ const PALETTE_2X: [u32; 4] = [0x959595, 0x000000, 0xffffff, 0x3b67a2];
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let object = data.get(..DISK_OBJECT_LEN).ok_or(fail)?;
-    if be16(&object[0..2]) != 0xe310 {
+    // Magic and version 1.
+    if be16(&object[0..2]) != 0xe310 || be16(&object[2..4]) != 1 {
         return Err(fail);
     }
     let has_drawer = be32(&object[66..70]) != 0;

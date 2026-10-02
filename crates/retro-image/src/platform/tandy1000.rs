@@ -17,12 +17,8 @@ const PALETTE: [u32; 16] = [
     0x6633ff, 0x33cc00, 0x66cccc, 0xffcccc, 0xff99ff, 0xffff00, 0xffffff,
 ];
 
-pub(super) static FORMATS: &[Format] = &[Format::new(
-    "Tandy 1000",
-    "DeskMate Paint",
-    &["pnt"],
-    decode_pnt,
-)];
+pub(super) static FORMATS: &[Format] =
+    &[Format::new("Tandy 1000", "DeskMate Paint", &["pnt"], decode_pnt).signature()];
 
 const WIDTH: usize = 312;
 const HEIGHT: usize = 176;

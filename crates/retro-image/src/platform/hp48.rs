@@ -20,7 +20,7 @@ use alloc::vec::Vec;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
-    &[Format::new("HP 48", "GROB", &["grb", "gro"], decode_grob)];
+    &[Format::new("HP 48", "GROB", &["grb", "gro"], decode_grob).signature()];
 
 const GROB: usize = 0x02b1e;
 const DIRECTORY: usize = 0x02a96;
@@ -42,11 +42,21 @@ fn decode_grob(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// The nibbles of a text GROB, with a binary-style header synthesised.
+///
+/// The text starts with `GROB`, optionally after a `%%HP:` transfer header
+/// line (HP 48 FAQ ch. 8).
 fn text_nibbles(data: &[u8]) -> Option<Vec<u8>> {
-    let start = data.windows(5).position(|w| w == b"GROB ")? + 5;
-    let mut words = data[start..]
+    let mut text = data.trim_ascii_start();
+    if text.starts_with(b"%%HP:") {
+        let line_end = text.iter().position(|&b| b == b'\r' || b == b'\n')?;
+        text = text[line_end..].trim_ascii_start();
+    }
+    let mut words = text
         .split(|b| b.is_ascii_whitespace())
         .filter(|w| !w.is_empty());
+    if words.next()? != b"GROB" {
+        return None;
+    }
     let mut number = || -> Option<usize> { core::str::from_utf8(words.next()?).ok()?.parse().ok() };
     let (width, height) = (number()?, number()?);
     let hex = words.next()?;
@@ -159,6 +169,14 @@ mod tests {
         }
         nibbles.resize(nibbles.len() + pixel_len, fill);
         nibbles
+    }
+
+    #[test]
+    fn text_grobs_start_with_grob_or_a_transfer_header() {
+        let size = |data: &[u8]| decode_grob(data).map(|i| (i.width(), i.height()));
+        assert_eq!(size(b"GROB 8 1 F0"), Ok((8, 1)));
+        assert_eq!(size(b"%%HP: T(3)A(D)F(.);\r\nGROB 8 1 F0"), Ok((8, 1)));
+        assert!(size(b"see GROB 8 1 F0").is_err());
     }
 
     #[test]

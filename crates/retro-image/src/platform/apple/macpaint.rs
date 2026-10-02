@@ -18,12 +18,16 @@ const HEIGHT: usize = 720;
 const HEADER_LEN: usize = 512;
 const MAC_BINARY_LEN: usize = 128;
 
+/// A MacPaint file with a MacBinary header of file type `PNTG`.
+pub(super) fn decode_mac_binary(data: &[u8]) -> Result<Image, DecodeError> {
+    if !is_mac_binary(data) {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode(&data[MAC_BINARY_LEN..])
+}
+
+/// A bare MacPaint file.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let data = if is_mac_binary(data) {
-        &data[MAC_BINARY_LEN..]
-    } else {
-        data
-    };
     // The header starts with a version number: 0, 2 or 3.
     if data.len() <= HEADER_LEN || data[..3] != [0, 0, 0] || data[3] > 3 {
         return Err(DecodeError::Unrecognized);
