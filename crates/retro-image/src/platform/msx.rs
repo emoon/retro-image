@@ -6,7 +6,9 @@ mod screen;
 mod vdp;
 
 use screen::{Bitmap, Tiled};
+pub(super) use vdp::{level5, yjk_group};
 
+use super::nec_pc::maki::{self, Machine};
 use crate::Format;
 
 pub(super) static FORMATS: &[Format] = &[
@@ -66,5 +68,11 @@ pub(super) static FORMATS: &[Format] = &[
     }),
     Format::new("MSX2+", "BASIC COPY Screen 12", &["glc", "gls"], |d| {
         screen::decode_copy(Bitmap::Yjk, d)
+    }),
+    Format::new("MSX2", "Maki-chan Graphics", &["mag", "max"], |d| {
+        maki::decode_mag(d, Machine::Msx)
+    }),
+    Format::new("MSX2", "Maki-chan Graphics (MAKI01)", &["mki"], |d| {
+        maki::decode_mki(d, Machine::Msx)
     }),
 ];

@@ -76,7 +76,7 @@ impl Vram {
 }
 
 /// 16 colours as `0xRRGGBB`.
-pub(super) type Palette = [u32; 16];
+pub(in crate::platform) type Palette = [u32; 16];
 
 /// Scales a 3-bit level to 8 bits.
 pub(super) const fn level3(v: u8) -> u32 {
@@ -85,7 +85,7 @@ pub(super) const fn level3(v: u8) -> u32 {
 }
 
 /// Scales a 5-bit level to 8 bits.
-pub(super) const fn level5(v: u8) -> u32 {
+pub(in crate::platform) const fn level5(v: u8) -> u32 {
     let v = (v & 31) as u32;
     v << 3 | v >> 2
 }
@@ -178,7 +178,7 @@ const fn signed6(v: u8) -> i32 {
 
 /// Converts four YJK bytes (Y in bits 7-3, K low/high and J low/high in bits
 /// 2-0) to RGB. With `yae`, bytes with bit 3 set are palette indices in bits 7-4.
-pub(super) fn yjk_group(bytes: [u8; 4], yae: bool, palette: &Palette) -> [u32; 4] {
+pub(in crate::platform) fn yjk_group(bytes: [u8; 4], yae: bool, palette: &Palette) -> [u32; 4] {
     let k = signed6((bytes[0] & 7) | (bytes[1] & 7) << 3);
     let j = signed6((bytes[2] & 7) | (bytes[3] & 7) << 3);
     bytes.map(|b| {
