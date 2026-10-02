@@ -1,6 +1,11 @@
 # retro-image
 
-retro-image turns pictures from old computers into RGB. It reads 461 formats from 49
+[![CI](https://github.com/emoon/retro-image/actions/workflows/ci.yml/badge.svg)](https://github.com/emoon/retro-image/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/retro-image.svg)](https://crates.io/crates/retro-image)
+[![Documentation](https://docs.rs/retro-image/badge.svg)](https://docs.rs/retro-image)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/emoon/retro-image/blob/main/LICENSE)
+
+retro-image turns pictures from old computers into RGB. It reads 494 formats from 51
 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum, Amstrad CPC, MSX, PC-98 and
 a long tail of rarer machines. The full list is in [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 
