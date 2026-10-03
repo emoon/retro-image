@@ -30,6 +30,7 @@ mod mcs;
 mod misc_screen;
 mod packed;
 mod palette;
+mod pgr;
 mod pmg;
 mod portfolio;
 mod rambrandt;
@@ -418,4 +419,5 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
     // Gaps B
     Format::new(ATARI8, "Anime 4ever", &["a4r"], a4r::decode_a4r).signature(),
+    Format::new(ATARI8, "PowerGraphics", &["pgr"], pgr::decode_pgr).signature(),
 ];
