@@ -72,10 +72,9 @@ fn plus_color(low: u8, high: u8) -> u32 {
     scale(low >> 4) << 16 | scale(high) << 8 | scale(low)
 }
 
-/// Mode and pens of the picture.
-fn palette(memory: &Memory, impdraw: bool) -> Result<(Mode, [u32; 16]), DecodeError> {
+/// Pens of the picture (all overscan screens are mode 0).
+fn palette(memory: &Memory, impdraw: bool) -> Result<[u32; 16], DecodeError> {
     let mut pens = [0; 16];
-    let mut mode = Mode::Zero;
     if impdraw {
         let words = memory.range(0x801, 32);
         let plus_palette = words.iter().skip(1).step_by(2).all(|&b| b < 16);
@@ -84,14 +83,13 @@ fn palette(memory: &Memory, impdraw: bool) -> Result<(Mode, [u32; 16]), DecodeEr
             for (pen, word) in pens.iter_mut().zip(words.as_chunks::<2>().0) {
                 *pen = plus_color(word[0], word[1]);
             }
+        } else if plus {
+            // A Plus flag with no palette behind it (DRAGON.SCR) leaves the
+            // mode and inks unknown; one sample is too few to fit a rule.
+            return Err(DecodeError::Unrecognized);
         } else {
             for (i, pen) in pens.iter_mut().enumerate() {
                 *pen = hardware_color(memory.get(0x7f00 + i));
-            }
-            // The one sample whose Plus flag has no palette behind it (DRAGON)
-            // is a 4-colour mode 1 picture: read as mode 0 it is noise.
-            if plus {
-                mode = Mode::One;
             }
         }
     } else {
@@ -106,7 +104,7 @@ fn palette(memory: &Memory, impdraw: bool) -> Result<(Mode, [u32; 16]), DecodeEr
             *pen = firmware_color(ink);
         }
     }
-    Ok((mode, pens))
+    Ok(pens)
 }
 
 pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
@@ -124,7 +122,8 @@ pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
     };
     debug_assert!(data.len() >= HEADER_LEN);
     let memory = Memory { load, bytes: body };
-    let (mode, pens) = palette(&memory, impdraw)?;
+    let pens = palette(&memory, impdraw)?;
+    let mode = Mode::Zero;
     let lines: Vec<Vec<u8>> = (0..LINES)
         .map(|y| (0..LINE_BYTES).map(|x| memory.screen_byte(x, y)).collect())
         .collect();

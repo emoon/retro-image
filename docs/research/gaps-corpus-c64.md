@@ -175,7 +175,7 @@ differ only in a 9-entry flag table. Layout:
   first.
 - End marker: `00 F4` at file offsets 0x8e..0x8f. In all five samples the
   reader stops at 0x8e (count byte 0 right after F4), so the packed payload
-  is `file[0x90..]`.
+  is `file[0x8e..]` (the end code is read first, so starting at 0x90 never sees it).
 - Output is 19562 bytes: a 130-byte viewer (`78 a2 00 8e 20 d0 ...`, entered
   with `JMP $1B7E`) followed by the 19432-byte MCI image. The image block is
   the normal True Paint layout moved down by `$8000`: screen 1 `$1C00`,

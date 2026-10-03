@@ -302,3 +302,7 @@ RECOIL again reads it as Paintworks noise.
    Oracle test must skip these five or expect a recorded divergence.
 4. DeskMate: tolerate one zero-count run (damaged sector) in `unpack_runs`; keep rejecting
    `ZERO.pnt`.
+
+## Decisions after implementation
+
+- `DRAGON.SCR` is rejected. A 4-colour mode 1 reading made a clean picture, but one sample can't confirm that rule. It returns if a second sample or a spec shows it.
