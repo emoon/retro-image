@@ -23,6 +23,10 @@
 //!   `recoil2png`. Two load address bytes, three header bytes of which only
 //!   the second (background colour, low nibble) matters, 1000 screen codes,
 //!   24 ignored bytes, 1000 colours. Upper case/graphics set.
+//! - Self-displaying PETSCII PRG (`SYS 2061` stub, 2098 bytes): reverse
+//!   engineered from 1,882 CSDb samples by reading the stub's operands (a
+//!   copy loop from `$0861` to screen RAM and from `$0C49` to colour RAM,
+//!   `$D018`, `$D020` and `$D021` immediates); no decoder code was used.
 //! - Character glyphs: the C64 character ROM, see [`CHARGEN`].
 
 use super::vic2::{self, SCREEN_LEN};
@@ -191,6 +195,51 @@ pub(super) fn decode_petdraw(data: &[u8]) -> Result<Image, DecodeError> {
     .render()
 }
 
+/// The part of the PETSCII PRG stub after the background colour: the loop
+/// that copies the screen and colour data and starts the program.
+const PRG_STUB_TAIL: [u8; 67] = [
+    0x8d, 0x21, 0xd0, 0xa2, 0x00, 0xa0, 0xfa, 0xbd, 0x61, 0x08, 0x9d, 0x00, 0x04, 0xbd, 0x5b, 0x09,
+    0x9d, 0xfa, 0x04, 0xbd, 0x55, 0x0a, 0x9d, 0xf4, 0x05, 0xbd, 0x4f, 0x0b, 0x9d, 0xee, 0x06, 0xbd,
+    0x49, 0x0c, 0x9d, 0x00, 0xd8, 0xbd, 0x43, 0x0d, 0x9d, 0xfa, 0xd8, 0xbd, 0x3d, 0x0e, 0x9d, 0xf4,
+    0xd9, 0xbd, 0x37, 0x0f, 0x9d, 0xee, 0xda, 0xe8, 0x88, 0xd0, 0xcc, 0xa9, 0x1b, 0x8d, 0x11, 0xd0,
+    0x4c, 0x5e, 0x08,
+];
+
+/// Self-displaying PETSCII program (as exported by PETSCII editors): a
+/// BASIC `SYS 2061` line, a 98-byte machine code stub that sets `$D018`
+/// (character set), `$D020` and `$D021` and copies the data, then 1000
+/// screen codes and 1000 colour RAM bytes. The BASIC line number varies.
+pub(super) fn decode_petscii_prg(data: &[u8]) -> Result<Image, DecodeError> {
+    const SCREEN: usize = 98;
+    const COLORS: usize = SCREEN + SCREEN_LEN;
+    const D018: usize = 20;
+    const BACKGROUND: usize = 30;
+    let stub_ok = data.len() == COLORS + SCREEN_LEN
+        && data[..4] == [0x01, 0x08, 0x0b, 0x08]
+        && data[6..14] == *b"\x9e2061\0\0\0"
+        && (data[14], data[19]) == (0xa9, 0xa9)
+        && data[21..25] == [0x8d, 0x18, 0xd0, 0xa9]
+        && data[26..30] == [0x8d, 0x20, 0xd0, 0xa9]
+        && data[31..SCREEN] == PRG_STUB_TAIL;
+    if !stub_ok || data[COLORS..].iter().any(|&c| c > 15) || data[BACKGROUND] > 15 {
+        return Err(DecodeError::Unrecognized);
+    }
+    // `$D018` selects the character ROM: `$1000` upper case/graphics,
+    // `$1800` lower/upper case.
+    let charset = match data[D018] {
+        0x14 => RomCharset::UpperGraphics,
+        0x17 => RomCharset::LowerUpper,
+        _ => return Err(DecodeError::Unrecognized),
+    };
+    full_screen(
+        &data[SCREEN..],
+        &data[COLORS..],
+        data[BACKGROUND],
+        charset.glyphs(),
+    )
+    .render()
+}
+
 /// PETSCII BOT: 5×7 or 12×16 colours, then as many screen codes.
 pub(super) fn decode_pbot(data: &[u8]) -> Result<Image, DecodeError> {
     let (columns, rows) = match data.len() {
@@ -259,6 +308,32 @@ mod tests {
         let image = decode_scr_col(&scr, &Colors(col)).unwrap();
         assert_eq!(image.get(0, 0), 0x68372b);
         assert!(decode_scr_col(&scr, &Colors(alloc::vec![0; 1000])).is_err());
+    }
+
+    #[test]
+    fn prg_stub_is_checked_and_charset_selected() {
+        let mut data = alloc::vec![0u8; 2098];
+        data[..14].copy_from_slice(&[
+            0x01, 0x08, 0x0b, 0x08, 0xef, 0x00, 0x9e, b'2', b'0', b'6', b'1', 0, 0, 0,
+        ]);
+        data[14] = 0xa9;
+        data[19] = 0xa9;
+        data[20] = 0x17;
+        data[21..25].copy_from_slice(&[0x8d, 0x18, 0xd0, 0xa9]);
+        data[26..30].copy_from_slice(&[0x8d, 0x20, 0xd0, 0xa9]);
+        data[31..98].copy_from_slice(&PRG_STUB_TAIL);
+        data[98] = 1; // `a` in the lower case set
+        data[1098] = 1;
+        let image = decode_petscii_prg(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (320, 200));
+        assert_eq!(image.get(2, 2), 0xffffff);
+        data[20] = 0x14;
+        assert_eq!(decode_petscii_prg(&data).unwrap().get(1, 2), 0xffffff);
+        data[20] = 0x15;
+        assert!(decode_petscii_prg(&data).is_err());
+        data[20] = 0x14;
+        data[1098] = 16;
+        assert!(decode_petscii_prg(&data).is_err());
     }
 
     #[test]

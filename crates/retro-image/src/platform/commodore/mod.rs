@@ -381,6 +381,14 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
+    // Self-displaying PRGs
+    Format::new(
+        C64,
+        "Self-displaying PETSCII",
+        &["prg"],
+        petscii::decode_petscii_prg,
+    )
+    .signature(),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by
