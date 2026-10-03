@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn table_sizes_that_overflow_are_rejected() {
-        let mut data = vec![0; 32];
+        let mut data = alloc::vec![0; 32];
         data.extend_from_slice(b"0\r\n18446744073709551615\r\n");
         assert!(decode_lpk(&data).is_err());
     }
