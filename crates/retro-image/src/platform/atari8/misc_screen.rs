@@ -55,6 +55,7 @@ use super::antic::Bitmap;
 use super::palette::{register_rgb, rgb};
 use super::screen::{GREY_COLORS, OS_COLORS, bitmap, exactly, four_color, gtia9, hires};
 use crate::bytes::le16;
+use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
 /// A 4x4-scaled picture of `width` x `height` pixels, one grey level (0-15)
@@ -221,6 +222,8 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
     if plane_len == 0 || planes.len() != 2 * plane_len {
         return Err(DecodeError::Unrecognized);
     }
+    // Both modes draw at most 8 pixels per row byte and 4 per line.
+    check_size(8 * row_bytes, 4 * height)?;
     let (first, second) = planes.split_at(plane_len);
     match mode {
         0x13 => Ok(bitmap(first, row_bytes, 4).render(4, 4, |_, level| rgb(level))),
@@ -283,5 +286,14 @@ mod tests {
         assert_eq!(decode_pi8(&[0; 7680]).unwrap().width(), 320);
         assert_eq!(decode_pi8(&[0; 7685]).unwrap().width(), 320);
         assert!(decode_pi8(&[0; 7684]).is_err());
+    }
+
+    #[test]
+    fn ags_rejects_huge_pictures() {
+        let (row_bytes, height) = (255usize, 9000usize);
+        let mut data = alloc::vec![0u8; 16 + 2 * row_bytes * height];
+        data[..5].copy_from_slice(&[b'A', b'G', b'S', 0x13, row_bytes as u8]);
+        data[5..7].copy_from_slice(&(height as u16).to_le_bytes());
+        assert!(decode_ags(&data).is_err());
     }
 }
