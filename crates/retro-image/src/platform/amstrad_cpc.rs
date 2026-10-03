@@ -11,6 +11,7 @@ mod hardware;
 mod hgb;
 mod mode5;
 mod ocp;
+mod overscan;
 mod perfect_pix;
 mod sgx;
 
@@ -59,6 +60,14 @@ pub(super) static FORMATS: &[Format] = &[
         hgb::decode_hgb,
     ),
     Format::new("Amstrad CPC", "SymbOS graphic", &["sgx"], sgx::decode_sgx),
+    // cpcshr
+    Format::new(
+        "Amstrad CPC",
+        "Overscan screen with loader",
+        &["scr"],
+        overscan::decode_overscan,
+    )
+    .signature(),
     // Wave 5: FLF
     Format::new(
         "Amstrad CPC",
