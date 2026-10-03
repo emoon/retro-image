@@ -225,11 +225,15 @@ pub(super) fn decode_tg1(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// EggPaint (`TRUP`) and Spooky Sprites (`tru?`): id, width, height, RGB565.
 pub(super) fn decode_trp(data: &[u8]) -> Result<Image, DecodeError> {
-    // EggPaint files are often Pack-Ice packed (EggPaint page above).
-    if super::pack_ice::is_packed(data) {
-        let unpacked = super::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
-        return decode_trp(&unpacked);
-    }
+    // EggPaint files are often Pack-Ice packed (EggPaint page above). Unpack
+    // once only: nested packing is not followed, so a file can't recurse.
+    let unpacked;
+    let data = if super::pack_ice::is_packed(data) {
+        unpacked = super::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
+        &unpacked
+    } else {
+        data
+    };
     match data.get(..4) {
         Some(b"TRUP" | b"tru?") => {}
         _ => return Err(DecodeError::Unrecognized),
@@ -411,5 +415,41 @@ mod tests {
             data.extend_from_slice(&[255, 0]);
         }
         assert!(unpack_dc1(&data, 1, 1).iter().all(|&b| b == 0));
+    }
+
+    /// An `Ice!` file holding `raw` as literals (see the Pack-Ice layout in
+    /// `pack_ice.rs`): the bit stream is one anchor word at the end and the
+    /// literals are read backwards from just before it.
+    fn ice(raw: &[u8]) -> Vec<u8> {
+        let mut value = raw.len() - 1;
+        let mut bits = alloc::vec![true];
+        for (i, length) in [1, 2, 2, 3, 8, 15].into_iter().enumerate() {
+            let all_ones = (1 << length) - 1;
+            let last = i == 5 || value < all_ones;
+            let field = if last { value } else { all_ones };
+            bits.extend((0..length).rev().map(|b| field >> b & 1 == 1));
+            if last {
+                break;
+            }
+            value -= all_ones;
+        }
+        let used = bits.len() as u32;
+        let word =
+            bits.iter().fold(0u32, |w, &b| w << 1 | u32::from(b)) << (32 - used) | 1 << (31 - used);
+        let mut stream = raw.to_vec();
+        stream.extend_from_slice(&word.to_be_bytes());
+        let mut out = b"Ice!".to_vec();
+        out.extend_from_slice(&(12 + stream.len() as u32).to_be_bytes());
+        out.extend_from_slice(&(raw.len() as u32).to_be_bytes());
+        out.extend_from_slice(&stream);
+        out
+    }
+
+    #[test]
+    fn trp_unpacks_one_pack_ice_layer_only() {
+        let picture = b"TRUP\0\x01\0\x02\xff\xff\0\0";
+        let packed = ice(picture);
+        assert!(decode_trp(&packed).is_ok());
+        assert!(decode_trp(&ice(&packed)).is_err());
     }
 }
