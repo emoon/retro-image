@@ -39,22 +39,40 @@ fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &PALETTE)
 }
 
-/// (value, count) byte pairs that must fill exactly `len` bytes. Every
-/// sample written by DeskMate does; a zero count or a short or overlong
-/// stream means a damaged file (e.g. a disk sector lost to zeros).
+/// (value, count) byte pairs that must fill exactly `len` bytes. One run of
+/// zero-count pairs is accepted as a lost disk sector (`SHIP3.pnt` lost 256
+/// pairs to zeros): the pairs after it still line up, and the shortfall at
+/// the end of the stream is the size of the hole, which is left black. A
+/// hole of more than a quarter of the picture, a second run, or any other
+/// short or overlong stream means the file is not usable.
 fn unpack_runs(src: &[u8], len: usize) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(len);
     let (pairs, rest) = src.as_chunks::<2>();
-    let mut pairs = pairs.iter();
-    while out.len() < len {
-        let pair = pairs.next()?;
-        let count = usize::from(pair[1]);
-        if count == 0 || out.len() + count > len {
-            return None;
-        }
-        out.resize(out.len() + count, pair[0]);
+    if !rest.is_empty() {
+        return None;
     }
-    (pairs.len() == 0 && rest.is_empty()).then_some(out)
+    let mut out = Vec::with_capacity(len);
+    let mut hole_at = None;
+    let mut previous_zero = false;
+    for pair in pairs {
+        let count = usize::from(pair[1]);
+        if count == 0 {
+            if !previous_zero && hole_at.replace(out.len()).is_some() {
+                return None;
+            }
+        } else {
+            out.resize(out.len() + count, pair[0]);
+        }
+        previous_zero = count == 0;
+    }
+    match (out.len().cmp(&len), hole_at) {
+        (core::cmp::Ordering::Equal, _) => Some(out),
+        (core::cmp::Ordering::Less, Some(at)) if len - out.len() <= len / 4 => {
+            let hole = len - out.len();
+            out.splice(at..at, core::iter::repeat_n(0, hole));
+            Some(out)
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -66,7 +84,24 @@ mod tests {
         assert_eq!(unpack_runs(&[7, 2, 9, 1], 3), Some(alloc::vec![7, 7, 9]));
         assert_eq!(unpack_runs(&[7, 2], 3), None);
         assert_eq!(unpack_runs(&[7, 4], 3), None);
-        assert_eq!(unpack_runs(&[7, 0, 7, 3], 3), None);
         assert_eq!(unpack_runs(&[7, 3, 1, 1], 3), None);
+    }
+
+    #[test]
+    fn one_zero_run_is_a_lost_sector() {
+        // The hole sits where the zero pairs were, and may be at most a
+        // quarter of the picture.
+        assert_eq!(unpack_runs(&[7, 2, 0, 0, 0, 0, 9, 2], 8), None);
+        assert_eq!(
+            unpack_runs(&[7, 6, 0, 0, 0, 0, 9, 6], 16),
+            Some(alloc::vec![7, 7, 7, 7, 7, 7, 0, 0, 0, 0, 9, 9, 9, 9, 9, 9])
+        );
+        // Two separate runs, a hole over a quarter of the picture, or a
+        // zero run that does not explain a short stream are rejected.
+        assert_eq!(unpack_runs(&[7, 6, 0, 0, 9, 6, 0, 0], 16), None);
+        assert_eq!(unpack_runs(&[7, 2, 0, 0, 9, 2], 20), None);
+        assert_eq!(unpack_runs(&[7, 2, 9, 2], 8), None);
+        // All zeros: the hole is the whole picture.
+        assert_eq!(unpack_runs(&[0; 8], 8), None);
     }
 }

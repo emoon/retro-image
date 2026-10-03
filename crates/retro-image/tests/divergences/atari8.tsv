@@ -21,3 +21,5 @@ hostile/atari8/demozoo/380151/electricdawn40x28.scr	320x224	124a03a1ad894825	ATA
 # .GR9 renders pixels identical to ours.
 hostile/atari8/pigwa-forever/MGV12/GIRL1.SFD	320x192	14da0f110feb5c7d	SFDN GR9 with a 4-byte tail (see comment above); reviewed: coherent grey portrait of a woman beside a ruler.
 hostile/atari8/pigwa-forever/MGV12/GIRL2.SFD	320x192	c4a34e6d02c45395	SFDN GR9 with a 4-byte tail (see comment above); reviewed: coherent grey picture of a reclining figure.
+# Gaps A
+PAINTD.PIC	320x192	7c8a24e7c964c3ab	Known wrong: a 7680-byte .PIC named PAINT plus one character is APAC 80x96 for RECOIL (probed with renamed copies), but the decoder API has no file name, so we draw it as Graphics 8 like any other 7680-byte .PIC (SCHALT.PIC). Fix needs the stem passed to decoders.

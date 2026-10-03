@@ -130,7 +130,8 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
         }
         pos += 8 + size;
     }
-    if pos != data.len() {
+    // The line stream ends with a zero word; anything after it is ignored.
+    if le16(data, pos) != Some(0) {
         return Err(bad);
     }
     Image::from_indexed(WIDTH as u32, height as u32, &indices, &palette)

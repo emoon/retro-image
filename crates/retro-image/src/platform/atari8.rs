@@ -5,6 +5,7 @@
 //! cites the sources of its own formats. The palette is in [`palette`];
 //! ANTIC/GTIA bitmap rendering in [`antic`].
 
+mod a4r;
 mod antic;
 mod apac;
 mod blazing_paddles;
@@ -19,6 +20,7 @@ mod gtia;
 mod hcm;
 mod hip;
 mod ice;
+mod ice_single;
 mod inflate;
 mod interlace;
 mod interlace2;
@@ -29,6 +31,8 @@ mod mcs;
 mod misc_screen;
 mod packed;
 mod palette;
+mod pgr;
+mod pic_variants;
 mod pmg;
 mod portfolio;
 mod rambrandt;
@@ -80,7 +84,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Mad Designer", &["mbg"], screen::decode_mbg),
     Format::new(ATARI8, "Print Shop", &["psf"], screen::decode_psf),
     Format::new(ATARI8, "Graphics 9", &["gr9"], screen::decode_gr9),
-    Format::new(ATARI8, "Graphics 9 (G09)", &["g09"], screen::decode_g09),
+    Format::new(
+        ATARI8,
+        "Graphics 9 (G09)",
+        &["g09", "bg9"],
+        screen::decode_g09,
+    ),
     Format::new(ATARI8, "TXE", &["txe"], screen::decode_txe),
     Format::new(ATARI8, "Zoom 4", &["zm4"], screen::decode_zm4),
     Format::new(ATARI8, "Texture Maker0", &["tx0"], screen::decode_tx0),
@@ -415,4 +424,27 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 5: Amiga and misc
     Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
+    // Gaps A
+    Format::new(
+        ATARI8,
+        "Micro Illustrator PIC",
+        &["pic"],
+        pic_variants::decode_mic_pic,
+    ),
+    Format::new(
+        ATARI8,
+        "Graphics 8 PIC",
+        &["pic"],
+        pic_variants::decode_gr8_pic,
+    ),
+    Format::new(ATARI8, "BLASTER", &["pic"], pic_variants::decode_blaster),
+    Format::new(
+        ATARI8,
+        "Interlace Character Editor single set",
+        &["ice"],
+        ice_single::decode_ice_single,
+    ),
+    // Gaps B
+    Format::new(ATARI8, "Anime 4ever", &["a4r"], a4r::decode_a4r).signature(),
+    Format::new(ATARI8, "PowerGraphics", &["pgr"], pgr::decode_pgr).signature(),
 ];

@@ -12,7 +12,10 @@
 //!
 //! Observed from `recoil2png` output: header byte 8 is the ANTIC mode;
 //! 0x0E is Graphics 15, 0x0F is drawn as GTIA mode 9 with the background
-//! register. Other modes (text) are rejected here.
+//! register. Mode 2 (ANTIC text mode 2) stores screen codes for the
+//! window, given in character rows (0, 40, 0, 24), drawn with the OS ROM
+//! font: paper is playfield 2, ink is playfield 2's hue with playfield 1's
+//! luminance; sample OPIS.PIC. Other modes are rejected here.
 //!
 //! Not marked as a signature format: Rambrandt (RM0-RM4) files start with
 //! the same Koala header followed by extra colour data, so content
@@ -21,6 +24,7 @@
 use super::antic::Bitmap;
 use super::palette::register_rgb;
 use super::screen::gtia9;
+use super::text::mode2_colored;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -29,6 +33,8 @@ const LINES: usize = 192;
 const HEADER_MIN: usize = 18;
 /// Graphics 15 (4 colours).
 pub(super) const ANTIC_E: u8 = 0x0e;
+/// Text mode 2 (Graphics 0): screen codes.
+const ANTIC_2: u8 = 0x02;
 /// Shown as GTIA mode 9 (16 luminances).
 const ANTIC_F: u8 = 0x0f;
 
@@ -68,6 +74,12 @@ pub(super) fn parse(data: &[u8]) -> Result<Pic, DecodeError> {
 
 pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let pic = parse(data)?;
+    if pic.mode == ANTIC_2 {
+        let [_, pf1, pf2, ..] = pic.colors;
+        let paper = register_rgb(pf2);
+        let ink = register_rgb(pf2 & 0xf0 | pf1 & 0x0f);
+        return Ok(mode2_colored(&pic.screen[..40 * 24], 40, paper, ink));
+    }
     let bitmap = Bitmap {
         data: &pic.screen,
         bytes_per_line: LINE,

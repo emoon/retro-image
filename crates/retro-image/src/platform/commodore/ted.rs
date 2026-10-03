@@ -11,6 +11,9 @@
 //!   with low luminance nibble; clear/`10`: low colour nibble with high
 //!   luminance nibble; `00` = `$FF15`, `11` = `$FF16`): worked out from the
 //!   sample files against `recoil2png` output.
+//! - The 2050-byte 128x64 variant (`DCD.P4I`): reverse engineered from that
+//!   one sample against `recoil2png` output (see
+//!   `docs/research/gaps-corpus-other.md`, section 6).
 //! - Palette: observed from `recoil2png` output, by rendering a synthetic
 //!   picture with every hue/luminance pair.
 
@@ -77,4 +80,55 @@ pub(super) fn decode_p4i(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+const STRIPS: usize = 32;
+const STRIP_LINES: usize = 64;
+const FOUR_GREYS_LEN: usize = 2 + STRIPS * STRIP_LINES;
+/// TED colours of the four 2-bit pixel values (hue 1 at luminance 0, 3, 5, 7).
+const FOUR_GREYS: [u8; 4] = [0x00, 0x31, 0x51, 0x71];
+
+/// 128x64 four-grey variant: a 2-byte load address, then 32 column strips of
+/// 64 bytes. A strip is a column four pixels wide, one byte per line, most
+/// significant pixel pair first. Shown with pixels doubled horizontally.
+pub(super) fn decode_p4i_grey(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != FOUR_GREYS_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut image = Image::new(2 * 4 * STRIPS as u32, STRIP_LINES as u32);
+    for (strip, column) in data[2..].as_chunks::<STRIP_LINES>().0.iter().enumerate() {
+        for (y, &byte) in column.iter().enumerate() {
+            for pixel in 0..4 {
+                let value = byte >> (6 - 2 * pixel) & 3;
+                let color = rgb(FOUR_GREYS[usize::from(value)]);
+                let x = (4 * strip + pixel) as u32 * 2;
+                image.set(x, y as u32, color);
+                image.set(x + 1, y as u32, color);
+            }
+        }
+    }
+    Ok(image)
+}
+
+#[cfg(test)]
+mod grey_tests {
+    use super::*;
+
+    #[test]
+    fn strips_are_columns() {
+        let mut data = alloc::vec![0u8; FOUR_GREYS_LEN];
+        data[2 + 64 + 3] = 0b11_00_01_10; // strip 1, line 3
+        let image = decode_p4i_grey(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (256, 64));
+        assert_eq!(image.get(8, 3), rgb(0x71));
+        assert_eq!(image.get(10, 3), rgb(0x00));
+        assert_eq!(image.get(12, 3), rgb(0x31));
+        assert_eq!(image.get(14, 3), rgb(0x51));
+        assert_eq!(image.get(8, 2), rgb(0x00));
+    }
+
+    #[test]
+    fn wrong_size_is_rejected() {
+        assert!(decode_p4i_grey(&[0; 2049]).is_err());
+    }
 }

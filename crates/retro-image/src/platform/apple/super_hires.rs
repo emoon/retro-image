@@ -118,6 +118,32 @@ pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
     render(&lines, 320)
 }
 
+/// A screen dump under an extension shared with other platforms (`.SCR`).
+/// Besides the exact size, it must not carry an AMSDOS header (a CPC file)
+/// and every colour in the palettes the SCBs select must be a valid `0RGB`
+/// word: the high nibble of its high byte is zero. Random data, other
+/// machines' screens and the padded CPC overscan files fail that.
+/// Observed from the corpus; the rule is not in the File Type Note.
+pub(super) fn decode_checked_screen(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.len() != 0x8000 || crate::platform::amstrad_cpc::has_amsdos_header(data) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let valid = |palette: usize| {
+        data[0x7e00 + palette * 32..][..32]
+            .iter()
+            .skip(1)
+            .step_by(2)
+            .all(|&b| b < 16)
+    };
+    if !data[0x7d00..0x7dc8]
+        .iter()
+        .all(|&scb| valid(usize::from(scb & 15)))
+    {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode_screen(data)
+}
+
 /// $C0/0001: a screen dump packed with PackBytes, which must unpack to
 /// exactly 32 KB using all of the data.
 pub(super) fn decode_packed_screen(data: &[u8]) -> Result<Image, DecodeError> {
@@ -301,5 +327,18 @@ mod tests {
         let mut longer = packed.clone();
         longer.extend_from_slice(&[0x40, 0]);
         assert!(decode_packed_screen(&longer).is_err());
+    }
+
+    #[test]
+    fn checked_screen_needs_valid_palettes_for_the_used_scbs() {
+        let mut data = alloc::vec![0u8; 0x8000];
+        assert!(decode_checked_screen(&data).is_ok());
+        // Palette 0 is selected by every SCB; a high byte of 0x40 is no 0RGB word.
+        data[0x7e01] = 0x40;
+        assert!(decode_checked_screen(&data).is_err());
+        // A palette no SCB selects is not checked.
+        data[0x7e01] = 0;
+        data[0x7e00 + 5 * 32 + 1] = 0x40;
+        assert!(decode_checked_screen(&data).is_ok());
     }
 }
