@@ -80,7 +80,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Mad Designer", &["mbg"], screen::decode_mbg),
     Format::new(ATARI8, "Print Shop", &["psf"], screen::decode_psf),
     Format::new(ATARI8, "Graphics 9", &["gr9"], screen::decode_gr9),
-    Format::new(ATARI8, "Graphics 9 (G09)", &["g09"], screen::decode_g09),
+    Format::new(
+        ATARI8,
+        "Graphics 9 (G09)",
+        &["g09", "bg9"],
+        screen::decode_g09,
+    ),
     Format::new(ATARI8, "TXE", &["txe"], screen::decode_txe),
     Format::new(ATARI8, "Zoom 4", &["zm4"], screen::decode_zm4),
     Format::new(ATARI8, "Texture Maker0", &["tx0"], screen::decode_tx0),

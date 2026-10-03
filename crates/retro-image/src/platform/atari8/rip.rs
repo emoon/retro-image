@@ -89,6 +89,13 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
         _ => return Err(bad),
     };
     let unpacked;
+    // The header-length field (offset 10) gives the start of the packed data;
+    // some files carry extra bytes between the colours and the packer.
+    let packed_at = usize::from(be16(data, 10).ok_or(bad)?);
+    let body = match data.get(packed_at..) {
+        Some(tail) if tail.starts_with(b"PCK") => tail,
+        _ => body,
+    };
     let screen = match body.strip_prefix(b"PCK") {
         Some(payload) => {
             unpacked = unpack(payload, size);
