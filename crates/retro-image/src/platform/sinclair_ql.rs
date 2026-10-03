@@ -28,6 +28,7 @@
 //!   for other 2:1 screens in this crate.
 
 use crate::bytes::be16;
+use crate::image::check_scaled;
 use crate::{DecodeError, Format, Image};
 
 const PLATFORM: &str = "Sinclair QL";
@@ -93,6 +94,7 @@ fn render(
     if width == 0 || height == 0 || stride < line_len {
         return Err(fail);
     }
+    check_scaled(width, height, 1, 2)?;
     let needed = stride
         .checked_mul(height - 1)
         .and_then(|n| n.checked_add(line_len))
@@ -168,6 +170,19 @@ fn decode_area(data: &[u8]) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn area_doubled_over_the_pixel_cap_is_rejected() {
+        // 65535 x 513 passes alone; with doubled rows it is 67.2 M pixels.
+        let (width, height, stride) = (65535usize, 513usize, 16384usize);
+        let mut data = alloc::vec![0u8; 10 + stride * height];
+        data[..2].copy_from_slice(&0x4afcu16.to_be_bytes());
+        data[2..4].copy_from_slice(&(width as u16).to_be_bytes());
+        data[4..6].copy_from_slice(&(height as u16).to_be_bytes());
+        data[6..8].copy_from_slice(&(stride as u16).to_be_bytes());
+        data[8] = 4;
+        assert!(matches!(decode_area(&data), Err(DecodeError::Unrecognized)));
+    }
 
     #[test]
     fn mode_4_words_hold_green_then_red_bits() {

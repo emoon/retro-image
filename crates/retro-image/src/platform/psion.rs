@@ -10,6 +10,7 @@
 //!   `recoil2png` output.
 
 use crate::bytes::{le16, le32};
+use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -25,12 +26,17 @@ fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let word = |at| le16(data, at).map(usize::from).ok_or(fail);
     let (width, height) = (word(10)?, word(12)?);
     let offset = le32(data, 16).ok_or(fail)? as usize;
-    let row_len = width.div_ceil(16) * 2;
-    let start = 20usize.checked_add(offset).ok_or(fail)?;
-    let pixels = data.get(start..start + row_len * height).ok_or(fail)?;
     if width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
+    let row_len = width.div_ceil(16) * 2;
+    let start = 20usize.checked_add(offset).ok_or(fail)?;
+    let end = row_len
+        .checked_mul(height)
+        .and_then(|len| start.checked_add(len))
+        .ok_or(fail)?;
+    let pixels = data.get(start..end).ok_or(fail)?;
     let colors = [0xffffff, 0];
     Image::from_bits(
         width as u32,
@@ -40,4 +46,21 @@ fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
         BitOrder::LsbFirst,
         colors,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pictures_over_the_pixel_cap_are_rejected() {
+        let (width, height) = (65535usize, 1025usize);
+        let row_len = width.div_ceil(16) * 2;
+        let mut data = alloc::vec![0u8; 20 + row_len * height];
+        data[..6].copy_from_slice(b"PIC\xdc00");
+        data[6] = 1;
+        data[10..12].copy_from_slice(&(width as u16).to_le_bytes());
+        data[12..14].copy_from_slice(&(height as u16).to_le_bytes());
+        assert!(matches!(decode_pic(&data), Err(DecodeError::Unrecognized)));
+    }
 }

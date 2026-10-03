@@ -171,6 +171,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     if &header[..4] != b"AWBM" || width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let palette_at = |bitmap_len: usize, colors: usize| {
         let at = 8 + bitmap_len;
         (data.get(at..at + 4) == Some(b"RGB ") && data.len() >= at + 4 + colors * 3)
@@ -226,6 +227,19 @@ fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn awbm_larger_than_the_pixel_cap_is_rejected() {
+        // 16-colour planar: 65535 x 1025 pixels in 32 MiB of planes.
+        let (width, height) = (65535usize, 1025usize);
+        let bitmap_len = width.div_ceil(8) * 4 * height;
+        let mut data = vec![0u8; 8 + bitmap_len + 4 + 16 * 3];
+        data[..4].copy_from_slice(b"AWBM");
+        data[4..6].copy_from_slice(&(width as u16).to_le_bytes());
+        data[6..8].copy_from_slice(&(height as u16).to_le_bytes());
+        data[8 + bitmap_len..][..4].copy_from_slice(b"RGB ");
+        assert!(decode_awbm(&data).is_err());
+    }
 
     #[test]
     fn msp_larger_than_the_pixel_cap_is_rejected() {

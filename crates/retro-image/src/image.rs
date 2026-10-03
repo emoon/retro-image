@@ -30,6 +30,20 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
     }
 }
 
+/// [`check_size`] for the picture left after `Image::scaled(sx, sy)`. Scaling
+/// multiplies the size, so a source that passed the cap can still exceed it.
+pub(crate) fn check_scaled(
+    width: usize,
+    height: usize,
+    sx: usize,
+    sy: usize,
+) -> Result<(), DecodeError> {
+    match (width.checked_mul(sx), height.checked_mul(sy)) {
+        (Some(w), Some(h)) => check_size(w, h),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
