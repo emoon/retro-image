@@ -31,6 +31,7 @@ mod nufli;
 mod petscii;
 mod prg;
 mod printfox;
+mod printmaster;
 mod she;
 mod sprites;
 mod superhires;
@@ -382,6 +383,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
+    Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
     // Self-displaying PRGs
     Format::new(
         C64,
