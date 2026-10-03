@@ -19,6 +19,7 @@
 //!   `recoil2png` output.
 
 mod flf;
+mod halo;
 mod image72;
 mod pcx;
 mod tga;
@@ -38,6 +39,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
+    Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     // Wave 5: FLF
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     // Wave 5: Amiga and misc
