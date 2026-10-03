@@ -13,11 +13,14 @@
 //!   `recoil2png` output).
 //! - Handy Scanner HS2: Deark `misc2.c` (MIT licence): headerless 1-bit
 //!   bitmap, 105 bytes (840 pixels) per row.
+//! - PCX, Targa and Dr. Halo: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`
+//!   (survey: `docs/research/gaps-pc-japan.md`).
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
 mod flf;
 mod image72;
+mod pcx;
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -32,6 +35,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
+    Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     // Wave 5: FLF
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     // Wave 5: Amiga and misc
