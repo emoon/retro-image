@@ -23,6 +23,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
+use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -54,6 +55,7 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let row_len = width.div_ceil(8);
     let bitmap = match &header[..4] {
         b"DanM" => data
@@ -219,4 +221,20 @@ fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     mono(data, ROW_LEN * 8, data.len() / ROW_LEN, ROW_LEN)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn msp_larger_than_the_pixel_cap_is_rejected() {
+        // 65535 x 8192 pixels: the bitmap passes the 85x-input guard, the
+        // picture would be 1.5 GiB of RGB.
+        let mut data = vec![0u8; 800_000];
+        data[..4].copy_from_slice(b"LinS");
+        data[4..6].copy_from_slice(&65535u16.to_le_bytes());
+        data[6..8].copy_from_slice(&8192u16.to_le_bytes());
+        assert!(decode_msp(&data).is_err());
+    }
 }

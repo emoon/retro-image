@@ -12,6 +12,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const BLACK: u32 = 0x000000;
@@ -89,6 +90,7 @@ pub(super) fn decode_stp(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || pixels.len() < (width * height).div_ceil(4) {
         return Err(DecodeError::Unrecognized);
     }
+    check_size(width, height)?;
     mono(width, height, |x, y| {
         let i = y * width + x;
         (pixels[i / 4] >> (6 - 2 * (i % 4))) & 3 != 0
@@ -114,5 +116,14 @@ mod tests {
         assert_eq!((image.width(), image.height()), (3, 4));
         assert_eq!(&image.rgb()[..6], &[0, 0, 0, 0xff, 0xff, 0xff]);
         assert!(decode_stp(&data[..5]).is_err());
+    }
+
+    #[test]
+    fn stamp_larger_than_the_pixel_cap_is_rejected() {
+        let (width, height) = (8192usize, 8200usize);
+        let mut data = alloc::vec![0u8; 4 + (width * height).div_ceil(4)];
+        data[..2].copy_from_slice(&(width as u16).to_le_bytes());
+        data[2..4].copy_from_slice(&(height as u16).to_le_bytes());
+        assert!(decode_stp(&data).is_err());
     }
 }
