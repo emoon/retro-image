@@ -74,6 +74,7 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
     let mut image = Image::new(width as u32, height as u32);
     for y in 0..height {
         let row = y * width;
+        let mut group_colours = [0; 4];
         for x in 0..width {
             let i = row + x;
             let colour = match (depth, colours) {
@@ -84,13 +85,15 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
                 }
                 (_, Colours::Fixed256) => vdp::graphic7(pixels[i]),
                 (_, Colours::Yjk | Colours::Yuv) => {
-                    let group = row + (x & !3);
-                    let bytes = [0, 1, 2, 3].map(|k| pixels.get(group + k).copied().unwrap_or(0));
-                    if colours == Colours::Yjk {
-                        vdp::yjk_group(bytes, false, &[0; 16])[x & 3]
-                    } else {
-                        yuv(bytes)[x & 3]
+                    if x & 3 == 0 {
+                        let bytes = [0, 1, 2, 3].map(|k| pixels.get(i + k).copied().unwrap_or(0));
+                        group_colours = if colours == Colours::Yjk {
+                            vdp::yjk_group(bytes, false, &[0; 16])
+                        } else {
+                            yuv(bytes)
+                        };
                     }
+                    group_colours[x & 3]
                 }
                 _ => {
                     let bit = i * depth;
