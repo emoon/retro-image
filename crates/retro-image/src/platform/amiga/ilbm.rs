@@ -32,7 +32,7 @@ pub(super) struct Header {
     pub height: usize,
     pub planes: usize,
     masking: u8,
-    compression: u8,
+    pub compression: u8,
 }
 
 impl Header {
@@ -343,7 +343,7 @@ pub(super) fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
 }
 
 /// Pixel doubling that keeps the picture's aspect ratio, as (x, y) factors.
-fn scale_factors(camg: u32) -> (u32, u32) {
+pub(super) fn scale_factors(camg: u32) -> (u32, u32) {
     let lace = camg & CAMG_LACE != 0;
     let hires = camg & CAMG_HIRES != 0;
     match (hires, lace) {

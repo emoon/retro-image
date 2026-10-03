@@ -3,7 +3,7 @@
 //! Each submodule lists the documents its layouts come from; the platform
 //! survey is `docs/research/amiga-apple-misc.md`. This file dispatches IFF
 //! pictures:
-//! - `FORM` kinds (ILBM, BBM, PBM, ACBM, DEEP/TVPP, ANIM): EA IFF 85 standard,
+//! - `FORM` kinds (ILBM, BBM, PBM, ACBM, RGBN/RGB8, DEEP/TVPP, ANIM): EA IFF 85 standard,
 //!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,
 //!   and the IFF FORM and chunk registry,
 //!   <https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>.
@@ -23,6 +23,7 @@ mod iff;
 mod ilbm;
 mod multi_palette;
 mod pac_pic;
+mod rgbn;
 mod vdat;
 
 use crate::{DecodeError, Format, Image};
@@ -46,6 +47,8 @@ pub(super) static FORMATS: &[Format] = &[
         &["dhr", "dr", "mp", "beam"],
         decode_iff,
     ),
+    Format::new("Amiga", "RGBN", &["rgbn"], decode_iff),
+    Format::new("Amiga", "RGB8", &["rgb8"], decode_iff),
     Format::new("Amiga", "AMOS", &["abk"], decode_abk).signature(),
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
@@ -104,6 +107,8 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
             .or_else(|_| ham_e::decode(contents)),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
+        b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
+        b"RGB8" => rgbn::decode(rgbn::Kind::Rgb8, contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),
         // ANIM: the first frame is a complete ILBM.
         b"ANIM" => match iff::chunks(contents).next() {
