@@ -11,7 +11,9 @@
 //! - Observed from `recoil2png` output: the fixed SPR/MSL heights, the MPL
 //!   variant with a 9-byte header (height, 4 X positions, 4 colours) that the
 //!   sample uses, the MPL canvas (from the leftmost to the rightmost player)
-//!   and player priority, and the TL4 colours (OS defaults, playfield 3 = 0x46).
+//!   and player priority, the 174-byte MPL variant (14-byte header, bytes 9-13
+//!   ignored; mutation probing of `recoil2png`, six samples in
+//!   `corpus/extra/atari8/madstudio`), and the TL4 colours (OS defaults, playfield 3 = 0x46).
 
 use super::antic::{Bitmap, fill};
 use super::font::draw_multicolor_glyph;
@@ -133,7 +135,16 @@ pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
 /// Four overlapping players: height, X positions, colours, then the data of
 /// players 0-3. Player 0 has the highest priority.
 pub(super) fn decode_mpl(data: &[u8]) -> Result<Image, DecodeError> {
-    let (header, players) = data.split_at_checked(9).ok_or(DecodeError::Unrecognized)?;
+    // The 174-byte layout has five more header bytes (player sizes and the
+    // third-colour flag) that are not needed to draw the players.
+    let header_len = if data.len() == 14 + 4 * 40 && data[0] == 40 {
+        14
+    } else {
+        9
+    };
+    let (header, players) = data
+        .split_at_checked(header_len)
+        .ok_or(DecodeError::Unrecognized)?;
     let height = usize::from(header[0]);
     if height == 0 || players.len() != 4 * height {
         return Err(DecodeError::Unrecognized);
@@ -196,6 +207,15 @@ mod tests {
         let image = decode_mpl(&data).unwrap();
         assert_eq!(image.width(), 32);
         assert!(decode_mpl(&data[..12]).is_err());
+    }
+
+    #[test]
+    fn mpl_long_header() {
+        let mut data = alloc::vec![40, 4, 8, 0, 0, 0x28, 0x34, 0x16, 0x98, 1, 2, 3, 4, 5];
+        data.extend_from_slice(&[0x80; 160]);
+        assert_eq!(decode_mpl(&data).unwrap().height(), 40);
+        data[0] = 39;
+        assert!(decode_mpl(&data).is_err());
     }
 
     #[test]

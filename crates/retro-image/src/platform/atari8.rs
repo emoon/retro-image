@@ -29,6 +29,7 @@ mod mcs;
 mod misc_screen;
 mod packed;
 mod palette;
+mod pic_variants;
 mod pmg;
 mod portfolio;
 mod rambrandt;
@@ -415,4 +416,18 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 5: Amiga and misc
     Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
+    // Gaps A
+    Format::new(
+        ATARI8,
+        "Micro Illustrator PIC",
+        &["pic"],
+        pic_variants::decode_mic_pic,
+    ),
+    Format::new(
+        ATARI8,
+        "Graphics 8 PIC",
+        &["pic"],
+        pic_variants::decode_gr8_pic,
+    ),
+    Format::new(ATARI8, "BLASTER", &["pic"], pic_variants::decode_blaster),
 ];

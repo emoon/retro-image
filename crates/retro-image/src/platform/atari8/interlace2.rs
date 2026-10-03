@@ -148,8 +148,8 @@ pub(super) fn decode_mga(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(apac_80x96(&hue, &luminance))
 }
 
-/// Bugbiter APAC239i: a header with a title, then 239 luminance lines and 239
-/// hue lines, interlaced.
+/// Bugbiter APAC239i: a header with a title, then a size word and 239
+/// luminance lines, a second size word and 239 hue lines, interlaced.
 pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
     const MAGIC: &[u8] = b"BUGBITER_APAC239I_PICTURE_V1.0\xff\x50\xef";
     const PLANE: usize = 239 * 40;
@@ -158,12 +158,15 @@ pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
         .and_then(|rest| rest.get(4..))
         .ok_or(DecodeError::Unrecognized)?;
     let title = usize::from(le16(rest, 0).ok_or(DecodeError::Unrecognized)?);
+    // Each plane has its own 16-bit size word.
+    let size = (PLANE as u16).to_le_bytes();
     let planes = rest
         .get(2 + title..)
-        .and_then(|rest| rest.strip_prefix(&(PLANE as u16).to_le_bytes()))
-        .filter(|planes| planes.len() == 2 * PLANE)
+        .and_then(|rest| rest.strip_prefix(&size))
+        .filter(|planes| planes.len() == 2 * PLANE + 2)
         .ok_or(DecodeError::Unrecognized)?;
     let (luminance, hue) = planes.split_at(PLANE);
+    let hue = hue.strip_prefix(&size).ok_or(DecodeError::Unrecognized)?;
     let picture = Scanlines {
         lines: 239,
         luminance: |y, x| nibble(luminance, y, x / 2),
@@ -273,7 +276,9 @@ mod tests {
     fn bgp_needs_plane_size() {
         let mut data = b"BUGBITER_APAC239I_PICTURE_V1.0\xff\x50\xef\0\0\0\0\x02\0hi".to_vec();
         data.extend_from_slice(&[0x58, 0x25]);
-        data.resize(data.len() + 2 * 9560, 0);
+        data.resize(data.len() + 9560, 0);
+        data.extend_from_slice(&[0x58, 0x25]);
+        data.resize(data.len() + 9560, 0);
         let image = decode_bgp(&data).unwrap();
         assert_eq!((image.width(), image.height()), (320, 239));
         data.pop();

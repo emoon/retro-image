@@ -42,8 +42,17 @@ fn glyph(code: u8) -> &'static [u8] {
 /// ANTIC mode 2 (Graphics 0) characters, 8x8 pixels, white on black;
 /// bit 7 of a code shows the glyph inverted.
 pub(super) fn mode2(codes: &[u8], columns: usize) -> Image {
+    mode2_colored(codes, columns, register_rgb(0x00), register_rgb(0x0e))
+}
+
+/// [`mode2`] with the given background and foreground colours.
+pub(super) fn mode2_colored(
+    codes: &[u8],
+    columns: usize,
+    background: u32,
+    foreground: u32,
+) -> Image {
     let rows = codes.len() / columns;
-    let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     let mut image = Image::new(columns as u32 * 8, rows as u32 * 8);
     for (i, &code) in codes.iter().enumerate() {
         let (x0, y0) = ((i % columns) as u32 * 8, (i / columns) as u32 * 8);
