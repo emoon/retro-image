@@ -5,18 +5,20 @@
 [![Documentation](https://docs.rs/retro-image/badge.svg)](https://docs.rs/retro-image)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/emoon/retro-image/blob/main/LICENSE)
 
-retro-image turns pictures from old computers into RGB. It reads 501 formats from 51
-platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum, Amstrad CPC, MSX, PC-98 and
-a long tail of rarer machines. The full list is in [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
+retro-image opens pictures from old computers, so you can view them on a modern machine. It
+reads 501 formats from 51 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum,
+Amstrad CPC, MSX, PC-98 and a long tail of rarer machines. Every format is listed in
+[docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 
-The project was inspired by [RECOIL](https://recoil.sourceforge.net), and the tests
-compare our output with RECOIL's. None of RECOIL's code was used, though. The decoders
-were written from public documentation, permissively licensed code, and sample files
-taken apart by hand. [docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md) says where they came from.
+[RECOIL](https://recoil.sourceforge.net) inspired the project, and the tests compare our
+output against it. We never used its code. The decoders come from public documentation,
+permissively licensed code, and sample files I took apart by hand. Where each one came from
+is in [docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md).
 
 ## Library
 
-The crate is `no_std` with `alloc`, has no dependencies and only ever sees byte slices.
+The crate is `no_std` (it needs `alloc`) and has no dependencies. You give it bytes and it
+gives you pixels. It never touches the filesystem.
 
 ```toml
 [dependencies]
@@ -27,13 +29,13 @@ retro-image = "0.0.1"
 let data = std::fs::read("PICTURE.PI1")?;
 let image = retro_image::decode("PICTURE.PI1", &data)?;
 let (width, height) = (image.width(), image.height());
-let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row-major
+let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
 ```
 
-The file name decides which formats to try. Formats with a reliable signature are also
-recognised by content, so those still decode when the extension is wrong. Some formats
-keep their colours in a second file, like a `.SCR` with a `.PAL`; pass it in with
-`decode_with`.
+The file name tells it which formats to try. Many formats also have a reliable signature,
+so those still decode if the extension is wrong. A few formats keep their colours in a
+second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass the
+extra file in.
 
 ## Command line
 
@@ -43,7 +45,7 @@ retro-image PICTURE.PI1                  # writes PICTURE.PI1.png
 retro-image --list-formats
 ```
 
-It can also make thumbnails for file managers that use freedesktop thumbnailers:
+It can also generate thumbnails for file managers that use freedesktop thumbnailers:
 
 ```sh
 retro-image --mime-xml    > ~/.local/share/mime/packages/retro-image.xml
