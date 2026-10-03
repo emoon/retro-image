@@ -67,6 +67,18 @@ fn best_of(
     best
 }
 
+/// Like `best_of`, but through `decode_with`, which tries every candidate
+/// format in turn until one accepts the file.
+fn best_of_dispatch(name: &str, data: &[u8], companions: &Siblings, runs: usize) -> Duration {
+    let mut best = Duration::MAX;
+    for _ in 0..runs.min(5) {
+        let start = Instant::now();
+        std::hint::black_box(retro_image::decode_with(name, data, companions).ok());
+        best = best.min(start.elapsed());
+    }
+    best
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let root = args.first().map_or("corpus", String::as_str);
@@ -79,6 +91,8 @@ fn main() {
     let mut formats: HashMap<String, Totals> = HashMap::new();
     let want_digest = std::env::var_os("DIGEST").is_some();
     let mut digest = String::new();
+    let mut dispatch_total = Duration::ZERO;
+    let mut slow_dispatch = Vec::new();
     let mut files: Vec<(Duration, u64, String)> = Vec::new();
     for path in &paths {
         let Ok(data) = std::fs::read(path) else {
@@ -118,14 +132,34 @@ fn main() {
         t.time += time;
         t.pixels += pixels;
         t.bytes += data.len() as u64;
+        let dispatch = best_of_dispatch(&name, &data, &siblings, runs);
+        dispatch_total += dispatch;
         files.push((time, pixels, name));
+        if dispatch > time * 2 + Duration::from_micros(50) {
+            slow_dispatch.push((
+                dispatch - time,
+                format.name,
+                files.last().unwrap().2.clone(),
+            ));
+        }
     }
 
     if let Some(file) = std::env::var_os("DIGEST") {
         std::fs::write(file, &digest).unwrap();
     }
     let total: Duration = formats.values().map(|t| t.time).sum();
-    println!("decoded {} files, total {:?}\n", files.len(), total);
+    println!(
+        "decoded {} files, total {:?}; through decode(): {:?}\n",
+        files.len(),
+        total,
+        dispatch_total
+    );
+    slow_dispatch.sort_by_key(|d| std::cmp::Reverse(d.0));
+    println!("== files where trying other formats first costs the most");
+    for (extra, format, name) in slow_dispatch.iter().take(top) {
+        println!("{extra:>10.2?} extra  {name} ({format})");
+    }
+    println!();
 
     let mut by_time: Vec<_> = formats.iter().collect();
     by_time.sort_by_key(|(_, t)| std::cmp::Reverse(t.time));
