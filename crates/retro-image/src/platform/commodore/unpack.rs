@@ -6,7 +6,9 @@
 //! the expected size) checked against sample files. The exact-length
 //! backward variant ([`backward_rle_filled`]) was reverse engineered from
 //! the Super Hires samples (SIF, packed SHX) by probing `recoil2png` with
-//! repacked copies.
+//! repacked copies. The flag-table backward packer ([`flag_table_rle`]) was
+//! reverse engineered from a disassembly of the depacker stub in the packed
+//! True Paint samples (the code is in the files; no outside source).
 
 use alloc::vec::Vec;
 
@@ -116,6 +118,52 @@ pub(super) fn backward_rle_filled(
     Some((out, exact && bytes.next().is_none()))
 }
 
+/// Unpacks the self-running True Paint packer's payload. It is read from the
+/// last byte down; nine flag bytes `flags` pick the codes, and `values`
+/// holds the bytes for the "emit twice" codes (indexes 5..=8). Where a flag
+/// appears twice the highest index wins. Output is returned in file order
+/// (the read order, reversed). `None` on truncation or output past `limit`.
+///
+/// Codes by flag index: 0 literal escape, 1 byte three times, 2 `n+2` zeros,
+/// 3 three zeros, 4 `count` then byte repeated `count+2` times (count 0 ends
+/// the stream), 5..=8 the table value twice.
+pub(super) fn flag_table_rle(
+    packed: &[u8],
+    flags: &[u8; 9],
+    values: &[u8; 4],
+    limit: usize,
+) -> Option<Vec<u8>> {
+    let mut bytes = packed.iter().rev().copied();
+    let mut out = Vec::new();
+    loop {
+        let byte = bytes.next()?;
+        match flags.iter().rposition(|&f| f == byte) {
+            None => out.push(byte),
+            Some(0) => out.push(bytes.next()?),
+            Some(1) => out.extend([bytes.next()?; 3]),
+            Some(2) => {
+                let n = usize::from(bytes.next()?) + 2;
+                out.resize(out.len() + n, 0);
+            }
+            Some(3) => out.extend([0; 3]),
+            Some(4) => {
+                let n = usize::from(bytes.next()?);
+                if n == 0 {
+                    break;
+                }
+                let value = bytes.next()?;
+                out.resize(out.len() + n + 2, value);
+            }
+            Some(i) => out.extend([values[i - 5]; 2]),
+        }
+        if out.len() > limit {
+            return None;
+        }
+    }
+    out.reverse();
+    Some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,5 +206,18 @@ mod tests {
             escape_rle(&[1, 2], 0xfe, Run::ValueCount, 4),
             Some(alloc::vec![1, 2])
         );
+    }
+
+    #[test]
+    fn flag_table_codes() {
+        let flags = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let values = [0xa0, 0xa1, 0xa2, 0xa3];
+        // Read order: 6 (table value twice), 0x42, 5 1 9 (9 three times), 5 0 (end).
+        let packed = [0, 5, 9, 1, 5, 0x42, 6];
+        assert_eq!(
+            flag_table_rle(&packed, &flags, &values, 100),
+            Some(alloc::vec![9, 9, 9, 0x42, 0xa0, 0xa0])
+        );
+        assert_eq!(flag_table_rle(&[1], &flags, &values, 100), None);
     }
 }

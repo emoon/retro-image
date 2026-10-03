@@ -13,12 +13,14 @@
 //! |---|---|
 //! | Drazlace (DRL, DLP) | CB "Drazlace", GD Draz |
 //! | True Paint (MCI) | CB "True Paint", GD TruePaint |
+//! | True Paint, self-running packed | reverse engineered from 5 samples: BASIC `SYS` stub, a 256-byte depacker holding the flag table, and the unpacked picture in True Paint's memory map moved down by `$8000`; see `unpack::flag_table_rle`. Checked pixel for pixel against `recoil2png` on the unpacked data |
 //! | Interlace Hires Editor (IHE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two bare bitmaps at `$2000` and `$4000`, set bits black and clear bits grey (`$0C`) in both frames |
 //! | Multi-Lace Editor (MLE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two 2048-byte multicolour bitmaps at `$2000` and `$2800` (6 rows of cells and 16 cells of the 7th, 56 lines), fixed colours; the first frame is shown one pixel to the right |
 //! | Hires-Interlace (HLF) | CB "Hires-Interlace v1.0"; which screen RAM pairs with which bitmap checked against `recoil2png` output |
 
 use super::bitmap::{Hires, Multicolor};
 use super::prg::Prg;
+use super::unpack::flag_table_rle;
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
 
@@ -61,6 +63,50 @@ pub(super) fn decode_true_paint(data: &[u8]) -> Result<Image, DecodeError> {
     if !TRUE_PAINT[0].sizes.contains(&data.len()) {
         return Err(DecodeError::Unrecognized);
     }
+    true_paint(data)
+}
+
+/// Size of the plain True Paint image without its load address.
+const TRUE_PAINT_BODY: usize = 19432;
+/// BASIC `2059 SYS` line and the start of the loader that follows it.
+const PACKED_STUB: [u8; 17] = [
+    0x01, 0x08, 0x0b, 0x08, 0x09, 0x00, 0x9e, 0x32, 0x30, 0x35, 0x39, 0x00, 0xa2, 0x00, 0x78, 0xbd,
+    0x1c,
+];
+/// Offsets in the packed file: flag table, its value table, and the payload,
+/// which starts with the stream's end code (read last).
+const FLAGS_AT: usize = 0x81;
+const VALUES_AT: usize = 0x8a;
+const PAYLOAD_AT: usize = 0x8e;
+
+/// True Paint saved as a self-running program: the picture is packed
+/// backwards after a depacker stub. The end code (`00` and the fifth
+/// flag) at `$8E` is checked before unpacking.
+pub(super) fn decode_true_paint_packed(data: &[u8]) -> Result<Image, DecodeError> {
+    let bad = DecodeError::Unrecognized;
+    if data.len() < PAYLOAD_AT + 2
+        || data.len() >= 19434
+        || data[..PACKED_STUB.len()] != PACKED_STUB
+    {
+        return Err(bad);
+    }
+    let flags: &[u8; 9] = data[FLAGS_AT..FLAGS_AT + 9].try_into().map_err(|_| bad)?;
+    let values: &[u8; 4] = data[VALUES_AT..VALUES_AT + 4].try_into().map_err(|_| bad)?;
+    if data[PAYLOAD_AT..PAYLOAD_AT + 2] != [0, flags[4]] {
+        return Err(bad);
+    }
+    // The output is a 130-byte viewer, then the image.
+    let unpacked =
+        flag_table_rle(&data[PAYLOAD_AT..], flags, values, 2 * TRUE_PAINT_BODY).ok_or(bad)?;
+    let body = unpacked
+        .len()
+        .checked_sub(TRUE_PAINT_BODY)
+        .map(|start| &unpacked[start..])
+        .ok_or(bad)?;
+    true_paint(&super::bitmap::with_header(body.to_vec()))
+}
+
+fn true_paint(data: &[u8]) -> Result<Image, DecodeError> {
     let prg = Prg::new(data, 0x9c00);
     let background = prg.byte(0x9fe8).ok_or(DecodeError::Unrecognized)?;
     blend(
