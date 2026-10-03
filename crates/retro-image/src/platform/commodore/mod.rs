@@ -40,6 +40,7 @@ mod unpack;
 mod vhi;
 mod vic2;
 mod vic20;
+mod viewer;
 mod xfl;
 
 use crate::{DecodeError, Format, Image};
@@ -387,6 +388,20 @@ pub(super) static FORMATS: &[Format] = &[
         "Self-displaying PETSCII",
         &["prg"],
         petscii::decode_petscii_prg,
+    )
+    .signature(),
+    Format::new(
+        C64,
+        "Koala viewer (10500 bytes)",
+        &["prg"],
+        viewer::decode_10500,
+    )
+    .signature(),
+    Format::new(
+        C64,
+        "Koala viewer (10608 bytes)",
+        &["prg"],
+        viewer::decode_10608,
     )
     .signature(),
 ];
