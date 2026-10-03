@@ -19,6 +19,7 @@ mod gtia;
 mod hcm;
 mod hip;
 mod ice;
+mod ice_single;
 mod inflate;
 mod interlace;
 mod interlace2;
@@ -430,4 +431,10 @@ pub(super) static FORMATS: &[Format] = &[
         pic_variants::decode_gr8_pic,
     ),
     Format::new(ATARI8, "BLASTER", &["pic"], pic_variants::decode_blaster),
+    Format::new(
+        ATARI8,
+        "Interlace Character Editor single set",
+        &["ice"],
+        ice_single::decode_ice_single,
+    ),
 ];
