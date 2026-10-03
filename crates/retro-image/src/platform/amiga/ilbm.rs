@@ -18,7 +18,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::planar_pixels;
+use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 pub(super) const CAMG_LACE: u32 = 0x4;
@@ -41,9 +41,11 @@ impl Header {
         if bmhd.len() < 20 {
             return None;
         }
+        let (width, height) = (be16(bmhd, 0)? as usize, be16(bmhd, 2)? as usize);
+        check_size(width, height).ok()?;
         let header = Self {
-            width: be16(bmhd, 0)? as usize,
-            height: be16(bmhd, 2)? as usize,
+            width,
+            height,
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
@@ -346,5 +348,26 @@ fn scale(image: Image, camg: u32) -> Image {
         (false, true) => image.scaled(2, 1),
         (true, false) => image.scaled(1, 2),
         _ => image,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bmhd(width: u16, height: u16) -> Vec<u8> {
+        let mut chunk = alloc::vec![0u8; 28];
+        chunk[..4].copy_from_slice(b"BMHD");
+        chunk[4..8].copy_from_slice(&20u32.to_be_bytes());
+        chunk[8..10].copy_from_slice(&width.to_be_bytes());
+        chunk[10..12].copy_from_slice(&height.to_be_bytes());
+        chunk[16] = 1;
+        chunk
+    }
+
+    #[test]
+    fn header_rejects_pictures_over_the_pixel_cap() {
+        assert!(Header::parse(&bmhd(100, 100)).is_some());
+        assert!(Header::parse(&bmhd(65535, 65535)).is_none());
     }
 }
