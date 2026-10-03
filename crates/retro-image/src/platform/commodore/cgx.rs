@@ -11,6 +11,7 @@
 //!   bitmap frames without FLI or interlace attributes are supported.
 
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN, rgb};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 /// Finds a RIFF chunk in `chunks`.
@@ -49,7 +50,9 @@ pub(super) fn decode_cgx(data: &[u8]) -> Result<Image, DecodeError> {
     if frame_len < BITMAP_LEN + 2 * SCREEN_LEN + 2 {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new((columns * 320) as u32, (rows * 200) as u32);
+    let (width, height) = (columns * 320, rows * 200);
+    check_size(width, height)?;
+    let mut image = Image::new(width as u32, height as u32);
     for (i, frame) in frames.chunks_exact(frame_len).enumerate() {
         let (bitmap, rest) = frame.split_at(BITMAP_LEN);
         let (screen, rest) = rest.split_at(SCREEN_LEN);
@@ -69,4 +72,21 @@ pub(super) fn decode_cgx(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn huge_matrix_is_rejected_before_allocating() {
+        let frame_len = BITMAP_LEN + 2 * SCREEN_LEN + 2;
+        let mut data = b"RIFF\0\0\0\0CGFX".to_vec();
+        data.extend(b"FRMT\x0c\0\0\0");
+        data.extend([255, 255, 0, 0, 1, 0, 0, 0, 25, 40, 3, 0]);
+        data.extend(b"DATA");
+        data.extend((frame_len as u32).to_le_bytes());
+        data.resize(data.len() + frame_len, 0);
+        assert!(decode_cgx(&data).is_err());
+    }
 }

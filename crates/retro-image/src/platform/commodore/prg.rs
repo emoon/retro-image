@@ -29,7 +29,7 @@ impl<'a> Prg<'a> {
     /// `len` bytes at C64 address `addr`, if the file covers them.
     pub(super) fn at(&self, addr: u16, len: usize) -> Option<&'a [u8]> {
         let start = usize::from(addr).checked_sub(self.load)? + 2;
-        self.data.get(start..start + len)
+        self.data.get(start..start.checked_add(len)?)
     }
 
     /// The byte at `addr`.
@@ -49,5 +49,6 @@ mod tests {
         assert_eq!(prg.at(0x6001, 2), Some(&[2u8, 3][..]));
         assert_eq!(prg.at(0x6002, 2), None);
         assert_eq!(prg.at(0x5fff, 1), None);
+        assert_eq!(prg.at(0x6000, usize::MAX), None);
     }
 }
