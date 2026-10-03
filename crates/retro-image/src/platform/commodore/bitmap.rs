@@ -26,7 +26,7 @@
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
-use super::unpack::{Run, escape_rle};
+use super::unpack::{Run, escape_rle, escape_rle_counted};
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -448,6 +448,39 @@ pub(super) fn decode_koala_packed(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked =
         escape_rle(packed, 0xfe, Run::ValueCount, 10001).ok_or(DecodeError::Unrecognized)?;
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
+}
+
+/// Koala compressed (GG) saved under a Koala extension. Only the exact
+/// stream is accepted (load `$6000`, the packed bytes used up exactly), so
+/// other files with these extensions are not claimed.
+pub(super) fn decode_koala_packed_exact(data: &[u8]) -> Result<Image, DecodeError> {
+    let bad = DecodeError::Unrecognized;
+    let packed = data.strip_prefix(&[0x00, 0x60]).ok_or(bad)?;
+    let (unpacked, used) = escape_rle_counted(packed, 0xfe, Run::ValueCount, 10001).ok_or(bad)?;
+    if unpacked.len() != 10001 || used != packed.len() {
+        return Err(bad);
+    }
+    koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
+}
+
+/// Doodle with the bitmap trimmed to the 8000 bytes the picture uses
+/// (9026 bytes up to a full 9217): the missing tail reads as zero.
+pub(super) fn decode_doodle_trimmed(data: &[u8]) -> Result<Image, DecodeError> {
+    if !(9026..9218).contains(&data.len()) || data[..2] != [0x00, 0x5c] {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mut full = data.to_vec();
+    full.resize(9218, 0);
+    DOODLE.decode(&full)
+}
+
+/// Advanced Art Studio saved under a Koala extension: told apart by its
+/// load address `$2000` (Koala uses `$6000`, `$4400` or `$4000`).
+pub(super) fn decode_advanced_art_studio_koa(data: &[u8]) -> Result<Image, DecodeError> {
+    if data.get(..2) != Some(&[0x00, 0x20]) {
+        return Err(DecodeError::Unrecognized);
+    }
+    ADVANCED_ART_STUDIO.decode(data)
 }
 
 /// Doodle compressed (JJ): load address, then `$FE value count` RLE.

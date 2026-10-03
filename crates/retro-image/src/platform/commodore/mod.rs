@@ -234,7 +234,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "GoDot 4Bit clip", &["clp"], godot::decode_clp).signature(),
     Format::new(C64, "Printfox screen", &["bs"], printfox::decode_bs),
     Format::new(C64, "Printfox large picture", &["gb"], printfox::decode_gb),
-    Format::new(C64, "Pagefox", &["pg"], printfox::decode_pg),
+    Format::new(C64, "Pagefox", &["pg", "bs"], printfox::decode_pg),
     Format::new(
         C64,
         "Star Painter",
@@ -385,6 +385,31 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
     Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
+    // Corpus gaps: C64
+    Format::new(
+        C64,
+        "Koala Painter (compressed, as KOA)",
+        &["koa", "kla"],
+        bitmap::decode_koala_packed_exact,
+    ),
+    Format::new(
+        C64,
+        "Advanced Art Studio (as KOA)",
+        &["koa", "kla"],
+        bitmap::decode_advanced_art_studio_koa,
+    ),
+    Format::new(
+        C64,
+        "Doodle (trimmed bitmap)",
+        &["dd", "ddp"],
+        bitmap::decode_doodle_trimmed,
+    ),
+    Format::new(
+        C64,
+        "True Paint (self-running)",
+        &["mci"],
+        interlace::decode_true_paint_packed,
+    ),
     // Self-displaying PRGs
     Format::new(
         C64,
