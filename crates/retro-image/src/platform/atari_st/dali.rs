@@ -70,8 +70,9 @@ fn expand(
     byte_len: usize,
     long_len: usize,
 ) -> Option<alloc::vec::Vec<u8>> {
-    let counts = data.get(pos..pos.checked_add(byte_len)?)?;
-    let longs = data.get(pos + byte_len..pos + byte_len + long_len)?;
+    let longs_at = pos.checked_add(byte_len)?;
+    let counts = data.get(pos..longs_at)?;
+    let longs = data.get(longs_at..longs_at.checked_add(long_len)?)?;
     let mut bitmap = alloc::vec![0u8; SCREEN_LEN];
     let mut index = 0;
     let mut remaining = 0u8;
@@ -100,5 +101,12 @@ mod tests {
         assert_eq!(ascii_number(b"x123\r\n", 1), Some((123, 6)));
         assert_eq!(ascii_number(b"12\n", 0), None);
         assert_eq!(ascii_number(b"\r\n", 0), None);
+    }
+
+    #[test]
+    fn table_sizes_that_overflow_are_rejected() {
+        let mut data = vec![0; 32];
+        data.extend_from_slice(b"0\r\n18446744073709551615\r\n");
+        assert!(decode_lpk(&data).is_err());
     }
 }
