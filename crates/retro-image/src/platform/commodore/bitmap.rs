@@ -279,9 +279,11 @@ pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Micro Illustrator, uncompressed: 22-byte header (load address, magic
 /// `FF 80 69 67`, header length 20, compression 0, background, ...), then
-/// screen, colour RAM and bitmap.
+/// screen, colour RAM and bitmap. The magic is optional (some files have
+/// zeroes there); byte 7 (compression) must be 0. Size 10022 only. See
+/// docs/research/gaps-corpus-other.md.
 pub(super) fn decode_micro_illustrator(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != 10022 || data[2..8] != [0xff, 0x80, 0x69, 0x67, 20, 0] {
+    if data.len() != 10022 || data[7] != 0 {
         return Err(DecodeError::Unrecognized);
     }
     let bitmap = Bitmap::multicolor(&data[2022..], &data[22..], &data[1022..], data[8]);
