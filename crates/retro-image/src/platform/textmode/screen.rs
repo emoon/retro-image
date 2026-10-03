@@ -168,7 +168,7 @@ pub(super) fn render(
     let mut painted = Vec::with_capacity(width);
     for (cell_row, row_cells) in cells.chunks(width).take(rows).enumerate() {
         painted.clear();
-        painted.extend(row_cells.iter().map(|cell| Painted::new(cell)));
+        painted.extend(row_cells.iter().map(Painted::new));
         for y in 0..cell_height {
             let line = image.row_mut((cell_row * cell_height + y) as u32);
             for (cell, out) in painted.iter().zip(line.chunks_exact_mut(cell_width * 3)) {
