@@ -63,6 +63,17 @@ impl Image {
         }
     }
 
+    /// An image from `0xRRGGBB` colours in row-major order; pixels the
+    /// iterator doesn't reach stay black.
+    pub(crate) fn from_colors(width: u32, height: u32, colors: impl Iterator<Item = u32>) -> Self {
+        let mut image = Self::new(width, height);
+        for (pixel, color) in image.rgb.as_chunks_mut::<3>().0.iter_mut().zip(colors) {
+            let [_, r, g, b] = color.to_be_bytes();
+            *pixel = [r, g, b];
+        }
+        image
+    }
+
     /// Width in pixels.
     pub fn width(&self) -> u32 {
         self.width
@@ -84,16 +95,25 @@ impl Image {
     }
 
     /// Sets the pixel at (`x`, `y`) to `0xRRGGBB`.
+    #[inline]
     pub(crate) fn set(&mut self, x: u32, y: u32, color: u32) {
-        let i = (y as usize * self.width as usize + x as usize) * 3;
+        let i = y as usize * self.width as usize + x as usize;
         let [_, r, g, b] = color.to_be_bytes();
-        self.rgb[i..i + 3].copy_from_slice(&[r, g, b]);
+        self.rgb.as_chunks_mut::<3>().0[i] = [r, g, b];
+    }
+
+    /// Row `y` as RGB bytes. Panics if `y` is outside the image.
+    pub(crate) fn row_mut(&mut self, y: u32) -> &mut [u8] {
+        let row_len = self.width as usize * 3;
+        &mut self.rgb[y as usize * row_len..][..row_len]
     }
 
     /// The pixel at (`x`, `y`) as `0xRRGGBB`.
+    #[inline]
     pub(crate) fn get(&self, x: u32, y: u32) -> u32 {
-        let i = (y as usize * self.width as usize + x as usize) * 3;
-        u32::from(self.rgb[i]) << 16 | u32::from(self.rgb[i + 1]) << 8 | u32::from(self.rgb[i + 2])
+        let i = y as usize * self.width as usize + x as usize;
+        let [r, g, b] = self.rgb.as_chunks::<3>().0[i];
+        u32::from_be_bytes([0, r, g, b])
     }
 
     /// An image from one palette index per pixel, row-major.
@@ -106,10 +126,7 @@ impl Image {
         indices: &[u8],
         palette: &[u32],
     ) -> Result<Self, DecodeError> {
-        let outside = indices
-            .iter()
-            .max()
-            .is_some_and(|&max| usize::from(max) >= palette.len());
+        let outside = max_byte(indices).is_some_and(|max| usize::from(max) >= palette.len());
         if indices.len() != width as usize * height as usize || outside {
             return Err(DecodeError::Unrecognized);
         }
@@ -255,6 +272,20 @@ pub(crate) fn planar_pixels(
     values
 }
 
+/// The largest byte of `bytes`. Lane-wise maxima over fixed-size chunks
+/// vectorise; `Iterator::max` compiles to one compare-and-select per byte.
+fn max_byte(bytes: &[u8]) -> Option<u8> {
+    let (chunks, tail) = bytes.as_chunks::<32>();
+    let mut lanes = [0u8; 32];
+    for chunk in chunks {
+        for (lane, &byte) in lanes.iter_mut().zip(chunk) {
+            *lane = (*lane).max(byte);
+        }
+    }
+    let max = lanes.iter().chain(tail).copied().max();
+    max.filter(|_| !bytes.is_empty())
+}
+
 /// Keeps the first `width` (at most `stride`) items of every `stride`-item
 /// row of `values`.
 fn crop_rows<T: Copy>(values: &mut Vec<T>, stride: usize, width: usize) {
@@ -286,6 +317,24 @@ mod tests {
         assert_eq!(image.rgb(), &[0xff, 0x80, 0, 0, 0, 0]);
         assert!(Image::from_indexed(2, 1, &[2, 0], &[0, 0]).is_err());
         assert!(Image::from_indexed(2, 2, &[0, 0], &[0]).is_err());
+    }
+
+    #[test]
+    fn from_colors_fills_row_major_and_pads_black() {
+        let image = Image::from_colors(2, 2, [0x010203, 0x040506, 0x070809].into_iter());
+        assert_eq!(image.rgb(), &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0]);
+    }
+
+    #[test]
+    fn max_byte_covers_chunks_and_tail() {
+        assert_eq!(max_byte(&[]), None);
+        assert_eq!(max_byte(&[0; 5]), Some(0));
+        let mut bytes = [1u8; 70];
+        assert_eq!(max_byte(&bytes), Some(1));
+        bytes[33] = 9;
+        assert_eq!(max_byte(&bytes), Some(9));
+        bytes[69] = 200;
+        assert_eq!(max_byte(&bytes), Some(200));
     }
 
     #[test]

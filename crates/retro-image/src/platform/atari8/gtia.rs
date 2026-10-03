@@ -29,14 +29,68 @@ pub(super) struct Colors {
 
 /// The colour value GTIA shows for `players` (bits 0-3 = P0-P3) over
 /// `playfield` (bits 0-3 = PF0-PF3) under `prior`.
+pub(super) fn resolve(prior: u8, players: u8, playfield: u8, colors: &Colors) -> u8 {
+    let selected = SIGNALS[signal_index(prior, players, playfield)];
+    let registers = [
+        colors.player[0],
+        colors.player[1],
+        colors.player[2],
+        colors.player[3],
+        colors.playfield[0],
+        colors.playfield[1],
+        colors.playfield[2],
+        colors.playfield[3],
+        colors.background,
+    ];
+    registers
+        .iter()
+        .enumerate()
+        .filter(|(n, _)| selected >> n & 1 != 0)
+        .fold(0, |color, (_, value)| color | value)
+}
+
+/// Index into [`SIGNALS`]: the PRIOR bits the equations read (0-3 and the
+/// multicolour player bit 5), the players and the playfield.
+fn signal_index(prior: u8, players: u8, playfield: u8) -> usize {
+    usize::from(prior & 15 | (prior >> 5 & 1) << 4)
+        | usize::from(players & 15) << 5
+        | usize::from(playfield & 15) << 9
+}
+
+/// [`signals`] for every input, so a pixel costs one lookup.
+static SIGNALS: [u16; 1 << 13] = {
+    let mut table = [0; 1 << 13];
+    let mut index = 0;
+    while index < table.len() {
+        let prior = (index & 15 | (index >> 4 & 1) << 5) as u8;
+        table[index] = signals(prior, (index >> 5 & 15) as u8, (index >> 9 & 15) as u8);
+        index += 1;
+    }
+    table
+};
+
+/// Which colour registers show: bit 0-3 = players, 4-7 = playfields,
+/// 8 = background.
 // Every signal is written as "present and not blocked by ...", which reads
 // better than the minimised forms Clippy suggests.
 #[allow(clippy::nonminimal_bool)]
-pub(super) fn resolve(prior: u8, players: u8, playfield: u8, colors: &Colors) -> u8 {
-    let bit = |value: u8, n: u8| value >> n & 1 != 0;
-    let [p0, p1, p2, p3] = [0, 1, 2, 3].map(|n| bit(players, n));
-    let [f0, f1, f2, f3] = [0, 1, 2, 3].map(|n| bit(playfield, n));
-    let [pri0, pri1, pri2, pri3] = [0, 1, 2, 3].map(|n| bit(prior, n));
+const fn signals(prior: u8, players: u8, playfield: u8) -> u16 {
+    const fn bit(value: u8, n: u8) -> bool {
+        value >> n & 1 != 0
+    }
+    let (p0, p1, p2, p3) = (
+        bit(players, 0),
+        bit(players, 1),
+        bit(players, 2),
+        bit(players, 3),
+    );
+    let (f0, f1, f2, f3) = (
+        bit(playfield, 0),
+        bit(playfield, 1),
+        bit(playfield, 2),
+        bit(playfield, 3),
+    );
+    let (pri0, pri1, pri2, pri3) = (bit(prior, 0), bit(prior, 1), bit(prior, 2), bit(prior, 3));
     let multicolor = bit(prior, 5);
     let (p01, p23, pf01, pf23) = (p0 || p1, p2 || p3, f0 || f1, f2 || f3);
     let (pri01, pri12, pri23, pri03) = (pri0 || pri1, pri1 || pri2, pri2 || pri3, pri0 || pri3);
@@ -51,21 +105,16 @@ pub(super) fn resolve(prior: u8, players: u8, playfield: u8, colors: &Colors) ->
     let sf2 = f2 && !(p23 && pri03) && !(p01 && !pri2) && !sf3;
     let sb = !p01 && !p23 && !pf01 && !pf23;
 
-    let selected = [
-        (sp0, colors.player[0]),
-        (sp1, colors.player[1]),
-        (sp2, colors.player[2]),
-        (sp3, colors.player[3]),
-        (sf0, colors.playfield[0]),
-        (sf1, colors.playfield[1]),
-        (sf2, colors.playfield[2]),
-        (sf3, colors.playfield[3]),
-        (sb, colors.background),
-    ];
-    selected
-        .iter()
-        .filter(|(on, _)| *on)
-        .fold(0, |color, (_, value)| color | value)
+    let flags = [sp0, sp1, sp2, sp3, sf0, sf1, sf2, sf3, sb];
+    let mut mask = 0;
+    let mut n = 0;
+    while n < flags.len() {
+        if flags[n] {
+            mask |= 1 << n;
+        }
+        n += 1;
+    }
+    mask
 }
 
 /// Player and missile shapes on one scanline, in output pixels of a

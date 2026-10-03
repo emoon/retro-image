@@ -77,6 +77,74 @@ pub(super) struct Style<'a> {
     pub(super) nine_pixels: bool,
 }
 
+fn rgb(color: u32) -> [u8; 3] {
+    let [_, r, g, b] = color.to_be_bytes();
+    [r, g, b]
+}
+
+/// The 24 bytes of 8 pixels of `color`, as three words (native byte order,
+/// like [`GLYPH_MASKS`]).
+fn repeat8(color: [u8; 3]) -> [u64; 3] {
+    let mut bytes = [0; 24];
+    for pixel in bytes.as_chunks_mut::<3>().0 {
+        *pixel = color;
+    }
+    let [a, b, c] = *bytes.as_chunks::<8>().0 else {
+        unreachable!("24 bytes make 3 words")
+    };
+    [a, b, c].map(u64::from_ne_bytes)
+}
+
+/// For each glyph row, 0xff over the 3 bytes of every set pixel (leftmost
+/// pixel = most significant bit first), 0 elsewhere, as three words in
+/// native byte order. Lets a row of 8 pixels be coloured with a few
+/// word-wide AND and XOR instead of a branch per pixel.
+const GLYPH_MASKS: [[u64; 3]; 256] = {
+    let mut masks = [[0; 3]; 256];
+    let mut bits = 0;
+    while bits < 256 {
+        let mut word = 0;
+        while word < 3 {
+            let mut bytes = [0; 8];
+            let mut i = 0;
+            while i < 8 {
+                if bits & (0x80 >> ((word * 8 + i) / 3)) != 0 {
+                    bytes[i] = 0xff;
+                }
+                i += 1;
+            }
+            masks[bits][word] = u64::from_ne_bytes(bytes);
+            word += 1;
+        }
+        bits += 1;
+    }
+    masks
+};
+
+/// A cell's colours as bytes, ready to be blended into pixel lines.
+struct Painted {
+    glyph: u8,
+    line_drawing: bool,
+    fg: [u8; 3],
+    bg: [u8; 3],
+    fg8: [u64; 3],
+    bg8: [u64; 3],
+}
+
+impl Painted {
+    fn new(cell: &Cell) -> Self {
+        let (fg, bg) = (rgb(cell.fg), rgb(cell.bg));
+        Self {
+            glyph: cell.glyph,
+            line_drawing: (0xc0..=0xdf).contains(&cell.glyph),
+            fg,
+            bg,
+            fg8: repeat8(fg),
+            bg8: repeat8(bg),
+        }
+    }
+}
+
 /// Draws `rows` rows of `width` cells; missing cells are black. Only as
 /// many top rows as fit in [`MAX_PIXELS`] are drawn.
 pub(super) fn render(
@@ -95,19 +163,36 @@ pub(super) fn render(
     }
     let rows = rows.min(MAX_PIXELS / row_pixels);
     let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32);
-    for (i, cell) in cells.iter().take(width * rows).enumerate() {
-        let (x0, y0) = ((i % width) * cell_width, (i / width) * cell_height);
-        // Line-drawing characters join up across the 9th column.
-        let repeat_8th = (0xc0..=0xdf).contains(&cell.glyph);
+    // Per cell of the current text row, so its colours are expanded once
+    // for all of its pixel lines.
+    let mut painted = Vec::with_capacity(width);
+    for (cell_row, row_cells) in cells.chunks(width).take(rows).enumerate() {
+        painted.clear();
+        painted.extend(row_cells.iter().map(Painted::new));
         for y in 0..cell_height {
-            let bits = style.font.row(cell.glyph, y);
-            for x in 0..cell_width {
-                let set = match x {
-                    0..8 => bits & (0x80 >> x) != 0,
-                    _ => repeat_8th && bits & 1 != 0,
-                };
-                let color = if set { cell.fg } else { cell.bg };
-                image.set((x0 + x) as u32, (y0 + y) as u32, color);
+            let line = image.row_mut((cell_row * cell_height + y) as u32);
+            for (cell, out) in painted.iter().zip(line.chunks_exact_mut(cell_width * 3)) {
+                let bits = style.font.row(cell.glyph, y);
+                let (eight, ninth) = out.split_at_mut(24);
+                let mask = &GLYPH_MASKS[usize::from(bits)];
+                for (((chunk, &m), &f), &b) in eight
+                    .as_chunks_mut::<8>()
+                    .0
+                    .iter_mut()
+                    .zip(mask)
+                    .zip(&cell.fg8)
+                    .zip(&cell.bg8)
+                {
+                    *chunk = (b ^ ((b ^ f) & m)).to_ne_bytes();
+                }
+                // Line-drawing characters join up across the 9th column.
+                if let Some(pixel) = ninth.first_chunk_mut::<3>() {
+                    *pixel = if cell.line_drawing && bits & 1 != 0 {
+                        cell.fg
+                    } else {
+                        cell.bg
+                    };
+                }
             }
         }
     }

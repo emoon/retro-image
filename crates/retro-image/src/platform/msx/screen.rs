@@ -149,20 +149,18 @@ fn draw_packed(mode: Bitmap, packed: &[u8], image: &mut Image, palette: &Palette
     let bpp = mode.bits_per_pixel();
     let (width, height) = (image.width() as usize, image.height() as usize);
     for y in 0..height {
+        let mut group_colours = [0; 4];
         for x in 0..width {
             let index = y * width + x;
             let colour = match mode {
                 Bitmap::Graphic7 => vdp::graphic7(byte(index)),
                 Bitmap::Yae | Bitmap::Yjk => {
                     // Groups of four start at each row's first pixel.
-                    let group = y * width + (x & !3);
-                    let bytes = [
-                        byte(group),
-                        byte(group + 1),
-                        byte(group + 2),
-                        byte(group + 3),
-                    ];
-                    vdp::yjk_group(bytes, mode == Bitmap::Yae, palette)[x & 3]
+                    if x & 3 == 0 {
+                        let bytes = [0, 1, 2, 3].map(|k| byte(index + k));
+                        group_colours = vdp::yjk_group(bytes, mode == Bitmap::Yae, palette);
+                    }
+                    group_colours[x & 3]
                 }
                 _ => {
                     let bit = index * bpp;

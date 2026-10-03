@@ -123,30 +123,32 @@ impl<'a> Bitmap<'a> {
             && (!multicolor || self.color.len() >= SCREEN_LEN.min(cells))
     }
 
-    fn byte(&self, x: usize, y: usize) -> (u8, usize) {
-        let cell = y / 8 * 40 + x / 8;
-        (self.bitmap[cell * 8 + y % 8], cell)
-    }
-
-    /// Hires colour of pixel (`x`, `y`): set bits use the screen's high nibble.
-    fn hires_pixel(&self, x: usize, y: usize) -> u8 {
-        let (byte, cell) = self.byte(x, y);
-        let screen = self.screens.get(y, cell);
-        if byte & (0x80 >> (x % 8)) != 0 {
-            screen >> 4
-        } else {
-            screen & 15
+    /// Fills line `y` with hires colours: set bits use the screen's high
+    /// nibble, clear bits its low nibble.
+    fn hires_row(&self, y: usize, out: &mut [u8; WIDTH]) {
+        for (column, pixels) in out.as_chunks_mut::<8>().0.iter_mut().enumerate() {
+            let cell = y / 8 * 40 + column;
+            let bits = self.bitmap[cell * 8 + y % 8];
+            let screen = self.screens.get(y, cell);
+            let colors = [screen & 15, screen >> 4];
+            for (x, pixel) in pixels.iter_mut().enumerate() {
+                *pixel = colors[usize::from(bits >> (7 - x) & 1)];
+            }
         }
     }
 
-    /// Multicolour colour of hires pixel (`x`, `y`) (each bit pair covers two).
-    fn multicolor_pixel(&self, x: usize, y: usize) -> u8 {
-        let (byte, cell) = self.byte(x, y);
-        match byte >> (6 - (x & 6)) & 3 {
-            0 => self.background.get(y),
-            1 => self.screens.get(y, cell) >> 4,
-            2 => self.screens.get(y, cell) & 15,
-            _ => self.color[cell] & 15,
+    /// Fills line `y` with multicolour colours; each bit pair covers two
+    /// hires pixels.
+    fn multicolor_row(&self, y: usize, out: &mut [u8; WIDTH]) {
+        let background = self.background.get(y);
+        for (column, pixels) in out.as_chunks_mut::<8>().0.iter_mut().enumerate() {
+            let cell = y / 8 * 40 + column;
+            let bits = self.bitmap[cell * 8 + y % 8];
+            let screen = self.screens.get(y, cell);
+            let colors = [background, screen >> 4, screen & 15, self.color[cell] & 15];
+            for (pair, pixels) in pixels.as_chunks_mut::<2>().0.iter_mut().enumerate() {
+                *pixels = [colors[usize::from(bits >> (6 - 2 * pair) & 3)]; 2];
+            }
         }
     }
 }
@@ -169,21 +171,34 @@ impl Frame {
     pub(super) fn hires(bitmap: &Bitmap, height: usize) -> Option<Self> {
         bitmap
             .fits(height, false)
-            .then(|| Self::from_fn(height, |x, y| bitmap.hires_pixel(x, y)))
+            .then(|| Self::from_rows(height, |y, row| bitmap.hires_row(y, row)))
     }
 
     pub(super) fn multicolor(bitmap: &Bitmap, height: usize) -> Option<Self> {
         bitmap
             .fits(height, true)
-            .then(|| Self::from_fn(height, |x, y| bitmap.multicolor_pixel(x, y)))
+            .then(|| Self::from_rows(height, |y, row| bitmap.multicolor_row(y, row)))
     }
 
     pub(super) fn from_fn(height: usize, pixel: impl Fn(usize, usize) -> u8) -> Self {
-        let mut frame = Self::new(height);
-        for y in 0..height {
-            for x in 0..WIDTH {
-                frame.pixels[y * WIDTH + x] = pixel(x, y);
+        Self::from_rows(height, |y, row| {
+            for (x, out) in row.iter_mut().enumerate() {
+                *out = pixel(x, y);
             }
+        })
+    }
+
+    /// A picture whose line `y` is filled by `row(y, line)`.
+    fn from_rows(height: usize, mut row: impl FnMut(usize, &mut [u8; WIDTH])) -> Self {
+        let mut frame = Self::new(height);
+        for (y, line) in frame
+            .pixels
+            .as_chunks_mut::<WIDTH>()
+            .0
+            .iter_mut()
+            .enumerate()
+        {
+            row(y, line);
         }
         frame
     }

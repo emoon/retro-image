@@ -295,18 +295,12 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
         let indices: Vec<u8> = values.iter().map(|&v| v as u8).collect();
         return Image::from_indexed(width as u32, height as u32, &indices, &header.palette);
     }
-    let mut image = Image::new(width as u32, height as u32);
-    for (i, &value) in values.iter().enumerate() {
-        let colour = match header.colour {
-            Colour::X68000Rgb15 => x68000(value << 1),
-            Colour::X68000Rgb16 => x68000(value),
-            _ => {
-                level(value >> 5 & 31, 5) << 16 | level(value >> 10, 6) << 8 | level(value & 31, 5)
-            }
-        };
-        image.set((i % width) as u32, (i / width) as u32, colour);
-    }
-    Ok(image)
+    let colors = values.iter().map(|&value| match header.colour {
+        Colour::X68000Rgb15 => x68000(value << 1),
+        Colour::X68000Rgb16 => x68000(value),
+        _ => level(value >> 5 & 31, 5) << 16 | level(value >> 10, 6) << 8 | level(value & 31, 5),
+    });
+    Ok(Image::from_colors(width as u32, height as u32, colors))
 }
 
 #[cfg(test)]
