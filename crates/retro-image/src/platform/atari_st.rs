@@ -27,6 +27,7 @@ mod paintworks;
 mod photochrome;
 mod quantumpaint;
 mod rasters;
+mod seq;
 mod simple;
 mod spectrum;
 mod tiny;
@@ -106,6 +107,7 @@ pub(super) static FORMATS: &[Format] = &[
     st("Synthetic Arts", &["srt"], simple::decode_srt),
     st("Sinbad Slideshow", &["ssb"], simple::decode_ssb),
     st("Cyber Paint Cell", &["cel"], simple::decode_cel),
+    st("Cyber Paint Sequence", &["seq"], seq::decode_seq).signature(),
     st("DeskPic", &["gfb"], simple::decode_gfb).signature(),
     st("PaintShop", &["da4"], simple::decode_da4),
     st("PaintShop compressed", &["psc"], paintshop::decode_psc).signature(),
