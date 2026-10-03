@@ -1,4 +1,4 @@
-//! NUFLI (`.nuf`, Crest's NUFLI Editor / mufflon): 320×200 hires FLI with a
+//! NUFLI (`.nuf`, packed `.nup`; Crest's NUFLI Editor / mufflon): 320×200 hires FLI with a
 //! new screen RAM every second line, six X-expanded hires sprites under the
 //! bitmap for a third colour, and two more sprites (hires and multicolour)
 //! covering the FLI bug in the leftmost 24 pixels.
@@ -26,6 +26,12 @@
 //!   line `2k` (from `2k-1` when in the first table); in the FLI-bug
 //!   columns lines 2-7 of each character row show light grey for both
 //!   bitmap colours.
+//! - `.nup` (packed): reverse engineered from the 13 NUP files on the
+//!   Crest Slide Story tool disk and the Deadly Chords disk
+//!   (<https://csdb.dk/release/?id=81153>, <https://csdb.dk/release/?id=243096>)
+//!   by unpacking them and comparing `recoil2png`'s output for the `.nup`
+//!   with that for the unpacked `.nuf`, and by probing it with modified
+//!   copies (the byte at offset 2 must be `$FD`).
 //!
 //! The tables below were translated from pynuvie into Rust and restructured
 //! (the screen table became a formula); the FLI-bug decoding and the colour
@@ -47,6 +53,7 @@
 //! limitations under the License.
 //! ```
 
+use super::unpack::backward_rle_filled;
 use super::vic2;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -100,13 +107,14 @@ pub(super) fn sprite_rows() -> [u8; HEIGHT] {
 }
 
 struct Nufli<'a> {
-    data: &'a [u8],
+    /// Memory `$2000-$79FF`.
+    mem: &'a [u8],
     rows: [u8; HEIGHT],
 }
 
 impl Nufli<'_> {
     fn byte(&self, addr: usize) -> u8 {
-        self.data[addr - LOAD + 2]
+        self.mem[addr - LOAD]
     }
 
     fn bitmap_set(&self, x: usize, y: usize) -> bool {
@@ -207,8 +215,26 @@ pub(super) fn decode_nufli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + END - LOAD {
         return Err(DecodeError::Unrecognized);
     }
+    decode_frame(&data[2..])
+}
+
+/// `.nup`: two ignored bytes (the load address `$0FFF`), the byte `$FD`, an
+/// escape byte, then the memory `$2000-$79FF` packed backwards (`value
+/// count escape`, count 0 = 256). The stream must fill the memory exactly.
+pub(super) fn decode_nup(data: &[u8]) -> Result<Image, DecodeError> {
+    let [_, _, 0xfd, escape, packed @ ..] = data else {
+        return Err(DecodeError::Unrecognized);
+    };
+    match backward_rle_filled(packed, *escape, END - LOAD) {
+        Some((mem, true)) => decode_frame(&mem),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// Decodes the memory `$2000-$79FF` (`mem` is exactly that long).
+fn decode_frame(mem: &[u8]) -> Result<Image, DecodeError> {
     let nufli = Nufli {
-        data,
+        mem,
         rows: sprite_rows(),
     };
     let underlay: Vec<Vec<u8>> = (0..6).map(|s| nufli.underlay_colors(s)).collect();
@@ -251,5 +277,22 @@ mod tests {
         data[2 + 0x6000 - LOAD..2 + 0x7400 - LOAD].fill(0xff);
         data[2 + 0x3400 - LOAD..2 + 0x3f40 - LOAD].fill(0xff);
         assert!(decode_nufli(&data).is_ok());
+    }
+
+    #[test]
+    fn nup_stream_must_fill_the_frame_exactly() {
+        // 90 runs of 256 `$FF` bytes: set bitmap bits cover every pixel, so
+        // no sprite data is fetched.
+        let mut data = alloc::vec![0x00, 0x00, 0xfd, 0xaa];
+        for _ in 0..(END - LOAD) / 256 {
+            data.extend([0xff, 0x00, 0xaa]);
+        }
+        assert!(decode_nup(&data).is_ok());
+        let mut extra = data.clone();
+        extra.insert(4, 0x12);
+        assert!(decode_nup(&extra).is_err());
+        assert!(decode_nup(&data[..data.len() - 3]).is_err());
+        data[2] = 0xfe;
+        assert!(decode_nup(&data).is_err());
     }
 }

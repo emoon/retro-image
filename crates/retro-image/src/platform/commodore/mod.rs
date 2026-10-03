@@ -20,6 +20,7 @@ mod emc;
 mod flf;
 mod fli;
 mod godot;
+mod hcb;
 mod ifli;
 mod interlace;
 mod loadstar;
@@ -30,13 +31,16 @@ mod nufli;
 mod petscii;
 mod prg;
 mod printfox;
+mod she;
 mod sprites;
 mod superhires;
 mod ted;
 mod ufli;
 mod unpack;
+mod vhi;
 mod vic2;
 mod vic20;
+mod xfl;
 
 use crate::{DecodeError, Format, Image};
 
@@ -355,6 +359,28 @@ pub(super) static FORMATS: &[Format] = &[
         &["mwi", "mwin"],
         mwin::decode_mwin,
     ),
+    // Wave 6: C64 NUFLI packed
+    Format::new(
+        C64,
+        "NUFLI Editor (compressed)",
+        &["nup"],
+        nufli::decode_nup,
+    ),
+    // Wave 6: C64 FLI Editor + HCB
+    Format::new(C64, "FLI Editor", &["fed"], fli::decode_fed),
+    Format::new(C64, "HCB-editor", &["hcb"], hcb::decode_hcb),
+    // Wave 6: C64 PetDraw and Super Hires Editor
+    Format::new(C64, "PetDraw64", &["pdr"], petscii::decode_petdraw),
+    Format::new(C64, "Super Hires Editor", &["she"], she::decode_she),
+    // Wave 6: C64 VHI + X-FLI
+    Format::new(
+        C64,
+        "Vertical Hires Interlace Editor",
+        &["vhi"],
+        vhi::decode_vhi,
+    ),
+    // Wave 6: C64 X-FLI
+    Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

@@ -18,6 +18,11 @@
 //!   colours as two 1002-byte files. Character set (upper case/graphics),
 //!   black background for `.scr`+`.col` and PETSCII BOT, and the accepted
 //!   sizes were checked against `recoil2png` output.
+//! - PetDraw64 `.pdr` (2029 bytes): reverse engineered from five CSDb
+//!   samples and the pictures on the PetDraw disk by black-box probing of
+//!   `recoil2png`. Two load address bytes, three header bytes of which only
+//!   the second (background colour, low nibble) matters, 1000 screen codes,
+//!   24 ignored bytes, 1000 colours. Upper case/graphics set.
 //! - Character glyphs: the C64 character ROM, see [`CHARGEN`].
 
 use super::vic2::{self, SCREEN_LEN};
@@ -164,6 +169,23 @@ pub(super) fn decode_scr_col(
         &data[2..],
         &colors[2..],
         0,
+        RomCharset::UpperGraphics.glyphs(),
+    )
+    .render()
+}
+
+/// PetDraw64: load address, three header bytes (background colour second),
+/// screen codes, 24 unused bytes, colour RAM.
+pub(super) fn decode_petdraw(data: &[u8]) -> Result<Image, DecodeError> {
+    const SCREEN: usize = 5;
+    const COLORS: usize = SCREEN + SCREEN_LEN + 24;
+    if data.len() != COLORS + SCREEN_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    full_screen(
+        &data[SCREEN..],
+        &data[COLORS..],
+        data[3],
         RomCharset::UpperGraphics.glyphs(),
     )
     .render()
