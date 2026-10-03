@@ -51,6 +51,13 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new("Apple IIGS", "320x200", &["sh3", "3200"], decode_3200),
     Format::new("Apple IIGS", "320x200", &["shr"], decode_3200),
+    // `.SCR` is shared with the CPC and ZX Spectrum, so it is checked strictly.
+    Format::new(
+        "Apple IIGS",
+        "320x200",
+        &["scr"],
+        super_hires::decode_checked_screen,
+    ),
     Format::new(
         "Apple IIGS",
         "Packed Super Hi-Res",
