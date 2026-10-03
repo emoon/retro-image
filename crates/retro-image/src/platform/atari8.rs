@@ -5,6 +5,7 @@
 //! cites the sources of its own formats. The palette is in [`palette`];
 //! ANTIC/GTIA bitmap rendering in [`antic`].
 
+mod a4r;
 mod antic;
 mod apac;
 mod blazing_paddles;
@@ -31,6 +32,7 @@ mod misc_screen;
 mod packed;
 mod palette;
 mod pic_variants;
+mod pgr;
 mod pmg;
 mod portfolio;
 mod rambrandt;
@@ -442,4 +444,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["ice"],
         ice_single::decode_ice_single,
     ),
+    // Gaps B
+    Format::new(ATARI8, "Anime 4ever", &["a4r"], a4r::decode_a4r).signature(),
+    Format::new(ATARI8, "PowerGraphics", &["pgr"], pgr::decode_pgr).signature(),
 ];
