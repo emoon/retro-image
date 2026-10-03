@@ -159,8 +159,14 @@ const HIRES_MANAGER: Fli = Fli {
     ..HIRES_FLI_DESIGNER
 };
 
+/// Files copied through CP/M-style tools are padded with `0x1A` up to a
+/// multiple of 128 bytes (`kingsd.fli`: 17218 + 62); the padding is ignored.
 pub(super) fn decode_fli_designer(data: &[u8]) -> Result<Image, DecodeError> {
-    FLI_DESIGNER.decode(data)
+    const PAD: u8 = 0x1a;
+    let base = FLI_DESIGNER.sizes[0];
+    let padded =
+        (base + 1..base + 128).contains(&data.len()) && data[base..].iter().all(|&b| b == PAD);
+    FLI_DESIGNER.decode(if padded { &data[..base] } else { data })
 }
 
 /// Unpacks the backward-RLE files of Flip and FLI Graph: load `$38F0`,
