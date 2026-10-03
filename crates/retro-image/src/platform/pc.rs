@@ -21,6 +21,7 @@
 mod flf;
 mod image72;
 mod pcx;
+mod tga;
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -36,6 +37,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
+    Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
     // Wave 5: FLF
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     // Wave 5: Amiga and misc
