@@ -3,7 +3,7 @@
 //! Each submodule lists the documents its layouts come from; the platform
 //! survey is `docs/research/amiga-apple-misc.md`. This file dispatches IFF
 //! pictures:
-//! - `FORM` kinds (ILBM, PBM, ACBM, DEEP/TVPP, ANIM): EA IFF 85 standard,
+//! - `FORM` kinds (ILBM, BBM, PBM, ACBM, DEEP/TVPP, ANIM): EA IFF 85 standard,
 //!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,
 //!   and the IFF FORM and chunk registry,
 //!   <https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>.
@@ -97,6 +97,8 @@ fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     match kind {
+        // BBM: the form type of PC Deluxe Paint files, laid out like ILBM.
+        b"BBM " => ilbm::decode_ilbm(contents),
         b"ILBM" => ilbm::decode_ilbm(contents)
             .or_else(|_| dctv::decode(contents))
             .or_else(|_| ham_e::decode(contents)),
@@ -121,6 +123,19 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bbm_form_decodes_like_ilbm() {
+        let mut form = b"FORM\0\0\0\x38ILBM".to_vec();
+        form.extend_from_slice(
+            b"BMHD\0\0\0\x14\0\x01\0\x01\0\0\0\0\x01\0\0\0\0\0\x01\x01\0\x01\0\x01",
+        );
+        form.extend_from_slice(b"CMAP\0\0\0\x06\0\0\0\xff\xff\xff");
+        form.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
+        let ilbm = decode_iff(&form).unwrap();
+        form[8..12].copy_from_slice(b"BBM ");
+        assert_eq!(decode_iff(&form).unwrap(), ilbm);
+    }
 
     #[test]
     fn neochrome_master_ilbm_is_left_to_the_atari_st_decoder() {
