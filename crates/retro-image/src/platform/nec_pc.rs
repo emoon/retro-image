@@ -10,6 +10,7 @@ mod davinci;
 mod ebd;
 mod kt4;
 pub(super) mod maki;
+mod nl3;
 mod pc88_planes;
 pub(super) mod pi;
 mod precision;
@@ -81,4 +82,11 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 5b: Japanese
     Format::new("NEC PC-98", "ARTV", &["arv"], arv::decode_arv).signature(),
     Format::new("NEC PC-88 VA", "Kitty", &["kt4"], kt4::decode_kt4),
+    // other
+    Format::new(
+        "NEC PC-98",
+        "Mapletown Network NL3",
+        &["nl3"],
+        nl3::decode_nl3,
+    ),
 ];
