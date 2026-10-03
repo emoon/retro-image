@@ -17,6 +17,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::check_size;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -95,6 +96,7 @@ impl<'a> Grob<'a> {
         if width == 0 || height == 0 {
             return None;
         }
+        check_size(width, height).ok()?;
         let pixel_len = width.div_ceil(8).checked_mul(2)?.checked_mul(height)?;
         let pixels = nibbles.get(20..pixel_len.checked_add(20)?)?;
         Some(Self {
@@ -142,6 +144,8 @@ fn render(grobs: &[Grob]) -> Option<Image> {
     if width > 0xffff {
         return None;
     }
+    // Each GROB passed the cap alone, but side by side they can exceed it.
+    check_size(width, height).ok()?;
     let mut indices = alloc::vec![0u8; width * height];
     let mut left = 0;
     for grob in grobs {
@@ -169,6 +173,28 @@ mod tests {
         }
         nibbles.resize(nibbles.len() + pixel_len, fill);
         nibbles
+    }
+
+    #[test]
+    fn grobs_over_the_pixel_cap_are_rejected() {
+        let mut big = alloc::vec![0u8; 20 + 65535usize.div_ceil(8) * 2 * 1025];
+        for (i, value) in [GROB, 0, 1025, 65535].into_iter().enumerate() {
+            for n in 0..5 {
+                big[i * 5 + n] = (value >> (4 * n) & 15) as u8;
+            }
+        }
+        assert!(Grob::parse(&big).is_none());
+    }
+
+    #[test]
+    fn embedded_grobs_side_by_side_over_the_pixel_cap_are_rejected() {
+        // Each is small, but the canvas is 65008 x 100000.
+        let mut program = alloc::vec![0xd, 0x9, 0xd, 0x2, 0x0];
+        program.extend(grob(8, 100_000, None, 0));
+        program.extend(grob(65_000, 16, None, 0));
+        let grobs = embedded_grobs(&program);
+        assert_eq!(grobs.len(), 2);
+        assert!(render(&grobs).is_none());
     }
 
     #[test]

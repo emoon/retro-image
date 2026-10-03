@@ -28,6 +28,7 @@ use alloc::vec::Vec;
 
 use super::common::{MAX_PIXELS, MONO_PALETTE, crop, mono_image, planar_image, st_palette};
 use crate::bytes::{be16, be32, le16, le32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 /// Public Painter: escape byte, size byte (0 = 640x400, 200 = 640x800),
@@ -362,6 +363,7 @@ pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
         (Some(w), Some(h), Some(p)) => (w + 1, h + 1, p),
         _ => return Err(DecodeError::Unrecognized),
     };
+    check_size(width, height)?;
     let words = width.div_ceil(16);
     let planes_wanted = if palette.is_some() { 4 } else { 1 };
     if planes != planes_wanted || body.len() != 6 + words * 2 * planes * height {
@@ -471,5 +473,15 @@ mod tests {
         assert_eq!(image.get(0, 1), 0);
         assert_eq!(image.get(1, 1), 0xffffff);
         assert_eq!(image.get(6, 1), 0);
+    }
+
+    #[test]
+    fn object_over_the_pixel_cap_is_rejected() {
+        // 65536 x 1025 monochrome pixels need an 8 MB file.
+        let mut data = alloc::vec![0u8; 6 + 4096 * 2 * 1025];
+        data[..2].copy_from_slice(&65535u16.to_be_bytes());
+        data[2..4].copy_from_slice(&1024u16.to_be_bytes());
+        data[4..6].copy_from_slice(&1u16.to_be_bytes());
+        assert!(decode_obj(&data).is_err());
     }
 }

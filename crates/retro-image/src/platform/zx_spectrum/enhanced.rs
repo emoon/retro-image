@@ -1,45 +1,15 @@
-//! Indexed-colour screens of enhanced Spectrum clones: ZX Spectrum Next
-//! Layer 2 (NXI) and ZX Evolution TS-Conf (SXG).
+//! Indexed-colour screens of the ZX Evolution TS-Conf (SXG).
 //!
 //! Sources:
-//! - NXI (512-byte RGB333 palette + 256x192 bytes): ZX Spectrum Next wiki,
-//!   <https://wiki.specnext.dev/File_Formats>, and SpectraLab
-//!   `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), section NXI,
-//!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - SXG header: hype.retroscene.org sXg article,
 //!   <https://hype.retroscene.org/blog/126.html>; palette entry encodings
 //!   (bit 15 set: 5-bit RGB, clear: 25-level TS-Conf CLUT indices) from the
 //!   CC0 moroz1999/sxg writer, <https://github.com/moroz1999/sxg>.
-//! - RGB333 widened by bit repetition, CLUT level scaling (`level * 255 / 24`, rounded down) and nibble order:
+//! - CLUT level scaling (`level * 255 / 24`, rounded down) and nibble order:
 //!   observed from `recoil2png` output.
 
 use super::screen::Frame;
 use crate::{DecodeError, Image};
-
-const NXI_PALETTE_LEN: usize = 512;
-const NXI_LEN: usize = NXI_PALETTE_LEN + 256 * 192;
-
-/// NXI: 256 palette entries (`RRRGGGBB`, `0000000B`), then 256x192 pixels.
-pub(super) fn decode_nxi(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != NXI_LEN {
-        return Err(DecodeError::Unrecognized);
-    }
-    let (palette, pixels) = data.split_at(NXI_PALETTE_LEN);
-    let mut frame = Frame::new(256, 192);
-    for (i, &index) in pixels.iter().enumerate() {
-        let entry = &palette[usize::from(index) * 2..];
-        frame.set(i % 256, i / 256, rgb333(entry[0], entry[1]));
-    }
-    Ok(frame.into_image())
-}
-
-fn rgb333(high: u8, low: u8) -> u32 {
-    let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
-    let red = widen3(high >> 5);
-    let green = widen3((high >> 2) & 7);
-    let blue = widen3((high & 3) << 1 | low & 1);
-    red << 16 | green << 8 | blue
-}
 
 const SXG_HEADER_LEN: usize = 16;
 
@@ -99,16 +69,4 @@ fn tsconf_color(entry: u16) -> u32 {
         }
     };
     channel(10) << 16 | channel(5) << 8 | channel(0)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rgb333_repeats_bits() {
-        assert_eq!(rgb333(0x00, 0), 0x000000);
-        assert_eq!(rgb333(0xff, 1), 0xffffff);
-        assert_eq!(rgb333(0x24, 0), 0x242400);
-    }
 }

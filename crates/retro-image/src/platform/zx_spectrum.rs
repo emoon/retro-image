@@ -15,6 +15,7 @@ mod chars;
 mod enhanced;
 mod flf;
 mod multicolor;
+mod next;
 mod profi;
 mod screen;
 mod standard;
@@ -27,12 +28,13 @@ use crate::{DecodeError, Format, Image};
 use super::amstrad_cpc::has_amsdos_header;
 
 /// `.SCR` is shared with the Amstrad CPC: a file with an AMSDOS header is a
-/// CPC file even if its size matches a Spectrum screen.
+/// CPC file even if its size matches a Spectrum screen. A +3DOS header (Next
+/// and +3 tools) is skipped.
 fn scr(data: &[u8], decode: fn(&[u8]) -> Result<Image, DecodeError>) -> Result<Image, DecodeError> {
     if has_amsdos_header(data) {
         return Err(DecodeError::Unrecognized);
     }
-    decode(data)
+    decode(next::strip_plus3dos(data))
 }
 
 pub(super) static FORMATS: &[Format] = &[
@@ -132,8 +134,26 @@ pub(super) static FORMATS: &[Format] = &[
         "ZX Spectrum Next",
         "Layer 2 image",
         &["nxi"],
-        enhanced::decode_nxi,
+        next::decode_nxi,
     ),
+    Format::new(
+        "ZX Spectrum Next",
+        "Layer 2 image",
+        &["sl2"],
+        next::decode_sl2,
+    ),
+    Format::new(
+        "ZX Spectrum Next",
+        "Low-res image",
+        &["slr"],
+        next::decode_slr,
+    ),
+    Format::new("ZX Spectrum Next", "Hi-colour screen", &["shc"], |data| {
+        scr(data, timex::decode_hicolor)
+    }),
+    Format::new("ZX Spectrum Next", "Hi-res screen", &["shr"], |data| {
+        scr(data, timex::decode_hires)
+    }),
     Format::new(
         "ZX Evolution",
         "Speccy eXtended Graphics",

@@ -17,6 +17,7 @@
 //!   152-line IPaint clip art) render with colour fringes at every shape
 //!   edge when interleaved and cleanly with one attribute row per cell.
 
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -117,6 +118,7 @@ pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || bits.len() != stride * height {
         return Err(DecodeError::Unrecognized);
     }
+    check_size(width, height)?;
     let mut image = Image::new(width as u32, height as u32);
     for (y, row) in bits.chunks_exact(stride).enumerate() {
         for x in 0..width {
@@ -168,5 +170,12 @@ mod tests {
     fn interlaced_rows_alternate_per_field() {
         let image = decode_brus(&brus(204)).unwrap();
         assert_eq!(line_colors(&image)[..4], [1, 2, 1, 2]);
+    }
+
+    #[test]
+    fn vbm_rejects_oversized_pictures() {
+        let mut data = b"BM\xcb\x02\xff\xff\x04\x01".to_vec();
+        data.resize(8 + 8192 * 0x401, 0);
+        assert!(decode_vbm(&data).is_err());
     }
 }

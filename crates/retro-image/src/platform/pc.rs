@@ -13,16 +13,22 @@
 //!   `recoil2png` output).
 //! - Handy Scanner HS2: Deark `misc2.c` (MIT licence): headerless 1-bit
 //!   bitmap, 105 bytes (840 pixels) per row.
+//! - PCX, Targa and Dr. Halo: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`
+//!   (survey: `docs/research/gaps-pc-japan.md`).
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
 mod flf;
+mod halo;
 mod image72;
+mod pcx;
+mod tga;
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
+use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -31,6 +37,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
+    Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
+    Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
+    Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     // Wave 5: FLF
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     // Wave 5: Amiga and misc
@@ -54,6 +63,7 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let row_len = width.div_ceil(8);
     let bitmap = match &header[..4] {
         b"DanM" => data
@@ -169,6 +179,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     if &header[..4] != b"AWBM" || width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let palette_at = |bitmap_len: usize, colors: usize| {
         let at = 8 + bitmap_len;
         (data.get(at..at + 4) == Some(b"RGB ") && data.len() >= at + 4 + colors * 3)
@@ -219,4 +230,33 @@ fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     mono(data, ROW_LEN * 8, data.len() / ROW_LEN, ROW_LEN)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn awbm_larger_than_the_pixel_cap_is_rejected() {
+        // 16-colour planar: 65535 x 1025 pixels in 32 MiB of planes.
+        let (width, height) = (65535usize, 1025usize);
+        let bitmap_len = width.div_ceil(8) * 4 * height;
+        let mut data = vec![0u8; 8 + bitmap_len + 4 + 16 * 3];
+        data[..4].copy_from_slice(b"AWBM");
+        data[4..6].copy_from_slice(&(width as u16).to_le_bytes());
+        data[6..8].copy_from_slice(&(height as u16).to_le_bytes());
+        data[8 + bitmap_len..][..4].copy_from_slice(b"RGB ");
+        assert!(decode_awbm(&data).is_err());
+    }
+
+    #[test]
+    fn msp_larger_than_the_pixel_cap_is_rejected() {
+        // 65535 x 8192 pixels: the bitmap passes the 85x-input guard, the
+        // picture would be 1.5 GiB of RGB.
+        let mut data = vec![0u8; 800_000];
+        data[..4].copy_from_slice(b"LinS");
+        data[4..6].copy_from_slice(&65535u16.to_le_bytes());
+        data[6..8].copy_from_slice(&8192u16.to_le_bytes());
+        assert!(decode_msp(&data).is_err());
+    }
 }

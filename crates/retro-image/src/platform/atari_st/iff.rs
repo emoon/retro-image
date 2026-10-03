@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
@@ -108,17 +109,18 @@ fn decode(data: &[u8]) -> Option<Image> {
     if !(1..=8).contains(&h.planes) || h.width == 0 || h.height == 0 || h.width > 4096 {
         return None;
     }
+    let y_scale = if h.x_aspect != 0 && u32::from(h.x_aspect) * 2 <= u32::from(h.y_aspect) {
+        2
+    } else {
+        1
+    };
+    check_size(h.width, h.height * y_scale).ok()?;
     let row_len = h.width.div_ceil(16) * 2;
     let len = row_len * h.planes * h.height;
     let bitmap = match h.compression {
         0 => body?.get(..len)?.to_vec(),
         1 => packbits::unpack(body?, len)?.0,
         _ => return None,
-    };
-    let y_scale = if h.x_aspect != 0 && u32::from(h.x_aspect) * 2 <= u32::from(h.y_aspect) {
-        2
-    } else {
-        1
     };
     let line_palettes = rasters
         .and_then(|chunk| super::rasters::line_palette_words(chunk, h.height))
@@ -164,5 +166,23 @@ mod tests {
         assert!(!is_neochrome_master(&[&form[..], b"CMAP\0\0\0\0"].concat()));
         let pbm = [&b"FORM\0\0\0\x05PBM x"[..], b"RAST\0\0\0\0"].concat();
         assert!(!is_neochrome_master(&pbm));
+    }
+
+    #[test]
+    fn picture_over_the_pixel_cap_is_rejected() {
+        // 4096 x 16385 pixels, one plane, packed 128:1 with runs of zeros.
+        let mut bmhd = alloc::vec![0u8; 20];
+        bmhd[..2].copy_from_slice(&4096u16.to_be_bytes());
+        bmhd[2..4].copy_from_slice(&16385u16.to_be_bytes());
+        bmhd[8] = 1;
+        bmhd[10] = 1;
+        let body = [0x81u8, 0].repeat(65_600);
+        let mut data = b"FORM\0\0\0\0ILBM".to_vec();
+        data.extend_from_slice(b"BMHD\0\0\0\x14");
+        data.extend_from_slice(&bmhd);
+        data.extend_from_slice(b"BODY");
+        data.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        data.extend_from_slice(&body);
+        assert!(decode(&data).is_none());
     }
 }

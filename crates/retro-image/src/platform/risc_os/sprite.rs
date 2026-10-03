@@ -66,6 +66,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 /// Sprite header length; a palette, if any, follows it.
@@ -136,6 +137,8 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     // The palette runs from the header to the image.
+    let (sx, sy) = format.pixel_scale;
+    check_size(width * sx as usize, height * sy as usize)?;
     let palette = &sprite[HEADER_LEN..image_at];
 
     let mut image = Image::new(width as u32, height as u32);
@@ -167,7 +170,6 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    let (sx, sy) = format.pixel_scale;
     Ok(if (sx, sy) == (1, 1) {
         image
     } else {
@@ -613,5 +615,13 @@ mod tests {
         misaligned[12 + 28] = 30; // last bit 30 in an 8 bpp mode
         assert!(decode(&misaligned).is_err());
         assert!(decode(&good[..good.len() - 1]).is_err());
+    }
+
+    #[test]
+    fn sprite_larger_than_the_pixel_cap_is_rejected() {
+        // Mode 25 (1 bpp): 8192 words x 257 rows is just over 2^26 pixels.
+        let pixels = alloc::vec![0u8; 8192 * 4 * 257];
+        let file = sprite_file(25, 8192, 257, (0, 31), &[], &pixels);
+        assert!(decode(&file).is_err());
     }
 }

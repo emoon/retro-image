@@ -10,6 +10,7 @@
 //!   output.
 
 use crate::bytes::{le16, le32};
+use crate::image::check_size;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -70,6 +71,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let row_len = w * 2;
     let lookup = |i: usize| le16(clut, i * 2).map_or(0, color15);
     let mut image = Image::new(width as u32, height as u32);
@@ -89,4 +91,30 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn four_bit_pictures_over_the_pixel_cap_are_rejected() {
+        // 4 pixels per halfword: 65600 x 1025.
+        let (halfwords, height) = (16400usize, 1025usize);
+        let mut data = alloc::vec::Vec::new();
+        data.extend_from_slice(&0x10u32.to_le_bytes());
+        data.extend_from_slice(&8u32.to_le_bytes());
+        // One palette row of 16 colours, then the pixel block.
+        data.extend_from_slice(&(12 + 32u32).to_le_bytes());
+        data.extend_from_slice(&[0; 4]);
+        data.extend_from_slice(&16u16.to_le_bytes());
+        data.extend_from_slice(&1u16.to_le_bytes());
+        data.extend_from_slice(&[0; 32]);
+        // Pixel block: length, x, y.
+        data.extend_from_slice(&[0; 8]);
+        data.extend_from_slice(&(halfwords as u16).to_le_bytes());
+        data.extend_from_slice(&(height as u16).to_le_bytes());
+        data.resize(data.len() + halfwords * 2 * height, 0);
+        assert!(matches!(decode_tim(&data), Err(DecodeError::Unrecognized)));
+    }
 }

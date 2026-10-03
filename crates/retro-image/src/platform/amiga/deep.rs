@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 
 use super::iff::find;
 use crate::bytes::{be16, be32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const RED: u16 = 1;
@@ -48,6 +49,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || elements.len() != count || count == 0 {
         return Err(fail);
     }
+    check_size(width, height)?;
     let channel = |kind| elements.iter().position(|&k| k == kind).ok_or(fail);
     let (r, g, b) = (channel(RED)?, channel(GREEN)?, channel(BLUE)?);
     let pixel_len = count;
@@ -160,4 +162,39 @@ fn depack_line(source: &[u8], table: &[i16; 16], dest: &mut [u8]) -> Option<usiz
         i += 1;
     }
     Some(nibble_pos.div_ceil(2))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn chunk(id: &[u8; 4], body: &[u8]) -> Vec<u8> {
+        let mut out = id.to_vec();
+        out.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        out.extend_from_slice(body);
+        out
+    }
+
+    #[test]
+    fn picture_over_the_pixel_cap_is_rejected() {
+        // 65535 x 2000 RGB pixels (393 MB) from 1.6 MB of run-length data,
+        // which passes the 128:1 expansion check.
+        let mut dgbl = alloc::vec![0u8; 8];
+        dgbl[..2].copy_from_slice(&65535u16.to_be_bytes());
+        dgbl[2..4].copy_from_slice(&2000u16.to_be_bytes());
+        dgbl[4..6].copy_from_slice(&1u16.to_be_bytes());
+        let mut dpel = 3u32.to_be_bytes().to_vec();
+        for kind in [RED, GREEN, BLUE] {
+            dpel.extend_from_slice(&kind.to_be_bytes());
+            dpel.extend_from_slice(&8u16.to_be_bytes());
+        }
+        let dbod = [0x81, 0, 0, 0].repeat(400_000);
+        let contents = [
+            chunk(b"DGBL", &dgbl),
+            chunk(b"DPEL", &dpel),
+            chunk(b"DBOD", &dbod),
+        ]
+        .concat();
+        assert!(decode(&contents).is_err());
+    }
 }

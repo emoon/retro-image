@@ -12,6 +12,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::check_scaled;
 use crate::{DecodeError, Image};
 
 const BLACK: u32 = 0x000000;
@@ -47,6 +48,7 @@ fn mono(
     height: usize,
     pixel: impl Fn(usize, usize) -> bool,
 ) -> Result<Image, DecodeError> {
+    check_scaled(width, height, 1, 2)?;
     let indices: Vec<u8> = (0..width * height)
         .map(|i| u8::from(pixel(i % width, i / width)))
         .collect();
@@ -100,6 +102,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn stamp_doubled_over_the_pixel_cap_is_rejected() {
+        let (width, height) = (65535usize, 513usize);
+        let mut data = alloc::vec![0u8; 4 + (width * height).div_ceil(4)];
+        data[..2].copy_from_slice(&(width as u16).to_le_bytes());
+        data[2..4].copy_from_slice(&(height as u16).to_le_bytes());
+        assert!(matches!(decode_stp(&data), Err(DecodeError::Unrecognized)));
+    }
+
+    #[test]
     fn unpack_follows_marmsx_example() {
         let packed = [0x01, 0x08, 0x04, 0xbd, 0x00, 0xbf, 0x00];
         let out = unpack(&packed, 128);
@@ -114,5 +125,14 @@ mod tests {
         assert_eq!((image.width(), image.height()), (3, 4));
         assert_eq!(&image.rgb()[..6], &[0, 0, 0, 0xff, 0xff, 0xff]);
         assert!(decode_stp(&data[..5]).is_err());
+    }
+
+    #[test]
+    fn stamp_larger_than_the_pixel_cap_is_rejected() {
+        let (width, height) = (8192usize, 8200usize);
+        let mut data = alloc::vec![0u8; 4 + (width * height).div_ceil(4)];
+        data[..2].copy_from_slice(&(width as u16).to_le_bytes());
+        data[2..4].copy_from_slice(&(height as u16).to_le_bytes());
+        assert!(decode_stp(&data).is_err());
     }
 }

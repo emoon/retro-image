@@ -31,6 +31,7 @@
 use alloc::vec::Vec;
 
 use super::ilbm::{CAMG_HIRES, CAMG_LACE, read_ilbm};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 /// The top-plane bit pattern of the signature, one bit per pixel, most
@@ -70,7 +71,9 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     let lines = header.height - signature_rows;
     let (width, fields) = (header.width, if lace { 2 } else { 1 });
     let shift = 4 - header.planes;
-    let mut image = Image::new(width as u32, (if lace { lines } else { lines * 2 }) as u32);
+    let out_height = if lace { lines } else { lines * 2 };
+    check_size(width, out_height)?;
+    let mut image = Image::new(width as u32, out_height as u32);
     for field in 0..fields {
         let mut previous = Vec::new();
         for (index, row) in (field..lines).step_by(fields).enumerate() {
@@ -188,6 +191,30 @@ mod tests {
         // Grey: a steady 192 is (192 - 64) * 8 / 5 = 204.
         assert_eq!(line.luma(1), 204);
         assert_eq!(line.chroma(), [48, 48]);
+    }
+
+    #[test]
+    fn doubled_height_over_the_pixel_cap_is_rejected() {
+        let (width, height, planes) = (65535usize, 520usize, 3usize);
+        let row_len = width.div_ceil(16) * 2;
+        let mut body = alloc::vec![0u8; row_len * planes * height];
+        // Top plane of the first row carries the signature.
+        body[2 * row_len..2 * row_len + SIGNATURE.len()].copy_from_slice(&SIGNATURE);
+        let mut bmhd = alloc::vec![0u8; 20];
+        bmhd[..2].copy_from_slice(&(width as u16).to_be_bytes());
+        bmhd[2..4].copy_from_slice(&(height as u16).to_be_bytes());
+        bmhd[8] = planes as u8;
+        let mut contents = Vec::new();
+        for (id, data) in [
+            (b"BMHD", bmhd),
+            (b"CAMG", alloc::vec![0, 0, 0x80, 0]),
+            (b"BODY", body),
+        ] {
+            contents.extend_from_slice(id);
+            contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            contents.extend_from_slice(&data);
+        }
+        assert!(matches!(decode(&contents), Err(DecodeError::Unrecognized)));
     }
 
     #[test]

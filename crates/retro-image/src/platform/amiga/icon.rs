@@ -61,6 +61,7 @@ use alloc::vec::Vec;
 
 use super::iff;
 use crate::bytes::{be16, be32};
+use crate::image::check_scaled;
 use crate::{DecodeError, Image};
 
 const DISK_OBJECT_LEN: usize = 78;
@@ -116,6 +117,7 @@ fn decode_classic(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || !(2..=3).contains(&depth) || 1 << depth > palette.len() {
         return Err(fail);
     }
+    check_scaled(width, height, 1, 2)?;
     let row_len = width.div_ceil(16) * 2;
     let plane_len = row_len * height;
     let start = start + IMAGE_HEADER_LEN;
@@ -202,6 +204,20 @@ fn skip_text(data: &[u8], pos: usize) -> Option<usize> {
 mod tests {
     use super::*;
     use alloc::vec;
+
+    #[test]
+    fn classic_icon_doubled_over_the_pixel_cap_is_rejected() {
+        let (width, height) = (65535usize, 513usize);
+        let mut data = vec![0; DISK_OBJECT_LEN];
+        data[..4].copy_from_slice(&[0xe3, 0x10, 0, 1]);
+        let mut image = vec![0; IMAGE_HEADER_LEN];
+        image[4..6].copy_from_slice(&(width as u16).to_be_bytes());
+        image[6..8].copy_from_slice(&(height as u16).to_be_bytes());
+        image[9] = 2;
+        data.extend(image);
+        data.resize(data.len() + width.div_ceil(16) * 2 * height * 2, 0);
+        assert!(matches!(decode(&data), Err(DecodeError::Unrecognized)));
+    }
 
     /// A DiskObject with one 16x1, 2-plane image, the given tool types and
     /// trailing bytes.

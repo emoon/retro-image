@@ -31,6 +31,7 @@ mod nufli;
 mod petscii;
 mod prg;
 mod printfox;
+mod printmaster;
 mod she;
 mod sprites;
 mod superhires;
@@ -40,6 +41,7 @@ mod unpack;
 mod vhi;
 mod vic2;
 mod vic20;
+mod viewer;
 mod xfl;
 
 use crate::{DecodeError, Format, Image};
@@ -381,6 +383,29 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
+    Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
+    // Self-displaying PRGs
+    Format::new(
+        C64,
+        "Self-displaying PETSCII",
+        &["prg"],
+        petscii::decode_petscii_prg,
+    )
+    .signature(),
+    Format::new(
+        C64,
+        "Koala viewer (10500 bytes)",
+        &["prg"],
+        viewer::decode_10500,
+    )
+    .signature(),
+    Format::new(
+        C64,
+        "Koala viewer (10608 bytes)",
+        &["prg"],
+        viewer::decode_10608,
+    )
+    .signature(),
 ];
 
 /// `.vic`: a memory dump in one of the unpacked C64 layouts, told apart by

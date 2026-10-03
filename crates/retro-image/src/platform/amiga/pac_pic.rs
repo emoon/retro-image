@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 
 use super::ilbm::rgb12;
 use crate::bytes::{be16, be32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
@@ -50,6 +51,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if width == 0 || height == 0 || !(1..=6).contains(&planes) {
         return Err(fail);
     }
+    check_size(width, height)?;
     let plane_len = row_len * height;
     let unpacked = unpack(data, start + 24, rle_pos, points_pos, plane_len * planes).ok_or(fail)?;
 
@@ -125,4 +127,28 @@ fn unpack(
         out.push(pic_byte);
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picture_over_the_pixel_cap_is_rejected() {
+        // 16384 x 4097 pixels, one plane: 8 MiB of plane data, which the
+        // input length alone would allow with enough padding.
+        let mut data = alloc::vec![0u8; 140_000];
+        data[..4].copy_from_slice(b"AmBk");
+        data[12..20].copy_from_slice(b"Pac.Pic.");
+        data[20..24].copy_from_slice(&SCREEN_IDS[0].to_be_bytes());
+        let start = 20 + SCREEN_HEADER_LEN;
+        data[start..start + 4].copy_from_slice(&PICTURE_ID.to_be_bytes());
+        data[start + 8..start + 10].copy_from_slice(&2048u16.to_be_bytes());
+        data[start + 10..start + 12].copy_from_slice(&1u16.to_be_bytes());
+        data[start + 12..start + 14].copy_from_slice(&4097u16.to_be_bytes());
+        data[start + 14..start + 16].copy_from_slice(&1u16.to_be_bytes());
+        data[start + 19] = 24;
+        data[start + 23] = 24;
+        assert!(decode(&data).is_err());
+    }
 }

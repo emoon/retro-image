@@ -18,7 +18,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::planar_pixels;
+use crate::image::{check_scaled, check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 pub(super) const CAMG_LACE: u32 = 0x4;
@@ -32,7 +32,7 @@ pub(super) struct Header {
     pub height: usize,
     pub planes: usize,
     masking: u8,
-    compression: u8,
+    pub compression: u8,
 }
 
 impl Header {
@@ -41,9 +41,11 @@ impl Header {
         if bmhd.len() < 20 {
             return None;
         }
+        let (width, height) = (be16(bmhd, 0)? as usize, be16(bmhd, 2)? as usize);
+        check_size(width, height).ok()?;
         let header = Self {
-            width: be16(bmhd, 0)? as usize,
-            height: be16(bmhd, 2)? as usize,
+            width,
+            height,
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
@@ -95,6 +97,8 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
+    let (sx, sy) = scale_factors(camg.unwrap_or(0));
+    check_scaled(header.width, header.height, sx as usize, sy as usize)?;
     let mut image = Image::new(header.width as u32, header.height as u32);
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
         if let Some(line_palettes) = &line_palettes {
@@ -338,13 +342,64 @@ pub(super) fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
     }
 }
 
-/// Doubles pixels so the picture keeps its aspect ratio.
-fn scale(image: Image, camg: u32) -> Image {
+/// Pixel doubling that keeps the picture's aspect ratio, as (x, y) factors.
+pub(super) fn scale_factors(camg: u32) -> (u32, u32) {
     let lace = camg & CAMG_LACE != 0;
     let hires = camg & CAMG_HIRES != 0;
     match (hires, lace) {
-        (false, true) => image.scaled(2, 1),
-        (true, false) => image.scaled(1, 2),
-        _ => image,
+        (false, true) => (2, 1),
+        (true, false) => (1, 2),
+        _ => (1, 1),
+    }
+}
+
+fn scale(image: Image, camg: u32) -> Image {
+    let (sx, sy) = scale_factors(camg);
+    image.scaled(sx, sy)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bmhd(width: u16, height: u16) -> Vec<u8> {
+        let mut chunk = alloc::vec![0u8; 28];
+        chunk[..4].copy_from_slice(b"BMHD");
+        chunk[4..8].copy_from_slice(&20u32.to_be_bytes());
+        chunk[8..10].copy_from_slice(&width.to_be_bytes());
+        chunk[10..12].copy_from_slice(&height.to_be_bytes());
+        chunk[16] = 1;
+        chunk
+    }
+
+    #[test]
+    fn header_rejects_pictures_over_the_pixel_cap() {
+        assert!(Header::parse(&bmhd(100, 100)).is_some());
+        assert!(Header::parse(&bmhd(65535, 65535)).is_none());
+    }
+
+    #[test]
+    fn interlace_doubling_over_the_pixel_cap_is_rejected() {
+        let (width, height) = (50000u16, 700u16);
+        let mut bmhd = bmhd(width, height)[8..].to_vec();
+        bmhd[10] = 1; // ByteRun1
+        let mut body = Vec::new();
+        for _ in 0..36000 {
+            body.extend_from_slice(&[0x81, 0]);
+        }
+        let mut contents = Vec::new();
+        for (id, data) in [
+            (b"BMHD", bmhd),
+            (b"CAMG", alloc::vec![0, 0, 0, 4]),
+            (b"BODY", body),
+        ] {
+            contents.extend_from_slice(id);
+            contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            contents.extend_from_slice(&data);
+        }
+        assert!(matches!(
+            decode_ilbm(&contents),
+            Err(DecodeError::Unrecognized)
+        ));
     }
 }
