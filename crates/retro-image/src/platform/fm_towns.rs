@@ -5,6 +5,7 @@
 //! Platform survey: `docs/research/msx-japanese.md`, gaps in
 //! `docs/research/gaps-pc-japan.md`.
 
+mod hel;
 mod icn;
 
 use super::nec_pc::Machine;
@@ -17,4 +18,5 @@ pub(super) static FORMATS: &[Format] = &[
     })
     .signature(),
     Format::new("FM Towns", "Icons", &["icn"], icn::decode_icn).signature(),
+    Format::new("FM Towns", "Animation", &["hel"], hel::decode_hel).signature(),
 ];
