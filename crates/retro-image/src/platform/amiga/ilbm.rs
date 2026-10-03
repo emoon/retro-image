@@ -104,9 +104,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         if let Some(line_palettes) = &line_palettes {
             line_palettes.apply(y, &mut palette);
         }
-        mode.render_row(row, &palette, |x, color| {
-            image.set(x as u32, y as u32, color)
-        });
+        mode.render_row(row, &palette, image.row_mut(y as u32));
     }
     Ok(scale(image, camg.unwrap_or(0)))
 }
@@ -311,10 +309,11 @@ impl Mode {
         })
     }
 
-    fn render_row(&self, row: &[u32], palette: &Palette, mut put: impl FnMut(usize, u32)) {
+    /// Colours the pixel values `row` into `out`, 3 bytes per pixel.
+    fn render_row(&self, row: &[u32], palette: &Palette, out: &mut [u8]) {
         let lookup = |i: u32| palette.color(i);
         let mut held = lookup(0);
-        for (x, &v) in row.iter().enumerate() {
+        for (&v, out) in row.iter().zip(out.as_chunks_mut::<3>().0) {
             let color = match self {
                 Self::Indexed => lookup(v),
                 Self::ExtraHalfBrite if v >= 32 => palette.half(v - 32),
@@ -327,7 +326,8 @@ impl Mode {
                 Self::TrueColor => (v & 0xff) << 16 | (v & 0xff00) | (v >> 16 & 0xff),
             };
             held = color;
-            put(x, color);
+            let [_, r, g, b] = color.to_be_bytes();
+            *out = [r, g, b];
         }
     }
 }
