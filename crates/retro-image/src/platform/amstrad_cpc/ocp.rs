@@ -62,7 +62,9 @@ const WIN_TRAILER_LEN: usize = 5;
 /// WIN: lines of pixels, raw or MJH-compressed, then a 5-byte trailer
 /// holding the width in mode 2 pixels and the height.
 pub(super) fn decode_win(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let window = unpack(strip_amsdos(data))?;
+    let file = strip_amsdos(data);
+    let packed = file.starts_with(MJH);
+    let window = unpack(file)?;
     let pixels_len = window
         .len()
         .checked_sub(WIN_TRAILER_LEN)
@@ -71,9 +73,18 @@ pub(super) fn decode_win(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let bits = usize::from(u16::from_le_bytes([trailer[1], trailer[2]]));
     let height = usize::from(trailer[3]);
     let line_bytes = bits.div_ceil(8);
-    if bits == 0 || height == 0 || line_bytes * height != pixels.len() {
+    // MJH-packed windows may carry surplus bytes between the pixels and the
+    // trailer (`recoil2png` ignores them); raw ones must fit exactly.
+    let needed = line_bytes * height;
+    let fits = if packed {
+        needed <= pixels.len()
+    } else {
+        needed == pixels.len()
+    };
+    if bits == 0 || height == 0 || !fits {
         return Err(DecodeError::Unrecognized);
     }
+    let pixels = &pixels[..needed];
     let palette = Palette::from_companions(companions);
     let width = bits * palette.mode.pixels_per_byte() / 8;
     if width == 0 {
