@@ -5,6 +5,7 @@
 //! cites the sources of its own formats. The palette is in [`palette`];
 //! ANTIC/GTIA bitmap rendering in [`antic`].
 
+mod a4r;
 mod antic;
 mod apac;
 mod blazing_paddles;
@@ -415,4 +416,6 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     // Wave 5: Amiga and misc
     Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
+    // Gaps B
+    Format::new(ATARI8, "Anime 4ever", &["a4r"], a4r::decode_a4r).signature(),
 ];
