@@ -140,6 +140,7 @@ See [coverage.md](coverage.md) for a comparison with RECOIL's format list.
 | InterPainter (SFDN) | INS |  |  |
 | Hard Interlace Picture (SFDN) | HPS |  |  |
 | Graphics 10 | G10 |  |  |
+| Graphics Magician Picture Painter | SPC |  |  |
 | Graphics 11 | G11 |  |  |
 | Micro Illustrator | MIC |  | yes |
 | Sketch-PadDles | SKP |  |  |
@@ -279,7 +280,6 @@ See [coverage.md](coverage.md) for a comparison with RECOIL's format list.
 | UIMG | BP6, BP8, C06, C08, C16, C24, C32 |  |  |
 | Spooky Sprites RLE | TRE | yes |  |
 | ICDRAW icon | IBI, IB3 | yes |  |
-| TrueColor IMG | TIMG |  |  |
 
 ## Atari Portfolio
 

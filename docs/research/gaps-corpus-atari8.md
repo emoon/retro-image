@@ -17,7 +17,7 @@ Other extensions from the task list (BG9, MIL, RIP, WIN, ZIM, FLI, P4I, NL3, ML1
 | VSC (+G2F) | 2 | exact; recipe confirmed | needs the `Companions` API change |
 | PIC (Atari variants) | 5 files fail | OPIS (Koala text mode), BLASTER (4325), BARAHIR (7685), PAINTD (7680 APAC), SCHALT (7680 GR8): all exact | small |
 | HPM Grass' Slideshow | 1 | RLE and 2bpp layout exact; colour source unresolved | partial |
-| SPC Graphics Magician | 4 | not attempted (vector plus fill) | low value |
+| SPC Graphics Magician | 4 | done (see `graphics_magician.rs`) | done |
 
 Suggested order: BGP, MPL174, PIC variants (cheap, exact) then A4R (8 files, exact) then VSC (API decision) then PGR exact subset, then HPM (colour heuristic), SPC last.
 
@@ -89,10 +89,9 @@ Compressed stream (LZSS family, byte oriented):
 Verified exact (picture bytes == `recoil2png`): CATTY (ff 98), ANIME_B.007.SHIZUKU (ff d8), ANIME_B.003.PUMA (ef 80), DEUNAN (dd 80), IRIA (9d c0), MIYU (ff 80), PLASTIC (ff 9a). The header
 bytes were not constant, so `b0` and `b1` matter: first marker 0x7F/0x6F/0x5F/0x1D and flags 00/18/58/1A/40 all decoded.
 
-**Unsolved: MOTOKO.A4R** (header `cf 80 00 90 4d`). Here the 4D byte means the stream starts with a credits text segment (decoded 358 bytes of Polish text in OS screen codes), then
-`db 00 90 4f` at file offset 288, then the picture, which RECOIL places at decoded offset 512. Our continuous decode breaks at the segment boundary: the oracle shows the picture's first group
-has only three items (`L ff`, run `01 0a`, `L 61`) followed by marker `ff` and flag `43`, so group/marker bookkeeping across the `00 90 PP` boundary differs from our model. Trying every
-start offset 286-296 and every marker/first-flag pair on a fresh decoder found nothing. Open question; one sample, so deferrable. Recommend rejecting files whose byte4 != 4F until solved.
+**MOTOKO.A4R** (header `cf 80 00 90 4d`): the header's `00 90 PP` is a segment start (page `PP`, first byte follows as the first literal), and the same token with a 4th byte `VV` occurs in the stream
+(`00 90 4F FF` at file offset 289) where the credits text segment (page 4D) ends and the picture (page 4F) begins: the output pointer moves to `(PP - first page) * 256`, zero-filled, and `VV` is
+the first byte there. It takes one item slot, which is why the group/marker bookkeeping seemed off by a few items. Picture exact against `recoil2png`.
 
 Detection rule: `d[2] == 0 && d[3] == 0x90 && 0x4D..=0x50 contains d[4] && d[0] & 0x80 && d[1] & 0x80`, then require a clean decode of at least the picture bytes. `.a4r` is unique enough that
 extension gating is also fine.
@@ -119,10 +118,18 @@ The file is an Atari binary-load record: `FF FF`, start (always 0x8206), end; le
 - Events normally take effect at the start of their scanline, last write wins.
 
 Exact (scratch decoder == `recoil2png`): JOYRIDE (both copies), LOTUS, LOOK (static), PLAZMA and ENDRM (GTIA 9, COLBK events). For DALM (players, 0x11 priority, fifth player) the same
-model with the players/missiles code from `gtia.rs` leaves 1140 of 80640 pixels different (single pixels at player edges and some 0xA0 vs 0xA6 shades); dragon.pgr differs in 6624 pixels.
-Cause (dragon, confirmed by synthetic probes): events with reg 0x1E/0x1F and a value byte (0xBE, 0xBF, 0xFE, 0xFF, 0x7F, 0x3F...) make **following writes land mid-scanline** at CPU-cycle positions
-(multiples of 16 output pixels with irregular steps that look like ANTIC DMA cycle stealing). Reproducing that needs a cycle-accurate ANTIC DMA model; not attempted. So PGR is best done in two stages:
-the exact static subset first (6 of 8 samples), reject or approximate files that use reg 0x1C-0x1F value events.
+model with the players/missiles code from `gtia.rs` leaves 1140 of 80640 pixels different (single pixels at player edges and some 0xA0 vs 0xA6 shades).
+**dragon.pgr, solved.** Events on registers 0x1C-0x1F are waits that move later writes into the scanline, and its DMACTL (3E) turns on player/missile DMA. Pixel-exact against `recoil2png` after
+modelling the display kernel and ANTIC (all by probing `recoil2png` with COLBK write chains in blank and mode E rows; the simulated write positions matched every probe):
+
+- Events start at CPU cycle -9 of a scanline (x = 4 * cycle - 86; writes landing left of x = 0 take effect at 0). Costs in work cycles: write 4, +2 with a value byte; an event on register 0x1C + n:
+  8n + 2 (bit 5) + 2 (bit 6) + 4 (bit 7). Only 1C and 3C and writes with bit 7 end a scanline; 1D-1F with bit 7 do not.
+- The CPU progresses only on cycles ANTIC leaves free. Stolen: DL fetch at 9 (10-11 more for an LMS line), refresh at 25, 29 .. 57, player DMA 0-4, missile-only DMA 0, playfield fetch on every
+  second cycle from 20 (40 bytes) or 28 (32 bytes) for as many cycles as bytes. The 48-byte start was not observed.
+- Player/missile memory at 8000, single-line: missiles +300, players +400, +500, +600, +700; picture line y reads byte y + 8. DMACTL bit 3 loads the players, bit 2 the missiles; the load
+  takes effect at x = 0, so objects starting left of the picture show the previous line's byte.
+- An object starts when the beam reaches HPOS (x = 2 * HPOS - 88) and keeps the graphics it started with; an HPOS write after that does not move it, and one landing after the new position was
+  passed does not start it. A size write stretches the remaining bits from x + 2.
 
 Detection: `FF FF 06 82`, length consistent, `PowerGFX` at offset 8.
 
@@ -135,12 +142,9 @@ JORDAN.HPM, exact structure: stream of tokens, `00 v n` = run of byte `v` repeat
 (0x74: 00 74 58 7E; 0xE4: 00 E4 C8 BE; 0x30: 0E 30 C6 7A) and extra bytes beyond change them again. It looks like a table keyed by the trailer rather than a rule. With one sample, implement
 "trailer 0x34/0x35 -> (0, 34, 38, 3C), else grey (0, 04, 08, 0C)" at most, marked as a guess.
 
-## 8. SPC Graphics Magician Picture Painter (COIN1 111, COIN2 153, TEST 255, ROCKETOR 574 bytes; the other `.SPC` in corpus are ST Spectrum 512)
+## 8. SPC Graphics Magician Picture Painter (COIN1, COIN2, TEST, ROCKETOR)
 
-Observations only. Files start with a 16-bit length (file size - 3) and end with `00`. Commands seen: `80 x y` move, `A0 x y` line to, `60 n`, `E0 x y` fill; coordinates in a 160x192 space
-(pixels doubled to 320x192). COIN1 and COIN2 render as filled coin outlines in one colour; TEST and ROCKETOR look like random vectors because RECOIL's interpretation of colour/pattern codes
-is not recoverable from these samples. A pixel-exact decoder needs the line and flood-fill rules; skipped as low value (4 samples, 2 of them test files). Reference for the Apple II original:
-[Graphics Magician disassembly](https://6502disassembly.com/a2-graphics-magician/) (prose only; the Atari port differs).
+Done: `graphics_magician.rs`. All four match recoil2png except ROCKETOR, whose brush stamps recoil2png paints at the wrong place (divergence recorded).
 
 ## Method note and tooling
 

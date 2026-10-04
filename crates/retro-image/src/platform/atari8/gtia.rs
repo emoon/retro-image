@@ -170,38 +170,80 @@ pub(super) struct Pmg {
     pub graf_missile: u8,
 }
 
-impl Pmg {
-    pub fn draw(&self) -> Objects {
-        let mut pixels = [0; WIDTH];
-        let mut fill = |hpos: u8, size: u8, bits: u8, count: u32, flag: u8| {
+/// One player or missile: it starts where its HPOS says and then shows
+/// `bits`, most significant first, each as wide as its size says.
+pub(super) struct Shape {
+    /// First output pixel, negative left of the picture.
+    pub left: i32,
+    size: u8,
+    bits: u8,
+    count: u32,
+    flag: u8,
+}
+
+impl Shape {
+    fn new(hpos: u8, size: u8, bits: u8, count: u32, flag: u8) -> Self {
+        Shape {
+            left: 2 * i32::from(hpos) - 88,
+            size,
+            bits,
+            count,
+            flag,
+        }
+    }
+
+    /// Adds the shape to `pixels`. `resized` are later size writes, as
+    /// (first output pixel, size) in order, which stretch the bits still to
+    /// come.
+    pub fn draw(&self, pixels: &mut [u8; WIDTH], resized: &[(i32, u8)]) {
+        let mut resized = resized.iter().peekable();
+        let mut size = self.size;
+        let mut start = self.left;
+        for i in 0..self.count {
+            while let Some(&(_, new)) = resized.next_if(|&&(x, _)| x <= start) {
+                size = new;
+            }
             let width = 2 * [1, 2, 1, 4][usize::from(size & 3)];
-            let left = 2 * i32::from(hpos) - 88;
-            for i in 0..count {
-                if bits >> (count - 1 - i) & 1 == 0 {
-                    continue;
-                }
-                let start = left + (i as i32) * width;
+            if self.bits >> (self.count - 1 - i) & 1 != 0 {
                 for x in start.max(0)..(start + width).min(WIDTH as i32) {
-                    pixels[x as usize] |= flag;
+                    pixels[x as usize] |= self.flag;
                 }
             }
-        };
-        for k in 0..4 {
-            fill(
-                self.hpos_player[k],
-                self.size_player >> (2 * k),
-                self.graf_player[k],
-                8,
-                1 << k,
-            );
-            fill(
-                self.hpos_missile[k],
-                self.size_missile >> (2 * k),
-                self.graf_missile >> (2 * k),
-                2,
-                0x10 << k,
-            );
+            start += width;
         }
+    }
+}
+
+impl Pmg {
+    /// The four players, then the four missiles.
+    pub fn shapes(&self) -> [Shape; 8] {
+        core::array::from_fn(|n| {
+            let k = n % 4;
+            if n < 4 {
+                Shape::new(
+                    self.hpos_player[k],
+                    self.size_player >> (2 * k),
+                    self.graf_player[k],
+                    8,
+                    1 << k,
+                )
+            } else {
+                Shape::new(
+                    self.hpos_missile[k],
+                    self.size_missile >> (2 * k),
+                    self.graf_missile >> (2 * k),
+                    2,
+                    0x10 << k,
+                )
+            }
+        })
+    }
+
+    pub fn draw(&self) -> Objects {
+        let mut pixels = [0; WIDTH];
+        self.shapes()
+            .iter()
+            .for_each(|shape| shape.draw(&mut pixels, &[]));
         Objects { pixels }
     }
 }

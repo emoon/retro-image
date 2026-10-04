@@ -18,6 +18,14 @@
 //!   and sets the pens. A 96-byte line wraps inside its 2 KB block, and the
 //!   rows after the first 2 KB continue 16 KB further on. RECOIL shows
 //!   these files as Apple IIGS noise, so the layout was checked by eye.
+//! - iMPdraw's screen mode is the number in its BASIC loader line
+//!   `20 MODE n: CALL &01AD` (token `0xAD`, constants `0x0e`-`0x10` are
+//!   0-2; the CPC BASIC token table is in the Locomotive BASIC manual).
+//!   DRAGON.SCR says `MODE 2`, and only a mode 2 reading of it (768x272, two
+//!   pens from 0x7f00) is a sharp picture of a dragon; modes 0 and 1 give
+//!   dithered noise. Its flag byte 0x1ac is 1 with pixel data where the
+//!   Plus palette would be, so that palette is used only when it is
+//!   plausible (high bytes below 16).
 //! - Palette sources: iMPdraw keeps 16 Gate Array values (`0x40 | colour`)
 //!   at 0x7f00; when the byte at 0x1ac is 1 the loader instead copies 32
 //!   bytes from 0x801 to the ASIC palette. The other tool keeps a mode
@@ -37,6 +45,11 @@ const IMPDRAW_LEN: usize = 0x7e90;
 const OTHER_LEN: usize = 0x7cc0;
 /// iMPdraw's BASIC loader: `10 ' iMP`.
 const IMPDRAW_SIGNATURE: [u8; 10] = [0x0e, 0x00, 0x0a, 0x00, 0x01, 0xc0, 0x20, 0x69, 0x4d, 0x50];
+/// Body offset of the mode constant in `20 MODE n`, after the line header
+/// and the `MODE` token with its space.
+const IMPDRAW_MODE_AT: usize = 0x14;
+const IMPDRAW_MODE_PREFIX: [u8; 6] = [0x0d, 0x00, 0x14, 0x00, 0xad, 0x20];
+const BASIC_ZERO: u8 = 0x0e;
 
 /// Memory image of the file, addressed as on the CPC.
 struct Memory<'a> {
@@ -71,7 +84,23 @@ fn plus_color(low: u8, high: u8) -> u32 {
     scale(low >> 4) << 16 | scale(high) << 8 | scale(low)
 }
 
-/// Pens of the picture (all overscan screens are mode 0).
+/// Screen mode: iMPdraw's BASIC `MODE n`; the other tool's pictures are
+/// all mode 0 (its mode byte at 0x800).
+fn screen_mode(memory: &Memory, body: &[u8], impdraw: bool) -> Result<Mode, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    if !impdraw {
+        return (memory.get(0x800) == 0).then_some(Mode::Zero).ok_or(fail);
+    }
+    if body.get(IMPDRAW_MODE_AT - IMPDRAW_MODE_PREFIX.len()..IMPDRAW_MODE_AT)
+        != Some(&IMPDRAW_MODE_PREFIX)
+    {
+        return Err(fail);
+    }
+    let constant = body.get(IMPDRAW_MODE_AT).ok_or(fail)?;
+    Mode::from_number(constant.wrapping_sub(BASIC_ZERO)).ok_or(fail)
+}
+
+/// Pens of the picture.
 fn palette(memory: &Memory, impdraw: bool) -> Result<[u32; 16], DecodeError> {
     let mut pens = [0; 16];
     if impdraw {
@@ -82,19 +111,12 @@ fn palette(memory: &Memory, impdraw: bool) -> Result<[u32; 16], DecodeError> {
             for (pen, word) in pens.iter_mut().zip(words.as_chunks::<2>().0) {
                 *pen = plus_color(word[0], word[1]);
             }
-        } else if plus {
-            // A Plus flag with no palette behind it (DRAGON.SCR) leaves the
-            // mode and inks unknown; one sample is too few to fit a rule.
-            return Err(DecodeError::Unrecognized);
         } else {
             for (i, pen) in pens.iter_mut().enumerate() {
                 *pen = hardware_color(memory.get(0x7f00 + i));
             }
         }
     } else {
-        if memory.get(0x800) != 0 {
-            return Err(DecodeError::Unrecognized);
-        }
         for (i, pen) in pens.iter_mut().enumerate() {
             let ink = usize::from(memory.get(0x801 + i));
             if ink > 26 {
@@ -121,7 +143,7 @@ pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let memory = Memory { load, bytes: body };
     let pens = palette(&memory, impdraw)?;
-    let mode = Mode::Zero;
+    let mode = screen_mode(&memory, body, impdraw)?;
     let lines: Vec<Vec<u8>> = (0..LINES)
         .map(|y| (0..LINE_BYTES).map(|x| memory.screen_byte(x, y)).collect())
         .collect();

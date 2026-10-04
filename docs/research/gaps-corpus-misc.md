@@ -305,4 +305,5 @@ RECOIL again reads it as Paintworks noise.
 
 ## Decisions after implementation
 
-- `DRAGON.SCR` is rejected. A 4-colour mode 1 reading made a clean picture, but one sample can't confirm that rule. It returns if a second sample or a spec shows it.
+- `DRAGON.SCR` decodes: its BASIC loader line is `20 MODE 2: CALL &01AD`, so it is a mode 2 (768x272) iMPdraw picture on the 0x7f00 inks. The Plus flag is set but 0x801 holds pixels, so the Plus palette is used only when it looks like one.
+- `ZERO.pnt` stays rejected: 4418 bytes of `F6`, no `13 "PNT"` signature; `recoil2png` renders it as one flat colour.
