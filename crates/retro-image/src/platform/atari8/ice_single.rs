@@ -17,7 +17,7 @@
 //! with colour set `j` and glyph `n + 64` with colour set `i`. Glyphs are 4
 //! pixels of 2 bits per row, 4 output pixels wide.
 
-use super::palette::{register_rgb, rgb};
+use super::palette::{average, register_rgb, rgb};
 use crate::{DecodeError, Image};
 
 const CHARSET: usize = 1024;
@@ -127,18 +127,16 @@ pub(super) fn decode_ice_single(data: &[u8]) -> Result<Image, DecodeError> {
                     let b = value(row, line, x, shift_b, 64);
                     let a = color(mode, header, Glyph::A, set_a, a);
                     let b = color(mode, header, Glyph::B, set_b, b);
-                    image.set(x as u32, (block * 32 + row * 8 + line) as u32, blend(a, b));
+                    image.set(
+                        x as u32,
+                        (block * 32 + row * 8 + line) as u32,
+                        average([a, b]),
+                    );
                 }
             }
         }
     }
     Ok(image)
-}
-
-/// Per-channel average, rounded down.
-fn blend(a: u32, b: u32) -> u32 {
-    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
-    channel(16) | channel(8) | channel(0)
 }
 
 #[cfg(test)]
@@ -168,7 +166,7 @@ mod tests {
         data.resize(3 + CHARSET, 0);
         data[3] = 0xc0;
         let image = decode_ice_single(&data).unwrap();
-        assert_eq!(image.get(0, 0), blend(rgb(5), rgb(0)));
+        assert_eq!(image.get(0, 0), average([rgb(5), rgb(0)]));
         assert_eq!(image.get(4, 0), 0);
     }
 }

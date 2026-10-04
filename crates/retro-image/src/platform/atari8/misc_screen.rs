@@ -1,4 +1,4 @@
-//! Small raw and lightly framed Atari 8-bit screens (wave 4): TXS, FGE, KFX,
+//! Small raw and lightly framed Atari 8-bit screens: TXS, FGE, KFX,
 //! CUT, GR9P, RYS, KSS, GHG, PI8 and PI9.
 //!
 //! Sources:

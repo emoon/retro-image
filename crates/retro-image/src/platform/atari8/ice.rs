@@ -37,7 +37,8 @@
 //!     mode 10 (IPC, IP2) shows the 9 colours of the header.
 //!   - Colour registers ignore luminance bit 0, also in the GTIA frames.
 
-use super::palette::{register_rgb, rgb};
+use super::gtia;
+use super::palette::{average, register_rgb, rgb};
 use crate::{DecodeError, Image};
 
 const CHARSET: usize = 1024;
@@ -94,13 +95,8 @@ impl Frame {
         match self {
             Self::Antic4(colors) => {
                 for (x, pair) in out.as_chunks_mut::<2>().0.iter_mut().enumerate() {
-                    let value = usize::from(bits >> (6 - 2 * x) & 3);
-                    let index = if value == 3 && code & 0x80 != 0 {
-                        4
-                    } else {
-                        value
-                    };
-                    pair.fill(colors[index]);
+                    let value = bits >> (6 - 2 * x) & 3;
+                    pair.fill(colors[gtia::antic4_register(value, code & 0x80 != 0)]);
                 }
             }
             Self::Hires {
@@ -346,7 +342,7 @@ pub(super) fn decode_ice(data: &[u8]) -> Result<Image, DecodeError> {
                         image.set(
                             (column * 8 + x) as u32,
                             (block * 32 + row * 8 + line) as u32,
-                            blend_rgb(one[x], two[x]),
+                            average([one[x], two[x]]),
                         );
                     }
                 }
@@ -361,12 +357,6 @@ const VARIANTS: [(bool, bool); 4] = [(false, false), (true, true), (false, true)
 /// First screen code of each sheet row: ATASCII order (control characters
 /// are screen codes 64-95).
 const ROW_CODES: [u8; 4] = [64, 0, 32, 96];
-
-/// Per-channel average, rounded down (as `Image::blend`).
-fn blend_rgb(a: u32, b: u32) -> u32 {
-    let channel = |shift: u32| (((a >> shift & 0xff) + (b >> shift & 0xff)) / 2) << shift;
-    channel(16) | channel(8) | channel(0)
-}
 
 #[cfg(test)]
 mod tests {

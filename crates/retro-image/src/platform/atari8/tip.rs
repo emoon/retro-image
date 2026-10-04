@@ -16,6 +16,7 @@
 //!   4-7); mode 9 and hue pixels drawn 1 output pixel left of the grid,
 //!   mode 10 pixels 1 to the right; and the two frames mixed by averaging.
 
+use super::antic;
 use super::palette::rgb;
 use crate::{DecodeError, Image};
 
@@ -42,12 +43,7 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
     // Pixel of `frame` covering output pixel `x` on `line`, if any.
     let pixel = |frame: &[u8], line: usize, x: Option<usize>| {
         let x = x.filter(|&x| x < out_width)? / 4;
-        let byte = frame[line * line_len + x / 2];
-        Some(if x.is_multiple_of(2) {
-            byte >> 4
-        } else {
-            byte & 0x0f
-        })
+        Some(antic::nibble(&frame[line * line_len..], x))
     };
     // Frame 0 takes its luminance from mode 9, frame 1 from mode 10.
     let luminance = |frame: usize, line: usize, x: usize| match frame {

@@ -56,6 +56,16 @@ impl Bitmap<'_> {
     }
 }
 
+/// Pixel `x` of a 4-bit row, high nibble first.
+pub(super) fn nibble(row: &[u8], x: usize) -> u8 {
+    let byte = row[x / 2];
+    if x.is_multiple_of(2) {
+        byte >> 4
+    } else {
+        byte & 0x0f
+    }
+}
+
 /// Fills a `width` x `height` block at (`x`, `y`).
 pub(super) fn fill(image: &mut Image, x: u32, y: u32, width: u32, height: u32, rgb: u32) {
     for dy in 0..height {

@@ -1,4 +1,4 @@
-//! Character-based Atari 8-bit pictures (wave 4): the Ascii-Art Editor `.ART`
+//! Character-based Atari 8-bit pictures: the Ascii-Art Editor `.ART`
 //! and Graph `.ALL`.
 //!
 //! Sources: Just Solve "Ascii-Art Editor"
@@ -21,6 +21,7 @@
 //! values 1-3 are playfield 0-2 and 3 in a glyph whose code has bit 7 set is
 //! playfield 3. A row naming a font that is not in the file is an error.
 
+use super::gtia;
 use super::palette::register_rgb;
 use super::text::{mode2, screen_code};
 use crate::{DecodeError, Image};
@@ -90,12 +91,7 @@ pub(super) fn decode_all(data: &[u8]) -> Result<Image, DecodeError> {
         let glyph = &font[usize::from(code & 0x7f) * 8..][..8];
         for (line, &bits) in glyph.iter().enumerate() {
             for pixel in 0..4u32 {
-                let value = usize::from((bits >> (6 - 2 * pixel)) & 3);
-                let slot = if value == 3 && code & 0x80 != 0 {
-                    4
-                } else {
-                    value
-                };
+                let slot = gtia::antic4_register((bits >> (6 - 2 * pixel)) & 3, code & 0x80 != 0);
                 for half in 0..2 {
                     let x = column * 8 + pixel * 2 + half;
                     image.set(x, row * 8 + line as u32, palette[slot]);

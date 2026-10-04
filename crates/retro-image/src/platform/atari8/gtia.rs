@@ -117,6 +117,39 @@ const fn signals(prior: u8, players: u8, playfield: u8) -> u16 {
     mask
 }
 
+/// Palette slot of an ANTIC mode 4 pixel: 0 background, 1-3 playfield
+/// 0-2, 4 playfield 3, which an inverse character shows for value 3.
+pub(super) fn antic4_register(value: u8, inverse: bool) -> usize {
+    if value == 3 && inverse {
+        4
+    } else {
+        usize::from(value)
+    }
+}
+
+/// The playfield bit (PF0 = bit 0 ... PF3 = bit 3) of a palette slot
+/// from [`antic4_register`]; the background has none.
+pub(super) fn playfield_bit(register: usize) -> u8 {
+    match register {
+        0 => 0,
+        n => 1 << (n - 1),
+    }
+}
+
+/// Splits one pixel's object flags (see [`Objects::pixels`]) over the
+/// players and playfield bits: with PRIOR bit 4 (fifth player) the missiles
+/// together act as playfield 3, otherwise as extra players.
+pub(super) fn add_objects(prior: u8, objs: u8, players: u8, playfield: u8) -> (u8, u8) {
+    let players = players | objs & 0x0f;
+    if prior & 0x10 == 0 {
+        (players | objs >> 4, playfield)
+    } else if objs & 0xf0 != 0 {
+        (players, playfield | 8)
+    } else {
+        (players, playfield)
+    }
+}
+
 /// Player and missile shapes on one scanline, in output pixels of a
 /// 336-pixel-wide picture whose playfield starts at HPOS 0x2C.
 pub(super) struct Objects {

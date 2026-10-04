@@ -1,4 +1,4 @@
-//! Packed Atari 8-bit screens (wave 4): Trzmiel CPR and Kompresor do Animatora
+//! Packed Atari 8-bit screens: Trzmiel CPR and Kompresor do Animatora
 //! KPR.
 //!
 //! Sources: Just Solve "Trzmiel"
