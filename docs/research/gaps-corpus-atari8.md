@@ -89,10 +89,9 @@ Compressed stream (LZSS family, byte oriented):
 Verified exact (picture bytes == `recoil2png`): CATTY (ff 98), ANIME_B.007.SHIZUKU (ff d8), ANIME_B.003.PUMA (ef 80), DEUNAN (dd 80), IRIA (9d c0), MIYU (ff 80), PLASTIC (ff 9a). The header
 bytes were not constant, so `b0` and `b1` matter: first marker 0x7F/0x6F/0x5F/0x1D and flags 00/18/58/1A/40 all decoded.
 
-**Unsolved: MOTOKO.A4R** (header `cf 80 00 90 4d`). Here the 4D byte means the stream starts with a credits text segment (decoded 358 bytes of Polish text in OS screen codes), then
-`db 00 90 4f` at file offset 288, then the picture, which RECOIL places at decoded offset 512. Our continuous decode breaks at the segment boundary: the oracle shows the picture's first group
-has only three items (`L ff`, run `01 0a`, `L 61`) followed by marker `ff` and flag `43`, so group/marker bookkeeping across the `00 90 PP` boundary differs from our model. Trying every
-start offset 286-296 and every marker/first-flag pair on a fresh decoder found nothing. Open question; one sample, so deferrable. Recommend rejecting files whose byte4 != 4F until solved.
+**MOTOKO.A4R** (header `cf 80 00 90 4d`): the header's `00 90 PP` is a segment start (page `PP`, first byte follows as the first literal), and the same token with a 4th byte `VV` occurs in the stream
+(`00 90 4F FF` at file offset 289) where the credits text segment (page 4D) ends and the picture (page 4F) begins: the output pointer moves to `(PP - first page) * 256`, zero-filled, and `VV` is
+the first byte there. It takes one item slot, which is why the group/marker bookkeeping seemed off by a few items. Picture exact against `recoil2png`.
 
 Detection rule: `d[2] == 0 && d[3] == 0x90 && 0x4D..=0x50 contains d[4] && d[0] & 0x80 && d[1] & 0x80`, then require a clean decode of at least the picture bytes. `.a4r` is unique enough that
 extension gating is also fine.
