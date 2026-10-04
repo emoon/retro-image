@@ -150,7 +150,7 @@ fn decode_spx_inner(data: &[u8]) -> Option<Image> {
             // Each part may be packed with Pack-Ice on its own.
             let part = |data: &[u8], packed: u8| {
                 if packed != 0 {
-                    super::pack_ice::unpack(data)
+                    crate::codec::pack_ice::unpack(data)
                 } else {
                     Some(data.to_vec())
                 }

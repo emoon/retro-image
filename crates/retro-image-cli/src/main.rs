@@ -141,15 +141,31 @@ fn encode_png(width: u32, height: u32, rgb: &[u8]) -> Result<Vec<u8>, Box<dyn Er
 }
 
 /// Companion files next to the input: same name, other extension, matched
-/// case-insensitively (`PIC.MIC` finds `pic.col`).
+/// case-insensitively (`PIC.MIC` finds `pic.col`), or files looked up by name.
 struct SiblingFiles<'a>(&'a Path);
 
+impl SiblingFiles<'_> {
+    fn directory(&self) -> &Path {
+        self.0
+            .parent()
+            .filter(|d| !d.as_os_str().is_empty())
+            .unwrap_or(Path::new("."))
+    }
+}
+
 impl retro_image::Companions for SiblingFiles<'_> {
+    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+        let name = file_name.rsplit(['/', '\\']).next()?;
+        if matches!(name, "" | "." | "..") {
+            return None;
+        }
+        std::fs::read(self.directory().join(name)).ok()
+    }
+
     fn get(&self, extension: &str) -> Option<Vec<u8>> {
         let stem = self.0.file_stem()?.to_str()?;
         let wanted = format!("{stem}.{extension}");
-        let dir = self.0.parent().filter(|d| !d.as_os_str().is_empty());
-        std::fs::read_dir(dir.unwrap_or(Path::new(".")))
+        std::fs::read_dir(self.directory())
             .ok()?
             .filter_map(Result::ok)
             .find(|entry| {

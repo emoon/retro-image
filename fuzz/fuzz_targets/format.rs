@@ -17,6 +17,10 @@ impl Companions for SameCompanion<'_> {
     fn get(&self, _extension: &str) -> Option<Vec<u8>> {
         (!self.0.is_empty()).then(|| self.0.to_vec())
     }
+
+    fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        (!self.0.is_empty()).then(|| self.0.to_vec())
+    }
 }
 
 fuzz_target!(|data: &[u8]| {

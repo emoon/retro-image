@@ -82,6 +82,9 @@ mod tests {
     struct Col(Vec<u8>);
 
     impl Companions for Col {
+        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            None
+        }
         fn get(&self, extension: &str) -> Option<Vec<u8>> {
             (extension == "col").then(|| self.0.clone())
         }

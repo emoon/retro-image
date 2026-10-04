@@ -16,8 +16,7 @@
 //! picture is a grey ramp stretched to the highest index used (as Deark does). PAL values are scaled from their declared maxima
 //! (`MaxRed` etc.) to 8 bits.
 //!
-//! The Dr. Halo PIC variant is not implemented: no specification could be
-//! retrieved and no sample was available.
+//! The Dr. Halo PIC variant is in `halo_pic.rs`.
 //!
 //! The PAL layout (16-bit samples, 512-byte block rule) and the grey stretch
 //! were checked against Deark's output on the Dr. Halo samples in the corpus.
@@ -154,6 +153,9 @@ mod tests {
     fn pal_companion_is_scaled() {
         struct Pal;
         impl Companions for Pal {
+            fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+                None
+            }
             fn get(&self, ext: &str) -> Option<Vec<u8>> {
                 (ext == "pal").then(|| {
                     let mut p = alloc::vec![0u8; PAL_HEADER_LEN];

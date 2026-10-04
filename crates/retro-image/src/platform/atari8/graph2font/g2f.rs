@@ -57,8 +57,8 @@
 //! rejected; a flag of 1 with less data than that is ignored.
 
 use super::{LINES, Line, Picture, ROWS, Row, Vbxe};
+use crate::codec::inflate;
 use crate::platform::atari8::gtia::Pmg;
-use crate::platform::atari8::inflate;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -82,6 +82,11 @@ pub(in crate::platform::atari8) fn decode_g2f(data: &[u8]) -> Result<Image, Deco
 /// A G2F with VBXE colour attributes.
 pub(in crate::platform::atari8) fn decode_g2f_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
     decode(data, true)
+}
+
+/// A G2F with or without VBXE colour attributes.
+pub(super) fn decode_plain_or_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
+    decode(data, false).or_else(|_| decode(data, true))
 }
 
 fn decode(data: &[u8], vbxe: bool) -> Result<Image, DecodeError> {

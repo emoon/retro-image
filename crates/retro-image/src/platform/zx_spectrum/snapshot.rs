@@ -16,8 +16,7 @@
 //!   specs and by eye on the samples in `corpus/extra/zx-snapshots`.
 //!
 //! Left out: Timex machines (Z80 hardware 14, 15, 128), SamRam and Didaktik,
-//! whose screen mode is not part of what is read here; SZX, which stores its
-//! RAM zlib-compressed and needs an inflater.
+//! whose screen mode is not part of what is read here. SZX is in `szx.rs`.
 
 use alloc::vec::Vec;
 
@@ -26,11 +25,11 @@ use super::standard::decode_scr;
 use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
-const BANK_LEN: usize = 0x4000;
+pub(super) const BANK_LEN: usize = 0x4000;
 const Z80_HEADER_LEN: usize = 30;
 const SNA_HEADER_LEN: usize = 27;
 /// Screen select in the port 0x7FFD value.
-const SHADOW_SCREEN: u8 = 0x08;
+pub(super) const SHADOW_SCREEN: u8 = 0x08;
 /// Z80 page numbers of banks 5 and 7 on 128K machines; page 8 is also the
 /// 0x4000 page of 48K machines.
 const PAGE_BANK_5: u8 = 8;

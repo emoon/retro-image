@@ -20,7 +20,10 @@
 //!   other files by eye. Half-row overruns in compressed VEF files are
 //!   clamped to the half-row, as the format notes advise.
 //!
-//! Not decoded: CM3 (its compression is undocumented), and MGE files whose
+//! CM3 is in `cm3.rs`. Its compression is undocumented, so it
+//! was learned from the KAOS Toolkit reader (MIT, notice in that file).
+//!
+//! Not decoded: MGE files whose
 //! colour space is composite C4I2 (the KAOS page for it is a TODO stub and
 //! no sample uses it). HRS, RAT and VEF don't record their colour space, so
 //! RGB222 is assumed.
@@ -49,6 +52,8 @@
 //! > CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 //! > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 //! > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+pub(super) mod cm3;
 
 use alloc::vec::Vec;
 

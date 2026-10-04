@@ -21,7 +21,6 @@ mod hcm;
 mod hip;
 mod ice;
 mod ice_single;
-mod inflate;
 mod interlace;
 mod interlace2;
 mod koala;
@@ -248,6 +247,12 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Jet Graphics Planner", &["jgp"], font::decode_jgp),
     Format::new(ATARI8, "Graph2Font", &["mch"], graph2font::decode_mch),
     Format::new(ATARI8, "Graph2Font", &["g2f"], graph2font::decode_g2f).signature(),
+    Format::with_companions(
+        ATARI8,
+        "Graph2Font vertical scroll",
+        &["vsc"],
+        graph2font::decode_vsc,
+    ),
     Format::new(VBXE, "SlideShow for VBXE", &["dap"], vbxe::decode_dap),
     Format::new(
         PORTFOLIO,

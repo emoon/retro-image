@@ -9,10 +9,9 @@
 //!   Copyright (C) 2016-2026 Jason Summers).
 //! - The AmBk bank header: <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
-use alloc::vec::Vec;
-
 use super::ilbm::rgb12;
 use crate::bytes::{be16, be32};
+use crate::codec::stos_pictbank;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
@@ -53,7 +52,8 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     check_size(width, height)?;
     let plane_len = row_len * height;
-    let unpacked = unpack(data, start + 24, rle_pos, points_pos, plane_len * planes).ok_or(fail)?;
+    let unpacked = stos_pictbank::unpack(data, start + 24, rle_pos, points_pos, plane_len * planes)
+        .ok_or(fail)?;
 
     let ham = mode & 0x800 != 0 && planes == 6;
     let mut image = Image::new(width as u32, height as u32);
@@ -84,49 +84,6 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     Ok(image)
-}
-
-/// Three streams: picture bytes, RLE bit masks and "points" bits. Each RLE
-/// bit says whether the next output byte is a new picture byte or a repeat;
-/// each points bit says whether the next 8 RLE bits are a new mask byte or a
-/// repeat of the previous one. The first byte of both byte streams is read
-/// up front, as the original decompressor does.
-fn unpack(
-    data: &[u8],
-    pic_pos: usize,
-    rle_pos: usize,
-    points_pos: usize,
-    len: usize,
-) -> Option<Vec<u8>> {
-    let mut pic = data.get(pic_pos..)?.iter().copied();
-    let mut rle = data.get(rle_pos..)?.iter().copied();
-    let mut points = data
-        .get(points_pos..)?
-        .iter()
-        .flat_map(|&b| (0..8).rev().map(move |i| b >> i & 1));
-    // Every output byte costs at least a bit of RLE data, read every 8 bytes
-    // from a points bit.
-    if len > data.len().saturating_mul(64) {
-        return None;
-    }
-    let mut pic_byte = pic.next()?;
-    let mut rle_byte = rle.next()?;
-    let mut out = Vec::with_capacity(len);
-    let mut mask = 0u8;
-    for i in 0..len {
-        if i % 8 == 0 {
-            if points.next()? != 0 {
-                rle_byte = rle.next()?;
-            }
-            mask = rle_byte;
-        }
-        if mask & 0x80 != 0 {
-            pic_byte = pic.next()?;
-        }
-        mask <<= 1;
-        out.push(pic_byte);
-    }
-    Some(out)
 }
 
 #[cfg(test)]

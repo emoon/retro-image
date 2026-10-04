@@ -20,7 +20,9 @@
      extension. The main file must still decode alone where the format allows (e.g.
      with a default palette): callers such as sandboxed thumbnailers only have one file.
      The oracle checks both: the file alone, and with its siblings against RECOIL
-     given the same files (`<id> +companions` in divergence files).
+     given the same files (`<id> +companions` in divergence files). A main file that
+     lists the files it needs (a scroll list) fetches them with `Companions::get_named`;
+     the oracle copies every file served that way next to the main file.
    - Reuse the shared helpers instead of writing local copies: `crate::bytes`
      (`le16`/`le32`/`be16`/`be32` at an offset, `None` past the end), `Image::from_indexed`,
      `Image::from_bits` (1-bit bitmaps, `BitOrder`), `Image::scaled`, `Image::blend`,

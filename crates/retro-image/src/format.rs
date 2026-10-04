@@ -37,6 +37,12 @@ pub trait Companions {
     /// The file named like the main file, with `extension` (without the dot,
     /// case-insensitive) in place of the main file's extension, if present.
     fn get(&self, extension: &str) -> Option<Vec<u8>>;
+
+    /// The file called `file_name` in the main file's directory, for formats
+    /// whose main file lists the files it needs (e.g. a scroll list). Any
+    /// directory part of the name (`/` or `\`) is ignored; the rest must match
+    /// exactly. Callers without access to the directory return `None`.
+    fn get_named(&self, file_name: &str) -> Option<Vec<u8>>;
 }
 
 /// No companion files.
@@ -44,6 +50,10 @@ pub struct NoCompanions;
 
 impl Companions for NoCompanions {
     fn get(&self, _extension: &str) -> Option<Vec<u8>> {
+        None
+    }
+
+    fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
         None
     }
 }

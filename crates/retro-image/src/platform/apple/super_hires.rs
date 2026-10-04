@@ -156,7 +156,7 @@ pub(super) fn decode_packed_screen(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// 320-mode pixels with one reversed palette per line.
-fn render_3200(pixels: &[u8], palettes: &[u8]) -> Result<Image, DecodeError> {
+pub(super) fn render_3200(pixels: &[u8], palettes: &[u8]) -> Result<Image, DecodeError> {
     let lines: Vec<Line> = pixels
         .as_chunks::<LINE_LEN>()
         .0

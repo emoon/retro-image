@@ -16,6 +16,7 @@
 //! | True Paint, self-running packed | reverse engineered from 5 samples: BASIC `SYS` stub, a 256-byte depacker holding the flag table, and the unpacked picture in True Paint's memory map moved down by `$8000`; see `unpack::flag_table_rle`. Checked pixel for pixel against `recoil2png` on the unpacked data |
 //! | Interlace Hires Editor (IHE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two bare bitmaps at `$2000` and `$4000`, set bits black and clear bits grey (`$0C`) in both frames |
 //! | Multi-Lace Editor (MLE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two 2048-byte multicolour bitmaps at `$2000` and `$2800` (6 rows of cells and 16 cells of the 7th, 56 lines), fixed colours; the first frame is shown one pixel to the right |
+//! | Interlaced Logo Editor (ILE) | reverse engineered by probing `recoil2png` with synthetic 4098-byte files (no sample file exists): two 2048-byte multicolour frames of 6 rows of cells; four bytes at the end of the second frame hold the background and the `01`, `10` and `11` colours; the first frame is shown one pixel to the right |
 //! | Hires-Interlace (HLF) | CB "Hires-Interlace v1.0"; which screen RAM pairs with which bitmap checked against `recoil2png` output |
 
 use super::bitmap::{Hires, Multicolor};
@@ -186,6 +187,30 @@ pub(super) fn decode_hires_interlace(data: &[u8]) -> Result<Image, DecodeError> 
     )
 }
 
+const HIRESLACE: [Hires; 2] = [
+    Hires {
+        load: 0x4000,
+        sizes: &[32770],
+        bitmap: 0x4000,
+        screen: 0x6000,
+    },
+    Hires {
+        load: 0x4000,
+        sizes: &[32770],
+        bitmap: 0xa000,
+        screen: 0x8000,
+    },
+];
+
+/// Hireslace Editor (Hires-Lace v1.5).
+pub(super) fn decode_hireslace(data: &[u8]) -> Result<Image, DecodeError> {
+    if !HIRESLACE[0].sizes.contains(&data.len()) {
+        return Err(DecodeError::Unrecognized);
+    }
+    let prg = Prg::new(data, 0x4000);
+    blend(HIRESLACE[0].frame(&prg), HIRESLACE[1].frame(&prg), None)
+}
+
 /// Interlace Hires Editor: two 8000-byte bitmaps at `$2000` and `$4000`
 /// (the 192 bytes between them are unused), with fixed colours.
 pub(super) fn decode_interlace_hires_editor(data: &[u8]) -> Result<Image, DecodeError> {
@@ -223,4 +248,81 @@ pub(super) fn decode_multi_lace(data: &[u8]) -> Result<Image, DecodeError> {
         Frame::multicolor(&Bitmap::multicolor(&bitmap, &screen, &color, 0), HEIGHT)
     };
     blend(frame(2 + FRAME_LEN), frame(2), Some(0))
+}
+
+/// Interlaced Logo Editor: two multicolour logo frames of 40×6 cells (1920
+/// bytes each, followed by 128 bytes that only matter in the second frame).
+/// The second frame ends with the colours: bytes 2044 to 2047 are the
+/// background and the colours of bit pairs `01`, `10` and `11` (the last
+/// one is a colour RAM colour, so 0 to 7). The first frame is shown one
+/// pixel to the right.
+pub(super) fn decode_interlaced_logo_editor(data: &[u8]) -> Result<Image, DecodeError> {
+    const FRAME_LEN: usize = 0x800;
+    const BITMAP_LEN: usize = 40 * 6 * 8;
+    const HEIGHT: usize = 48;
+    const COLORS_AT: usize = 2 + FRAME_LEN + 2044;
+    if data.len() != 2 + 2 * FRAME_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let [background, multi1, multi2, color_ram] = [0, 1, 2, 3].map(|i| data[COLORS_AT + i]);
+    let screen = [multi1 << 4 | multi2 & 15; SCREEN_LEN];
+    let color = [color_ram & 7; SCREEN_LEN];
+    let frame = |start: usize| {
+        Frame::multicolor(
+            &Bitmap::multicolor(
+                &data[start..start + BITMAP_LEN],
+                &screen,
+                &color,
+                background & 15,
+            ),
+            HEIGHT,
+        )
+    };
+    blend(frame(2 + FRAME_LEN), frame(2), Some(background & 15))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pixel(image: &Image, x: usize, y: usize) -> [u8; 3] {
+        let at = (y * image.width() as usize + x) * 3;
+        image.rgb()[at..at + 3].try_into().unwrap()
+    }
+
+    fn blended(a: u8, b: u8) -> [u8; 3] {
+        let image = Image::blend(&[
+            &super::super::vic2::image(1, 1, alloc::vec![a]),
+            &super::super::vic2::image(1, 1, alloc::vec![b]),
+        ]);
+        pixel(&image, 0, 0)
+    }
+
+    #[test]
+    fn logo_editor_colours_and_shift() {
+        let mut data = alloc::vec![0u8; 4098];
+        // Second frame: bit pair `11` at the left edge, whose colour is the
+        // last of the four colour bytes (colour RAM, so 3 bits: 0x0b is 3).
+        data[2 + 0x800] = 0b1100_0000;
+        data[2 + 0x800 + 2047] = 0x0b;
+        let image = decode_interlaced_logo_editor(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (320, 48));
+        // The first frame is shifted right, so the background fills its
+        // left edge and the second frame's colour blends with it.
+        assert_eq!(pixel(&image, 0, 0), blended(3, 0));
+        assert_eq!(pixel(&image, 2, 0), blended(0, 0));
+        assert!(decode_interlaced_logo_editor(&data[..4097]).is_err());
+    }
+
+    #[test]
+    fn hireslace_uses_both_screens() {
+        let mut data = alloc::vec![0u8; 32770];
+        data[2 + 0x4000] = 0x20; // second screen: set colour 2
+        data[2 + 0x6000] = 0x80; // second bitmap: first pixel set
+        let image = decode_hireslace(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (320, 200));
+        assert_eq!(pixel(&image, 0, 0), blended(0, 2));
+        assert_eq!(pixel(&image, 1, 0), blended(0, 0));
+        assert!(decode_hireslace(&data[..32769]).is_err());
+    }
 }

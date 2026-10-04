@@ -69,10 +69,7 @@ fn matches_recoil_on_corpus() {
         // against RECOIL given the same files. That includes formats whose
         // main file doesn't decode alone (e.g. a picture without its colours).
         let siblings = sample.siblings();
-        if siblings.is_empty() {
-            continue;
-        }
-        let companions = common::SiblingFiles(&siblings);
+        let companions = common::SiblingFiles::new(&siblings, sample.path.parent().unwrap());
         let with_companions = match alone {
             Some((format, _)) => Some(format).filter(|f| f.uses_companions()),
             None => candidates
@@ -86,8 +83,14 @@ fn matches_recoil_on_corpus() {
         let id = format!("{} +companions", sample.id);
         match format.decode_with(&data, &companions) {
             Ok(ours) => {
+                // Files a list names (e.g. VSC) count as companions too.
+                let named = companions.named_files();
+                if siblings.is_empty() && named.is_empty() {
+                    continue;
+                }
                 let mut inputs = vec![sample.path.as_path()];
                 inputs.extend(siblings.iter().map(PathBuf::as_path));
+                inputs.extend(named.iter().map(PathBuf::as_path));
                 oracle.check(&id, &ours, &inputs);
             }
             Err(_) => oracle
