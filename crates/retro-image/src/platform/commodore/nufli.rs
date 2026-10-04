@@ -60,12 +60,11 @@ use alloc::vec::Vec;
 
 const LOAD: usize = 0x2000;
 const END: usize = 0x7a00;
-const HEIGHT: usize = 200;
-/// Width of the FLI-bug area.
-const BUG: usize = 24;
+pub(super) const HEIGHT: usize = 200;
+const BUG: usize = vic2::FLI_BUG;
 /// Colour tables of the six underlay sprites, one entry per line pair plus
 /// the initial colour.
-const COLOR_TABLES: [usize; 6] = [0x2400, 0x2480, 0x2800, 0x2880, 0x2c00, 0x2c80];
+pub(super) const COLOR_TABLES: [usize; 6] = [0x2400, 0x2480, 0x2800, 0x2880, 0x2c00, 0x2c80];
 /// Initial colours of the FLI-bug sprites: hires, then multicolour bit
 /// pairs `01`, `11`, `10`.
 const BUG_COLORS: [usize; 4] = [0x3ff7, 0x3ff1, 0x3ff0, 0x3ff6];
@@ -85,6 +84,35 @@ pub(super) fn screen(lp: usize) -> usize {
         0x2000 + k * 0x400
     };
     base + row
+}
+
+/// Memory address of the bitmap byte holding pixel (`x`, `y`).
+pub(super) fn bitmap_addr(x: usize, y: usize) -> usize {
+    let offset = y / 8 * 320 + x / 8 * 8 + y % 8;
+    if offset < 0x1400 {
+        0x6000 + offset
+    } else {
+        0x3400 + offset - 0x1400
+    }
+}
+
+/// Colour of underlay sprite `s` for each line, reading memory through
+/// `byte`: entry 0 is the initial colour, a nonzero high nibble keeps the
+/// previous colour, entry `k` colours lines `2k-1` and `2k`.
+pub(super) fn underlay_colors(
+    byte: impl Fn(usize) -> Option<u8>,
+    s: usize,
+) -> Option<[u8; HEIGHT]> {
+    let mut by_entry = [0u8; 101];
+    let mut color = 0;
+    for (k, slot) in by_entry.iter_mut().enumerate() {
+        let entry = byte(COLOR_TABLES[s] + k)?;
+        if k == 0 || entry >> 4 == 0 {
+            color = entry & 15;
+        }
+        *slot = color;
+    }
+    Some(core::array::from_fn(|y| by_entry[y.div_ceil(2)]))
 }
 
 /// Sprite row counter (byte offset in the 64-byte block) of each line: the
@@ -118,13 +146,7 @@ impl Nufli<'_> {
     }
 
     fn bitmap_set(&self, x: usize, y: usize) -> bool {
-        let offset = y / 8 * 320 + x / 8 * 8 + y % 8;
-        let addr = if offset < 0x1400 {
-            0x6000 + offset
-        } else {
-            0x3400 + offset - 0x1400
-        };
-        self.byte(addr) & (0x80 >> (x % 8)) != 0
+        self.byte(bitmap_addr(x, y)) & (0x80 >> (x % 8)) != 0
     }
 
     /// Byte `index` of hardware sprite `sprite` on line `y`, fetched through
@@ -137,19 +159,9 @@ impl Nufli<'_> {
         (LOAD..END).contains(&addr).then(|| self.byte(addr))
     }
 
-    /// Colour of underlay sprite `s` for each line.
-    fn underlay_colors(&self, s: usize) -> Vec<u8> {
-        let table = |k: usize| self.byte(COLOR_TABLES[s] + k);
-        let mut color = table(0) & 15;
-        let mut by_entry = Vec::with_capacity(101);
-        by_entry.push(color);
-        for k in 1..=100 {
-            if table(k) >> 4 == 0 {
-                color = table(k) & 15;
-            }
-            by_entry.push(color);
-        }
-        (0..HEIGHT).map(|y| by_entry[y.div_ceil(2)]).collect()
+    fn underlay_colors(&self, s: usize) -> [u8; HEIGHT] {
+        underlay_colors(|addr| Some(self.byte(addr)), s)
+            .unwrap_or_else(|| unreachable!("table addresses lie inside the frame"))
     }
 
     /// FLI-bug sprite colours (in [`BUG_COLORS`] order) for each line.
@@ -176,7 +188,7 @@ impl Nufli<'_> {
         lines
     }
 
-    fn pixel(&self, x: usize, y: usize, underlay: &[Vec<u8>], bug: &[u8; 4]) -> Option<u8> {
+    fn pixel(&self, x: usize, y: usize, underlay: &[[u8; HEIGHT]], bug: &[u8; 4]) -> Option<u8> {
         let color = self.byte(screen(y / 2) + x / 8);
         // The FLI bug shows light grey, except on a character row's first
         // line pair, where the VIC fetches the screen RAM normally.
@@ -237,7 +249,7 @@ fn decode_frame(mem: &[u8]) -> Result<Image, DecodeError> {
         mem,
         rows: sprite_rows(),
     };
-    let underlay: Vec<Vec<u8>> = (0..6).map(|s| nufli.underlay_colors(s)).collect();
+    let underlay: Vec<[u8; HEIGHT]> = (0..6).map(|s| nufli.underlay_colors(s)).collect();
     let bug = nufli.bug_colors();
     let pixels = (0..HEIGHT)
         .flat_map(|y| (0..vic2::WIDTH).map(move |x| (x, y)))
