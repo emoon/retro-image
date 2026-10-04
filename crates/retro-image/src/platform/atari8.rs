@@ -16,6 +16,7 @@ mod font;
 mod fwa;
 mod ged;
 mod graph2font;
+mod graphics_magician;
 mod gtia;
 mod hcm;
 mod hip;
@@ -138,6 +139,12 @@ pub(super) static FORMATS: &[Format] = &[
         sfdn::decode_hps,
     ),
     Format::new(ATARI8, "Graphics 10", &["g10"], screen::decode_g10),
+    Format::new(
+        ATARI8,
+        "Graphics Magician Picture Painter",
+        &["spc"],
+        graphics_magician::decode_spc,
+    ),
     Format::new(ATARI8, "Graphics 11", &["g11"], screen::decode_g11),
     Format::with_companions(ATARI8, "Micro Illustrator", &["mic"], screen::decode_mic),
     Format::new(ATARI8, "Sketch-PadDles", &["skp"], screen::decode_skp),

@@ -196,7 +196,7 @@ Overall, Atari 8-bit is much worse documented than the C64. Most scene formats (
 | SHP | Movie Maker shapes | Partial | [Just Solve Movie Maker](http://fileformats.archiveteam.org/wiki/Movie_Maker), [Wikipedia](https://en.wikipedia.org/wiki/Movie_Maker_(Reston_Publishing)) | 1024 or 4384 bytes. 160x96, 4 colours. |
 | SIF | Super-IRG Font | Spec | [SIFE.TXT](http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/Super%20IRG%20Font%20Editor/SIFE.TXT) | 2 × 1024-byte ANTIC 4 charsets, flipped per VBI (2048 bytes). Colours are not stored. Sample `ATARI.SIF` is in the same directory. |
 | SKP | Sketch-PadDles | Spec | [Sketch-PadDles page (with BASIC listing)](https://www.vitoco.cl/atari/10liner/SKETCH/), [Just Solve](http://fileformats.archiveteam.org/wiki/Sketch-PadDles) | A raw `BPUT` of 40×192 = 7680 bytes of GR15 screen, with no header. Just Solve says files start with `tm89PS`, which is probably pixel data, not a header (verify). |
-| SPC | The Graphics Magician Picture Painter | Partial | [Just Solve](http://fileformats.archiveteam.org/wiki/The_Graphics_Magician_Picture_Painter), [Apple II Picture Painter disassembly (A. McFadden)](https://6502disassembly.com/a2-graphics-magician/), [Wikipedia](https://en.wikipedia.org/wiki/Graphics_Magician) | Vector command stream: high nibble = op, 0-2 argument bytes. Documented for Apple II only. The Atari port (160x192, 128 colours) may differ. |
+| SPC | The Graphics Magician Picture Painter | Samples | [Just Solve](http://fileformats.archiveteam.org/wiki/The_Graphics_Magician_Picture_Painter), [Apple II Picture Painter disassembly (A. McFadden)](https://6502disassembly.com/a2-graphics-magician/), [Wikipedia](https://en.wikipedia.org/wiki/Graphics_Magician) | Vector command stream, documented for Apple II only. The Atari layout (whole first byte is the opcode, 160x192, 4 colours, 71 patterns, palette bands) was reverse engineered from samples and `recoil2png` probes; see `graphics_magician.rs`. Text commands are not decoded. |
 | SPR | Mad Studio sprite | Spec | [Mad Studio formats PDF](https://raw.githubusercontent.com/Gury8/Mad-Studio/master/docs/mad-studio-file-formats.pdf) | Height, colour, 40 bytes of data = 42 bytes. |
 | SPR | SprEd | None | [AtariAge SprEd thread](https://forums.atariage.com/topic/330217-spred-new-atari-sprite-editor/) | Tri-colour sprites, up to 128 lines and 256 frames. No layout published. |
 | SXS | 16x16 font | None | [Just Solve list](http://fileformats.archiveteam.org/wiki/Atari_graphics_formats) | Mono. |
@@ -604,10 +604,7 @@ identically too, except GED files whose PRIOR selects a GTIA mode.
     (`1C` = nothing, `reg+flags value` pairs such as `A2 68` and `AF F0`, which look
     like HPOSP2/HPOSP3 and GRAFP2 writes) paint the colours with players, like GED. Not
     worked out.
-  - **SPC** (Graphics Magician Picture Painter, Atari version): `LE16 length`, then a
-    command stream (`80 x y` start, `A0 x y` line, `60 n` pattern, `E0 x y` fill, ...). RECOIL
-    draws brush, pattern and fill shapes whose data and the exact fill algorithm are not
-    documented for the Atari port; a guess would not match pixel for pixel.
+  - **SPC** (Graphics Magician Picture Painter, Atari version): decoded by `graphics_magician.rs`; the layout, line, fill, pattern, brush and palette-band rules are in its header.
 
 ### 9.5 Player/missile graphics, shapes, fonts and maps
 
