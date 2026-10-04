@@ -20,7 +20,6 @@ use alloc::vec::Vec;
 
 use super::common::{palette_words, st_palette};
 use crate::bytes::{be16, be32};
-use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 128;
@@ -113,7 +112,6 @@ fn draw(frame: &Frame<'_>) -> Option<Image> {
             .map(|word| u16::from_be_bytes(*word))
             .collect()
     };
-    check_size(SCREEN_WIDTH, SCREEN_HEIGHT).ok()?;
     let mut indices = vec![0u8; SCREEN_WIDTH * SCREEN_HEIGHT];
     // Plane-major, then word column, then scanline.
     for plane in 0..PLANES {

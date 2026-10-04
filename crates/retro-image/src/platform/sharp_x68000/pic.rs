@@ -211,6 +211,7 @@ impl Cache {
     }
 }
 
+const MAX_PIXELS: usize = 1 << 22;
 const NO_MARK: u32 = u32::MAX;
 
 /// Decodes the change-point stream into one colour value per pixel.
@@ -269,6 +270,11 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
     let header = Header::parse(data).ok_or(DecodeError::Unrecognized)?;
     let (width, height) = (header.width, header.height);
     if header.machine != machine {
+        return Err(DecodeError::Unrecognized);
+    }
+    // `unpack` holds 8 bytes per pixel and VaTiled output is twice as tall, so
+    // PIC stays below the crate-wide cap.
+    if width * height > MAX_PIXELS {
         return Err(DecodeError::Unrecognized);
     }
     check_size(width, height)?;

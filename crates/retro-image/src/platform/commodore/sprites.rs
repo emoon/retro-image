@@ -25,6 +25,7 @@
 
 use super::vic2::rgb;
 use crate::bytes::le16;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const PER_ROW: usize = 16;
@@ -44,12 +45,13 @@ struct Colors {
 
 /// Draws 64-byte sprites (63 bytes of pixels and an attribute byte).
 /// `trailing_gap` keeps a gap after the last column.
-fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Image {
+fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Result<Image, DecodeError> {
     let count = sprites.len() / 64;
     let columns = count.min(PER_ROW);
     let rows = count.div_ceil(PER_ROW);
     let width = columns * (SPRITE_WIDTH + GAP) - if trailing_gap { 0 } else { GAP };
     let height = rows * (SPRITE_HEIGHT + GAP) - GAP;
+    check_size(width, height)?;
     let mut image = Image::new(width as u32, height as u32);
     let background = rgb(colors.background);
     for y in 0..height {
@@ -80,7 +82,7 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Image {
             }
         }
     }
-    image
+    Ok(image)
 }
 
 /// SpritePad `SPD`. Version 1: magic, sprite count minus one, animation
@@ -158,7 +160,7 @@ fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let [background, multi1, multi2] = colors;
-    Ok(render(
+    render(
         sprites,
         &Colors {
             background,
@@ -166,7 +168,7 @@ fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
             multi2,
         },
         false,
-    ))
+    )
 }
 
 /// SEUCK sprites: load address and 127 multicolour sprites. The file has no
@@ -184,5 +186,5 @@ pub(super) fn decode_seuck(data: &[u8]) -> Result<Image, DecodeError> {
         multi1: 0,
         multi2: 1,
     };
-    Ok(render(&sprites, &colors, true))
+    render(&sprites, &colors, true)
 }

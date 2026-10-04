@@ -9,6 +9,7 @@
 //!   observed from `recoil2png` output.
 
 use super::screen::Frame;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const SXG_HEADER_LEN: usize = 16;
@@ -29,8 +30,9 @@ pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     let (width, height) = (word(8), word(10));
     let palette_start = 14 + word(12);
     let bitmap_start = 16 + word(14);
+    check_size(width, height)?;
     let bitmap_len = (width * height * bits_per_pixel).div_ceil(8);
-    if width == 0 || height == 0 || palette_start > bitmap_start {
+    if palette_start > bitmap_start {
         return Err(DecodeError::Unrecognized);
     }
     let palette = &data[palette_start.min(data.len())..bitmap_start.min(data.len())];
