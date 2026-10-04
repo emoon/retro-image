@@ -18,6 +18,7 @@
 //!   (survey: `docs/research/gaps-pc-japan.md`).
 //! - PCPaint/PICtor, Animator PIC/CEL, FLI/FLC and Dr. Halo PIC: see
 //!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/flh.rs`, `pc/halo_pic.rs`.
+//! - Windows icons and cursors: see `pc/ico.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -30,6 +31,7 @@ mod flic;
 mod gif;
 mod halo;
 mod halo_pic;
+mod ico;
 mod image72;
 mod pcpaint;
 mod pcx;
@@ -56,6 +58,13 @@ pub(super) static FORMATS: &[Format] = &[
         &["dib"],
         bmp::decode_dib,
     ),
+    Format::new(
+        "PC",
+        "Windows icon and cursor",
+        &["ico", "cur"],
+        ico::decode_ico,
+    )
+    .signature(),
     Format::new("PC", "CompuServe GIF", &["gif", "fra"], gif::decode_gif).signature(),
     Format::new(
         "PC",

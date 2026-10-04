@@ -5,25 +5,23 @@
 //!   black): Apple Technical Note PT24
 //!   (<https://leopard-adc.pepas.com/technotes/pt/pt_24.html>) and
 //!   CiderPress II notes (<https://ciderpress2.com/formatdoc/MacPaint-notes.html>).
-//! - Optional 128-byte MacBinary header (name length at +1, file type at
-//!   +65): MacBinary II standard,
-//!   <https://files.stairways.com/other/macbinaryii-standard-info.txt>;
-//!   recognised by type `PNTG`.
+//! - Optional MacBinary header, recognised by file type `PNTG`: see
+//!   `crate::macbinary`.
 
 use crate::codec::packbits;
+use crate::macbinary::MacBinary;
 use crate::{BitOrder, DecodeError, Image};
 
 const WIDTH: usize = 576;
 const HEIGHT: usize = 720;
 const HEADER_LEN: usize = 512;
-const MAC_BINARY_LEN: usize = 128;
 
 /// A MacPaint file with a MacBinary header of file type `PNTG`.
 pub(super) fn decode_mac_binary(data: &[u8]) -> Result<Image, DecodeError> {
-    if !is_mac_binary(data) {
-        return Err(DecodeError::Unrecognized);
+    match MacBinary::parse(data) {
+        Some(file) if file.file_type == *b"PNTG" => decode(file.data_fork),
+        _ => Err(DecodeError::Unrecognized),
     }
-    decode(&data[MAC_BINARY_LEN..])
 }
 
 /// A bare MacPaint file.
@@ -44,11 +42,4 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         BitOrder::MsbFirst,
         colors,
     )
-}
-
-fn is_mac_binary(data: &[u8]) -> bool {
-    data.len() > MAC_BINARY_LEN
-        && data[0] == 0
-        && (1..=63).contains(&data[1])
-        && &data[65..69] == b"PNTG"
 }
