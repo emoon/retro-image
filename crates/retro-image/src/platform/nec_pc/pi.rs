@@ -8,7 +8,8 @@
 //! - Observed from `recoil2png` output (samples and synthesized files): a repeat
 //!   sequence's first location is always used; a source before the start of the
 //!   picture restarts at byte 0 or 1 for each pair; aspect 2:1 doubles the
-//!   height except for `X68K`; palette precision by saver model (`X68K` the
+//!   height except for `X68K` and `TOWN` (FM Towns, probed by patching the
+//!   model of PC-98 files: 5-bit palette components); palette precision by saver model (`X68K` the
 //!   X68000 colour word, `MSX2` 3 bits, `PCVA` 4 bits at 2:1 and R5 G6 B5
 //!   otherwise, else 4 bits for 16 colours and 8 bits for 256); the mode byte
 //!   must be 0, the depth 4 or 8, and the stream must not end early.
@@ -69,6 +70,7 @@ impl<'a> Header<'a> {
             b"X68K" => Machine::X68000,
             b"MSX2" | b"MSX " => Machine::Msx,
             b"PCVA" => Machine::Pc88Va,
+            b"TOWN" => Machine::FmTowns,
             b"PC88" | b"88SR" => Machine::Pc88,
             _ => Machine::Pc98,
         }
@@ -78,6 +80,7 @@ impl<'a> Header<'a> {
         match self.model {
             b"X68K" => Precision::X68000,
             b"MSX2" => Precision::Bits(3),
+            b"TOWN" => Precision::Bits(5),
             b"PCVA" if self.tall => Precision::Bits(4),
             b"PCVA" => Precision::Rgb565,
             _ if self.colours == 16 => Precision::Bits(4),
@@ -86,7 +89,7 @@ impl<'a> Header<'a> {
     }
 
     fn doubles_height(&self) -> bool {
-        self.tall && self.model != b"X68K"
+        self.tall && !matches!(self.model, b"X68K" | b"TOWN")
     }
 }
 
@@ -327,5 +330,22 @@ mod tests {
         data.extend([0b1110_0000, 0b0000_0000]);
         let image = decode_pi(&data, Machine::Pc98).unwrap();
         assert_eq!((image.width(), image.height()), (4, 1));
+    }
+
+    #[test]
+    fn towns_model_is_its_own_machine_and_not_doubled() {
+        // Aspect 2:1.
+        let mut data = b"Pi\x1a\0\0\x02\x01\x04TOWN\0\0\0\x04\0\x01".to_vec();
+        data.extend([0xee, 0xcc, 0]);
+        data.extend([0; 45]);
+        data.extend([0b1110_0000, 0b0000_0000]);
+        assert_eq!(
+            decode_pi(&data, Machine::Pc98),
+            Err(DecodeError::Unrecognized)
+        );
+        let image = decode_pi(&data, Machine::FmTowns).unwrap();
+        assert_eq!((image.width(), image.height()), (4, 1));
+        data[8..12].copy_from_slice(b"PC98");
+        assert_eq!(decode_pi(&data, Machine::Pc98).unwrap().height(), 2);
     }
 }

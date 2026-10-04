@@ -1,7 +1,9 @@
 //! Atari ST/STE, TT and Falcon.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
-//! survey is `docs/research/atari-st-tt-falcon.md`.
+//! survey is `docs/research/atari-st-tt-falcon.md`. ST IFF files are ILBM
+//! FORMs read by the Amiga decoder, see
+//! <https://temlib.org/AtariForumWiki/index.php/IFF_file_format>.
 
 mod blend;
 mod canvas;
@@ -241,6 +243,10 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     // Wave 5: Amiga and misc
     falcon("TrueColor IMG", &["timg"], gem_img::decode_img),
+    // ST IFF files (DeluxePaint ST, Spectrum 512 IFF, ...) are ILBM FORMs,
+    // including the VDAT-compressed ones; the Amiga entry owns content
+    // detection.
+    st("IFF", &["iff"], super::amiga::decode_iff),
 ];
 
 #[cfg(test)]

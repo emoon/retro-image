@@ -147,11 +147,11 @@ pub(super) static FORMATS: &[Format] = &[
         bitmap::decode_image_system_hires,
     ),
     Format::new(C64, "Hi-Eddi", &["hed"], bitmap::decode_hi_eddi),
-    Format::new(C64, "Doodle", &["dd", "ddp"], bitmap::decode_doodle),
+    Format::new(C64, "Doodle", &["dd", "ddp", "rph"], bitmap::decode_doodle),
     Format::new(
         C64,
         "Doodle (compressed)",
-        &["jj"],
+        &["jj", "rph"],
         bitmap::decode_doodle_packed,
     ),
     Format::new(
@@ -401,7 +401,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(
         C64,
         "Doodle (trimmed bitmap)",
-        &["dd", "ddp"],
+        &["dd", "ddp", "rph"],
         bitmap::decode_doodle_trimmed,
     ),
     Format::new(

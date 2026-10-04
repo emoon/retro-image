@@ -88,7 +88,7 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Any IFF picture FORM we support.
-fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
+pub(super) fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
     // NEOchrome Master (Atari ST) pictures: an ILBM plus rasters after the
     // FORM, left to that decoder.
     if super::atari_st::is_neochrome_master(data) {

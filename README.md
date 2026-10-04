@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/emoon/retro-image/blob/main/LICENSE)
 
 retro-image opens pictures from old computers, so you can view them on a modern machine. It
-reads 531 formats from 51 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum,
+reads 549 formats from 52 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum,
 Amstrad CPC, MSX, PC-98 and a long tail of rarer machines. Every format is listed in
 [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 

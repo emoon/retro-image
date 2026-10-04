@@ -1,0 +1,18 @@
+# Divergences for coco3; see README.md.
+# RECOIL rejects every CoCo 3 HRS, MGE, RAT and VEF file. Spec: KAOS Toolkit docs (MIT); the render in png/test1_base.png is the KAOS test reference.
+extra/coco3/hrs/monalisa.hrs	320x192	c12eb3b2712f1526	Not in RECOIL. Reviewed visually: Mona Lisa dithered in 16 colours, clean, RGB222 palette assumed (HRS doesn't record its colour space).
+extra/coco3/mge/cmd_titlepage.mge	320x200	97a7e5049cc12663	Not in RECOIL. Reviewed visually: ColorMax Deluxe title page, readable text and paint-can art; RLE stream ends at the zero count after exactly 32000 bytes.
+extra/coco3/mge/test1-compressed.mge	320x200	4e31ce02cd172525	Not in RECOIL. Compared pixel for pixel with the KAOS Toolkit test render png/test1_base.png: identical, and identical to the uncompressed variant.
+extra/coco3/mge/test1-uncompressed.mge	320x200	4e31ce02cd172525	Not in RECOIL. Compared pixel for pixel with the KAOS Toolkit test render png/test1_base.png: identical.
+extra/coco3/rat/rat.rat	320x199	41dd79498459f0a0	Not in RECOIL. Reviewed visually: Rat v1.2 logo on red, clean; escape runs decode to exactly 31840 bytes.
+extra/coco3/rat/rat1.rat	320x199	9b216a32a335905c	Not in RECOIL. Reviewed visually: Christmas edition Rat and tree on blue, clean; escape runs decode to exactly 31840 bytes.
+extra/coco3/vef/batman.vef	320x200	0f73f6d1bef8cbac	Not in RECOIL. Reviewed visually: Batman logo, clean; two half-rows overrun by a byte and are clamped.
+extra/coco3/vef/darth.vef	320x200	ac5ae1636631c142	Not in RECOIL. Reviewed visually: Darth Vader helmet with MVCanvas caption, clean; one-byte half-row overruns clamped.
+extra/coco3/vef/elf.vef	640x400	3fb2a45048f00089	Not in RECOIL. Reviewed visually: monochrome elf portrait (640x200 2-bit, lines doubled), clean; half-row overruns clamped.
+extra/coco3/vef/owlcasl.vef	640x400	80376383aa7301c1	Not in RECOIL. Reviewed visually: owl and castle, clean with no shear; half-row overruns clamped, 122 trailing bytes ignored.
+extra/coco3/vef/raph.vef	640x400	a6d6300f0b917869	Not in RECOIL. Reviewed visually: uncompressed 640x200 2-bit turtle drawing, clean.
+extra/coco3/vef/rrabbit.vef	640x400	2821d3f7cd2a6831	Not in RECOIL. Reviewed visually: dithered grey photo collage (640x200 2-bit, lines doubled), no shear; all 400 blocks fit their half-rows exactly.
+extra/coco3/vef/simpson.vef	320x200	8065b44a05b4ab2e	Not in RECOIL. Reviewed visually: the Simpsons family, uncompressed, clean.
+extra/coco3/vef/trekies.vef	320x200	c26143bd7be5bbfa	Not in RECOIL. Reviewed visually: Spock and Kirk, uncompressed, clean.
+extra/coco3/vef/unicorn2.vef	640x400	e20d068e52d10a59	Not in RECOIL. Reviewed visually: unicorn on teal with grid floor (640x200 2-bit, lines doubled), uncompressed, clean.
+extra/coco3/vef/zebra.vef	320x200	8ea1a338c4b2b20d	Not in RECOIL. Reviewed visually: rainbow zebra, uncompressed, clean.

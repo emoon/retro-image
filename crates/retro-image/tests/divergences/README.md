@@ -6,8 +6,8 @@ file is recorded here. The oracle test then checks our output against the
 recorded fingerprint instead of RECOIL's.
 
 One `.tsv` file per platform group (`amiga-apple-misc.tsv`, `atari8.tsv`,
-`atari-st.tsv`, `commodore.tsv`, `msx-japanese.tsv`, `sinclair-cpc-misc.tsv`,
-`textmode.tsv`, `riscos-ql.tsv`, `thomson.tsv`), so work on different platforms
+`atari-st.tsv`, `coco3.tsv`, `commodore.tsv`, `msx-japanese.tsv`, `sinclair-cpc-misc.tsv`,
+`textmode.tsv`, `riscos-ql.tsv`, `thomson.tsv`, `zx-snapshots.tsv`), so work on different platforms
 doesn't conflict.
 
 Formats RECOIL doesn't support at all (e.g. ANSI art, RISC OS sprites, Thomson)
