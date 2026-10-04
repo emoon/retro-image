@@ -142,8 +142,12 @@ pub(super) fn decode_map_pc(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(u16::from_le_bytes([w_low, w_high]));
     let height = usize::from(u16::from_le_bytes([h_low, h_high]));
     let (cell_width, cell_height, _) = mode.cell();
-    let pixels = width * height * (cell_width * cell_height) as usize;
-    if width == 0 || height == 0 || width > 32767 || pixels > MAX_PIXELS {
+    if width == 0 || height == 0 || width > 32767 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let cell_pixels = (cell_width * cell_height) as usize;
+    let pixels = (width * height).checked_mul(cell_pixels);
+    if pixels.is_none_or(|pixels| pixels > MAX_PIXELS) {
         return Err(DecodeError::Unrecognized);
     }
     let (map, rest) = rest
