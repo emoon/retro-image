@@ -253,16 +253,7 @@ pub(super) static FORMATS: &[Format] = &[
     st("STOS Picture Packer DAJ", &["daj"], stos_pp::decode_daj),
     st("STOS packed screen", &["pac", "sz1"], stos_pp::decode_pac).signature(),
     st("STOS memory bank", &["mbk"], stos_bank::decode).signature(),
-    // Wave 5: FLF
-    Format::new(
-        "Atari ST",
-        "Turbo Rascal Syntax Error",
-        &["flf"],
-        flf::decode_flf,
-    )
-    .signature(),
-    // Wave 5: Amiga and misc
-    falcon("TrueColor IMG", &["timg"], gem_img::decode_img),
+    st("Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     // ST IFF files (DeluxePaint ST, Spectrum 512 IFF, ...) are ILBM FORMs,
     // including the VDAT-compressed ones; the Amiga entry owns content
     // detection.
