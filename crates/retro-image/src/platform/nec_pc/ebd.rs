@@ -10,6 +10,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 const WIDTH: usize = 640;
@@ -37,14 +38,12 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
         .collect::<Result<Vec<u32>, _>>()?;
 
     let plane_len = body.len() / 4;
-    let mut indices = Vec::with_capacity(WIDTH * height);
-    for i in 0..WIDTH * height {
-        let (byte, shift) = (i / 8, 7 - i % 8);
-        let value = (0..4).fold(0u8, |v, p| {
-            v | (body[p * plane_len + byte] >> shift & 1) << p
-        });
-        indices.push(value);
-    }
+    let indices: Vec<u8> = planar_pixels(body, WIDTH, height, WIDTH / 8, 4, |plane, y| {
+        plane * plane_len + y * (WIDTH / 8)
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect();
     Image::from_indexed(WIDTH as u32, height as u32, &indices, &palette)
 }
 

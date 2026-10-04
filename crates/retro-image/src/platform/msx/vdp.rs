@@ -109,6 +109,15 @@ pub(super) const fn palette_entry(rb: u8, g: u8) -> u32 {
     rgb3(rb >> 4, g, rb)
 }
 
+/// Up to 16 V9938 palette entries (two bytes each); the rest stay black.
+pub(super) fn palette_table(table: &[u8]) -> Palette {
+    let mut palette = [0; 16];
+    for (entry, bytes) in palette.iter_mut().zip(table.as_chunks::<2>().0) {
+        *entry = palette_entry(bytes[0], bytes[1]);
+    }
+    palette
+}
+
 const fn palette3(levels: [(u8, u8, u8); 16]) -> Palette {
     let mut palette = [0; 16];
     let mut i = 0;
@@ -182,7 +191,7 @@ pub(super) const fn graphic7(b: u8) -> u32 {
 }
 
 /// Sign-extends a 6-bit two's complement value.
-const fn signed6(v: u8) -> i32 {
+pub(super) const fn signed6(v: u8) -> i32 {
     ((v as i32) << 26) >> 26
 }
 
@@ -200,11 +209,15 @@ pub(in crate::platform) fn yjk_group(bytes: [u8; 4], yae: bool, palette: &Palett
     })
 }
 
+/// Clamps a YJK/YUV intermediate to a 5-bit channel.
+pub(super) fn clamp5(v: i32) -> u8 {
+    v.clamp(0, 31) as u8
+}
+
 fn yjk_rgb(y: i32, j: i32, k: i32) -> u32 {
-    let clamp = |v: i32| v.clamp(0, 31) as u8;
-    let r = clamp(y + j);
-    let g = clamp(y + k);
-    let b = clamp((5 * y - 2 * j - k + 2).div_euclid(4));
+    let r = clamp5(y + j);
+    let g = clamp5(y + k);
+    let b = clamp5((5 * y - 2 * j - k + 2).div_euclid(4));
     level5(r) << 16 | level5(g) << 8 | level5(b)
 }
 

@@ -54,7 +54,7 @@
 use alloc::vec::Vec;
 
 use super::super::textmode;
-use super::{CGA_PALETTE, dac_rounded, ega_64};
+use super::{CGA_PALETTE, cga_set, dac_rounded, ega_64};
 use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
@@ -70,12 +70,12 @@ const V1_PALETTE_LEN: usize = 10;
 /// The CGA 4-colour palettes selectable by the palette descriptor; any other
 /// code falls back to the third.
 const CGA_4: [[u32; 4]; 6] = [
-    [0x000000, 0x00aaaa, 0xaa00aa, 0xaaaaaa],
-    [0x000000, 0x00aa00, 0xaa0000, 0xaa5500],
-    [0x000000, 0x00aaaa, 0xaa0000, 0xaaaaaa],
-    [0x000000, 0x55ffff, 0xff55ff, 0xffffff],
-    [0x000000, 0x55ff55, 0xff5555, 0xffff55],
-    [0x000000, 0x55ffff, 0xff5555, 0xffffff],
+    cga_set([3, 5, 7]),
+    cga_set([2, 4, 6]),
+    cga_set([3, 4, 7]),
+    cga_set([11, 13, 15]),
+    cga_set([10, 12, 14]),
+    cga_set([11, 12, 15]),
 ];
 
 #[derive(Clone, Copy)]

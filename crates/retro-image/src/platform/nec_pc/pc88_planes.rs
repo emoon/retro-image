@@ -8,6 +8,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 pub(super) const WIDTH: usize = 640;
@@ -27,12 +28,12 @@ pub(super) fn palette() -> Vec<u32> {
 
 /// The picture for three planes of `PLANE_BYTES` bytes each, MSB first.
 pub(super) fn image(blue: &[u8], red: &[u8], green: &[u8]) -> Result<Image, DecodeError> {
-    let indices: Vec<u8> = (0..WIDTH * LINES)
-        .map(|i| {
-            let (byte, shift) = (i / 8, 7 - i % 8);
-            let bit = |plane: &[u8]| plane[byte] >> shift & 1;
-            bit(blue) | bit(red) << 1 | bit(green) << 2
-        })
-        .collect();
+    let planes = [blue, red, green].concat();
+    let indices: Vec<u8> = planar_pixels(&planes, WIDTH, LINES, WIDTH / 8, 3, |plane, y| {
+        plane * PLANE_BYTES + y * (WIDTH / 8)
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect();
     Ok(Image::from_indexed(WIDTH as u32, LINES as u32, &indices, &palette())?.scaled(1, 2))
 }
