@@ -61,7 +61,6 @@ pub(super) static FORMATS: &[Format] = &[
         hgb::decode_hgb,
     ),
     Format::new("Amstrad CPC", "SymbOS graphic", &["sgx"], sgx::decode_sgx),
-    // cpcshr
     Format::new(
         "Amstrad CPC",
         "Overscan screen with loader",
@@ -69,7 +68,6 @@ pub(super) static FORMATS: &[Format] = &[
         overscan::decode_overscan,
     )
     .signature(),
-    // Wave 5: FLF
     Format::new(
         "Amstrad CPC",
         "Turbo Rascal Syntax Error",

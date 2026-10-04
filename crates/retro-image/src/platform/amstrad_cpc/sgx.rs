@@ -8,6 +8,7 @@
 
 use alloc::vec::Vec;
 
+use super::hardware::Mode;
 use crate::{DecodeError, Image};
 
 /// One SGX graphic part, placed at (`x`, `y`) on the canvas.
@@ -107,10 +108,7 @@ fn draw_part(image: &mut Image, part: &Part) {
                 let pen = if x % 2 == 0 { byte >> 4 } else { byte & 15 };
                 SGX_COLORS[usize::from(pen)]
             } else {
-                // CPC mode 1: pixel n has its low bit at 7 - n, high bit at 3 - n.
-                let byte = line[x / 4];
-                let n = x % 4;
-                let pen = (byte >> (7 - n)) & 1 | ((byte >> (3 - n)) & 1) << 1;
+                let pen = Mode::One.pen(line[x / 4], x % 4);
                 SGX_GREYS[usize::from(pen)]
             };
             image.set((part.x + x) as u32, (part.y + y) as u32, color);

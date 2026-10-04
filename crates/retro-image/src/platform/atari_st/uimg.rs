@@ -10,7 +10,7 @@
 use alloc::vec::Vec;
 
 use super::common::{MAX_PIXELS, planar_image, st_palette, vdi_palette, words};
-use super::falcon::rgb565;
+use super::falcon::{rgb565, videl_entries};
 use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
@@ -69,12 +69,7 @@ fn palette(data: &[u8], kind: u16, bits: usize) -> Option<(Vec<u32>, &[u8])> {
     let palette = match kind {
         1 => st_palette(&words(table)),
         2 => words(table).into_iter().map(super::tt::tt_rgb).collect(),
-        3 => table
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|e| u32::from_be_bytes([0, e[0], e[1], e[3]]))
-            .collect(),
+        3 => videl_entries(table, entries)?,
         _ => vdi_palette(table, entries)?,
     };
     Some((palette, &data[HEADER_LEN + len..]))
