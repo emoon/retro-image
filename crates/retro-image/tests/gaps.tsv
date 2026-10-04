@@ -1,0 +1,12 @@
+# Corpus files RECOIL renders that no format of ours decodes yet.
+# corpus id <TAB> evidence
+COIN1.SPC	recoil2png renders it and Spectrum 512 compressed rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/demozoo/180880/DRAGON.HPM	recoil2png renders it and Grass' Slideshow rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/dexvert/graphicsMagicianPainter/COIN2.SPC	recoil2png renders it and Spectrum 512 compressed rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/dexvert/graphicsMagicianPainter/TEST.SPC	recoil2png renders it and Spectrum 512 compressed rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/g2f-full/pgr/dragon.pgr	recoil2png renders it and PowerGraphics rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/pigwa-forever/GRMAGIC/ROCKETOR.SPC	recoil2png renders it and Spectrum 512 compressed rejects it; found by the undecoded-file check, cause not yet investigated
+extra/atari8/pigwa-forever/Gfx-collection/Anime_4ever____A/MOTOKO.A4R	recoil2png renders it and Anime 4ever rejects it; found by the undecoded-file check, cause not yet investigated
+extra/commodore/sembiance/imageSystem/cybernoid_.ish	recoil2png renders it and the .ish format rejects it; found by the undecoded-file check, cause not yet investigated
+extra/sinclair-cpc-misc/grafx2-ps2/impdraw/DRAGON.SCR	recoil2png renders it and the .scr formats rejects it; found by the undecoded-file check, cause not yet investigated
+hostile/amiga-apple-misc/oldskool-deskmate/ZERO.pnt	recoil2png renders it and the .pnt formats rejects it; found by the undecoded-file check, cause not yet investigated

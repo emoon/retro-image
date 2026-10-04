@@ -91,13 +91,25 @@ impl retro_image::Companions for SiblingFiles<'_> {
     }
 }
 
+/// Whether `$RETRO_IMAGE_REQUIRE_ORACLE=1`: a missing corpus or reference
+/// decoder then fails the tests instead of skipping them.
+pub fn strict() -> bool {
+    std::env::var_os("RETRO_IMAGE_REQUIRE_ORACLE").is_some_and(|v| v == "1")
+}
+
+/// Skips the calling test with `why`, or fails it in strict mode.
+pub fn skip(why: &str) {
+    assert!(!strict(), "{why} (RETRO_IMAGE_REQUIRE_ORACLE=1)");
+    eprintln!("skipping: {why}");
+}
+
 /// All corpus files, sorted by `id`, or `None` if there is no corpus.
 pub fn samples() -> Option<Vec<Sample>> {
     let root = std::env::var_os("RETRO_IMAGE_CORPUS")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus"));
     if !root.is_dir() {
-        eprintln!("skipping: no corpus at {}", root.display());
+        skip(&format!("no corpus at {}", root.display()));
         return None;
     }
     let mut samples = Vec::new();
