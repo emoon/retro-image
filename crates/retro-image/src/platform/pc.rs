@@ -23,6 +23,7 @@
 //!   `recoil2png` output.
 
 mod animator;
+mod animator_pro;
 mod bmp;
 mod colorix;
 mod flf;
@@ -73,6 +74,7 @@ pub(super) static FORMATS: &[Format] = &[
         colorix::decode_rix,
     )
     .signature(),
+    Format::new("PC", "ColoRIX EGA", &["scr"], colorix::decode_ega_scr),
     Format::new("PC", "PCPaint and PICtor", &["pic"], pcpaint::decode_pic).signature(),
     Format::new("PC", "PCPaint clip", &["clp"], pcpaint::decode_clp),
     Format::new(
@@ -80,6 +82,13 @@ pub(super) static FORMATS: &[Format] = &[
         "Autodesk Animator picture and cel",
         &["pic", "cel"],
         animator::decode_cel,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "Autodesk Animator Pro picture and cursor",
+        &["pic", "cel", "cur"],
+        animator_pro::decode_pic,
     )
     .signature(),
     Format::new(
@@ -266,6 +275,15 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
             .collect()
     };
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
+}
+
+/// One of the 64 EGA colours: bits 0-2 are blue, green, red at 2/3 intensity
+/// and bits 3-5 the same at 1/3.
+pub(super) fn ega_64(index: u8) -> u32 {
+    let level = |high: u8, low: u8| {
+        u32::from((index >> high & 1) * 0xaa) + u32::from((index >> low & 1) * 0x55)
+    };
+    level(2, 5) << 16 | level(1, 4) << 8 | level(0, 3)
 }
 
 /// A VGA DAC entry (red, green, blue of 0-63; higher bits ignored) as

@@ -18,8 +18,10 @@
 //! (nibbles or 4 planes), 4-colour planar and 256-colour pictures, with the
 //! palette descriptors 0 (default), 1 (CGA code), 2 and 3 (indices into the
 //! 16 and 64 colour EGA palettes), 4 and 5 (RGB). Rows are stored bottom-up.
-//! Text-mode pictures (video modes `0` to `3`), 24-bit variants and OVR files
-//! are rejected. CLP files carry no palette, so they use the defaults.
+//! Text-mode pictures (video modes `0` to `3`: rows of character and
+//! attribute bytes, width counted in bytes) are drawn with the text-mode art
+//! fonts; the one sample, `WSSCREEN.PIC`, is an 80x60 screen. 24-bit variants
+//! and OVR files (containers of CLP tables) are rejected. CLP files carry no palette, so they use the defaults.
 //!
 //! The default VGA palette is taken from Deark, whose notice is:
 //!
@@ -51,7 +53,8 @@
 
 use alloc::vec::Vec;
 
-use super::{CGA_PALETTE, dac_rounded};
+use super::super::textmode;
+use super::{CGA_PALETTE, dac_rounded, ega_64};
 use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
@@ -160,10 +163,6 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         return Err(FAIL);
     };
-    // Character-mode pictures (video modes '0' to '3') are not bitmaps.
-    if (b'0'..=b'3').contains(&info.video_mode) {
-        return Err(FAIL);
-    }
     let layout = Layout::from_plane_info(plane_info).ok_or(FAIL)?;
     let (width, height) = dimensions(data)?;
     let block_count = usize::from(le16(data, blocks_at).ok_or(FAIL)?);
@@ -174,6 +173,14 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         unpack_blocks(body, block_count, need).ok_or(FAIL)?
     };
+    // Character-mode pictures (video modes '0' to '3') hold a text screen of
+    // character and attribute bytes; the width is in bytes.
+    if (b'0'..=b'3').contains(&info.video_mode) {
+        if !matches!(layout, Layout::Packed(8)) || width % 2 != 0 {
+            return Err(FAIL);
+        }
+        return textmode::render_text_screen(&pixels, width / 2);
+    }
     render(&pixels, width, height, layout, &info)
 }
 
@@ -355,15 +362,6 @@ fn palette(colors: usize, info: &PaletteInfo) -> [u32; 256] {
     pal
 }
 
-/// One of the 64 EGA colours: bits 0-2 are blue, green, red at 2/3 intensity
-/// and bits 3-5 the same at 1/3.
-fn ega_64(index: u8) -> u32 {
-    let level = |high: u8, low: u8| {
-        u32::from((index >> high & 1) * 0xaa) + u32::from((index >> low & 1) * 0x55)
-    };
-    level(2, 5) << 16 | level(1, 4) << 8 | level(0, 3)
-}
-
 /// 3-byte RGB entries. Values up to 63 are VGA DAC values, scaled to 255
 /// with rounding; if any entry exceeds 63 the whole table is 8-bit.
 fn rgb_palette(pal: &mut [u32], block: &[u8]) {
@@ -476,14 +474,6 @@ mod tests {
         let mut clip = alloc::vec![0, 0, 4, 0, 4, 0, 0, 0, 0, 0, 0xff, 0x31, 0xfe, 1];
         clip[0] = clip.len() as u8;
         assert!(decode_clp(&clip).is_err());
-    }
-
-    #[test]
-    fn ega_64_follows_the_bit_layout() {
-        assert_eq!(ega_64(0), 0x000000);
-        assert_eq!(ega_64(0b000_110), 0xaaaa00);
-        assert_eq!(ega_64(0b111_000), 0x555555);
-        assert_eq!(ega_64(63), 0xffffff);
     }
 
     #[test]

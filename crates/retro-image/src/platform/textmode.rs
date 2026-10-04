@@ -23,7 +23,7 @@ mod screen;
 mod tundra;
 mod xbin;
 
-use crate::Format;
+use crate::{DecodeError, Format, Image};
 
 const PC: &str = "PC";
 
@@ -37,3 +37,24 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(PC, "PCBoard", &["pcb"], pcboard::decode),
     Format::new(PC, "Avatar", &["avt"], avatar::decode),
 ];
+
+/// Draws a text screen of (character, attribute) pairs, `columns` per row,
+/// for formats outside this module that carry one (PCPaint text pictures).
+/// Screens of more than 30 rows use the 8x8 font, as on a VGA 50-line mode.
+pub(super) fn render_text_screen(pairs: &[u8], columns: usize) -> Result<Image, DecodeError> {
+    let (cells, rows) = screen::attribute_cells(pairs, columns, &screen::PALETTE, false)?;
+    let font = if rows > 30 {
+        font::VGA_8X8
+    } else {
+        font::VGA_8X16
+    };
+    screen::render(
+        &cells,
+        columns,
+        rows,
+        &screen::Style {
+            font,
+            nine_pixels: false,
+        },
+    )
+}

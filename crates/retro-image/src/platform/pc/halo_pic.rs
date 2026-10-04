@@ -16,13 +16,14 @@
 //! goes on, a byte with bit 7 set repeats the next byte `control & 0x7f`
 //! times, any other byte is followed by that many literals.
 //!
-//! The corpus has only four samples, all CGA 320x200 with four colours
-//! (board `0x01`). The other rows of the mode table (Hercules, EGA, VGA) follow
-//! Deark and are not tested against any file. A separate `PAL` file is not
-//! read. Modes outside the table are rejected.
+//! The corpus has four CGA 320x200 samples with four colours (board `0x01`)
+//! and twenty EGA 640x350 samples (board `0x15`, mode 4, four planes, default
+//! 16-colour EGA palette). The other rows of the mode table (Hercules, VGA,
+//! the remaining EGA modes) follow Deark and are not tested against any file.
+//! A separate `PAL` file is not read. Modes outside the table are rejected.
 //!
-//! Verification: no RECOIL oracle for this format; output was compared pixel
-//! for pixel with Deark's PNG output on the sample files.
+//! Verification: no RECOIL oracle for this format; the CGA output was compared
+//! pixel for pixel with Deark's PNG output, the EGA output was checked by eye.
 
 use alloc::vec::Vec;
 
