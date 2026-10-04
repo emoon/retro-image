@@ -278,6 +278,16 @@ work), then VSC, HPM, SPC, then ML1/MX1, with Q4 and PIX last.
 - Feasibility: L and blocked. Reverse engineering a bit-level entropy coder from output alone has
   no precedent in this repo (ZIM, KT4 and Pi had simpler structure or a public spec). Without the
   licence decision, do it last or skip.
+- Reverse engineering from the samples alone (decision: do not read `ifxld4`): each band starts
+  with 2 header bytes that don't affect the picture. The pixel code then reads 3 bits: 0 stops, 1
+  switches to 4-bit literals, 2 to 7 pick one of six ranked colours. After the switch each pixel is
+  a 4-bit value, with 2 to 15 mapping to 14 palette colours; the meaning of 0 and 1 is unknown. With
+  an all-ones stream a pixel costs exactly 3 bits. A flat white band reaches 48000 pixels in 30
+  bytes, so long-run tokens or a model that makes repeats nearly free exist. Truncating the data
+  grows the decoded pixel count in steps of 288. Flipping bits in the first 25 bits of a band
+  changes pixel 0, which hints at an arithmetic or range coder with a skewed model, contradicting
+  the self-synchronising guess above. The preamble palette is coded as a shared-prefix R, G, B
+  tree, not a plain 16x12-bit array. The context model and adaptation are still missing.
 
 ## PIX (Atari 8-bit, 160x192, 4 colours)
 
