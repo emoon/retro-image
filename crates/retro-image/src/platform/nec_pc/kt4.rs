@@ -119,8 +119,8 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
         let cell: Cell = match count {
             0 => top_only(reader.take().ok_or(bad)?),
             1 => {
-                let tile: [u8; 3] = reader.take().ok_or(bad)?;
-                [tile, tile].concat().try_into().map_err(|_| bad)?
+                let [a, b, c]: [u8; 3] = reader.take().ok_or(bad)?;
+                [a, b, c, a, b, c]
             }
             _ => reader.take().ok_or(bad)?,
         };
@@ -149,7 +149,8 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
             *slot = Some(cell);
         }
     }
-    let full_height = half_height != Some(true);
+    // No segments: 3-byte tiles, as `recoil2png` does.
+    let full_height = half_height == Some(false);
     for slot in cells.iter_mut().filter(|slot| slot.is_none()) {
         *slot = Some(if full_height {
             reader.take().ok_or(bad)?
