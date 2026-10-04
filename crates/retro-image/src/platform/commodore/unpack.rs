@@ -16,6 +16,11 @@
 //! cruncher) and the loader of Showmatic (`002_SHOWMATIC_____PD.prg`),
 //! all from the CSDb tools archive <https://csdb.dk>. The disassembly was
 //! done by the project maintainer's permission; no code was copied.
+//! The escape-first packer ([`escape_first_rle`]) was read the same way from
+//! the save routines of the 3lux Super Hires Editor V1.0 and V2.3
+//! (`super-hires-editor-1.0-3lux.d64`, `super-hireseditorv2.3.d64`), which
+//! were run in an emulator past their cruncher and with a stubbed KERNAL
+//! that records what is written to the file.
 
 use alloc::vec::Vec;
 
@@ -105,6 +110,33 @@ pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<
 pub(super) fn escape_last_rle(data: &[u8], len: usize) -> Option<Vec<u8>> {
     let (&escape, rest) = data.split_last()?;
     backward_rle_filled(rest.get(2..)?, escape, len).map(|(out, _)| out)
+}
+
+/// Unpacks the escape-first RLE of the 3lux Super Hires editors: the
+/// escape byte, then literal bytes and `escape count value` runs, ending
+/// with `escape 0` or the end of the data. The editors choose the least
+/// used byte value as escape and write runs of three or more. `None` if
+/// fewer than `len` bytes unpack; a cut-off run at the end is ignored.
+pub(super) fn escape_first_rle(data: &[u8], len: usize) -> Option<Vec<u8>> {
+    let (&escape, mut rest) = data.split_first()?;
+    let mut out = Vec::with_capacity(len);
+    while out.len() < len {
+        let (&byte, tail) = rest.split_first()?;
+        rest = tail;
+        if byte != escape {
+            out.push(byte);
+            continue;
+        }
+        match *rest {
+            [0, ..] | [] | [_] => break,
+            [count, value, ref tail @ ..] => {
+                out.extend(core::iter::repeat_n(value, usize::from(count)));
+                rest = tail;
+            }
+        }
+    }
+    out.truncate(len);
+    (out.len() == len).then_some(out)
 }
 
 /// Unpacks like [`backward_rle`] until the output's start is reached;

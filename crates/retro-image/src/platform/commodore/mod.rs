@@ -34,6 +34,7 @@ mod petscii;
 mod prg;
 mod printfox;
 mod printmaster;
+mod sh_editors;
 mod she;
 mod sprites;
 mod superhires;
@@ -99,6 +100,18 @@ pub(super) static FORMATS: &[Format] = &[
         "Blazing Paddles",
         &["pi", "bpl"],
         bitmap::decode_blazing_paddles,
+    ),
+    Format::new(
+        C64,
+        "Super-hires Editor I",
+        &["sh1"],
+        sh_editors::decode_sh1,
+    ),
+    Format::new(
+        C64,
+        "Super-hires Editor II",
+        &["sh2"],
+        sh_editors::decode_sh2,
     ),
     Format::new(C64, "Zoomatic", &["zom"], bitmap::decode_zoomatic),
     Format::new(C64, "Vidcom 64", &["vid"], bitmap::decode_vidcom),
