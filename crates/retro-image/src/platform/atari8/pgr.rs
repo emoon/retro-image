@@ -11,7 +11,7 @@
 //!   shares [`super::gtia`] and the Graph2Font renderer's pixel rules.
 //! - The layout is reverse engineered from the corpus samples and checked
 //!   against `recoil2png` output (black box), including acceptance probes
-//!   with hand-made event streams; notes in
+//!   and timing probes with hand-made event streams; notes in
 //!   `docs/research/gaps-corpus-atari8.md` section 6.
 //!
 //! ```text
@@ -35,24 +35,38 @@
 //! cropped.
 //!
 //! The event stream has one entry list per scanline, 240 lines. Each event
-//! byte `b` writes register `b & 0x1f` (see [`Registers`]; 0x1c writes nothing)
-//! with the byte that follows if `b & 0x20` is set, else with the last value
-//! byte seen. The event ends the scanline if `b & 0x80` is set; so does a
-//! bare `1C` or `3C`; any other event on register 0x1c is rejected, as are
-//! 0x1d-0x1f. Writes apply from the start of their scanline and persist.
-//! Events on registers 0x1d-0x1f (which move later writes into the middle of
-//! the scanline by ANTIC DMA timing) and player/missile DMA are not
-//! understood, and such files are rejected.
+//! byte `b` writes register `b & 0x1f` (see [`Registers`]) with the byte
+//! that follows if `b & 0x20` is set, else with the last value byte seen.
+//! Registers 0x1c-0x1f write nothing: they wait, see [`timing`]. A write
+//! with `b & 0x80` ends the scanline, as does a bare `1C` or `3C`; waits
+//! never do. Writes land at a position within the scanline given by the
+//! cycles the kernel and ANTIC's DMA take, and persist.
+//!
+//! With player/missile DMA (DMACTL bits 3 and 2, single-line resolution) the
+//! player and missile graphics come from PMBASE memory, scanline 8 of each
+//! 256-byte block being the first picture line. An object starts when the
+//! beam reaches its HPOS and shows the graphics, size and position of that
+//! moment, so later writes leave it alone except for sizes, which stretch
+//! the rest of it. The graphics are loaded at the left edge of the picture:
+//! objects starting left of it show the previous scanline's.
+
+mod timing;
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
 use super::palette::rgb;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
+use timing::{Clock, Dma, Position};
 
 const LINES: usize = 240;
 const START: usize = 0x8206;
 const SIGNATURE: &[u8; 8] = b"PowerGFX";
 const DISPLAY_LIST: usize = 0x8210;
+/// Player/missile memory (PMBASE), single-line resolution: missiles at
+/// +0x300, players at +0x400, +0x500, ...; the first picture line is
+/// scanline 8 of the 256 each holds.
+const PMBASE: usize = 0x8000;
+const FIRST_SCANLINE: usize = 8;
 
 /// Memory address of the initial value of event register `register`. The 28
 /// registers are stored in event order, split across player/missile memory
@@ -70,27 +84,43 @@ const DMACTL: usize = 0x8506;
 /// The registers written by events, in event order: HPOSP0-3, HPOSM0-3,
 /// SIZEP0-3, SIZEM, GRAFP0-3, GRAFM, COLPM0-3, COLPF0-3, COLBK, PRIOR.
 type Registers = [u8; 0x1c];
+const SIZEP0: usize = 8;
+const SIZEM: usize = 12;
+const GRAFP0: usize = 0x0d;
+const GRAFM: usize = 0x11;
 
 /// PGR: 336x240.
 pub(super) fn decode_pgr(data: &[u8]) -> Result<Image, DecodeError> {
     let memory = Memory::parse(data).ok_or(DecodeError::Unrecognized)?;
     let dmactl = memory.byte(DMACTL);
-    // Player and missile DMA are not implemented.
-    if dmactl & 0x0c != 0 {
-        return Err(DecodeError::Unrecognized);
-    }
     let bytes_per_line = match dmactl & 3 {
         1 => 32,
         2 => 40,
         3 => 48,
         _ => return Err(DecodeError::Unrecognized),
     };
-    let sources = display_list(&memory, bytes_per_line).ok_or(DecodeError::Unrecognized)?;
-    let registers = scanline_registers(&memory).ok_or(DecodeError::Unrecognized)?;
+    let objects = Objects {
+        players: dmactl & 8 != 0,
+        missiles: dmactl & 4 != 0,
+    };
+    // Double-line resolution is not understood.
+    if objects.any() && dmactl & 0x10 == 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    let rows = display_list(&memory, bytes_per_line).ok_or(DecodeError::Unrecognized)?;
+    let writes = scanline_writes(&memory, &rows, bytes_per_line, objects)
+        .ok_or(DecodeError::Unrecognized)?;
 
+    let mut registers: Registers = core::array::from_fn(|n| memory.byte(initial_address(n)));
     let mut image = Image::new(WIDTH as u32, LINES as u32);
-    for (y, (source, registers)) in sources.iter().zip(&registers).enumerate() {
-        render_line(&mut image, y, &memory, source, registers, bytes_per_line)?;
+    for (y, (row, writes)) in rows.iter().zip(&writes).enumerate() {
+        let writes = objects.with_fetches(&memory, y, writes);
+        let line = Line {
+            y,
+            source: row.source,
+            bytes_per_line,
+        };
+        render_line(&mut image, &memory, &line, &writes, &mut registers)?;
     }
     Ok(image)
 }
@@ -136,8 +166,53 @@ enum Source {
     Hires(usize),
 }
 
-/// Runs the display list, one source per scanline.
-fn display_list(memory: &Memory<'_>, bytes_per_line: usize) -> Option<Vec<Source>> {
+/// A scanline's display list entry.
+#[derive(Clone, Copy)]
+struct Row {
+    source: Source,
+    /// The instruction carries a screen address.
+    lms: bool,
+}
+
+/// Player and missile DMA: which objects ANTIC fills the graphics
+/// registers of from memory on every scanline.
+#[derive(Clone, Copy)]
+struct Objects {
+    players: bool,
+    missiles: bool,
+}
+
+impl Objects {
+    fn any(self) -> bool {
+        self.players || self.missiles
+    }
+
+    /// The writes of scanline `y` after the loads of the graphics registers
+    /// from memory. Objects that start left of the picture still show the
+    /// previous scanline's graphics: the load takes effect at output pixel 0.
+    fn with_fetches(self, memory: &Memory<'_>, y: usize, writes: &[Write]) -> Vec<Write> {
+        let index = y + FIRST_SCANLINE;
+        let player = |n: usize| (GRAFP0 + n, memory.byte(PMBASE + 0x400 + 0x100 * n + index));
+        let missiles = (GRAFM, memory.byte(PMBASE + 0x300 + index));
+        let loads = (0..4)
+            .map(player)
+            .filter(|_| self.players)
+            .chain(self.missiles.then_some(missiles))
+            .map(|(register, value)| Write {
+                x: 0,
+                register,
+                value,
+            });
+        loads.chain(writes.iter().copied()).collect()
+    }
+}
+
+/// Runs the display list, one row per scanline.
+fn display_list(memory: &Memory<'_>, bytes_per_line: usize) -> Option<Vec<Row>> {
+    let blank = Row {
+        source: Source::Blank,
+        lms: false,
+    };
     let mut lines = Vec::with_capacity(LINES);
     let mut address = 0;
     let mut pc = DISPLAY_LIST;
@@ -147,73 +222,209 @@ fn display_list(memory: &Memory<'_>, bytes_per_line: usize) -> Option<Vec<Source
         let mode = instruction & 0x0f;
         match mode {
             0 => {
-                let blank = usize::from(instruction >> 4 & 7) + 1;
-                lines.resize(lines.len() + blank, Source::Blank);
+                let count = usize::from(instruction >> 4 & 7) + 1;
+                lines.resize(lines.len() + count, blank);
             }
             1 if instruction & 0x40 != 0 => break,
             0x0e | 0x0f => {
-                if instruction & 0x40 != 0 {
+                let lms = instruction & 0x40 != 0;
+                if lms {
                     address = memory.word(pc);
                     pc += 2;
                 }
-                lines.push(if mode == 0x0e {
+                let source = if mode == 0x0e {
                     Source::Four(address)
                 } else {
                     Source::Hires(address)
-                });
+                };
+                lines.push(Row { source, lms });
                 // ANTIC's address counter wraps within 4K blocks.
                 address = address & 0xf000 | (address + bytes_per_line) & 0x0fff;
             }
             _ => return None,
         }
     }
-    lines.resize(LINES, Source::Blank);
+    lines.resize(LINES, blank);
     Some(lines)
 }
 
-/// The registers in effect on each of the 240 scanlines.
-fn scanline_registers(memory: &Memory<'_>) -> Option<Vec<Registers>> {
-    let mut registers: Registers = core::array::from_fn(|n| memory.byte(initial_address(n)));
+/// A register write and where in its scanline it lands.
+#[derive(Clone, Copy)]
+struct Write {
+    x: Position,
+    register: usize,
+    value: u8,
+}
+
+/// The register writes of each of the 240 scanlines.
+fn scanline_writes(
+    memory: &Memory<'_>,
+    rows: &[Row],
+    bytes_per_line: usize,
+    objects: Objects,
+) -> Option<Vec<Vec<Write>>> {
     let mut latch = 0;
     let mut pos = memory.word(START);
     let mut lines = Vec::with_capacity(LINES);
-    while lines.len() < LINES {
-        let event = memory.byte(pos);
-        let value = memory.byte(pos + 1);
-        let register = usize::from(event & 0x1f);
-        pos += 1;
-        if event & 0x20 != 0 {
-            latch = value;
+    for row in rows {
+        let mut clock = Clock::new(Dma {
+            fetched: match row.source {
+                Source::Blank => 0,
+                _ => bytes_per_line as u32,
+            },
+            lms: row.lms,
+            players: objects.players,
+            missiles: objects.missiles,
+        });
+        let mut writes = Vec::new();
+        loop {
+            let event = memory.byte(pos);
+            let value = memory.byte(pos + 1);
+            let register = usize::from(event & 0x1f);
+            let has_value = event & 0x20 != 0;
             pos += 1;
+            if has_value {
+                latch = value;
+                pos += 1;
+            }
+            if pos > 0xffff {
+                return None;
+            }
+            // 1C and 3C end the scanline, as do writes with bit 7; the other
+            // events on registers 1C-1F wait.
+            let ends = matches!(event, 0x1c | 0x3c) || register < 0x1c && event & 0x80 != 0;
+            if matches!(event, 0x1c | 0x3c) {
+                break;
+            }
+            let x = clock.run(event)?;
+            if register < 0x1c {
+                writes.push(Write {
+                    x,
+                    register,
+                    value: latch,
+                });
+            }
+            if ends {
+                break;
+            }
         }
-        let ends = match event {
-            0x1c | 0x3c => true,
-            _ if register >= registers.len() => return None,
-            _ => event & 0x80 != 0,
-        };
-        if let Some(target) = registers.get_mut(register) {
-            *target = latch;
-        }
-        if ends {
-            lines.push(registers);
-        }
-        if pos > 0xffff {
-            return None;
-        }
+        lines.push(writes);
     }
     Some(lines)
 }
 
-/// Draws scanline `y`.
+/// What a scanline is drawn from.
+struct Line {
+    y: usize,
+    source: Source,
+    bytes_per_line: usize,
+}
+
+/// The player and missile registers as GTIA's comparators see them.
+fn pmg(r: &Registers) -> Pmg {
+    Pmg {
+        hpos_player: [r[0], r[1], r[2], r[3]],
+        hpos_missile: [r[4], r[5], r[6], r[7]],
+        size_player: r[8] & 3 | (r[9] & 3) << 2 | (r[10] & 3) << 4 | (r[11] & 3) << 6,
+        size_missile: r[12],
+        graf_player: [r[0x0d], r[0x0e], r[0x0f], r[0x10]],
+        graf_missile: r[0x11],
+    }
+}
+
+/// The players and missiles of a scanline (see [`gtia::Objects::pixels`]).
+/// An object starts when the beam reaches the position HPOS had at that
+/// moment and then shows the graphics of that moment, so a write that lands
+/// after the start leaves it alone, and one that lands after the new
+/// position was passed does not start it. A size write stretches the bits of
+/// an object still being drawn, from one colour clock after the write.
+fn line_objects(start: &Registers, writes: &[Write]) -> [u8; WIDTH] {
+    let mut pixels = [0; WIDTH];
+    let mut registers = *start;
+    let mut from = Position::MIN;
+    for (n, write) in writes.iter().enumerate() {
+        let until = write.x;
+        if until > from {
+            draw_started(&mut pixels, &registers, from..until, &writes[n..]);
+            from = until;
+        }
+        registers[write.register] = write.value;
+    }
+    draw_started(&mut pixels, &registers, from..Position::MAX, &[]);
+    pixels
+}
+
+/// Draws the objects that start within `span` with `registers`, given the
+/// writes that follow.
+fn draw_started(
+    pixels: &mut [u8; WIDTH],
+    registers: &Registers,
+    span: core::ops::Range<Position>,
+    later: &[Write],
+) {
+    for (n, shape) in pmg(registers).shapes().iter().enumerate() {
+        if span.contains(&shape.left) {
+            let resized: Vec<_> = later
+                .iter()
+                .filter_map(|write| size_write(n, write))
+                .collect();
+            shape.draw(pixels, &resized);
+        }
+    }
+}
+
+/// The size `write` gives object `n` (players, then missiles), and the
+/// output pixel it takes effect at.
+fn size_write(n: usize, write: &Write) -> Option<(Position, u8)> {
+    let size = match (n, write.register) {
+        (0..=3, register) if register == SIZEP0 + n => write.value & 3,
+        (4..=7, SIZEM) => write.value >> (2 * (n - 4)) & 3,
+        _ => return None,
+    };
+    Some((write.x + 2, size))
+}
+
+/// Draws a scanline, applying its writes as they land and leaving the
+/// registers as the scanline ended.
 fn render_line(
     image: &mut Image,
-    y: usize,
     memory: &Memory<'_>,
-    source: &Source,
+    line: &Line,
+    writes: &[Write],
+    registers: &mut Registers,
+) -> Result<(), DecodeError> {
+    let objects = line_objects(registers, writes);
+    let mut writes = writes.iter().peekable();
+    let mut left = 0;
+    while left < WIDTH {
+        while let Some(write) = writes.next_if(|write| write.x <= left as Position) {
+            registers[write.register] = write.value;
+        }
+        let right = writes
+            .peek()
+            .map_or(WIDTH, |write| (write.x as usize).min(WIDTH));
+        render_span(image, memory, line, left..right, registers, &objects)?;
+        left = right;
+    }
+    writes.for_each(|write| registers[write.register] = write.value);
+    Ok(())
+}
+
+/// Draws the pixels `span` of a scanline with `registers`.
+fn render_span(
+    image: &mut Image,
+    memory: &Memory<'_>,
+    line: &Line,
+    span: core::ops::Range<usize>,
     registers: &Registers,
-    bytes_per_line: usize,
+    objects: &[u8; WIDTH],
 ) -> Result<(), DecodeError> {
     let r = registers;
+    let Line {
+        y,
+        source,
+        bytes_per_line,
+    } = *line;
     let prior = r[0x1b];
     let gtia9 = match (prior >> 6, source) {
         (0, _) => false,
@@ -225,18 +436,10 @@ fn render_line(
         playfield: [r[0x16], r[0x17], r[0x18], r[0x19]],
         background: r[0x1a],
     };
-    let pmg = Pmg {
-        hpos_player: [r[0], r[1], r[2], r[3]],
-        hpos_missile: [r[4], r[5], r[6], r[7]],
-        size_player: r[8] & 3 | (r[9] & 3) << 2 | (r[10] & 3) << 4 | (r[11] & 3) << 6,
-        size_missile: r[12],
-        graf_player: [r[0x0d], r[0x0e], r[0x0f], r[0x10]],
-        graf_missile: r[0x11],
-    };
-    let objects = pmg.draw();
     // Output pixel of the first screen byte, so that 40 bytes are centred.
     let left = 8 * (bytes_per_line as isize / 2 - 21);
-    for (x, &objs) in objects.pixels.iter().enumerate() {
+    for x in span {
+        let objs = objects[x];
         let position = x as isize + left;
         let column = usize::try_from(position.div_euclid(8))
             .ok()
@@ -244,7 +447,7 @@ fn render_line(
         let bit = position.rem_euclid(8) as u32;
         let cell = |address: usize| column.map(|column| memory.byte(address + column));
         let on_screen = (8..WIDTH - 8).contains(&x);
-        let (mut playfield, luminance, nibble) = match *source {
+        let (mut playfield, luminance, nibble) = match source {
             Source::Blank => (0, None, 0),
             Source::Four(address) => {
                 let value = cell(address).map_or(0, |byte| byte >> (6 - bit / 2 * 2) & 3);
@@ -327,14 +530,28 @@ mod tests {
     }
 
     #[test]
+    fn waits_delay_writes_within_the_scanline() {
+        // A wait on register 1F (26 cycles) puts the COLPF2 write at pixel 70.
+        let mut events = idle();
+        events.splice(0..1, [0x3f, 0x00, 0xb8, 0x4a]);
+        let image = decode_pgr(&file(&events)).unwrap();
+        assert_eq!(image.get(69, 0), rgb(0x00));
+        assert_eq!(image.get(70, 0), rgb(0x4a));
+        // A wait does not end the scanline; the 1C after it does.
+        let mut events = idle();
+        events.splice(5..6, [0x3e, 0x00, 0x1c]);
+        assert!(decode_pgr(&file(&events)).is_ok());
+    }
+
+    #[test]
     fn rejects_bad_files() {
         let good = file(&idle());
         assert!(decode_pgr(&good).is_ok());
         // Fewer than 240 scanlines of events.
         assert!(decode_pgr(&file(&idle()[..239])).is_err());
-        // Unknown event register.
+        // A line that runs past the end of the scanline.
         let mut events = idle();
-        events[5] = 0x1e;
+        events.splice(5..6, [0x3f; 12]);
         assert!(decode_pgr(&file(&events)).is_err());
         // Wrong signature, length and load address.
         let mut bad = good.clone();
