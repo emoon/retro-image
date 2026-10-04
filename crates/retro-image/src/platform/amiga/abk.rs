@@ -9,7 +9,7 @@
 
 use alloc::vec::Vec;
 
-use super::ilbm::rgb12;
+use super::ilbm::{half_brite, rgb12};
 use crate::bytes::be16;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
@@ -52,12 +52,12 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .collect::<Option<_>>()
         .ok_or(fail)?;
     // 6-plane objects use Extra Half-Brite: colours 32-63 are colours 0-31
-    // with each 4-bit component halved (Amiga Hardware Reference Manual,
-    // "Extra Half Brite Mode"). RECOIL rejects such banks.
+    // at half brightness (Amiga Hardware Reference Manual, "Extra Half Brite
+    // Mode"), rounded as in ILBM. RECOIL rejects such banks.
     let colors: Vec<u32> = (0..64)
         .map(|i| {
-            let word = palette[i % 32];
-            rgb12(if i >= 32 { (word >> 1) & 0x777 } else { word })
+            let color = rgb12(palette[i % 32]);
+            if i >= 32 { half_brite(color) } else { color }
         })
         .collect();
     let width: usize = objects.iter().map(|o| o.width).sum();

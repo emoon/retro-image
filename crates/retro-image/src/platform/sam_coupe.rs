@@ -190,12 +190,14 @@ impl Palette {
                 _ => return Err(DecodeError::Unrecognized),
             }
         }
+        let used = PALETTE_TABLE_LEN + 4 * changes.len() + 1;
+        // Stable, so changes within a line apply in file order.
+        changes.sort_by_key(|c| c.0);
+        let mut pending = changes.iter().peekable();
         let mut lines = Vec::with_capacity(HEIGHT);
         for y in 0..HEIGHT {
-            for &(line, entry, value) in &changes {
-                if line + 1 == y {
-                    clut[entry] = value;
-                }
+            while let Some(&(_, entry, value)) = pending.next_if(|c| c.0 < y) {
+                clut[entry] = value;
             }
             lines.push(clut);
         }
@@ -203,7 +205,7 @@ impl Palette {
             lines,
             mode3_entries: [0, 1, 2, 3],
         };
-        Ok((palette, PALETTE_TABLE_LEN + 4 * changes.len() + 1))
+        Ok((palette, used))
     }
 
     fn get(&self, y: usize, entry: u8) -> u32 {

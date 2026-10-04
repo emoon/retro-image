@@ -25,6 +25,7 @@
 //!   AN4 and AN5 (ANTIC 5 lines doubled), and 16-pixel-wide characters in
 //!   GR1/GR2.
 
+use super::gtia;
 use super::palette::register_rgb;
 use super::rom_font::ROM_FONT;
 use super::screen::OS_COLORS;
@@ -196,10 +197,7 @@ fn mode4(
         for (row, &bits) in glyph(code).iter().enumerate() {
             for column in 0..4 {
                 let value = (bits >> (6 - 2 * column)) & 3;
-                let register = match value {
-                    3 if code & 0x80 != 0 => 4,
-                    _ => usize::from(value),
-                };
+                let register = gtia::antic4_register(value, code & 0x80 != 0);
                 image.set(x0 + column, y0 + row as u32, register_rgb(colors[register]));
             }
         }

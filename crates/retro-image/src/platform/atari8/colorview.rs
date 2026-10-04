@@ -15,7 +15,7 @@
 //! Layout found:
 //! - `RGB1`, a title length, the title, the mode (9 or 15), the width in
 //!   4-pixel units (even, 2-80), the height (1-192) and the byte 1.
-//! - The picture is a column-major list of pixels (192 per column), each
+//! - The picture is a column-major list of pixels (`height` per column), each
 //!   three 4-bit values, one per frame, packed as a nibble stream:
 //!   a nibble 1-7 is followed by a triple repeated 2-8 times; 0 is followed by
 //!   a nibble N and a triple repeated N + 8 times; 9-15 is followed by 1-7
@@ -28,7 +28,7 @@
 //!   of the three frame colours (rounded down per channel). Mode 15 pictures
 //!   are 2 pixels wide per value, so every unit is 4 pixels wide as well.
 
-use super::palette::rgb;
+use super::palette::{average, rgb};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -74,17 +74,10 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
                 };
                 rgb(HUES[frame] | luminance)
             };
-            image.set(x as u32, y as u32, average(color(0), color(1), color(2)));
+            image.set(x as u32, y as u32, average([color(0), color(1), color(2)]));
         }
     }
     Ok(image)
-}
-
-/// The per-channel average of three `0xRRGGBB` colours, rounded down.
-fn average(a: u32, b: u32, c: u32) -> u32 {
-    let channel =
-        |shift: u32| ((a >> shift & 0xff) + (b >> shift & 0xff) + (c >> shift & 0xff)) / 3;
-    channel(16) << 16 | channel(8) << 8 | channel(0)
 }
 
 /// Unpacks `count` pixels of three frame values from the nibble stream.

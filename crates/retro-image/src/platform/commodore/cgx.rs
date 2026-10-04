@@ -18,11 +18,13 @@ use crate::{DecodeError, Image};
 fn chunk<'a>(mut chunks: &'a [u8], id: &[u8; 4]) -> Option<&'a [u8]> {
     while chunks.len() >= 8 {
         let size = u32::from_le_bytes(chunks[4..8].try_into().ok()?) as usize;
-        let body = chunks.get(8..8 + size)?;
+        let body = chunks.get(8..size.checked_add(8)?)?;
         if &chunks[..4] == id {
             return Some(body);
         }
-        chunks = chunks.get(8 + size + (size & 1)..).unwrap_or(&[]);
+        chunks = chunks
+            .get(size.checked_add(8 + (size & 1))?..)
+            .unwrap_or(&[]);
     }
     None
 }

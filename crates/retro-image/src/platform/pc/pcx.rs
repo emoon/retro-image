@@ -25,7 +25,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::CGA_PALETTE;
+use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
@@ -35,7 +35,7 @@ const VGA_PALETTE_LEN: usize = 768;
 
 /// CGA 2-bit default (palette 1, high intensity) used when the header
 /// carries no palette.
-const CGA_FOUR: [u32; 4] = [0x000000, 0x55ffff, 0xff55ff, 0xffffff];
+const CGA_FOUR: [u32; 4] = cga_set([11, 13, 15]);
 
 struct Header {
     version: u8,

@@ -29,7 +29,6 @@ use super::amsdos::{amsdos_body, amsdos_extension};
 use super::hardware::{Mode, firmware_color, hardware_color, render};
 use crate::{DecodeError, Image};
 
-const HEADER_LEN: usize = 128;
 const LINE_BYTES: usize = 96;
 const ROWS: usize = 34;
 const LINES: usize = ROWS * 8;
@@ -120,7 +119,6 @@ pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
         (2, 0x200, 0x811, OTHER_LEN) => false,
         _ => return Err(fail),
     };
-    debug_assert!(data.len() >= HEADER_LEN);
     let memory = Memory { load, bytes: body };
     let pens = palette(&memory, impdraw)?;
     let mode = Mode::Zero;

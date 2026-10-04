@@ -23,6 +23,7 @@
 //!   placement: mode 9 pixels start 1 output pixel left of the 4-pixel grid,
 //!   mode 10 pixels 1 to the right, with black beyond the edges.
 
+use super::antic::nibble;
 use super::palette::{register_rgb, rgb};
 use super::screen::gtia10_register;
 use crate::{DecodeError, Image};
@@ -99,15 +100,6 @@ fn binary_segment(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     match data {
         [0xff, 0xff, _, _, _, _, rest @ ..] if rest.len() >= len => Ok(&rest[..len]),
         _ => Err(DecodeError::Unrecognized),
-    }
-}
-
-pub(super) fn nibble(line: &[u8], x: usize) -> u8 {
-    let byte = line[x / 2];
-    if x.is_multiple_of(2) {
-        byte >> 4
-    } else {
-        byte & 0x0f
     }
 }
 

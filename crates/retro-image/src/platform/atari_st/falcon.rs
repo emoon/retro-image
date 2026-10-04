@@ -71,9 +71,14 @@ fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> 
     Some(image)
 }
 
-/// Reads a 256-entry VIDEL palette (`R, G, 0, B` bytes per entry).
+/// Reads a 256-entry VIDEL palette.
 pub(super) fn videl_palette(data: &[u8]) -> Option<Vec<u32>> {
-    let data = data.get(..1024)?;
+    videl_entries(data, 256)
+}
+
+/// Reads `count` VIDEL palette entries (`R, G, 0, B` bytes each).
+pub(super) fn videl_entries(data: &[u8], count: usize) -> Option<Vec<u32>> {
+    let data = data.get(..count * 4)?;
     Some(
         data.as_chunks::<4>()
             .0

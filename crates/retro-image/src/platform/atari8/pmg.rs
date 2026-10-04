@@ -162,7 +162,7 @@ pub(super) fn decode_4pm(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
     const COLORS: usize = 7;
     const COLOR_STRIDE: usize = 17;
-    const LINES: usize = 42;
+    const PLAYER_BASE: usize = 42;
     const SLOT: usize = 48;
     const PLAYER_STRIDE: usize = 17 * SLOT;
     let [
@@ -191,7 +191,7 @@ pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
     for frame in 0..frames {
         for player in 0..2 {
             let color = data[COLORS + player * COLOR_STRIDE + frame];
-            let slot = LINES + player * PLAYER_STRIDE + frame * SLOT;
+            let slot = PLAYER_BASE + player * PLAYER_STRIDE + frame * SLOT;
             for (y, &bits) in data[slot..slot + height].iter().enumerate() {
                 sheet.draw_player(frame * cell + player * offset, y, bits, color);
             }

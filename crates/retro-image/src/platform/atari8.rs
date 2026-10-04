@@ -269,7 +269,7 @@ pub(super) static FORMATS: &[Format] = &[
         portfolio::decode_pgc,
     )
     .signature(),
-    // Wave 4: charset interlace
+    // Charset interlace
     Format::new(ATARI8, "ICE MIN", &["imn"], ice::decode_imn),
     Format::new(ATARI8, "ICE CIN", &["icn"], ice::decode_icn),
     Format::new(ATARI8, "ICE PCIN", &["ipc"], ice::decode_ipc),
@@ -283,7 +283,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["ice"],
         ice::decode_ice,
     ),
-    // Wave 4: small screens
+    // Small screens
     Format::new(ATARI8, "TXS", &["txs"], misc_screen::decode_txs),
     Format::new(ATARI8, "Floor Designer", &["fge"], misc_screen::decode_fge),
     Format::new(ATARI8, "KFX", &["kfx"], misc_screen::decode_kfx),
@@ -333,7 +333,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["art"],
         text_art::decode_ascii_art,
     ),
-    // Wave 4: interlace and multi-frame bitmaps
+    // Interlace and multi-frame bitmaps
     Format::new(
         ATARI8,
         "Interlace Graphics Editor",
@@ -346,7 +346,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["ild"],
         interlace2::decode_ild,
     ),
-    Format::new(ATARI8, "ING 15", &["ing"], interlace2::decode_ing),
+    Format::new(ATARI8, "ING 15", &["ing"], interlace::decode_inp),
     Format::new(ATARI8, "Atari HR", &["hr"], interlace2::decode_hr),
     Format::new(ATARI8, "MegaColor 80x96", &["mga"], interlace2::decode_mga),
     Format::new(
@@ -378,7 +378,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["rm4"],
         rambrandt::decode_rm4,
     ),
-    // Wave 4: headered bitmaps with per-line colours
+    // Headered bitmaps with per-line colours
     Format::new(ATARI8, "Hard Color Map", &["hcm"], hcm::decode_hcm).signature(),
     Format::new(ATARI8, "XL-Paint MAX raw", &["raw"], xl_paint::decode_raw),
     Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),
@@ -387,7 +387,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(ATARI8, "Fun with Art", &["fwa"], fwa::decode_fwa),
     Format::new(ATARI8, "MCS", &["mcs"], mcs::decode_mcs),
     Format::new(ATARI8, "GED", &["ged"], ged::decode_ged),
-    // Wave 4: player/missile graphics, shapes, fonts and maps
+    // Player/missile graphics, shapes, fonts and maps
     Format::new(
         ATARI8,
         "AtariTools-800 4 missiles",
@@ -437,9 +437,9 @@ pub(super) static FORMATS: &[Format] = &[
         &["chr"],
         blazing_paddles::decode_chr,
     ),
-    // Wave 5: Amiga and misc
+    // Sprites
     Format::new(ATARI8, "SprEd", &["spr"], spred::decode).signature(),
-    // Gaps A
+    // PIC variants and single-set ICE
     Format::new(
         ATARI8,
         "Micro Illustrator PIC",
@@ -459,7 +459,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["ice"],
         ice_single::decode_ice_single,
     ),
-    // Gaps B
+    // Anime and PowerGraphics
     Format::new(ATARI8, "Anime 4ever", &["a4r"], a4r::decode_a4r).signature(),
     Format::new(ATARI8, "PowerGraphics", &["pgr"], pgr::decode_pgr).signature(),
 ];

@@ -31,6 +31,7 @@
 //!     as a distinct colour.
 
 use super::antic::Bitmap;
+use super::interlace::mcp_picture;
 use super::palette::register_rgb;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -38,15 +39,6 @@ use alloc::vec::Vec;
 const FRAME: usize = 7680;
 const LINES: usize = 192;
 const TABLE: usize = 192;
-
-fn frame(data: &[u8]) -> Bitmap<'_> {
-    Bitmap {
-        data: &data[..FRAME],
-        bytes_per_line: 40,
-        lines: LINES,
-        bits: 2,
-    }
-}
 
 /// RAW: `XLPB`, two frames, then two sets of playfield 0-2 and background.
 /// The first frame uses the first set on even lines and the second on odd
@@ -56,15 +48,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(b"XLPB")
         .filter(|rest| rest.len() == 2 * FRAME + 8)
         .ok_or(DecodeError::Unrecognized)?;
-    let (frames, sets) = rest.split_at(2 * FRAME);
-    let draw = |data: &[u8], f: usize| {
-        frame(data).render(2, 1, |line, value| {
-            let half = (f + line) % 2;
-            register_rgb(set_color(&sets[4 * half..4 * half + 4], value))
-        })
-    };
-    let (first, second) = frames.split_at(FRAME);
-    Ok(Image::blend(&[&draw(first, 0)?, &draw(second, 1)?]))
+    mcp_picture(rest, LINES)
 }
 
 /// A colour set stored as playfield 0-2, then the background.

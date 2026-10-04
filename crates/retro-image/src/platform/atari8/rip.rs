@@ -17,7 +17,7 @@
 //!
 //! Header: `RIP`, four bytes of version text, a mode byte, then big-endian
 //! 16-bit fields: 0 or 1 (packed; the data is packed when it starts with
-//! `PCK`), the header length (not read), the width in 4-pixel units (even,
+//! `PCK`), the header length (the offset of the PCK data), the width in 4-pixel units (even,
 //! 2-80), the height (1-239) and the title length; then `T:`, the title, a
 //! tab, `CM:` and 9 colour bytes (the registers 704-712). The data follows.
 //! Bytes per line are width / 2. Modes (the byte after the version):
@@ -45,7 +45,8 @@
 //! unused code leaves the rest of the picture 0, as `recoil2png` does.
 
 use super::antic::Bitmap;
-use super::hip::{half_pixel_pair, nibble};
+use super::antic::nibble;
+use super::hip::half_pixel_pair;
 use super::palette::{register_rgb, rgb};
 use super::screen::gtia10_register;
 use crate::bytes::be16;

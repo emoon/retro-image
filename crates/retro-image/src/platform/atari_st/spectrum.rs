@@ -12,7 +12,9 @@
 
 use alloc::vec::Vec;
 
-use super::common::{interleaved_index, st_rgb, uses_ste_bits, words};
+use super::common::{
+    interleaved_index, separate_planes_to_interleaved, st_rgb, uses_ste_bits, words,
+};
 use crate::bytes::{be16, be32};
 use crate::{DecodeError, Image};
 
@@ -267,19 +269,6 @@ fn header(data: &[u8]) -> Option<(&[u8], &[u8])> {
     Some((bitmap, colors))
 }
 
-/// Converts four separate plane blocks (each 199 lines of 40 bytes) to
-/// interleaved lines.
-fn separate_planes_to_interleaved(planes: &[u8]) -> Vec<u8> {
-    let mut out = alloc::vec![0; BITMAP_LEN];
-    for (i, &b) in planes.iter().enumerate().take(BITMAP_LEN) {
-        let plane = i / (LINES * 40);
-        let y = i / 40 % LINES;
-        let byte = i % 40;
-        out[y * LINE_LEN + byte / 2 * 8 + plane * 2 + byte % 2] = b;
-    }
-    out
-}
-
 pub(super) fn decode_spc(data: &[u8]) -> Result<Image, DecodeError> {
     decode_spc_inner(data).ok_or(DecodeError::Unrecognized)
 }
@@ -287,7 +276,7 @@ pub(super) fn decode_spc(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_spc_inner(data: &[u8]) -> Option<Image> {
     let (packed, colors) = header(data)?;
     let planes = unpack_spc(packed)?;
-    let bitmap = separate_planes_to_interleaved(&planes);
+    let bitmap = separate_planes_to_interleaved(&planes, 4);
     let mut palettes = Vec::with_capacity(PALETTE_WORDS);
     let mut pos = 0;
     for _ in 0..LINES * 3 {
@@ -338,7 +327,7 @@ fn decode_sps_inner(data: &[u8]) -> Option<Image> {
     } else {
         strips_to_separate_planes(&unpacked)
     };
-    let bitmap = separate_planes_to_interleaved(&planes);
+    let bitmap = separate_planes_to_interleaved(&planes, 4);
     let mut bits = BitReader {
         data: colors,
         pos: 0,

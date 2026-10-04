@@ -40,7 +40,7 @@
 //!   player and bit 5 multicolour players. Files end right after the row
 //!   modes at the shortest; the later fields are read when present.
 //!
-//! VBXE colour attributes (wave 4; athena, sergeantseymour-robotcop and
+//! VBXE colour attributes (athena, sergeantseymour-robotcop and
 //! Blinkys, probed by changing one byte at a time and comparing the
 //! `recoil2png` renders, then checked on random synthetic files): when the
 //! flag at end+146753 is 1 and the inflated data holds 138242 more bytes, they
@@ -76,26 +76,26 @@ const VBXE_COLUMNS: usize = 48;
 const VBXE_LENGTH: usize = 2 + VBXE_COLUMNS * LINES * 12;
 
 pub(in crate::platform::atari8) fn decode_g2f(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data, false)
+    decode(data, Some(false))
 }
 
 /// A G2F with VBXE colour attributes.
 pub(in crate::platform::atari8) fn decode_g2f_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data, true)
+    decode(data, Some(true))
 }
 
 /// A G2F with or without VBXE colour attributes.
 pub(super) fn decode_plain_or_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data, false).or_else(|_| decode(data, true))
+    decode(data, None)
 }
 
-fn decode(data: &[u8], vbxe: bool) -> Result<Image, DecodeError> {
+fn decode(data: &[u8], vbxe: Option<bool>) -> Result<Image, DecodeError> {
     let packed = data
         .strip_prefix(b"G2FZLIB")
         .ok_or(DecodeError::Unrecognized)?;
     let raw = inflate::zlib(packed, MAX_INFLATED).ok_or(DecodeError::Unrecognized)?;
     let picture = parse(&raw).ok_or(DecodeError::Unrecognized)?;
-    if picture.vbxe.is_some() != vbxe {
+    if vbxe.is_some_and(|vbxe| picture.vbxe.is_some() != vbxe) {
         return Err(DecodeError::Unrecognized);
     }
     Ok(picture.render())

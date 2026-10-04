@@ -120,7 +120,6 @@ pub(super) fn decode_ged(data: &[u8]) -> Result<Image, DecodeError> {
             graf_missile: object(0, graphics[4]),
         };
         let objects = pmg.draw();
-        let fifth = gtia.prior & 0x10 != 0;
         for x in 0..320 {
             let mut colors = gtia.colors;
             for register in 0..3 {
@@ -128,19 +127,12 @@ pub(super) fn decode_ged(data: &[u8]) -> Result<Image, DecodeError> {
                 colors.playfield[register] = data[TABLES + 200 * table + y];
             }
             let pixel = bitmap.pixel(x / 2, y);
-            let mut playfield = match pixel {
-                0 => 0,
-                value => 1 << (value - 1),
-            };
-            let flags = objects.pixels[x + 8];
-            let mut players = flags & 0x0f;
-            if fifth {
-                if flags & 0xf0 != 0 {
-                    playfield |= 8;
-                }
-            } else {
-                players |= flags >> 4;
-            }
+            let (players, playfield) = gtia::add_objects(
+                gtia.prior,
+                objects.pixels[x + 8],
+                0,
+                gtia::playfield_bit(usize::from(pixel)),
+            );
             let color = gtia::resolve(gtia.prior, players, playfield, &colors);
             image.set(x as u32, y as u32, register_rgb(color));
         }

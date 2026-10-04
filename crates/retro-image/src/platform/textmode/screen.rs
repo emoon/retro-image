@@ -208,6 +208,9 @@ pub(super) struct Terminal {
     width: usize,
     max_rows: usize,
     cells: Vec<Cell>,
+    /// Cells before this index are known to be blank, so repeated erases
+    /// cost nothing.
+    blank_prefix: usize,
     rows: usize,
     pub(super) x: usize,
     pub(super) y: usize,
@@ -221,6 +224,7 @@ impl Terminal {
             width,
             max_rows: MAX_CELLS / width,
             cells: Vec::new(),
+            blank_prefix: 0,
             rows: 0,
             x: 0,
             y: 0,
@@ -247,8 +251,7 @@ impl Terminal {
         if x >= self.width || y >= self.max_rows {
             return;
         }
-        self.allocate(y);
-        self.cells[y * self.width + x] = cell;
+        self.store(x, y, cell);
         self.rows = self.rows.max(y + 1);
     }
 
@@ -266,20 +269,39 @@ impl Terminal {
     /// taller: erasing below the written rows changes nothing visible.
     pub(super) fn erase(&mut self, x: usize, y: usize, cell: Cell) {
         if x < self.width && y < self.max_rows {
-            self.allocate(y);
-            self.cells[y * self.width + x] = cell;
+            self.store(x, y, cell);
+        }
+    }
+
+    fn store(&mut self, x: usize, y: usize, cell: Cell) {
+        let index = y * self.width + x;
+        self.allocate(y);
+        self.cells[index] = cell;
+        self.blank_prefix = self.blank_prefix.min(index);
+    }
+
+    /// Blanks the cursor cell and everything after it. Missing cells are
+    /// blank, so this only drops storage.
+    pub(super) fn erase_from_cursor(&mut self) {
+        let index = self.y.saturating_mul(self.width) + self.x;
+        self.cells.truncate(index);
+        self.blank_prefix = self.blank_prefix.min(index);
+    }
+
+    /// Blanks everything up to and including the cursor cell.
+    pub(super) fn erase_to_cursor(&mut self) {
+        let end = (self.y.saturating_mul(self.width) + self.x + 1).min(self.cells.len());
+        if self.blank_prefix < end {
+            self.cells[self.blank_prefix..end].fill(Cell::BLANK);
+            self.blank_prefix = end;
         }
     }
 
     /// Erases everything to blanks and homes the cursor.
     pub(super) fn clear(&mut self) {
-        self.cells.fill(Cell::BLANK);
+        self.cells.clear();
+        self.blank_prefix = 0;
         self.move_to(0, 0);
-    }
-
-    /// Rows that have been written or erased.
-    pub(super) fn allocated_rows(&self) -> usize {
-        self.cells.len() / self.width
     }
 
     fn allocate(&mut self, y: usize) {

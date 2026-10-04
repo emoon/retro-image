@@ -60,6 +60,9 @@ fn text_nibbles(data: &[u8]) -> Option<Vec<u8>> {
     }
     let mut number = || -> Option<usize> { core::str::from_utf8(words.next()?).ok()?.parse().ok() };
     let (width, height) = (number()?, number()?);
+    if width > 0xfffff || height > 0xfffff {
+        return None;
+    }
     let hex = words.next()?;
     let mut nibbles = Vec::with_capacity(20 + hex.len());
     for value in [GROB, 0, height, width] {

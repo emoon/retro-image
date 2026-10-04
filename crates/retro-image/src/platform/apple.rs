@@ -86,7 +86,6 @@ pub(super) static FORMATS: &[Format] = &[
         macpaint::decode_mac_binary,
     )
     .signature(),
-    // Wave 5: Amiga and misc
     Format::new("Apple II", "Sprites", &["spr"], sprites::decode),
 ];
 

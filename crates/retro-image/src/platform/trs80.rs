@@ -41,7 +41,6 @@ pub(super) static FORMATS: &[Format] = &[
         decode_pmode4,
     ),
     Format::new("TRS-80 Color Computer", "128x96", &["p11"], decode_pmode1),
-    // Wave 5: Amiga and misc
     Format::new("TRS-80", "MagicDraw", &["shr"], magicdraw::decode),
     // Color Computer 3 (sources in coco3.rs)
     Format::new(

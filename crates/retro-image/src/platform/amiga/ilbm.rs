@@ -210,8 +210,13 @@ impl Palette {
 
     /// Extra-half-brite colour: colour `index` at half brightness.
     fn half(&self, index: u32) -> u32 {
-        (self.color(index) >> 1) & 0x7f7f7f
+        half_brite(self.color(index))
     }
+}
+
+/// Extra-half-brite colour: each 8-bit component halved.
+pub(super) fn half_brite(rgb: u32) -> u32 {
+    (rgb >> 1) & 0x7f7f7f
 }
 
 /// Expands a 12-bit `0RGB` colour word.

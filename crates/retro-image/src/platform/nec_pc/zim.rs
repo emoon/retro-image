@@ -29,6 +29,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 const SIGNATURE: &[u8] = b"FORMAT-A";
@@ -105,7 +106,7 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
         .collect();
 
     let mut pos = TABLE_COUNT + 2 + word(TABLE_COUNT)? * 2;
-    let mut indices = Vec::with_capacity(WIDTH * height);
+    let mut lines = Vec::with_capacity(LINE_BYTES * height);
     for y in 0..height {
         let (w, x, row, size, bytes) = (
             word(pos)?,
@@ -119,21 +120,20 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
         }
         let packed = data.get(pos + 10..pos + 8 + size).ok_or(bad)?;
         let line = unpack_line(packed).ok_or(bad)?;
-        for px in 0..WIDTH {
-            let (byte, shift) = (px / 8, 7 - px % 8);
-            let mut value = 0u8;
-            for plane in 0..4 {
-                let stored = line[(3 - plane) * PLANE_BYTES + byte];
-                value |= (stored >> shift & 1) << plane;
-            }
-            indices.push(value);
-        }
+        lines.extend_from_slice(&line);
         pos += 8 + size;
     }
     // The line stream ends with a zero word; anything after it is ignored.
     if le16(data, pos) != Some(0) {
         return Err(bad);
     }
+    // Each line stores its planes from the highest bit down.
+    let indices: Vec<u8> = planar_pixels(&lines, WIDTH, height, PLANE_BYTES, 4, |plane, y| {
+        y * LINE_BYTES + (3 - plane) * PLANE_BYTES
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect();
     Image::from_indexed(WIDTH as u32, height as u32, &indices, &palette)
 }
 

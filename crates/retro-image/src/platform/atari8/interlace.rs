@@ -144,15 +144,22 @@ pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME + 8 {
         return Err(DecodeError::Unrecognized);
     }
-    let sets = color_sets(&data[2 * FRAME..]);
+    mcp_picture(data, 200)
+}
+
+/// Two `lines`-line frames and two colour sets, which swap between the
+/// frames on alternate lines. `data` must hold exactly that.
+pub(super) fn mcp_picture(data: &[u8], lines: usize) -> Result<Image, DecodeError> {
+    let frame_len = 40 * lines;
+    let sets = color_sets(&data[2 * frame_len..]);
     let frame_image = |offset: usize, first: usize| {
-        frame(&data[offset..], 200).render(2, 1, |line, value| {
+        frame(&data[offset..], lines).render(2, 1, |line, value| {
             register_rgb(sets[(line + first) % 2][usize::from(value)])
         })
     };
     Ok(Image::blend(&[
         &frame_image(0, 0)?,
-        &frame_image(FRAME, 1)?,
+        &frame_image(frame_len, 1)?,
     ]))
 }
 

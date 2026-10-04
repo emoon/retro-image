@@ -237,12 +237,12 @@ pub(super) fn render_bitmap(
     palette: &Palette,
 ) -> Result<Image, DecodeError> {
     let even = render_page(mode, &Vram::new(even), palette, false)?;
-    match odd {
-        Some(odd) => interlace(
-            mode,
-            &even,
-            &render_page(mode, &Vram::new(odd), palette, false)?,
-        ),
+    let odd = match odd {
+        Some(odd) => Some(render_page(mode, &Vram::new(odd), palette, false)?),
+        None => None,
+    };
+    match odd.filter(|odd| odd.height() >= even.height()) {
+        Some(odd) => interlace(mode, &even, &odd),
         None => mode.output(even),
     }
 }
@@ -373,11 +373,7 @@ fn palette_file(mode: Bitmap, companions: &dyn Companions) -> Option<Palette> {
         Some((start, end)) if end.checked_sub(start) == Some(31) => data.get(7..39)?,
         _ => data.get(..32)?,
     };
-    let mut palette = [0; 16];
-    for (entry, bytes) in palette.iter_mut().zip(table.as_chunks::<2>().0) {
-        *entry = vdp::palette_entry(bytes[0], bytes[1]);
-    }
-    Some(palette)
+    Some(vdp::palette_table(table))
 }
 
 /// Graph Saurus page: a BSAVE-like header, `FE` for raw data or `FD` for RLE,

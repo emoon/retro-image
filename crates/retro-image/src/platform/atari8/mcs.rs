@@ -31,9 +31,9 @@ use super::palette::register_rgb;
 use crate::{DecodeError, Image};
 
 const LEN: usize = 10185;
-const CHARSETS: usize = 9;
+const FIRST_CHARSET: usize = 9;
 const CHARSET_LEN: usize = 1024;
-const SCREEN: usize = CHARSETS + 8 * CHARSET_LEN;
+const SCREEN: usize = FIRST_CHARSET + 8 * CHARSET_LEN;
 const OBJECTS: usize = SCREEN + 960;
 const OBJECT_LEN: usize = 128;
 const LINES: usize = 192;
@@ -67,13 +67,10 @@ fn playfield_pixel(data: &[u8], x: usize, y: usize) -> u8 {
     let (row, line) = (y / 8, y % 8);
     let cell = row * 40 + x / 8;
     let code = data[SCREEN + cell];
-    let charset = CHARSETS + CHARSET_LEN * (row / 3);
+    let charset = FIRST_CHARSET + CHARSET_LEN * (row / 3);
     let glyph = data[charset + 8 * usize::from(code & 0x7f) + line];
-    match glyph >> (6 - 2 * (x % 8 / 2)) & 3 {
-        0 => 0,
-        3 if code & 0x80 != 0 => 8,
-        value => 1 << (value - 1),
-    }
+    let value = glyph >> (6 - 2 * (x % 8 / 2)) & 3;
+    gtia::playfield_bit(gtia::antic4_register(value, code & 0x80 != 0))
 }
 
 /// The players (bit n) and missiles (also bit n, for the player of the same
@@ -114,7 +111,7 @@ mod tests {
     fn character_sets_change_every_third_row() {
         let mut data = blank();
         // Character 1 of set 1 (rows 3-5) is solid playfield 1.
-        data[CHARSETS + CHARSET_LEN + 8..CHARSETS + CHARSET_LEN + 16].fill(0xaa);
+        data[FIRST_CHARSET + CHARSET_LEN + 8..FIRST_CHARSET + CHARSET_LEN + 16].fill(0xaa);
         data[SCREEN + 3 * 40] = 1;
         data[SCREEN] = 1;
         let image = decode_mcs(&data).unwrap();

@@ -23,6 +23,7 @@
 //!   luminance lines are Graphics 15 lines; on scanline 0, which has no hue
 //!   line above, the Graphics 15 colour is shown unchanged.
 
+use super::antic;
 use super::palette::{register_rgb, rgb};
 use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
@@ -120,12 +121,7 @@ pub(super) fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
 
 /// 4-bit pixel `x` of line `y` in a plane of 40-byte lines.
 pub(super) fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
-    let byte = plane[y * LINE + x / 2];
-    if x.is_multiple_of(2) {
-        byte >> 4
-    } else {
-        byte & 0x0f
-    }
+    antic::nibble(&plane[y * LINE..], x)
 }
 
 /// A picture of `lines` scanlines, 160 half-pixels wide (2 output pixels

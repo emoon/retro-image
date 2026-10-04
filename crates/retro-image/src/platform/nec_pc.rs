@@ -68,7 +68,6 @@ pub(super) static FORMATS: &[Format] = &[
         super::sharp_x68000::pic::decode_pic(d, Machine::Pc88Va)
     })
     .signature(),
-    // Wave 5: Japanese
     Format::new("NEC PC-88", "DaVinci", &["img"], davinci::decode_davinci),
     Format::new(
         "NEC PC-88",
@@ -79,11 +78,9 @@ pub(super) static FORMATS: &[Format] = &[
     .signature(),
     Format::new("NEC PC-98", "EBD", &["ebd"], ebd::decode_ebd),
     Format::new("NEC PC-98", "Z's Staff Kid98", &["zim"], zim::decode_zim).signature(),
-    // Wave 5b: Japanese
     Format::new("NEC PC-98", "ARTV", &["arv"], arv::decode_arv).signature(),
     Format::new("NEC PC-88 VA", "Kitty", &["kt4"], kt4::decode_kt4),
     Format::new("NEC PC-88", "Kitty", &["kty"], kt4::decode_kt4),
-    // other
     Format::new(
         "NEC PC-98",
         "Mapletown Network NL3",

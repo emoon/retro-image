@@ -9,6 +9,7 @@
 //! from offset 13, then the optional closing block. Numbers 8-15 draw like
 //! 0-7 and 16 and above draw black, as `recoil2png` does.
 
+use super::screen::rgb_bits;
 use crate::codec::flf::{self, Fluff, PAYLOAD};
 use crate::{DecodeError, Image};
 
@@ -24,8 +25,7 @@ pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     flf::trailer(rest, false)?;
     let mut palette = [0u32; 256];
     for (n, color) in palette.iter_mut().enumerate().take(16) {
-        let level = |bit: usize| if n & bit != 0 { 0xcd } else { 0 };
-        *color = level(2) << 16 | level(4) << 8 | level(1);
+        *color = rgb_bits(n as u8, 0xcd);
     }
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, pixels, &palette)
 }

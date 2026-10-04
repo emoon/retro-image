@@ -61,7 +61,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
-    // Wave 5: FLF
     Format::new(
         "Amiga",
         "Turbo Rascal Syntax Error",
@@ -69,7 +68,6 @@ pub(super) static FORMATS: &[Format] = &[
         flf::decode_flf,
     )
     .signature(),
-    // Wave 5: Amiga and misc
     Format::new("Amiga DCTV", "DCTV", &["dct", "dctv"], decode_dctv),
     Format::new("Amiga HAM-E", "HAM-E", &["iff"], decode_ham_e),
 ];

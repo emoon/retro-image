@@ -54,6 +54,8 @@ const PALETTE: [u32; 16] = [
 
 /// Most icons shown, and the widest or tallest one accepted.
 const MAX_ICONS: usize = 256;
+/// Icon headers visited across all tables, skipped ones included.
+const MAX_HEADERS: usize = 4096;
 const MAX_SIDE: usize = 512;
 const SHEET_WIDTH: usize = 512;
 const GAP: usize = 4;
@@ -123,6 +125,7 @@ fn fixed_icons(data: &[u8], little: bool) -> Option<Vec<Icon>> {
 /// `ICNFILE`: tables of icons, each icon with its own size and depth.
 fn table_icons(data: &[u8]) -> Option<Vec<Icon>> {
     let mut icons = Vec::new();
+    let mut headers = 0;
     for table in 0..usize::from(le16(data, 12)?) {
         let at = 32 + 32 * table;
         let count = usize::from(le16(data, at + 2)?);
@@ -131,9 +134,10 @@ fn table_icons(data: &[u8]) -> Option<Vec<Icon>> {
             return None;
         }
         for i in 0..count {
-            if icons.len() == MAX_ICONS {
+            if icons.len() == MAX_ICONS || headers == MAX_HEADERS {
                 return Some(icons);
             }
+            headers += 1;
             let header = first.checked_add(48 * i)?;
             let width = usize::from(le16(data, header + 6)?);
             let height = usize::from(le16(data, header + 8)?);

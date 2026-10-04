@@ -42,7 +42,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::check_size;
+use crate::image::{check_size, planar_pixels};
 use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -101,9 +101,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Dr. Halo PIC", &["pic"], halo_pic::decode_pic).signature(),
     Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
-    // Wave 5: FLF
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
-    // Wave 5: Amiga and misc
     Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
 ];
 
@@ -113,6 +111,16 @@ pub(super) const CGA_PALETTE: [u32; 16] = [
     0x000000, 0x0000aa, 0x00aa00, 0x00aaaa, 0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa, 0x555555,
     0x5555ff, 0x55ff55, 0x55ffff, 0xff5555, 0xff55ff, 0xffff55, 0xffffff,
 ];
+
+/// A CGA 4-colour set: black, then three `CGA_PALETTE` entries.
+pub(super) const fn cga_set(colours: [usize; 3]) -> [u32; 4] {
+    [
+        CGA_PALETTE[0],
+        CGA_PALETTE[colours[0]],
+        CGA_PALETTE[colours[1]],
+        CGA_PALETTE[colours[2]],
+    ]
+}
 
 const MSP_HEADER_LEN: usize = 32;
 
@@ -261,15 +269,12 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     let indices: Vec<u8> = if chunky {
         bitmap[..width * height].to_vec()
     } else {
-        (0..height)
-            .flat_map(|y| (0..width).map(move |x| (x, y)))
-            .map(|(x, y)| {
-                (0..4).fold(0, |v, plane| {
-                    let byte = bitmap[(y * 4 + plane) * planar_row + x / 8];
-                    v | (byte >> (7 - x % 8) & 1) << plane
-                })
-            })
-            .collect()
+        planar_pixels(bitmap, width, height, planar_row, 4, |plane, y| {
+            (y * 4 + plane) * planar_row
+        })
+        .into_iter()
+        .map(|v| v as u8)
+        .collect()
     };
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }
