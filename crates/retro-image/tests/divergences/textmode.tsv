@@ -15,7 +15,7 @@ extra/textmode/sembiance/ans/Luciano-Alcoholiday.ans	640x1872	f847eaef865a847a	n
 extra/textmode/sembiance/ans/NEPTUNE2.ANS	640x400	2f3adb6316b1d7ca	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/ans/P1-PC3.ANS	640x3216	72a04320550edd90	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/ans/PASSWORD.ANS	640x240	a121c3b462c34a17	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
-extra/textmode/sembiance/ans/PC-BOY1.ANS	640x368	dc7b905d2825c325	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
+extra/textmode/sembiance/ans/PC-BOY1.ANS	640x368	dc7b905d2825c325	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel. The render is blank: this animation ends with ESC[2J, so the final screen is empty
 extra/textmode/sembiance/ans/Po-eod.ans	640x1792	6f04e28e8d777981	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/ans/RAINBOW.ANS	640x368	d26640b133447815	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
 extra/textmode/sembiance/ans/SPACEDOC.ANS	640x400	a7aed637b788dc74	not in RECOIL; matches Deark 1.7.3 (-m ansiart -opt char:output=image) pixel for pixel
