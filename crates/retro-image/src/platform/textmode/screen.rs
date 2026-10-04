@@ -27,6 +27,9 @@ pub(super) const PALETTE: [u32; 16] = super::super::pc::CGA_PALETTE;
 /// sizes (huge widths, cursor jumps, long runs) from allocating gigabytes.
 pub(super) const MAX_CELLS: usize = 1 << 18;
 
+/// Cells a terminal may fill over its lifetime: tens of ms of memory writes.
+const WORK_LIMIT: usize = 64 * MAX_CELLS;
+
 /// Pictures taller than this are cropped to the rows that fit rather than
 /// rejected: with tall fonts and 9-pixel cells the cell limit alone would
 /// allow about 75 million pixels.
@@ -211,6 +214,10 @@ pub(super) struct Terminal {
     /// Cells before this index are known to be blank, so repeated erases
     /// cost nothing.
     blank_prefix: usize,
+    /// Cells filled so far by growing and erasing. Alternating a far write
+    /// with a clear refills the grid each time, so once this passes
+    /// [`WORK_LIMIT`] further edits are ignored.
+    work: usize,
     rows: usize,
     pub(super) x: usize,
     pub(super) y: usize,
@@ -225,6 +232,7 @@ impl Terminal {
             max_rows: MAX_CELLS / width,
             cells: Vec::new(),
             blank_prefix: 0,
+            work: 0,
             rows: 0,
             x: 0,
             y: 0,
@@ -248,7 +256,7 @@ impl Terminal {
     /// Writes `cell` at (`x`, `y`) without moving the cursor. Off-screen
     /// positions are ignored.
     pub(super) fn set(&mut self, x: usize, y: usize, cell: Cell) {
-        if x >= self.width || y >= self.max_rows {
+        if x >= self.width || y >= self.max_rows || self.exhausted() {
             return;
         }
         self.store(x, y, cell);
@@ -268,7 +276,7 @@ impl Terminal {
     /// Sets the cell at (`x`, `y`) to `cell` without making the picture
     /// taller: erasing below the written rows changes nothing visible.
     pub(super) fn erase(&mut self, x: usize, y: usize, cell: Cell) {
-        if x < self.width && y < self.max_rows {
+        if x < self.width && y < self.max_rows && !self.exhausted() {
             self.store(x, y, cell);
         }
     }
@@ -283,6 +291,9 @@ impl Terminal {
     /// Blanks the cursor cell and everything after it. Missing cells are
     /// blank, so this only drops storage.
     pub(super) fn erase_from_cursor(&mut self) {
+        if self.exhausted() {
+            return;
+        }
         let index = self.y.saturating_mul(self.width) + self.x;
         self.cells.truncate(index);
         self.blank_prefix = self.blank_prefix.min(index);
@@ -291,7 +302,8 @@ impl Terminal {
     /// Blanks everything up to and including the cursor cell.
     pub(super) fn erase_to_cursor(&mut self) {
         let end = (self.y.saturating_mul(self.width) + self.x + 1).min(self.cells.len());
-        if self.blank_prefix < end {
+        if self.blank_prefix < end && !self.exhausted() {
+            self.work += end - self.blank_prefix;
             self.cells[self.blank_prefix..end].fill(Cell::BLANK);
             self.blank_prefix = end;
         }
@@ -299,14 +311,22 @@ impl Terminal {
 
     /// Erases everything to blanks and homes the cursor.
     pub(super) fn clear(&mut self) {
+        if self.exhausted() {
+            return;
+        }
         self.cells.clear();
         self.blank_prefix = 0;
         self.move_to(0, 0);
     }
 
+    fn exhausted(&self) -> bool {
+        self.work > WORK_LIMIT
+    }
+
     fn allocate(&mut self, y: usize) {
         let needed = (y + 1) * self.width;
         if self.cells.len() < needed {
+            self.work += needed - self.cells.len();
             self.cells.resize(needed, Cell::BLANK);
         }
     }
@@ -430,6 +450,24 @@ mod tests {
         assert_eq!(terminal.x, 1);
         let image = terminal.finish(&STYLE).unwrap();
         assert_eq!(image.height(), 16, "only the written row counts");
+    }
+
+    #[test]
+    fn terminal_stops_refilling_after_the_work_limit() {
+        let mut terminal = Terminal::new(80).unwrap();
+        let a = Cell {
+            glyph: b'a',
+            ..Cell::BLANK
+        };
+        terminal.put(a);
+        // Each cycle regrows the whole grid; without a limit this is ~10^11
+        // cell writes.
+        for _ in 0..1_000_000 {
+            terminal.clear();
+            terminal.set(0, 3000, a);
+        }
+        assert!(terminal.exhausted());
+        assert!(terminal.work < WORK_LIMIT + 2 * MAX_CELLS);
     }
 
     #[test]
