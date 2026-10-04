@@ -33,14 +33,14 @@ use alloc::vec::Vec;
 const WIDTH: usize = 192;
 const HEIGHT: usize = 167;
 const MEM_LEN: usize = 0x3f40;
-const SCREEN_LEN: usize = 1024;
+const SCREEN_STRIDE: usize = 1024;
 const BITMAP: usize = 0x2000;
 /// First shown cell column.
 const FIRST_COLUMN: usize = 16;
 /// Colour registers: unused, pair 01, pair 11, then sprites 0..7.
 const REGISTERS: usize = 11;
 /// Screen 7 offset of the initial register values.
-const INITIAL: usize = 7 * SCREEN_LEN + 1005;
+const INITIAL: usize = 7 * SCREEN_STRIDE + 1005;
 /// Screens holding colour changes, and changes per screen.
 const CHANGE_SCREENS: usize = 3;
 const CHANGES: usize = 28;
@@ -65,7 +65,7 @@ fn render(mem: &[u8]) -> Image {
     for y in 0..HEIGHT {
         apply_changes(mem, y, &mut registers);
         let line = y + 1;
-        let screen = &mem[(y + 7) % 8 * SCREEN_LEN..];
+        let screen = &mem[(y + 7) % 8 * SCREEN_STRIDE..];
         let set = y % 8;
         let row = (y + 168 - FIRST_LINE[set]) / 2 % 21;
         for x in 0..WIDTH {
@@ -99,7 +99,7 @@ fn apply_changes(mem: &[u8], y: usize, registers: &mut [u8; REGISTERS]) {
     if screen >= CHANGE_SCREENS {
         return;
     }
-    let base = screen * SCREEN_LEN;
+    let base = screen * SCREEN_STRIDE;
     let index = usize::from(mem[base + 960 + CHANGES + k] & 15);
     if (1..REGISTERS).contains(&index) {
         registers[index] = mem[base + 960 + k];
@@ -117,7 +117,7 @@ fn block(set: usize, sprite: usize) -> usize {
     match set {
         0 => SET0[sprite],
         1 => SET1[sprite],
-        2 => sprite * SCREEN_LEN + 0x380,
+        2 => sprite * SCREEN_STRIDE + 0x380,
         // Two blocks in the free cells (columns 0..15) of each bitmap row.
         _ => BITMAP + (set - 3) * 0x500 + sprite / 2 * 320 + sprite % 2 * 64,
     }
@@ -151,8 +151,8 @@ mod tests {
         }
         mem[INITIAL + 3] = 2;
         // Screen 1, change 4: sprite 0 becomes 5 from line 3 + 56 + 8.
-        mem[SCREEN_LEN + 960 + 4] = 5;
-        mem[SCREEN_LEN + 988 + 4] = 0x13;
+        mem[SCREEN_STRIDE + 960 + 4] = 5;
+        mem[SCREEN_STRIDE + 988 + 4] = 0x13;
         let picture = decode_xfl(&pack(&mem)).unwrap();
         assert_eq!(picture.get(0, 66), 0x68372b);
         assert_eq!(picture.get(0, 67), 0x588d43);
