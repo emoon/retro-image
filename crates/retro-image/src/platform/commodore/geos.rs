@@ -116,7 +116,7 @@ pub(super) fn decode_geopaint(data: &[u8]) -> Result<Image, DecodeError> {
         .ok_or(DecodeError::Unrecognized)?
         + 1;
     let height = used * 16;
-    let palette: [u32; 16] = core::array::from_fn(|i| vic2::rgb(i as u8));
+    let palette: [u32; 16] = vic2::PALETTE;
     let mut pixels = alloc::vec![0u8; PAINT_WIDTH * height];
     for (index, record) in pages[..used].iter().enumerate() {
         let (bitmap, colors) = if record.is_empty() {

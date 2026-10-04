@@ -34,7 +34,6 @@ pub(super) static FORMATS: &[Format] = &[
         decode(data, &MODE5)
     }),
     Format::new("BBC Micro", "LdPic", &["bbg"], decode_ldpic).signature(),
-    // Wave 5: FLF
     Format::new(
         "BBC Micro",
         "Turbo Rascal Syntax Error",

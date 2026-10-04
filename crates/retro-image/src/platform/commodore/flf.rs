@@ -30,7 +30,7 @@ const ROWS: usize = 25;
 
 pub(super) fn decode_c64(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
-    let palette: [u32; 16] = core::array::from_fn(|n| vic2::rgb(n as u8));
+    let palette: [u32; 16] = vic2::PALETTE;
     let cells = |header: usize, mode| {
         let (cells, rest) = fluff.split(header, COLS * ROWS * CELL_LEN)?;
         if !rest.is_empty() {

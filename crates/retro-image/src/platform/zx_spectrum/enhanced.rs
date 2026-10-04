@@ -29,7 +29,7 @@ pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     let (width, height) = (word(8), word(10));
     let palette_start = 14 + word(12);
     let bitmap_start = 16 + word(14);
-    let bitmap_len = width * height * bits_per_pixel / 8;
+    let bitmap_len = (width * height * bits_per_pixel).div_ceil(8);
     if width == 0 || height == 0 || palette_start > bitmap_start {
         return Err(DecodeError::Unrecognized);
     }

@@ -60,6 +60,9 @@ fn unpack_runs(src: &[u8], len: usize) -> Option<Vec<u8>> {
                 return None;
             }
         } else {
+            if out.len() + count > len {
+                return None;
+            }
             out.resize(out.len() + count, pair[0]);
         }
         previous_zero = count == 0;
