@@ -15,8 +15,9 @@
 //! The picture is the screen after the first frame that draws pixels (a
 //! leading frame that only sets the palette is applied first, as Deark does).
 //! The screen starts with every pixel at colour 0, so a delta frame against
-//! the blank screen works. Only 8-bit files are decoded; the hi-colour FLH
-//! variant (`AF44`) is rejected, as are the Animator Pro `PIC` and `COL` files.
+//! the blank screen works. The hi-colour FLH variant
+//! (`AF44`) is drawn by `flh.rs` on the same frame walk; the Animator Pro `PIC`
+//! and `COL` files are rejected.
 //!
 //! Verification: no RECOIL oracle for this format; output was compared pixel
 //! for pixel with Deark's PNG output on the sample files.
@@ -25,6 +26,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::dac_rounded;
+use super::flh::HiScreen;
 use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
@@ -38,6 +40,7 @@ const FRAME_HEADER_LEN: usize = 16;
 
 const FLI: u16 = 0xaf11;
 const FLC: u16 = 0xaf12;
+const FLH: u16 = 0xaf44;
 const FRAME: u16 = 0xf1fa;
 const FRAME_VARIANT: u16 = 0xf5fa;
 const PREFIX: u16 = 0xf100;
@@ -50,6 +53,15 @@ const BLACK: u16 = 13;
 const BYTE_RUN: u16 = 15;
 const COPY: u16 = 16;
 
+/// What a FLIC decoder draws chunks on; the 8-bit [`Screen`] here and the
+/// hi-colour screen in `flh.rs` share the file walking below.
+pub(super) trait Canvas {
+    /// Draws the chunk of `kind` whose body runs from `start` to `end`.
+    fn apply(&mut self, kind: u16, start: usize, end: usize);
+    /// Whether any chunk has drawn pixels.
+    fn drawn(&self) -> bool;
+}
+
 /// The 8-bit screen and its palette.
 struct Screen<'a> {
     data: &'a [u8],
@@ -59,6 +71,16 @@ struct Screen<'a> {
     palette: [u32; 256],
     /// Whether any chunk has drawn pixels.
     drawn: bool,
+}
+
+impl Canvas for Screen<'_> {
+    fn apply(&mut self, kind: u16, start: usize, end: usize) {
+        self.draw(kind, start, end);
+    }
+
+    fn drawn(&self) -> bool {
+        self.drawn
+    }
 }
 
 impl Screen<'_> {
@@ -79,7 +101,7 @@ impl Screen<'_> {
 
     /// Chunks of `kind` are drawn from `start` (just after the chunk header)
     /// to `end`.
-    fn apply(&mut self, kind: u16, start: usize, end: usize) {
+    fn draw(&mut self, kind: u16, start: usize, end: usize) {
         match kind {
             COLOR_256 | COLOR_64 => self.colors(start, end, kind == COLOR_64),
             BLACK => {
@@ -264,7 +286,7 @@ impl Screen<'_> {
 
 /// Size and type of the chunk at `pos`, its size clamped to `end`.
 /// `None` if the header doesn't fit or the size is below the header.
-fn chunk(data: &[u8], pos: usize, end: usize) -> Option<(usize, u16)> {
+pub(super) fn chunk(data: &[u8], pos: usize, end: usize) -> Option<(usize, u16)> {
     if end.saturating_sub(pos) < CHUNK_HEADER_LEN {
         return None;
     }
@@ -274,7 +296,7 @@ fn chunk(data: &[u8], pos: usize, end: usize) -> Option<(usize, u16)> {
 
 pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     let magic = le16(data, 4).ok_or(FAIL)?;
-    if (magic != FLI && magic != FLC) || data.len() < HEADER_LEN + CHUNK_HEADER_LEN {
+    if ![FLI, FLC, FLH].contains(&magic) || data.len() < HEADER_LEN + CHUNK_HEADER_LEN {
         return Err(FAIL);
     }
     let first = le16(data, HEADER_LEN + 4).ok_or(FAIL)?;
@@ -284,7 +306,7 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(le16(data, 8).ok_or(FAIL)?);
     let height = usize::from(le16(data, 10).ok_or(FAIL)?);
     let depth = le16(data, 12).ok_or(FAIL)?;
-    if width == 0 || height == 0 || (depth != 8 && depth != 0) {
+    if width == 0 || height == 0 {
         return Err(FAIL);
     }
     check_size(width, height)?;
@@ -295,6 +317,17 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
         declared.min(data.len())
     };
 
+    if magic == FLH {
+        let mut screen = HiScreen::new(data, width, height, depth)?;
+        return if first_picture(data, end, &mut screen) {
+            screen.into_image()
+        } else {
+            Err(FAIL)
+        };
+    }
+    if depth != 8 && depth != 0 {
+        return Err(FAIL);
+    }
     let mut screen = Screen {
         data,
         width,
@@ -303,33 +336,37 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
         palette: [0; 256],
         drawn: false,
     };
+    if first_picture(data, end, &mut screen) {
+        Image::from_indexed(width as u32, height as u32, &screen.pixels, &screen.palette)
+    } else {
+        Err(FAIL)
+    }
+}
+
+/// Draws frames onto `canvas` until one has drawn pixels.
+fn first_picture(data: &[u8], end: usize, canvas: &mut impl Canvas) -> bool {
     let mut pos = HEADER_LEN;
     while let Some((size, kind)) = chunk(data, pos, end) {
         if kind == FRAME || kind == FRAME_VARIANT {
-            apply_frame(&mut screen, pos, pos + size);
-            if screen.drawn {
-                return Image::from_indexed(
-                    width as u32,
-                    height as u32,
-                    &screen.pixels,
-                    &screen.palette,
-                );
+            apply_frame(data, canvas, pos, pos + size);
+            if canvas.drawn() {
+                return true;
             }
         }
         pos += size;
     }
-    Err(FAIL)
+    false
 }
 
 /// Applies the sub-chunks of the frame chunk at `start`..`end`.
-fn apply_frame(screen: &mut Screen, start: usize, end: usize) {
-    let count = screen.word(start + CHUNK_HEADER_LEN);
+fn apply_frame(data: &[u8], canvas: &mut impl Canvas, start: usize, end: usize) {
+    let count = le16(data, start + CHUNK_HEADER_LEN).unwrap_or(0);
     let mut pos = start + FRAME_HEADER_LEN;
     for _ in 0..count {
-        let Some((size, kind)) = chunk(screen.data, pos, end) else {
+        let Some((size, kind)) = chunk(data, pos, end) else {
             return;
         };
-        screen.apply(kind, pos + CHUNK_HEADER_LEN, pos + size);
+        canvas.apply(kind, pos + CHUNK_HEADER_LEN, pos + size);
         pos += size;
     }
 }

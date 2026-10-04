@@ -9,6 +9,8 @@
 //! - Fractint FRA: <http://fileformats.archiveteam.org/wiki/FRA_(Fractint)>
 //!   (parameters follow the trailer or sit in an application extension).
 //!
+//! A MacBinary wrapper (`crate::macbinary`) is removed first.
+//!
 //! Only the first image is decoded. A transparency index is ignored (the
 //! palette colour is drawn), as `Image` has no alpha. When the first image is
 //! smaller than the logical screen it is placed on a screen filled with the
@@ -25,12 +27,14 @@ use alloc::vec::Vec;
 
 use crate::bytes::le16;
 use crate::image::check_size;
+use crate::macbinary::data_fork_or_self;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
 const MAX_CODES: usize = 4096;
 
 pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = data_fork_or_self(data);
     if !is_gif(data) {
         return Err(FAIL);
     }

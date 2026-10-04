@@ -179,11 +179,11 @@ mod tests {
         ilbm.extend_from_slice(b"CMAP\0\0\0\x06\0\0\0\xff\xff\xff");
         ilbm.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
         let as_iff = crate::decode("x.iff", &ilbm).unwrap();
-        let renamed = crate::decode("x.dat", &ilbm).unwrap();
+        let renamed = crate::decode("x.xyz", &ilbm).unwrap();
         assert_eq!(as_iff, renamed);
         assert_eq!(renamed.rgb(), &[0xff, 0xff, 0xff]);
         assert_eq!(
-            crate::decode("x.dat", b"not a picture"),
+            crate::decode("x.xyz", b"not a picture"),
             Err(DecodeError::UnknownFormat)
         );
     }

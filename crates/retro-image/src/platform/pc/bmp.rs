@@ -15,7 +15,7 @@
 //!
 //! The alpha channel of 32-bit pixels and of V4/V5 masks is ignored, as for
 //! Targa. JPEG and PNG payloads (compression 4 and 5) are rejected. A
-//! headerless DIB starts at the info header and is chosen by extension only.
+//! MacBinary wrapper (`crate::macbinary`) is removed first. A headerless DIB starts at the info header and is chosen by extension only.
 //!
 //! Verification: no RECOIL oracle for this format; output was compared pixel
 //! for pixel with Deark's PNG output on the sample files.
@@ -26,6 +26,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
 use crate::image::check_size;
+use crate::macbinary::data_fork_or_self;
 use crate::{DecodeError, Image};
 
 const FILE_HEADER_LEN: usize = 14;
@@ -125,12 +126,25 @@ fn parse_file(data: &[u8]) -> Result<(Info, usize), DecodeError> {
 }
 
 pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = data_fork_or_self(data);
     let (info, offset) = parse_file(data)?;
     decode_pixels(
         &data[FILE_HEADER_LEN..],
         &info,
         Some(offset - FILE_HEADER_LEN),
     )
+}
+
+/// The bitmap of an icon or cursor entry: a headerless DIB whose height
+/// counts the colour bitmap plus a 1-bit mask of the same size, so only the
+/// first half of the rows is decoded.
+pub(super) fn decode_icon_dib(data: &[u8]) -> Result<Image, DecodeError> {
+    let mut info = parse_info(data)?;
+    info.height /= 2;
+    if info.height == 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode_pixels(data, &info, None)
 }
 
 /// A headerless DIB: the info header, palette and pixels, no file header.

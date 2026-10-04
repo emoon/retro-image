@@ -7,8 +7,8 @@
 //! - Compression (Huffman node table, segments, run-length codes, XOR
 //!   filter) and the 4-bit planar image type: Deark `colorix.c`
 //!   (<https://github.com/jsummers/deark>, MIT licence, Copyright (C) 2023
-//!   Jason Summers). The compressed path has no sample file and is only
-//!   covered by a unit test built from that description.
+//!   Jason Summers). The compressed path is checked against
+//!   the `colorix-compressed-sci` and `colorix-ega-scr` samples.
 //! - Palette type 0 (a 256-colour palette whose last entries are the only
 //!   non-black ones) and the file sizes: reverse engineered from the sample
 //!   `HELPKEYS.SCI`, whose size is exactly `10 + 768 + width * height`.
@@ -17,8 +17,12 @@
 //! 256 VGA entries, `AB`: 16), storage byte (bit 7 compressed, bit 6
 //! extension block follows the header, bit 5 encrypted, low nibble image
 //! type 0 = 8-bit chunky or 4 = 4-bit planar), then the palette (6-bit RGB)
-//! and the pixels. The old headerless `.SCR`/`.SCP` EGA forms are not
-//! supported.
+//! and the pixels.
+//!
+//! The old headerless EGA `.SCR` (always 640x350, 16 EGA palette indices,
+//! bit 7 of the first one flagging compression, then 4 whole-image planes) follows
+//! Deark `colorix.c` for the size and flag, and the 112016-byte sample files
+//! in `corpus/extra/colorix-ega-scr` for the plane order (checked by eye).
 //!
 //! Compressed data is a table of 16-bit nodes describing a Huffman tree
 //! (most significant bit first; an even value `2..0x1000` is a branch whose
@@ -30,7 +34,7 @@
 
 use alloc::vec::Vec;
 
-use super::vga_rgb;
+use super::{ega_64, vga_rgb};
 use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
@@ -80,16 +84,56 @@ pub(super) fn decode_rix(data: &[u8]) -> Result<Image, DecodeError> {
         data.get(pos..pos + len).ok_or(fail)?.to_vec()
     };
     let indices = if planar {
-        // Each row holds its 4 planes one after the other.
-        let plane_len = row_len / 4;
-        let values = planar_pixels(&pixels, width, height, plane_len, 4, |plane, y| {
-            y * row_len + plane * plane_len
-        });
-        values.into_iter().map(|v| v as u8).collect()
+        planar_rows(&pixels, width, height, row_len)
     } else {
         pixels
     };
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
+}
+
+const EGA_WIDTH: usize = 640;
+const EGA_HEIGHT: usize = 350;
+const EGA_PALETTE_LEN: usize = 16;
+
+/// The old headerless EGA `.SCR`: 16 EGA palette indices (bit 7 of the first
+/// one flags compression), then 640x350 pixels as 4 whole-image planes, raw or
+/// packed like the `RIX3` pictures (each packed segment is one plane).
+pub(super) fn decode_ega_scr(data: &[u8]) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    let compressed = data.first().ok_or(fail)? & COMPRESSED != 0;
+    let body = data.get(EGA_PALETTE_LEN..).ok_or(fail)?;
+    let row_len = EGA_WIDTH / 8;
+    let plane_len = row_len * EGA_HEIGHT;
+    let len = plane_len * 4;
+    let pixels = if compressed {
+        unpack(body, len, row_len, false).ok_or(fail)?
+    } else if body.len() == len {
+        body.to_vec()
+    } else {
+        return Err(fail);
+    };
+    let mut palette = [0u32; 16];
+    for (entry, &index) in palette.iter_mut().zip(data) {
+        *entry = ega_64(index & 0x3f);
+    }
+    let indices: Vec<u8> = planar_pixels(&pixels, EGA_WIDTH, EGA_HEIGHT, row_len, 4, |plane, y| {
+        plane * plane_len + y * row_len
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect();
+    Image::from_indexed(EGA_WIDTH as u32, EGA_HEIGHT as u32, &indices, &palette)
+}
+
+/// Pixel indices of 4-bit rows holding their 4 planes one after the other.
+fn planar_rows(pixels: &[u8], width: usize, height: usize, row_len: usize) -> Vec<u8> {
+    let plane_len = row_len / 4;
+    planar_pixels(pixels, width, height, plane_len, 4, |plane, y| {
+        y * row_len + plane * plane_len
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect()
 }
 
 /// A node of the Huffman table is a branch.

@@ -1,5 +1,5 @@
 //! Amstrad CPC: OCP Art Studio screens and windows, Mode 5 and Perfect Pix
-//! pictures, FutureOS wallpapers and SymbOS graphics.
+//! pictures, FutureOS wallpapers, SymbOS graphics and snapshots.
 //!
 //! Each submodule lists the documents its layouts come from; the platform
 //! survey is `docs/research/sinclair-cpc-bbc-misc.md`.
@@ -14,6 +14,7 @@ mod ocp;
 mod overscan;
 mod perfect_pix;
 mod sgx;
+mod sna;
 
 use crate::Format;
 
@@ -76,4 +77,5 @@ pub(super) static FORMATS: &[Format] = &[
         flf::decode_flf,
     )
     .signature(),
+    Format::new("Amstrad CPC", "Snapshot", &["sna"], sna::decode_sna).signature(),
 ];

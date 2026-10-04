@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 
 /// VDC RGBI colour: bit 3 red, bit 2 green, bit 1 blue, bit 0 intensity;
 /// dark yellow shows as brown. Levels observed from `recoil2png` output.
-fn rgbi(color: u8) -> u32 {
+pub(super) fn rgbi(color: u8) -> u32 {
     if color == 12 {
         return 0xaa5500;
     }

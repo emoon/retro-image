@@ -8,12 +8,14 @@
 //!   16: the 8 physical colours, then flashing ones): the same article.
 //! - LdPic header, bit order, run-length coding and address stepping:
 //!   <https://nerdoftheherd.com/projects/libbeebimage/ldpic/> (prose spec).
+//! - Mode 7 teletext (raw screens, TTI, EP1): see `teletext.rs`.
 //! - Pixel aspect (mode 0 rows doubled to 640x512, 160-pixel modes doubled
 //!   horizontally to 320x256): observed from `recoil2png` output.
 
 use crate::{DecodeError, Format, Image};
 
 mod flf;
+mod teletext;
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("BBC Micro", "Mode 0 screen", &["bb0"], |data| {
@@ -38,6 +40,26 @@ pub(super) static FORMATS: &[Format] = &[
         "Turbo Rascal Syntax Error",
         &["flf"],
         flf::decode_flf,
+    )
+    .signature(),
+    Format::new(
+        "BBC Micro",
+        "Mode 7 screen",
+        &["bb7", "m7", "mode7"],
+        teletext::decode_raw,
+    ),
+    Format::new(
+        "BBC Micro",
+        "Teletext page (TTI)",
+        &["tti"],
+        teletext::decode_tti,
+    )
+    .signature(),
+    Format::new(
+        "BBC Micro",
+        "Teletext page (EP1)",
+        &["ep1"],
+        teletext::decode_ep1,
     )
     .signature(),
 ];
