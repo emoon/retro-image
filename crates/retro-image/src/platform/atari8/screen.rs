@@ -489,6 +489,9 @@ mod tests {
     struct Col(usize);
 
     impl Companions for Col {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::vec::Vec<u8>> {
+            None
+        }
         fn get(&self, extension: &str) -> Option<alloc::vec::Vec<u8>> {
             // Table t, line y holds hue t + 1, luminance y.
             let col = (0..self.0).map(|i| (((i / 256 + 1) << 4) | (i % 16)) as u8);

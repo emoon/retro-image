@@ -19,6 +19,7 @@ mod ecp;
 mod emc;
 mod flf;
 mod fli;
+mod geos;
 mod godot;
 mod hcb;
 mod ifli;
@@ -321,6 +322,18 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(
         C64,
+        "Hireslace Editor",
+        &["hle"],
+        interlace::decode_hireslace,
+    ),
+    Format::new(
+        C64,
+        "Interlaced Logo Editor",
+        &["ile"],
+        interlace::decode_interlaced_logo_editor,
+    ),
+    Format::new(
+        C64,
         "Dolphin Ed",
         &["dol", "bed"],
         bitmap::decode_dolphin_ed,
@@ -385,6 +398,9 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
     Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
+    Format::new(C64, "GEOS geoPaint", &["cvt"], geos::decode_geopaint).signature(),
+    Format::new(C64, "GEOS Photo Album", &["cvt"], geos::decode_photo_album).signature(),
+    Format::new(C64, "GEOS Photo Scrap", &["cvt"], geos::decode_photo_scrap).signature(),
     // Corpus gaps: C64
     Format::new(
         C64,

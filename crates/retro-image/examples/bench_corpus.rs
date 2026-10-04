@@ -15,7 +15,8 @@ use std::time::{Duration, Instant};
 
 use retro_image::Companions;
 
-struct Siblings(Vec<PathBuf>);
+/// Same-stem siblings, and the directory for lookups by name.
+struct Siblings(Vec<PathBuf>, PathBuf);
 
 impl Companions for Siblings {
     fn get(&self, extension: &str) -> Option<Vec<u8>> {
@@ -25,6 +26,11 @@ impl Companions for Siblings {
                 .is_some_and(|e| e.eq_ignore_ascii_case(extension))
         })?;
         std::fs::read(path).ok()
+    }
+
+    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+        let name = file_name.rsplit(['/', '\\']).next()?;
+        std::fs::read(self.1.join(name)).ok()
     }
 }
 
@@ -100,6 +106,7 @@ fn main() {
         };
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let stem = path.file_stem().map(|s| s.to_ascii_lowercase());
+        let directory = path.parent().unwrap().to_path_buf();
         let siblings = Siblings(
             std::fs::read_dir(path.parent().unwrap())
                 .unwrap()
@@ -111,6 +118,7 @@ fn main() {
                         && p.file_stem().map(|s| s.to_ascii_lowercase()) == stem
                 })
                 .collect(),
+            directory,
         );
         let found = retro_image::candidates(&name)
             .find_map(|f| f.decode_with(&data, &siblings).ok().map(|i| (f, i)));

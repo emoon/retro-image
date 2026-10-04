@@ -20,6 +20,7 @@ mod profi;
 mod screen;
 mod snapshot;
 mod standard;
+mod szx;
 mod tape;
 mod timex;
 mod zx81;
@@ -186,6 +187,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["sna"],
         snapshot::decode_sna,
     ),
+    Format::new("ZX Spectrum", "SZX snapshot", &["szx"], szx::decode_szx).signature(),
     Format::new("ZX Spectrum", "TAP tape", &["tap"], tape::decode_tap),
     Format::new("ZX Spectrum", "TZX tape", &["tzx"], tape::decode_tzx).signature(),
     // Wave 5: FLF

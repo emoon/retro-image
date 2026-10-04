@@ -1,19 +1,17 @@
-//! zlib/DEFLATE decompression, used by Graph2Font's `G2FZLIB` files.
+//! zlib/DEFLATE decompression, used by Graph2Font's `G2FZLIB` files and the
+//! RAM blocks of ZX Spectrum SZX snapshots.
 //!
 //! Sources: RFC 1950, "ZLIB Compressed Data Format Specification version
 //! 3.3" (<https://www.rfc-editor.org/rfc/rfc1950>) and RFC 1951, "DEFLATE
 //! Compressed Data Format Specification version 1.3"
 //! (<https://www.rfc-editor.org/rfc/rfc1951>). Written from the RFCs alone.
-//!
-//! Nothing else in the crate needs it yet; if another format does, this
-//! module can move to `codec`.
 
 use alloc::vec::Vec;
 
 /// Decompresses a zlib stream (RFC 1950) of at most `limit` bytes. `None`
 /// for anything malformed, a preset dictionary, an Adler-32 mismatch or
 /// output beyond `limit`.
-pub(super) fn zlib(data: &[u8], limit: usize) -> Option<Vec<u8>> {
+pub(crate) fn zlib(data: &[u8], limit: usize) -> Option<Vec<u8>> {
     let (&cmf, rest) = data.split_first()?;
     let (&flg, body) = rest.split_first()?;
     // Method 8 (deflate), window up to 32K, header check, no dictionary.

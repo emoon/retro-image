@@ -125,6 +125,9 @@ mod tests {
     struct Frames(Vec<u8>, Vec<u8>);
 
     impl Companions for Frames {
+        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            None
+        }
         fn get(&self, extension: &str) -> Option<Vec<u8>> {
             match extension {
                 "odd" => Some(self.0.clone()),

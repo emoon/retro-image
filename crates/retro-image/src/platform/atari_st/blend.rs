@@ -26,10 +26,10 @@ use crate::{DecodeError, Image};
 
 /// Unpacks Pack-Ice data; `None` if `data` is not packed.
 fn unpack_ice(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
-    if !super::pack_ice::is_packed(data) {
+    if !crate::codec::pack_ice::is_packed(data) {
         return Ok(None);
     }
-    super::pack_ice::unpack(data)
+    crate::codec::pack_ice::unpack(data)
         .map(Some)
         .ok_or(DecodeError::Unrecognized)
 }

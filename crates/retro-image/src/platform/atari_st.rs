@@ -23,15 +23,16 @@ mod imagic;
 mod lz4;
 mod mono;
 mod mpp;
-mod pack_ice;
 mod paintshop;
 mod paintworks;
 mod photochrome;
 mod quantumpaint;
 mod rasters;
 mod seq;
+mod signum_imc;
 mod simple;
 mod spectrum;
+mod stos_pp;
 mod tiny;
 mod tt;
 mod uimg;
@@ -233,6 +234,18 @@ pub(super) static FORMATS: &[Format] = &[
     st("ColorSTar object", &["obj"], mono::decode_obj),
     st("Grafix", &["grx"], grafix::decode_grx).signature(),
     st("Imagic", &["ic1", "ic2", "ic3"], imagic::decode_ic).signature(),
+    st(
+        "Signum! image",
+        &["imc", "i01", "i02", "i04", "pac"],
+        signum_imc::decode_imc,
+    )
+    .signature(),
+    // STOS Picture Packer: the extension tells the variants apart.
+    st("STOS Picture Packer PP1", &["pp1"], stos_pp::decode_pp1),
+    st("STOS Picture Packer PP2", &["pp2"], stos_pp::decode_pp2),
+    st("STOS Picture Packer PP3", &["pp3"], stos_pp::decode_pp3),
+    st("STOS Picture Packer DAJ", &["daj"], stos_pp::decode_daj),
+    st("STOS packed screen", &["pac", "sz1"], stos_pp::decode_pac).signature(),
     // Wave 5: FLF
     Format::new(
         "Atari ST",
@@ -263,6 +276,9 @@ mod tests {
     struct Any(alloc::vec::Vec<u8>);
 
     impl crate::Companions for Any {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::vec::Vec<u8>> {
+            None
+        }
         fn get(&self, _extension: &str) -> Option<alloc::vec::Vec<u8>> {
             Some(self.0.clone())
         }

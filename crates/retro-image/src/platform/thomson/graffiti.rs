@@ -110,6 +110,9 @@ mod tests {
     struct Palette(Vec<u8>);
 
     impl Companions for Palette {
+        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            None
+        }
         fn get(&self, extension: &str) -> Option<Vec<u8>> {
             (extension == "d16").then(|| self.0.clone())
         }

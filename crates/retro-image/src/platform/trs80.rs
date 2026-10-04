@@ -68,6 +68,12 @@ pub(super) static FORMATS: &[Format] = &[
         &["vef"],
         coco3::decode_vef,
     ),
+    Format::new(
+        "TRS-80 Color Computer 3",
+        "CM3",
+        &["cm3"],
+        coco3::cm3::decode,
+    ),
 ];
 
 const WHITE: u32 = 0xffffff;

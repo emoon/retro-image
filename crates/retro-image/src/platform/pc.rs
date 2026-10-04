@@ -14,16 +14,23 @@
 //! - Handy Scanner HS2: Deark `misc2.c` (MIT licence): headerless 1-bit
 //!   bitmap, 105 bytes (840 pixels) per row.
 //! - PCX, Targa, Dr. Halo, BMP and GIF: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`,
-//!   `pc/bmp.rs`, `pc/gif.rs`
+//!   `pc/bmp.rs`, `pc/gif.rs`, `pc/colorix.rs`
 //!   (survey: `docs/research/gaps-pc-japan.md`).
+//! - PCPaint/PICtor, Animator PIC/CEL, FLI/FLC and Dr. Halo PIC: see
+//!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/halo_pic.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
+mod animator;
 mod bmp;
+mod colorix;
 mod flf;
+mod flic;
 mod gif;
 mod halo;
+mod halo_pic;
 mod image72;
+mod pcpaint;
 mod pcx;
 mod tga;
 
@@ -49,6 +56,30 @@ pub(super) static FORMATS: &[Format] = &[
         bmp::decode_dib,
     ),
     Format::new("PC", "CompuServe GIF", &["gif", "fra"], gif::decode_gif).signature(),
+    Format::new(
+        "PC",
+        "ColoRIX VGA Paint",
+        &["rix", "sci", "scx", "scr"],
+        colorix::decode_rix,
+    )
+    .signature(),
+    Format::new("PC", "PCPaint and PICtor", &["pic"], pcpaint::decode_pic).signature(),
+    Format::new("PC", "PCPaint clip", &["clp"], pcpaint::decode_clp),
+    Format::new(
+        "PC",
+        "Autodesk Animator picture and cel",
+        &["pic", "cel"],
+        animator::decode_cel,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "Autodesk Animator FLI and FLC",
+        &["fli", "flc"],
+        flic::decode_flic,
+    )
+    .signature(),
+    Format::new("PC", "Dr. Halo PIC", &["pic"], halo_pic::decode_pic).signature(),
     Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     // Wave 5: FLF
@@ -233,6 +264,13 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn vga_rgb(rgb: [u8; 3]) -> u32 {
     let scale = |v: u8| u32::from((v & 63) << 2 | (v & 63) >> 4);
     scale(rgb[0]) << 16 | scale(rgb[1]) << 8 | scale(rgb[2])
+}
+
+/// A VGA DAC value (0-63, larger values saturate) scaled to 8 bits as
+/// `round(v * 255 / 63)`. Unlike [`vga_rgb`] this is the rounding Deark uses,
+/// which differs from `v * 4 + v / 16` for some values.
+pub(super) fn dac_rounded(v: u8) -> u32 {
+    (u32::from(v.min(63)) * 510 + 63) / 126
 }
 
 fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {

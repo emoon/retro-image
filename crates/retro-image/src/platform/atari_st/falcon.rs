@@ -228,8 +228,8 @@ pub(super) fn decode_trp(data: &[u8]) -> Result<Image, DecodeError> {
     // EggPaint files are often Pack-Ice packed (EggPaint page above). Unpack
     // once only: nested packing is not followed, so a file can't recurse.
     let unpacked;
-    let data = if super::pack_ice::is_packed(data) {
-        unpacked = super::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let data = if crate::codec::pack_ice::is_packed(data) {
+        unpacked = crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
         &unpacked
     } else {
         data

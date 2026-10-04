@@ -10,6 +10,10 @@
 //! - ANIM shown as its first frame, a complete ILBM `FORM` nested at the
 //!   start of the ANIM: ANIM spec,
 //!   <https://wiki.amigaos.net/wiki/ANIM_IFF_CEL_Animations>.
+//! - PowerPacker (`PP20`) and Pack-Ice wrappers around an IFF file are
+//!   unpacked first (one layer): PowerPacker file format,
+//!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers
+//!   are in `codec/`.
 //! - AMOS banks tried as sprite/icon banks, then as a packed picture: the
 //!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
@@ -26,7 +30,9 @@ mod pac_pic;
 mod rgbn;
 mod vdat;
 
+use crate::codec::{pack_ice, powerpacker};
 use crate::{DecodeError, Format, Image};
+use alloc::vec::Vec;
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Interleaved Bitmap", &["lbm", "ilbm"], decode_iff),
@@ -38,6 +44,8 @@ pub(super) static FORMATS: &[Format] = &[
         decode_iff,
     )
     .signature(),
+    // PowerPacker-wrapped IFF; found by content through the IFF entry above.
+    Format::new("Amiga", "PowerPacker", &["pp"], decode_iff),
     Format::new("Amiga", "Amiga Continuous Bitmap", &["acbm"], decode_iff),
     Format::new("Amiga", "Hold-And-Modify 6", &["ham", "ham6"], decode_iff),
     Format::new("Amiga", "Hold-And-Modify 8", &["ham8"], decode_iff),
@@ -87,8 +95,28 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// Any IFF picture FORM we support.
+/// The contents of a PowerPacker or Pack-Ice file; `None` if `data` is
+/// neither, an error if it is one and damaged.
+fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
+    let unpacked = if powerpacker::is_packed(data) {
+        powerpacker::unpack(data)
+    } else if pack_ice::is_packed(data) {
+        pack_ice::unpack(data)
+    } else {
+        return Ok(None);
+    };
+    unpacked.map(Some).ok_or(DecodeError::Unrecognized)
+}
+
+/// Any IFF picture FORM we support, plain or packed (one layer).
 pub(super) fn decode_iff(data: &[u8]) -> Result<Image, DecodeError> {
+    match depack(data)? {
+        Some(unpacked) => decode_plain_iff(&unpacked),
+        None => decode_plain_iff(data),
+    }
+}
+
+fn decode_plain_iff(data: &[u8]) -> Result<Image, DecodeError> {
     // NEOchrome Master (Atari ST) pictures: an ILBM plus rasters after the
     // FORM, left to that decoder.
     if super::atari_st::is_neochrome_master(data) {
@@ -140,6 +168,30 @@ mod tests {
         let ilbm = decode_iff(&form).unwrap();
         form[8..12].copy_from_slice(b"BBM ");
         assert_eq!(decode_iff(&form).unwrap(), ilbm);
+    }
+
+    /// 1x1 single-plane ILBM, the same one `bbm_form_decodes_like_ilbm` builds.
+    fn tiny_ilbm() -> Vec<u8> {
+        let mut form = b"FORM\0\0\0\x38ILBM".to_vec();
+        form.extend_from_slice(
+            b"BMHD\0\0\0\x14\0\x01\0\x01\0\0\0\0\x01\0\0\0\0\0\x01\x01\0\x01\0\x01",
+        );
+        form.extend_from_slice(b"CMAP\0\0\0\x06\0\0\0\xff\xff\xff");
+        form.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
+        form
+    }
+
+    #[test]
+    fn powerpacker_wrapped_ilbm_decodes_like_the_plain_file() {
+        let plain = tiny_ilbm();
+        let packed = powerpacker::tests::literal_pp20(&plain, [9, 10, 11, 11]);
+        assert_eq!(decode_iff(&packed).unwrap(), decode_iff(&plain).unwrap());
+        // Only one layer is unpacked.
+        let twice = powerpacker::tests::literal_pp20(&packed, [9, 9, 9, 9]);
+        assert!(decode_iff(&twice).is_err());
+        // A packed file whose contents are not a picture is rejected.
+        let junk = powerpacker::tests::literal_pp20(b"not an IFF file", [9, 9, 9, 9]);
+        assert!(decode_iff(&junk).is_err());
     }
 
     #[test]

@@ -13,6 +13,7 @@
 //! (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>); details in
 //! `super_hires.rs`.
 
+mod dreamgrafix;
 mod hires;
 mod macpaint;
 mod pack_bytes;
@@ -64,6 +65,13 @@ pub(super) static FORMATS: &[Format] = &[
         &["shr"],
         super_hires::decode_packed_screen,
     ),
+    Format::new(
+        "Apple IIGS",
+        "DreamGrafix",
+        &["256", "3200"],
+        dreamgrafix::decode,
+    )
+    .signature(),
     Format::new(
         "Apple Macintosh",
         "MacPaint",

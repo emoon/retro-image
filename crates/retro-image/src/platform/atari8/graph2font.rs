@@ -31,9 +31,11 @@
 
 mod g2f;
 mod mch;
+mod vsc;
 
 pub(super) use g2f::{decode_g2f, decode_g2f_vbxe};
 pub(super) use mch::decode_mch;
+pub(super) use vsc::decode_vsc;
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
 use super::palette::rgb;

@@ -7,6 +7,7 @@
 // Each test binary uses a different subset of these helpers.
 #![allow(dead_code)]
 
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
 pub struct Sample {
@@ -42,17 +43,51 @@ impl Sample {
     }
 }
 
-/// Companion files taken from a list of sibling paths.
-pub struct SiblingFiles<'a>(pub &'a [PathBuf]);
+/// Companion files taken from a list of sibling paths, and named files from
+/// the main file's directory. Remembers the named files it served.
+pub struct SiblingFiles<'a> {
+    siblings: &'a [PathBuf],
+    directory: &'a Path,
+    named: RefCell<Vec<PathBuf>>,
+}
+
+impl<'a> SiblingFiles<'a> {
+    pub fn new(siblings: &'a [PathBuf], directory: &'a Path) -> Self {
+        Self {
+            siblings,
+            directory,
+            named: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// The files served by `get_named` so far, without repeats.
+    pub fn named_files(&self) -> Vec<PathBuf> {
+        self.named.borrow().clone()
+    }
+}
 
 impl retro_image::Companions for SiblingFiles<'_> {
     fn get(&self, extension: &str) -> Option<Vec<u8>> {
-        let path = self.0.iter().find(|p| {
+        let path = self.siblings.iter().find(|p| {
             p.extension()
                 .and_then(|e| e.to_str())
                 .is_some_and(|e| e.eq_ignore_ascii_case(extension))
         })?;
         std::fs::read(path).ok()
+    }
+
+    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+        let name = file_name.rsplit(['/', '\\']).next()?;
+        if matches!(name, "" | "." | "..") {
+            return None;
+        }
+        let path = self.directory.join(name);
+        let data = std::fs::read(&path).ok()?;
+        let mut named = self.named.borrow_mut();
+        if !named.contains(&path) {
+            named.push(path);
+        }
+        Some(data)
     }
 }
 
