@@ -260,3 +260,29 @@ impl Reader<'_> {
         Some('\u{fffd}')
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_nested_values_and_escapes() {
+        let text = b"{\"a\":[1,-2.5e1,true,null],\"s\":\"x\\u00e9\\ud83d\\ude00\\n\"}";
+        let v = Value::parse(text).unwrap();
+        let items = v.get("a").unwrap().as_array().unwrap();
+        assert_eq!(items.len(), 4);
+        assert_eq!(items[0].as_int(), Some(1));
+        assert_eq!(items[1].as_int(), Some(-25));
+        assert_eq!(v.get("s").unwrap().as_str(), Some("x\u{e9}\u{1f600}\n"));
+    }
+
+    #[test]
+    fn rejects_malformed_and_too_deep_input() {
+        let bad: [&[u8]; 6] = [b"{", b"[1,]", b"{\"a\" 1}", b"01", b"\"\x01\"", b"[1] x"];
+        for text in bad {
+            assert!(Value::parse(text).is_none());
+        }
+        let deep = alloc::vec![b'['; MAX_DEPTH + 2];
+        assert!(Value::parse(&deep).is_none());
+    }
+}

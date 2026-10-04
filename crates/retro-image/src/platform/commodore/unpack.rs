@@ -238,6 +238,25 @@ mod tests {
     }
 
     #[test]
+    fn escape_first_stops_at_the_terminator_and_ignores_cut_runs() {
+        let packed = [0xfe, 1, 0xfe, 3, 7, 2, 0xfe, 0, 9, 9];
+        assert_eq!(escape_first_rle(&packed, 6), None);
+        assert_eq!(
+            escape_first_rle(&packed, 5),
+            Some(alloc::vec![1, 7, 7, 7, 2])
+        );
+        assert_eq!(escape_first_rle(&[0xfe, 1, 0xfe, 5], 2), None);
+    }
+
+    #[test]
+    fn escape_last_reads_runs_from_the_end() {
+        // Load address, `1`, a run of three 7s, `2`, then the escape byte.
+        let file = [0, 0, 1, 7, 3, 0xfe, 2, 0xfe];
+        assert_eq!(escape_last_rle(&file, 5), Some(alloc::vec![1, 7, 7, 7, 2]));
+        assert_eq!(escape_last_rle(&file, 6), None);
+    }
+
+    #[test]
     fn expands_runs_and_literals() {
         let packed = [1, 0xfe, 7, 3, 2];
         assert_eq!(
