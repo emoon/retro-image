@@ -10,6 +10,13 @@
 //!   from samples).
 //! - Pixel doubling for interlaced low-res and non-interlaced high-res
 //!   screens: observed from `recoil2png` output.
+//! - Super-hires (`SUPERHIRES` 0x20 with `HIRES` 0x8000 in `graphics/view.h`)
+//!   is only 1/4-lores-wide pixels on the native PAL/NTSC/default monitors
+//!   (`graphics/modeid.h`: `SUPER_KEY` 0x8020 under monitor 0, 0x11000, 0x21000).
+//!   Other monitors reuse the bit for different timings: `VGAPRODUCT_KEY`
+//!   0x39024 is a 640x480 square-pixel mode, and Super72/DblPAL modes are
+//!   likewise square. `recoil2png` probing of one super-hires PAL ILBM with
+//!   the CAMG rewritten confirmed the split (see `scale_factors`).
 
 use alloc::vec::Vec;
 
@@ -25,6 +32,7 @@ pub(super) const CAMG_LACE: u32 = 0x4;
 const CAMG_EHB: u32 = 0x80;
 pub(super) const CAMG_HAM: u32 = 0x800;
 pub(super) const CAMG_HIRES: u32 = 0x8000;
+const CAMG_SUPER: u32 = 0x20;
 
 /// Fields of the BMHD chunk we use.
 pub(super) struct Header {
@@ -343,12 +351,20 @@ pub(super) fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
 }
 
 /// Pixel doubling that keeps the picture's aspect ratio, as (x, y) factors.
+///
+/// A lores pixel is the unit; hires halves its width, super-hires quarters
+/// it and interlace halves its height. Super-hires only counts on the native
+/// monitors (monitor ID in the upper CAMG word is 0, NTSC or PAL).
 pub(super) fn scale_factors(camg: u32) -> (u32, u32) {
     let lace = camg & CAMG_LACE != 0;
     let hires = camg & CAMG_HIRES != 0;
-    match (hires, lace) {
-        (false, true) => (2, 1),
-        (true, false) => (1, 2),
+    let native_monitor = matches!(camg >> 16, 0..=2);
+    let super_hires = hires && camg & CAMG_SUPER != 0 && native_monitor;
+    match (super_hires, hires, lace) {
+        (true, _, true) => (1, 2),
+        (true, _, false) => (1, 4),
+        (_, false, true) => (2, 1),
+        (_, true, false) => (1, 2),
         _ => (1, 1),
     }
 }
@@ -376,6 +392,15 @@ mod tests {
     fn header_rejects_pictures_over_the_pixel_cap() {
         assert!(Header::parse(&bmhd(100, 100)).is_some());
         assert!(Header::parse(&bmhd(65535, 65535)).is_none());
+    }
+
+    #[test]
+    fn super_hires_only_scales_on_native_monitors() {
+        assert_eq!(scale_factors(0x29824), (1, 2)); // PAL super-hires lace
+        assert_eq!(scale_factors(0x29820), (1, 4));
+        assert_eq!(scale_factors(0x39024), (1, 1)); // VGAPRODUCT_KEY
+        assert_eq!(scale_factors(0x89824), (1, 1)); // Super72
+        assert_eq!(scale_factors(0x29804), (1, 1)); // hires lace
     }
 
     #[test]

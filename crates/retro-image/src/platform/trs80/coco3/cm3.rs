@@ -21,11 +21,12 @@
 //!   left over; the renders were reviewed by eye.
 //!
 //! Differences from the KAOS reader: it leaves raw rows (top bit set) out
-//! of the picture, which looks like an omission; no sample contains one, so
-//! they are drawn like any other row here. Patterns and the animation and
-//! cycling fields are skipped. No sample has a second page (320x384). The
-//! colour space is not stored and is assumed to be RGB222, as for the other
-//! CoCo 3 formats.
+//! of the picture, which looks like an omission. `mazda.cm3` contains raw
+//! rows: read as 160 literal bytes each, the file ends exactly after row 192
+//! and the picture is clean, so they are drawn like any other row here.
+//! Patterns and the animation and cycling fields are skipped. No sample has
+//! a second page (320x384). The colour space is not stored and is assumed
+//! to be RGB222, as for the other CoCo 3 formats.
 //!
 //! The KAOS Toolkit licence:
 //!

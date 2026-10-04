@@ -13,7 +13,7 @@
 //!   RECOIL oracle; checked against the specs and by eye on the samples in
 //!   `corpus/extra/zx-snapshots`.
 
-use super::screen::SCR_LEN;
+use super::screen::{BITMAP_LEN, SCR_LEN};
 use super::standard::decode_scr;
 use crate::bytes::{le16, le32};
 use crate::{DecodeError, Image};
@@ -26,6 +26,7 @@ const SCREEN_BLOCK_LEN: usize = SCR_LEN + 2;
 const HEADER_BLOCK_LEN: usize = 19;
 const CODE: u8 = 3;
 const SCREEN_ADDRESS: u16 = 0x4000;
+const ATTRIBUTE_RUN_PERCENT: usize = 80;
 
 /// TAP tape.
 pub(super) fn decode_tap(data: &[u8]) -> Result<Image, DecodeError> {
@@ -98,16 +99,17 @@ fn tzx_body_len(id: u8, body: &[u8]) -> Option<usize> {
 }
 
 /// The first screen among the data blocks, in tape order. A block directly
-/// after a header block counts only if that header announces CODE of 6912
-/// bytes at the screen address. (Header-announced 6912-byte blocks loaded
-/// elsewhere are skipped: in the samples one is a real picture and one is
-/// not screen data, and nothing in the block tells them apart.)
+/// after a header block counts if that header announces CODE of 6912 bytes
+/// at the screen address, or elsewhere when the bytes look like a screen
+/// (see [`looks_like_screen`]): tapes load pictures at a scratch address to
+/// copy them to the display later, but 6912-byte blocks that are not pictures
+/// exist too.
 fn find_screen<'a>(blocks: impl Iterator<Item = &'a [u8]>) -> Result<Image, DecodeError> {
     let mut previous: &[u8] = &[];
     for block in blocks {
         let is_screen = block.len() == SCREEN_BLOCK_LEN
             && block[0] == 0xff
-            && (previous.len() != HEADER_BLOCK_LEN || announces_screen(previous));
+            && follows_header_of_screen(previous, &block[1..=SCR_LEN]);
         if is_screen {
             return decode_scr(&block[1..=SCR_LEN]);
         }
@@ -116,16 +118,32 @@ fn find_screen<'a>(blocks: impl Iterator<Item = &'a [u8]>) -> Result<Image, Deco
     Err(DecodeError::Unrecognized)
 }
 
-fn announces_screen(header: &[u8]) -> bool {
-    header[0] == 0
-        && header[1] == CODE
-        && le16(header, 12) == Some(SCR_LEN as u16)
-        && le16(header, 14) == Some(SCREEN_ADDRESS)
+/// Whether the 6912-byte `screen` may be taken as one, given the block before
+/// it: always without a header, never after a header announcing other data.
+fn follows_header_of_screen(previous: &[u8], screen: &[u8]) -> bool {
+    if previous.len() != HEADER_BLOCK_LEN {
+        return true;
+    }
+    let is_screen_code =
+        previous[0] == 0 && previous[1] == CODE && le16(previous, 12) == Some(SCR_LEN as u16);
+    is_screen_code && (le16(previous, 14) == Some(SCREEN_ADDRESS) || looks_like_screen(screen))
+}
+
+/// Attribute runs: in a picture most attribute bytes repeat their left
+/// neighbour (0.96 in the one sample picture loaded off-screen), in other
+/// data they do not (0.64 in the one sample that is not a picture). Reverse
+/// engineered from those two `corpus/extra/zx-snapshots/tap` files, so the
+/// threshold is a judgement call.
+fn looks_like_screen(screen: &[u8]) -> bool {
+    let attributes = &screen[BITMAP_LEN..];
+    let repeats = attributes.windows(2).filter(|w| w[0] == w[1]).count();
+    repeats * 100 >= (attributes.len() - 1) * ATTRIBUTE_RUN_PERCENT
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::zx_spectrum::screen::ATTRIBUTES_LEN;
 
     fn screen_block() -> alloc::vec::Vec<u8> {
         let mut block = alloc::vec![0u8; SCREEN_BLOCK_LEN];
@@ -145,8 +163,16 @@ mod tests {
             tap.extend(block);
         }
         assert!(decode_tap(&tap).is_ok());
-        // The header now says the code is loaded elsewhere.
+        // Loaded elsewhere: kept only while the bytes look like a picture.
         tap[2 + 15] = 0x80;
+        assert!(decode_tap(&tap).is_ok());
+        let attributes = tap.len() - 1 - ATTRIBUTES_LEN;
+        for (i, byte) in tap[attributes..attributes + ATTRIBUTES_LEN]
+            .iter_mut()
+            .enumerate()
+        {
+            *byte = i as u8 & 1;
+        }
         assert!(decode_tap(&tap).is_err());
     }
 

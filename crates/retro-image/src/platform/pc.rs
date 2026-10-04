@@ -17,7 +17,7 @@
 //!   `pc/bmp.rs`, `pc/gif.rs`, `pc/colorix.rs`
 //!   (survey: `docs/research/gaps-pc-japan.md`).
 //! - PCPaint/PICtor, Animator PIC/CEL, FLI/FLC and Dr. Halo PIC: see
-//!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/halo_pic.rs`.
+//!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/flh.rs`, `pc/halo_pic.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -25,6 +25,7 @@ mod animator;
 mod bmp;
 mod colorix;
 mod flf;
+mod flh;
 mod flic;
 mod gif;
 mod halo;
@@ -75,7 +76,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(
         "PC",
         "Autodesk Animator FLI and FLC",
-        &["fli", "flc"],
+        &["fli", "flc", "flh"],
         flic::decode_flic,
     )
     .signature(),
