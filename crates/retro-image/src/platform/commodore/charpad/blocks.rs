@@ -15,12 +15,24 @@
 //!   the corpus. The c64lib projects hold the same picture in versions 5 to
 //!   8.2; every version renders like the version 5 file, which `recoil2png`
 //!   decodes.
+//! - Bitmap modes (versions 8 and 9, screen modes 3 and 4): c64lib's readers
+//!   say a per-character or per-tile colour entry has 2 bytes in hires and 3
+//!   in multicolour bitmap mode (1 byte otherwise), but their combining
+//!   code doesn't name which byte is which pixel colour. The order was found
+//!   by rendering the 14 bitmap projects in `corpus/extra/charpad-ctm9/` and
+//!   `corpus/extra/charpad-bitmap-modes/` both ways: with byte 0 as the
+//!   colour RAM colour (`11`) and bytes 1 and 2 as the low and high screen
+//!   RAM nybbles (`10`, `01`), the multicolour pictures (a Tony title
+//!   screen, a California Games logo, photographs) show correct colours;
+//!   the swapped order gives wrong ones. Hires bitmaps use byte 1 as the
+//!   set-pixel colour and byte 0 as the clear one (a black-on-white logo
+//!   where the other order gives a negative). `recoil2png` decodes none of
+//!   them.
 //!
-//! Only the text modes (hires and multicolour characters) are decoded. The
-//! extended background and bitmap modes of versions 7 to 9 are rejected: no
-//! sample has them, and the colour byte order of the bitmap modes is not
-//! documented. Version 9 is untested against a real file for the same
-//! reason.
+//! Extended background colour mode (2) is not decoded: the samples don't
+//! show how CharPad stores the four backgrounds. Bitmap projects with one
+//! global colouring method are rejected, as the header colours can't
+//! describe every cell. Version 9 was checked on 25 real projects.
 //!
 //! c64lib's notice:
 //!
@@ -49,7 +61,7 @@
 //! SOFTWARE.
 //! ```
 
-use super::{Cells, ColorTable, Colors, Project, Reader, sizes_in_range};
+use super::{Cells, ColorTable, Colors, Mode, Project, Reader, sizes_in_range};
 
 const GLOBAL: u8 = 0;
 const PER_TILE: u8 = 1;
@@ -60,7 +72,7 @@ const MAX_NAME_LEN: usize = 32;
 
 /// The fields every version has, whatever their order in the file.
 struct Header {
-    multicolor: bool,
+    mode: Mode,
     colouring: u8,
     tiled: bool,
     background: u8,
@@ -78,11 +90,15 @@ struct Header {
     color_offset: usize,
 }
 
-/// Screen mode 0 is hires text, 1 multicolour text; the rest are not decoded.
-fn text_mode(mode: u8) -> Option<bool> {
+/// Screen modes 0 and 1 are hires and multicolour text, 3 and 4 hires and
+/// multicolour bitmap. Mode 2 (extended background colour) is not decoded.
+/// Versions before 8 have no bitmap modes.
+fn screen_mode(mode: u8, bitmap_allowed: bool) -> Option<Mode> {
     match mode {
-        0 => Some(false),
-        1 => Some(true),
+        0 => Some(Mode::TextHires),
+        1 => Some(Mode::TextMulticolor),
+        3 if bitmap_allowed => Some(Mode::BitmapHires),
+        4 if bitmap_allowed => Some(Mode::BitmapMulticolor),
         _ => None,
     }
 }
@@ -92,7 +108,7 @@ fn header6(r: &mut Reader) -> Option<Header> {
     const TILE_SYSTEM: u8 = 2;
     let [background, multi1, multi2, char_color, colouring, flags] = r.take(6)?.try_into().ok()?;
     (flags & !(MULTICOLOR | TILE_SYSTEM) == 0).then_some(Header {
-        multicolor: flags & MULTICOLOR != 0,
+        mode: Mode::text(flags & MULTICOLOR != 0),
         colouring,
         tiled: flags & TILE_SYSTEM != 0,
         background,
@@ -117,7 +133,7 @@ fn header7(r: &mut Reader) -> Option<Header> {
         flags,
     ] = r.take(8)?.try_into().ok()?;
     Some(Header {
-        multicolor: text_mode(mode)?,
+        mode: screen_mode(mode, false)?,
         colouring,
         tiled: tile_system_flag(flags)?,
         background,
@@ -146,9 +162,14 @@ fn header8(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header>
     // its colour blocks have four bytes per entry, the last one used.
     let prerelease = r.data.get(r.pos) != Some(&BLOCK_MARKER);
     let char_color = if prerelease { r.byte()? } else { base0 };
-    let (color_stride, color_offset) = if prerelease { (4, 3) } else { (1, 0) };
+    let mode = screen_mode(mode, !prerelease)?;
+    let (color_stride, color_offset) = if prerelease {
+        (4, 3)
+    } else {
+        (mode.color_bytes(), 0)
+    };
     Some(Header {
-        multicolor: text_mode(mode)?,
+        mode,
         colouring,
         tiled: tile_system_flag(flags)?,
         background,
@@ -166,8 +187,9 @@ fn header8(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header>
 fn header9(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header> {
     let [_, _, _, _, _, background, multi1, multi2, _, base0, _, _] =
         r.take(12)?.try_into().ok()?;
+    let mode = screen_mode(mode, true)?;
     Some(Header {
-        multicolor: text_mode(mode)?,
+        mode,
         colouring,
         tiled: tile_system_flag(flags)?,
         background,
@@ -175,7 +197,7 @@ fn header9(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header>
         multi2,
         char_color: base0,
         separate_materials: true,
-        color_stride: 1,
+        color_stride: mode.color_bytes(),
         color_offset: 0,
     })
 }
@@ -303,7 +325,7 @@ pub(super) fn parse(data: &[u8]) -> Option<Project<'_>> {
         _ => Colors::PerChar(char_colors?),
     };
     Some(Project {
-        multicolor: header.multicolor,
+        mode: header.mode,
         background: header.background,
         multi1: header.multi1,
         multi2: header.multi2,

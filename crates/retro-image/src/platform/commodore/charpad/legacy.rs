@@ -14,7 +14,7 @@
 //!   the colouring methods agree with c64lib's CTM 5 reader (MIT, see
 //!   `blocks.rs` for its notice).
 
-use super::{Cells, ColorTable, Colors, Project, Reader, sizes_in_range};
+use super::{Cells, ColorTable, Colors, Mode, Project, Reader, sizes_in_range};
 
 /// Colouring methods of versions 4 and 5.
 const GLOBAL: u8 = 0;
@@ -62,7 +62,7 @@ pub(super) fn version4(data: &[u8]) -> Option<Project<'_>> {
     };
     let map = r.take(map_width * map_height)?;
     r.at_end().then_some(Project {
-        multicolor,
+        mode: Mode::text(multicolor),
         background,
         multi1,
         multi2,
@@ -118,7 +118,7 @@ pub(super) fn version5(data: &[u8]) -> Option<Project<'_>> {
     };
     let map = r.take(map_width * map_height * 2)?;
     r.at_end().then_some(Project {
-        multicolor: flags & MULTICOLOR != 0,
+        mode: Mode::text(flags & MULTICOLOR != 0),
         background,
         multi1,
         multi2,
