@@ -12,7 +12,7 @@ use retro_image::Image;
 /// filter), so dithered and interlaced pictures don't alias.
 pub fn fit(image: &Image, size: u32) -> (u32, u32, Vec<u8>) {
     let (w, h) = (image.width(), image.height());
-    if w <= size && h <= size {
+    if (w <= size && h <= size) || w == 0 || h == 0 {
         return (w, h, image.rgb().to_vec());
     }
     let (tw, th) = if w >= h {

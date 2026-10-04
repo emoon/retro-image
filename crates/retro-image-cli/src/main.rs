@@ -107,10 +107,7 @@ fn parse(args: &[String]) -> Option<Convert> {
 }
 
 fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
-    if std::fs::metadata(&convert.input)?.len() > MAX_INPUT_LEN {
-        return Err("file too large for a retro image".into());
-    }
-    let data = std::fs::read(&convert.input)?;
+    let data = read_input(&convert.input)?;
     let filename = match &convert.ext {
         Some(ext) => format!("input.{ext}"),
         None => convert
@@ -129,6 +126,27 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
     let png = encode_png(width, height, &rgb)?;
     std::fs::write(&convert.output, png)?;
     Ok(())
+}
+
+/// Reads a regular file of at most [`MAX_INPUT_LEN`] bytes. Other kinds
+/// (FIFOs, devices) could block or never end, and companions named by an
+/// untrusted file get the same limit as the input itself.
+fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
+    use std::io::{Error, ErrorKind, Read};
+    // Checked before opening: opening a FIFO blocks.
+    if !std::fs::metadata(path)?.is_file() {
+        return Err(Error::new(ErrorKind::InvalidInput, "not a regular file"));
+    }
+    let file = std::fs::File::open(path)?;
+    let mut data = Vec::new();
+    file.take(MAX_INPUT_LEN + 1).read_to_end(&mut data)?;
+    if data.len() as u64 > MAX_INPUT_LEN {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "file too large for a retro image",
+        ));
+    }
+    Ok(data)
 }
 
 fn encode_png(width: u32, height: u32, rgb: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -159,7 +177,7 @@ impl retro_image::Companions for SiblingFiles<'_> {
         if matches!(name, "" | "." | "..") {
             return None;
         }
-        std::fs::read(self.directory().join(name)).ok()
+        read_input(&self.directory().join(name)).ok()
     }
 
     fn get(&self, extension: &str) -> Option<Vec<u8>> {
@@ -174,6 +192,6 @@ impl retro_image::Companions for SiblingFiles<'_> {
                     .to_str()
                     .is_some_and(|n| n.eq_ignore_ascii_case(&wanted))
             })
-            .and_then(|entry| std::fs::read(entry.path()).ok())
+            .and_then(|entry| read_input(&entry.path()).ok())
     }
 }

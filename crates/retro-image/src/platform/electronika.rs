@@ -61,12 +61,12 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
         .enumerate()
         .map(|(i, screen)| {
             if color {
-                bk_color(screen, palettes[i])
+                Ok(bk_color(screen, palettes[i]))
             } else {
                 bk_mono(screen)
             }
         })
-        .collect();
+        .collect::<Result<_, DecodeError>>()?;
     let frames: Vec<&Image> = frames.iter().collect();
     Ok(Image::blend(&frames))
 }
@@ -110,7 +110,7 @@ fn bk_color(screen: &[u8], palette: u8) -> Image {
 
 /// 512x256 mono, 8 pixels per byte, the lowest bit leftmost; shown with
 /// rows doubled.
-fn bk_mono(screen: &[u8]) -> Image {
+fn bk_mono(screen: &[u8]) -> Result<Image, DecodeError> {
     let mut image = Image::new(512, 256);
     for (i, &byte) in screen.iter().enumerate() {
         let (x, y) = ((i % 64 * 8) as u32, (i / 64) as u32);
@@ -141,7 +141,7 @@ fn decode_mc0515(data: &[u8]) -> Result<Image, DecodeError> {
             image.set(x + bit, y, color);
         }
     }
-    Ok(image.scaled(1, 2))
+    image.scaled(1, 2)
 }
 
 #[cfg(test)]

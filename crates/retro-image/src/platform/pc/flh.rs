@@ -55,12 +55,12 @@ impl<'a> HiScreen<'a> {
         })
     }
 
-    pub(super) fn into_image(self) -> Result<Image, DecodeError> {
-        Ok(Image::from_colors(
+    pub(super) fn into_image(self) -> Image {
+        Image::from_colors(
             self.width as u32,
             self.height as u32,
             self.pixels.into_iter(),
-        ))
+        )
     }
 
     fn byte(&self, at: usize) -> u8 {

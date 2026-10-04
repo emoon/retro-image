@@ -15,7 +15,7 @@
 
 use alloc::vec::Vec;
 
-use crate::Image;
+use crate::{DecodeError, Image};
 
 const LEVELS: [u32; 3] = [0x00, 0x80, 0xff];
 
@@ -147,7 +147,7 @@ pub(super) fn render<'a>(
     height: usize,
     line: impl Fn(usize) -> &'a [u8],
     pens: &[u32; 16],
-) -> Image {
+) -> Result<Image, DecodeError> {
     let per_byte = mode.pixels_per_byte();
     let indices: Vec<u8> = (0..height)
         .flat_map(|y| {

@@ -25,6 +25,7 @@
 //!   AN4 and AN5 (ANTIC 5 lines doubled), and 16-pixel-wide characters in
 //!   GR1/GR2.
 
+use super::gtia;
 use super::palette::register_rgb;
 use super::rom_font::ROM_FONT;
 use super::screen::OS_COLORS;
@@ -141,7 +142,7 @@ pub(super) fn screen_code(c: u8) -> u8 {
 /// and `line_height` lines tall (8 or 16); bits 6-7 of a code select
 /// playfield 0-3 for set pixels, others show the background.
 /// `colors` are COLOR4 (background), COLOR0-3.
-fn mode6(codes: &[u8], line_height: u32, colors: [u8; 5]) -> Image {
+fn mode6(codes: &[u8], line_height: u32, colors: [u8; 5]) -> Result<Image, DecodeError> {
     let rows = codes.len() / 20;
     let mut image = Image::new(20 * 8, rows as u32 * 8);
     for (i, &code) in codes.iter().enumerate() {
@@ -168,7 +169,7 @@ fn decode_mode6(data: &[u8], len: usize, line_height: u32) -> Result<Image, Deco
         Some(&[c4, c0, c1, c2, c3]) => [c4, c0, c1, c2, c3],
         _ => return Err(DecodeError::Unrecognized),
     };
-    Ok(mode6(&data[..len], line_height, colors))
+    mode6(&data[..len], line_height, colors)
 }
 
 pub(super) fn decode_gr1(data: &[u8]) -> Result<Image, DecodeError> {
@@ -183,7 +184,12 @@ pub(super) fn decode_gr2(data: &[u8]) -> Result<Image, DecodeError> {
 /// row, `line_height` lines tall (8 or 16). Pixel values 1-3 show
 /// playfield 0-2, or playfield 3 for value 3 when bit 7 of the code is set.
 /// `colors` are COLOR4 (background), COLOR0-3.
-fn mode4(codes: &[u8], columns: usize, line_height: u32, colors: [u8; 5]) -> Image {
+fn mode4(
+    codes: &[u8],
+    columns: usize,
+    line_height: u32,
+    colors: [u8; 5],
+) -> Result<Image, DecodeError> {
     let rows = codes.len() / columns;
     let mut image = Image::new(columns as u32 * 4, rows as u32 * 8);
     for (i, &code) in codes.iter().enumerate() {
@@ -191,10 +197,7 @@ fn mode4(codes: &[u8], columns: usize, line_height: u32, colors: [u8; 5]) -> Ima
         for (row, &bits) in glyph(code).iter().enumerate() {
             for column in 0..4 {
                 let value = (bits >> (6 - 2 * column)) & 3;
-                let register = match value {
-                    3 if code & 0x80 != 0 => 4,
-                    _ => usize::from(value),
-                };
+                let register = gtia::antic4_register(value, code & 0x80 != 0);
                 image.set(x0 + column, y0 + row as u32, register_rgb(colors[register]));
             }
         }
@@ -206,7 +209,7 @@ fn mode4(codes: &[u8], columns: usize, line_height: u32, colors: [u8; 5]) -> Ima
 fn decode_mode4(data: &[u8], max_rows: usize, line_height: u32) -> Result<Image, DecodeError> {
     let (head, codes, columns) = sized(data, 7, max_rows)?;
     let colors = [head[2], head[3], head[4], head[5], head[6]];
-    Ok(mode4(codes, columns, line_height, colors))
+    mode4(codes, columns, line_height, colors)
 }
 
 pub(super) fn decode_an4(data: &[u8]) -> Result<Image, DecodeError> {

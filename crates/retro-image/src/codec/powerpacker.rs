@@ -35,9 +35,6 @@
 use crate::bytes::be32;
 use alloc::vec::Vec;
 
-/// Largest unpacked size accepted (the length field is 24 bits).
-const MAX_RAW_LEN: usize = 1 << 24;
-
 /// The densest code is a match run of 7 bytes per 3 bits (about 19 bytes per
 /// packed byte), so a raw length beyond this per packed byte is a lie.
 const MAX_EXPANSION: usize = 20;
@@ -121,7 +118,6 @@ pub(crate) fn unpack(data: &[u8]) -> Option<Vec<u8>> {
     let shift = footer & 0xff;
     let stream = &data[HEADER_LEN..data.len() - FOOTER_LEN];
     if raw_len == 0
-        || raw_len > MAX_RAW_LEN
         || raw_len > data.len() * MAX_EXPANSION
         || shift >= 32
         || !stream.len().is_multiple_of(4)

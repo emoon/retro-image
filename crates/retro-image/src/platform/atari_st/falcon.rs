@@ -32,16 +32,13 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, planar_image, separate_planes_to_interleaved};
+use super::common::{planar_image, separate_planes_to_interleaved};
 use crate::bytes::{be16, be32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
-}
-
-fn check_size(width: usize, height: usize) -> Option<()> {
-    (width > 0 && height > 0 && width * height <= MAX_PIXELS).then_some(())
 }
 
 /// Falcon high-colour word `RRRRRGGG GGGBBBBB` to `0xRRGGBB`.
@@ -53,23 +50,19 @@ pub(super) fn rgb565(word: u16) -> u32 {
 
 /// Renders big-endian RGB565 pixels, each repeated `x_scale` times.
 fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Option<Image> {
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let data = data.get(..width * height * 2)?;
     let mut image = Image::new(width as u32, height as u32);
     for (i, pixel) in data.as_chunks::<2>().0.iter().enumerate() {
         let color = rgb565(u16::from_be_bytes([pixel[0], pixel[1]]));
         image.set((i % width) as u32, (i / width) as u32, color);
     }
-    Some(if x_scale == 1 {
-        image
-    } else {
-        image.scaled(x_scale as u32, 1)
-    })
+    image.scaled(x_scale as u32, 1).ok()
 }
 
 /// Renders one byte per pixel through `level` (grey from byte value).
 fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> Option<Image> {
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let data = data.get(..width * height)?;
     let mut image = Image::new(width as u32, height as u32);
     for (i, &v) in data.iter().enumerate() {
@@ -78,9 +71,14 @@ fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> 
     Some(image)
 }
 
-/// Reads a 256-entry VIDEL palette (`R, G, 0, B` bytes per entry).
+/// Reads a 256-entry VIDEL palette.
 pub(super) fn videl_palette(data: &[u8]) -> Option<Vec<u32>> {
-    let data = data.get(..1024)?;
+    videl_entries(data, 256)
+}
+
+/// Reads `count` VIDEL palette entries (`R, G, 0, B` bytes each).
+pub(super) fn videl_entries(data: &[u8], count: usize) -> Option<Vec<u32>> {
+    let data = data.get(..count * 4)?;
     Some(
         data.as_chunks::<4>()
             .0
@@ -201,7 +199,7 @@ pub(super) fn decode_fuckpaint(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_god(data: &[u8]) -> Result<Image, DecodeError> {
     let width: usize = be16(data, 2).ok_or(DecodeError::Unrecognized)?.into();
     let height: usize = be16(data, 4).ok_or(DecodeError::Unrecognized)?.into();
-    if check_size(width, height).is_none() || data.len() != 6 + width * height * 2 {
+    if check_size(width, height).is_err() || data.len() != 6 + width * height * 2 {
         return Err(DecodeError::Unrecognized);
     }
     ok(high_color(&data[6..], width, height, 1))
@@ -285,7 +283,7 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
     }
     let width = usize::from(be16(data, 4)?);
     let height = usize::from(be16(data, 6)?);
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let total = width * height;
     let mut pixels: Vec<u16> = Vec::with_capacity(total);
     let mut pos = 12;
@@ -370,7 +368,7 @@ fn decode_iim_inner(data: &[u8]) -> Option<Image> {
     let kind = be16(data, 8)?;
     let width = usize::from(be16(data, 12)?);
     let height = usize::from(be16(data, 14)?);
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let body = &data[16..];
     match kind {
         0 => {

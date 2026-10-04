@@ -32,7 +32,7 @@ pub(super) fn decode_pho(data: &[u8]) -> Result<Image, DecodeError> {
         }
         _ => return Err(DecodeError::Unrecognized),
     };
-    Ok(map.render(&map.palette.unwrap_or(PALETTE)))
+    map.render(&map.palette.unwrap_or(PALETTE))
 }
 
 #[cfg(test)]

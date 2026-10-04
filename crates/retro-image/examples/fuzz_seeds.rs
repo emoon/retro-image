@@ -3,7 +3,10 @@
 //! `cargo run --release --example fuzz_seeds -- <corpus dir> <out dir>`
 //!
 //! Each file seeds every format that claims its extension, or, if none
-//! does, the formats with a signature.
+//! does, the signature formats that decode it. For formats that read
+//! companions, a second seed puts the first sibling file (same name, other
+//! extension) after the main file, cut where the split byte says (to within
+//! 1/256 of the size).
 
 use std::path::Path;
 
@@ -30,17 +33,55 @@ fn main() {
                 continue;
             }
             let name = name.to_string_lossy();
-            for (i, format) in retro_image::formats().enumerate() {
-                if !format.matches_filename(&name) {
-                    continue;
+            let claimed: Vec<_> = retro_image::formats()
+                .enumerate()
+                .filter(|(_, f)| f.matches_filename(&name))
+                .collect();
+            let chosen = if claimed.is_empty() {
+                retro_image::formats()
+                    .enumerate()
+                    .filter(|(_, f)| f.has_signature() && f.decode(&data).is_ok())
+                    .collect()
+            } else {
+                claimed
+            };
+            let sibling = first_sibling(&path);
+            for (i, format) in chosen {
+                let mut seeds = vec![(0, data.clone())];
+                if let (true, Some(extra)) = (format.uses_companions(), &sibling) {
+                    let total = data.len() + extra.len();
+                    let split = (data.len() * 256 / total.max(1)).clamp(1, 255) as u8;
+                    seeds.push((split, [data.as_slice(), extra].concat()));
                 }
-                let mut seed = (i as u16).to_le_bytes().to_vec();
-                seed.push(0);
-                seed.extend_from_slice(&data);
-                count += 1;
-                std::fs::write(Path::new(out).join(format!("{i:03}-{count}")), seed).unwrap();
+                for (split, body) in seeds {
+                    let mut seed = (i as u16).to_le_bytes().to_vec();
+                    seed.push(split);
+                    seed.extend_from_slice(&body);
+                    count += 1;
+                    std::fs::write(Path::new(out).join(format!("{i:03}-{count}")), seed).unwrap();
+                }
             }
         }
     }
     eprintln!("{count} seeds");
+}
+
+/// The first other file in `path`'s directory with the same stem, if small.
+fn first_sibling(path: &Path) -> Option<Vec<u8>> {
+    let stem = path.file_stem()?.to_str()?;
+    let mut siblings: Vec<_> = std::fs::read_dir(path.parent()?)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_file() && p != path)
+        .filter(|p| {
+            p.file_stem()
+                .and_then(|s| s.to_str())
+                .is_some_and(|s| s.eq_ignore_ascii_case(stem))
+        })
+        .collect();
+    siblings.sort();
+    siblings
+        .into_iter()
+        .find_map(|p| std::fs::read(p).ok().filter(|d| d.len() <= 1 << 20))
 }

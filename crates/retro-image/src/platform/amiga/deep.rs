@@ -46,7 +46,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         .map(|e| be16(e, 2).filter(|&depth| depth == 8).and(be16(e, 0)))
         .collect::<Option<_>>()
         .ok_or(fail)?;
-    if width == 0 || height == 0 || elements.len() != count || count == 0 {
+    if elements.len() != count || count == 0 {
         return Err(fail);
     }
     check_size(width, height)?;

@@ -19,7 +19,7 @@ pub(super) fn decode_pgf(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCREEN_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(render(data))
+    render(data)
 }
 
 /// Run-length compressed screen.
@@ -28,7 +28,7 @@ pub(super) fn decode_pgc(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(b"PG\x01")
         .ok_or(DecodeError::Unrecognized)?;
     let screen = unpack(packed).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(&screen))
+    render(&screen)
 }
 
 fn unpack(mut packed: &[u8]) -> Option<[u8; SCREEN_LEN]> {
@@ -52,7 +52,7 @@ fn unpack(mut packed: &[u8]) -> Option<[u8; SCREEN_LEN]> {
     Some(screen)
 }
 
-fn render(screen: &[u8]) -> Image {
+fn render(screen: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = Bitmap {
         data: screen,
         bytes_per_line: 30,

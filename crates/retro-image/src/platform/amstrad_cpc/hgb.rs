@@ -11,6 +11,7 @@
 //!   black with rows doubled (observed from `recoil2png` output).
 
 use super::amsdos::strip_amsdos;
+use super::hardware::{Mode, render, screen_line_offset};
 use crate::{DecodeError, Image};
 
 const HGB_LEN: usize = 16384;
@@ -26,19 +27,13 @@ pub(super) fn decode_hgb(data: &[u8]) -> Result<Image, DecodeError> {
     if screen.len() != HGB_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(512, 256);
-    for y in 0..256 {
-        let line = (y & 7) * 0x800 + (y >> 3) * HGB_ROW_BYTES;
-        for (column, &byte) in screen[line..line + HGB_ROW_BYTES].iter().enumerate() {
-            for bit in 0..8 {
-                let color = if byte & (0x80 >> bit) != 0 {
-                    0xffffff
-                } else {
-                    0
-                };
-                image.set((column * 8 + bit) as u32, y as u32, color);
-            }
-        }
-    }
-    Ok(image.scaled(1, 2))
+    let mut pens = [0; 16];
+    pens[1] = 0xffffff;
+    render(
+        Mode::Two,
+        512,
+        256,
+        |y| &screen[screen_line_offset(y, HGB_ROW_BYTES)..][..HGB_ROW_BYTES],
+        &pens,
+    )
 }

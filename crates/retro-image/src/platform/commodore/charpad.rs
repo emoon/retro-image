@@ -28,10 +28,9 @@ mod blocks;
 mod legacy;
 
 use super::vic2;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-/// Largest picture accepted, in pixels.
-const MAX_PIXELS: usize = 1 << 24;
 /// CharPad's limits: tiles up to 10x10 characters, maps up to 8192x8192 tiles.
 const MAX_TILE_SIDE: usize = 10;
 const MAX_MAP_SIDE: usize = 8192;
@@ -250,9 +249,10 @@ impl Project<'_> {
     fn render(&self) -> Option<Image> {
         let width = self.map_width * self.tile_width * 8;
         let height = self.map_height * self.tile_height * 8;
-        if !self.is_consistent() || width.checked_mul(height)? > MAX_PIXELS {
+        if !self.is_consistent() {
             return None;
         }
+        check_size(width, height).ok()?;
         let mut pixels = alloc::vec![0u8; width * height];
         for cell_y in 0..self.map_height * self.tile_height {
             for cell_x in 0..self.map_width * self.tile_width {

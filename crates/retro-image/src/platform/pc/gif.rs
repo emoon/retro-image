@@ -69,9 +69,6 @@ pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
     );
     let frame_flags = *data.get(at + 9).ok_or(FAIL)?;
     at += 10;
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     let palette = if frame_flags & 0x80 != 0 {
         let (table, next) = read_palette(data, at, frame_flags)?;

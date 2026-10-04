@@ -29,8 +29,8 @@
 //!   in pieces: addresses `$4D00-$75FF` start at file offset `$5600` and
 //!   `$2100-$4CFF` at `$8000`.
 
-use super::nufli::{screen, sprite_rows};
-use super::unpack::backward_rle;
+use super::nufli::{HEIGHT, bitmap_addr, screen, sprite_rows, underlay_colors};
+use super::unpack::backward_rle_filled;
 use super::vic2;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -39,10 +39,7 @@ use alloc::vec::Vec;
 const LOAD: usize = 0x2100;
 /// Bytes of one frame (`$2100-$75FF`).
 const LEN: usize = 0x5500;
-const HEIGHT: usize = 200;
-const BUG: usize = 24;
-/// Colour tables of the six underlay sprites (as in NUFLI).
-const COLOR_TABLES: [usize; 6] = [0x2400, 0x2480, 0x2800, 0x2880, 0x2c00, 0x2c80];
+const BUG: usize = vic2::FLI_BUG;
 
 /// Where the bytes of a frame lie in the file's memory.
 #[derive(Clone, Copy)]
@@ -78,30 +75,7 @@ impl Frame<'_> {
     }
 
     fn bitmap_set(&self, x: usize, y: usize) -> Option<bool> {
-        let offset = y / 8 * 320 + x / 8 * 8 + y % 8;
-        let addr = if offset < 0x1400 {
-            0x6000 + offset
-        } else {
-            0x3400 + offset - 0x1400
-        };
-        Some(self.byte(addr)? & (0x80 >> (x % 8)) != 0)
-    }
-
-    /// Colour of underlay sprite `s` for each line: the six tables work as
-    /// in NUFLI (entry 0 is the initial colour, a nonzero high nibble keeps
-    /// the previous colour, entry `k` colours lines `2k-1` and `2k`).
-    fn underlay_colors(&self, s: usize) -> Option<[u8; HEIGHT]> {
-        let table = COLOR_TABLES[s];
-        let mut by_entry = [0u8; 101];
-        let mut color = self.byte(table)? & 15;
-        for (k, slot) in by_entry.iter_mut().enumerate() {
-            let entry = self.byte(table + k)?;
-            if k == 0 || entry >> 4 == 0 {
-                color = entry & 15;
-            }
-            *slot = color;
-        }
-        Some(core::array::from_fn(|y| by_entry[y.div_ceil(2)]))
+        Some(self.byte(bitmap_addr(x, y))? & (0x80 >> (x % 8)) != 0)
     }
 
     /// Colour of underlay sprite `s` on line `y`: white when the line's
@@ -138,7 +112,7 @@ impl Frame<'_> {
     fn pixels(&self) -> Option<Vec<u8>> {
         let mut colors = [[0; HEIGHT]; 6];
         for (s, slot) in colors.iter_mut().enumerate() {
-            *slot = self.underlay_colors(s)?;
+            *slot = underlay_colors(|addr| self.byte(addr), s)?;
         }
         (0..HEIGHT)
             .flat_map(|y| (0..vic2::WIDTH).map(move |x| (x, y)))
@@ -178,7 +152,9 @@ pub(super) fn decode_mup(data: &[u8]) -> Result<Image, DecodeError> {
     let [_, _, escape, packed @ ..] = data else {
         return Err(DecodeError::Unrecognized);
     };
-    let mem = backward_rle(packed, *escape, LEN).ok_or(DecodeError::Unrecognized)?;
+    let Some((mem, _)) = backward_rle_filled(packed, *escape, LEN) else {
+        return Err(DecodeError::Unrecognized);
+    };
     Ok(Frame::new(&mem, Layout::First).to_frame()?.to_image(BUG))
 }
 

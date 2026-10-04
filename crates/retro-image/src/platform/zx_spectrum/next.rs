@@ -18,7 +18,7 @@
 //!   manual, <https://worldofspectrum.org/ZXSpectrum128+3Manual/chapter8pt27.html>.
 //! - RGB333 widened by bit repetition: observed from `recoil2png` output.
 
-use super::screen::Frame;
+use super::screen::{Frame, widen3};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 128;
@@ -64,7 +64,6 @@ enum Palette<'a> {
 }
 
 fn rgb333(high: u8, low: u8) -> u32 {
-    let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
     let red = widen3(high >> 5);
     let green = widen3((high >> 2) & 7);
     let blue = widen3((high & 3) << 1 | low & 1);

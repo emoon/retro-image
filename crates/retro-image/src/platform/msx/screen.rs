@@ -84,10 +84,10 @@ impl Bitmap {
     }
 
     /// Wide modes have half-height pixels, so lines are output twice.
-    fn output(self, image: Image) -> Image {
+    fn output(self, image: Image) -> Result<Image, DecodeError> {
         match self {
             Self::Graphic5 | Self::Graphic6 => image.scaled(1, 2),
-            _ => image,
+            _ => Ok(image),
         }
     }
 
@@ -237,14 +237,14 @@ pub(super) fn render_bitmap(
     palette: &Palette,
 ) -> Result<Image, DecodeError> {
     let even = render_page(mode, &Vram::new(even), palette, false)?;
-    Ok(match odd {
-        Some(odd) => interlace(
-            mode,
-            &even,
-            &render_page(mode, &Vram::new(odd), palette, false)?,
-        ),
+    let odd = match odd {
+        Some(odd) => Some(render_page(mode, &Vram::new(odd), palette, false)?),
+        None => None,
+    };
+    match odd.filter(|odd| odd.height() >= even.height()) {
+        Some(odd) => interlace(mode, &even, &odd),
         None => mode.output(even),
-    })
+    }
 }
 
 /// Draws sprites only for dumps of exactly 0x8000 (Screens 5/6) or 0xFAA0
@@ -340,15 +340,15 @@ pub(super) fn decode_bitmap_dump(
         Some(odd) => {
             let even_page = render_page(mode, &even.vram, &even.palette, false)?;
             let odd_page = render_page(mode, &odd.vram, &even.palette, false)?;
-            Ok(interlace(mode, &even_page, &odd_page))
+            interlace(mode, &even_page, &odd_page)
         }
-        None => Ok(mode.output(render_page(mode, &even.vram, &even.palette, true)?)),
+        None => mode.output(render_page(mode, &even.vram, &even.palette, true)?),
     }
 }
 
 /// Interleaves the lines of two pages (the odd page may be longer), widening
 /// 256-pixel modes so that pixels keep their shape.
-fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Image {
+fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Result<Image, DecodeError> {
     let (width, height) = (even.width(), even.height());
     let mut image = Image::new(width, height * 2);
     for y in 0..height * 2 {
@@ -359,7 +359,7 @@ fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Image {
     }
     match mode.screen_width() {
         256 => image.scaled(2, 1),
-        _ => image,
+        _ => Ok(image),
     }
 }
 
@@ -373,11 +373,7 @@ fn palette_file(mode: Bitmap, companions: &dyn Companions) -> Option<Palette> {
         Some((start, end)) if end.checked_sub(start) == Some(31) => data.get(7..39)?,
         _ => data.get(..32)?,
     };
-    let mut palette = [0; 16];
-    for (entry, bytes) in palette.iter_mut().zip(table.as_chunks::<2>().0) {
-        *entry = vdp::palette_entry(bytes[0], bytes[1]);
-    }
-    Some(palette)
+    Some(vdp::palette_table(table))
 }
 
 /// Graph Saurus page: a BSAVE-like header, `FE` for raw data or `FD` for RLE,
@@ -392,7 +388,7 @@ pub(super) fn decode_graph_saurus(
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     // Graph Saurus pages show no sprites, except Screen 8 ones.
     let page = render_page(mode, &vram, &palette, mode == Bitmap::Graphic7)?;
-    Ok(mode.output(page))
+    mode.output(page)
 }
 
 /// VRAM of a Graph Saurus page: `FE` and raw data, or `FD` and RLE. Raw
@@ -433,10 +429,10 @@ pub(super) fn decode_graph_saurus_interlaced(
         .and_then(|odd| graph_saurus_vram(mode, &odd).ok())
         .and_then(|odd| render_page(mode, &odd, &palette, false).ok())
         .filter(|odd| odd.height() >= even_page.height());
-    Ok(match odd_page {
+    match odd_page {
         Some(odd_page) => interlace(mode, &even_page, &odd_page),
         None => mode.output(even_page),
-    })
+    }
 }
 
 /// Bytes of an `SRI` file: two Screen 7 fields of 212 lines.
@@ -515,7 +511,7 @@ pub(super) fn decode_copy(
     let mut image = Image::new(width as u32, height as u32);
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     draw_packed(mode, pixels, &mut image, &palette);
-    Ok(mode.output(image))
+    mode.output(image)
 }
 
 /// Pattern-based screens of the TMS9918 and V9938.

@@ -61,7 +61,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
     if !matches!(kind, 1..=3 | 9..=11) || !depth_ok || descriptor & 0xc0 != 0 {
         return Err(fail);
     }
-    if map_type > 1 || (mapped && map_type != 1) || width == 0 || height == 0 {
+    if map_type > 1 || (mapped && map_type != 1) {
         return Err(fail);
     }
     let map_entry = match map_bits {

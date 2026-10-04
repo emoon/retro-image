@@ -67,7 +67,7 @@ pub(super) fn decode_blaster(data: &[u8]) -> Result<Image, DecodeError> {
         lines: LINES,
         bits: 2,
     };
-    Ok(bitmap.render(2, 2, |y, value| register_rgb(colors[y][usize::from(value)])))
+    bitmap.render(2, 2, |y, value| register_rgb(colors[y][usize::from(value)]))
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-//! SHP: Movie Maker shape sheets and Blazing Paddles shape tables.
+//! SHP: Movie Maker shape sheets.
 //!
 //! Sources:
 //! - Movie Maker (Reston): Just Solve "Movie Maker"

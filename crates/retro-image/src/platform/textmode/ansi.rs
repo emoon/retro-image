@@ -202,17 +202,13 @@ impl Ansi {
     /// start to the cursor, 2 everything (and homes the cursor).
     fn erase_display(&mut self, mode: usize) {
         let t = &mut self.terminal;
-        let (x, y) = (t.x, t.y);
         if mode == 2 {
             return t.clear();
         }
-        for row in 0..t.allocated_rows() {
-            for column in 0..t.width() {
-                let before = (row, column) < (y, x);
-                if before == (mode == 1) || (row, column) == (y, x) {
-                    t.erase(column, row, Cell::BLANK);
-                }
-            }
+        if mode == 1 {
+            t.erase_to_cursor();
+        } else {
+            t.erase_from_cursor();
         }
     }
 

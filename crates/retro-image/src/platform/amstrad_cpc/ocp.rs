@@ -41,7 +41,7 @@ pub(super) fn decode_scr(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let palette = Palette::from_companions(companions);
     let width = LINE_BYTES * palette.mode.pixels_per_byte();
     let line = |y| &screen[screen_line_offset(y, LINE_BYTES)..][..LINE_BYTES];
-    Ok(render(palette.mode, width, LINES, line, &palette.pens))
+    render(palette.mode, width, LINES, line, &palette.pens)
 }
 
 /// An SCR file recognised by content: its AMSDOS header names it `.SCR`.
@@ -91,7 +91,7 @@ pub(super) fn decode_win(data: &[u8], companions: &dyn Companions) -> Result<Ima
         return Err(DecodeError::Unrecognized);
     }
     let line = |y| &pixels[y * line_bytes..][..line_bytes];
-    Ok(render(palette.mode, width, height, line, &palette.pens))
+    render(palette.mode, width, height, line, &palette.pens)
 }
 
 /// Unpacks MJH blocks, or returns uncompressed data as is.

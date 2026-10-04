@@ -50,7 +50,7 @@ pub(super) fn decode_dhgr(data: &[u8]) -> Result<Image, DecodeError> {
             indices.extend(line_pixels(&[aux, main]));
         }
     }
-    Ok(Image::from_indexed(560, HEIGHT as u32, &indices, &BLACK_WHITE)?.scaled(1, 2))
+    Image::from_indexed(560, HEIGHT as u32, &indices, &BLACK_WHITE)?.scaled(1, 2)
 }
 
 #[cfg(test)]

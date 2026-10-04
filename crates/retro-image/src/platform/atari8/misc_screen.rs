@@ -1,4 +1,4 @@
-//! Small raw and lightly framed Atari 8-bit screens (wave 4): TXS, FGE, KFX,
+//! Small raw and lightly framed Atari 8-bit screens: TXS, FGE, KFX,
 //! CUT, GR9P, RYS, KSS, GHG, PI8 and PI9.
 //!
 //! Sources:
@@ -60,7 +60,11 @@ use crate::{BitOrder, DecodeError, Image};
 
 /// A 4x4-scaled picture of `width` x `height` pixels, one grey level (0-15)
 /// per entry of `levels`.
-fn grey_blocks(levels: impl Iterator<Item = u8>, width: u32, height: u32) -> Image {
+fn grey_blocks(
+    levels: impl Iterator<Item = u8>,
+    width: u32,
+    height: u32,
+) -> Result<Image, DecodeError> {
     let mut image = Image::new(width, height);
     for (i, level) in levels.enumerate() {
         image.set(i as u32 % width, i as u32 / width, rgb(level));
@@ -74,13 +78,13 @@ pub(super) fn decode_txs(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(&[0xff, 0xff, 0x00, 0x06, 0xff, 0x06])
         .filter(|pixels| pixels.iter().all(|&level| level <= 15))
         .ok_or(DecodeError::Unrecognized)?;
-    Ok(grey_blocks(pixels.iter().copied(), 16, 16))
+    grey_blocks(pixels.iter().copied(), 16, 16)
 }
 
 /// Floor Designer: 64x40 greys behind an unchecked 6-byte header.
 pub(super) fn decode_fge(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 1286)?;
-    Ok(bitmap(&screen[6..], 32, 4).render(4, 4, |_, level| rgb(level)))
+    bitmap(&screen[6..], 32, 4).render(4, 4, |_, level| rgb(level))
 }
 
 /// KFX: 56x60 mono.
@@ -106,24 +110,19 @@ fn mono(data: &[u8], width: u32, height: u32, colors: [u32; 2]) -> Result<Image,
 
 /// Graphics 9+: 80x60 greys.
 pub(super) fn decode_gr9p(data: &[u8]) -> Result<Image, DecodeError> {
-    Ok(bitmap(exactly(data, 2400)?, 40, 4).render(4, 4, |_, level| rgb(level)))
+    bitmap(exactly(data, 2400)?, 40, 4).render(4, 4, |_, level| rgb(level))
 }
 
 /// Mamut: a Graphics 7 screen in the OS colours.
 pub(super) fn decode_rys(data: &[u8]) -> Result<Image, DecodeError> {
-    Ok(four_color(
-        bitmap(exactly(data, 3840)?, 40, 2),
-        2,
-        2,
-        OS_COLORS,
-    ))
+    four_color(bitmap(exactly(data, 3840)?, 40, 2), 2, 2, OS_COLORS)
 }
 
 /// KSS-Paint: 160x160, then the colours of pixel values 0-3.
 pub(super) fn decode_kss(data: &[u8]) -> Result<Image, DecodeError> {
     let (screen, colors) = exactly(data, 6404)?.split_at(6400);
     let colors = [colors[0], colors[1], colors[2], colors[3]];
-    Ok(four_color(bitmap(screen, 40, 2), 2, 1, colors))
+    four_color(bitmap(screen, 40, 2), 2, 1, colors)
 }
 
 /// Gephard Hires Graphics: width (LE16), height, then the bitmap.
@@ -150,8 +149,8 @@ pub(super) fn decode_ghg(data: &[u8]) -> Result<Image, DecodeError> {
 /// PI8: Graphics 15 in greys (7680 bytes) or Graphics 8 (7685 bytes).
 pub(super) fn decode_pi8(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        7680 => Ok(four_color(bitmap(data, 40, 2), 2, 1, GREY_COLORS)),
-        7685 => Ok(hires(bitmap(&data[..7680], 40, 1), rgb(0x00), rgb(0x0e))),
+        7680 => four_color(bitmap(data, 40, 2), 2, 1, GREY_COLORS),
+        7685 => hires(bitmap(&data[..7680], 40, 1), rgb(0x00), rgb(0x0e)),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -159,7 +158,7 @@ pub(super) fn decode_pi8(data: &[u8]) -> Result<Image, DecodeError> {
 /// PI9: Graphics 9, or an interleaved APAC picture in 7720 bytes.
 pub(super) fn decode_pi9(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        7684 | 7808 | 7936 => Ok(gtia9(
+        7684 | 7808 | 7936 => gtia9(
             Bitmap {
                 data: &data[..7680],
                 bytes_per_line: 40,
@@ -167,7 +166,7 @@ pub(super) fn decode_pi9(data: &[u8]) -> Result<Image, DecodeError> {
                 bits: 4,
             },
             0x00,
-        )),
+        ),
         7720 => super::apac::decode_interleaved(data),
         _ => Err(DecodeError::Unrecognized),
     }
@@ -179,12 +178,7 @@ pub(super) fn decode_artist_art(data: &[u8]) -> Result<Image, DecodeError> {
     let [7, c0, c1, c2, _, background] = data[..6] else {
         return Err(DecodeError::Unrecognized);
     };
-    Ok(four_color(
-        bitmap(&data[6..], 40, 2),
-        2,
-        2,
-        [background, c0, c1, c2],
-    ))
+    four_color(bitmap(&data[6..], 40, 2), 2, 2, [background, c0, c1, c2])
 }
 
 /// Monochrome ART: width and height minus one, bitmap, one spare byte.
@@ -226,7 +220,7 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
     check_size(8 * row_bytes, 4 * height)?;
     let (first, second) = planes.split_at(plane_len);
     match mode {
-        0x13 => Ok(bitmap(first, row_bytes, 4).render(4, 4, |_, level| rgb(level))),
+        0x13 => bitmap(first, row_bytes, 4).render(4, 4, |_, level| rgb(level)),
         0x0b => {
             let palettes = [
                 [registers[3], registers[0], registers[1], registers[2]],
@@ -243,7 +237,7 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
                     }
                 }
             }
-            Ok(image.scaled(2, 1))
+            image.scaled(2, 1)
         }
         _ => Err(DecodeError::Unrecognized),
     }

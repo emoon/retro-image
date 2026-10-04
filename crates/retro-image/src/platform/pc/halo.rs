@@ -34,7 +34,7 @@ pub(super) fn decode_cut(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let fail = DecodeError::Unrecognized;
     let word = |at| le16(data, at).map(usize::from).ok_or(fail);
     let (width, height) = (word(0)?, word(2)?);
-    if width == 0 || height == 0 || word(4)? != 0 {
+    if word(4)? != 0 {
         return Err(fail);
     }
     check_size(width, height)?;

@@ -20,22 +20,18 @@ pub(in crate::platform::atari8) fn decode_vsc(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let mut pictures = Vec::new();
-    for name in names(data) {
-        // Checked per picture, so a long list can't make us decode far more
-        // than the size cap allows.
-        check_size(WIDTH, LINES * (pictures.len() + 1))?;
+    let names: Vec<&[u8]> = names(data).collect();
+    if names.is_empty() {
+        return Err(DecodeError::Unrecognized);
+    }
+    check_size(WIDTH, LINES * names.len())?;
+    let mut stacked = Image::new(WIDTH as u32, (LINES * names.len()) as u32);
+    for (index, name) in names.into_iter().enumerate() {
         let name = core::str::from_utf8(name).map_err(|_| DecodeError::Unrecognized)?;
         let file = companions
             .get_named(name)
             .ok_or(DecodeError::Unrecognized)?;
-        pictures.push(g2f::decode_plain_or_vbxe(&file)?);
-    }
-    if pictures.is_empty() {
-        return Err(DecodeError::Unrecognized);
-    }
-    let mut stacked = Image::new(WIDTH as u32, (LINES * pictures.len()) as u32);
-    for (index, picture) in pictures.iter().enumerate() {
+        let picture = g2f::decode_plain_or_vbxe(&file)?;
         for (y, row) in picture
             .rgb()
             .as_chunks::<{ WIDTH * 3 }>()

@@ -17,7 +17,7 @@
 //!   152-line IPaint clip art) render with colour fringes at every shape
 //!   edge when interleaved and cleanly with one attribute row per cell.
 
-use crate::image::check_size;
+use crate::image::{BitOrder, check_size};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -115,18 +115,18 @@ pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(u16::from_be_bytes([*w0, *w1]));
     let height = usize::from(u16::from_be_bytes([*h0, *h1]));
     let stride = width.div_ceil(8);
-    if width == 0 || height == 0 || bits.len() != stride * height {
+    if bits.len() != stride * height {
         return Err(DecodeError::Unrecognized);
     }
     check_size(width, height)?;
-    let mut image = Image::new(width as u32, height as u32);
-    for (y, row) in bits.chunks_exact(stride).enumerate() {
-        for x in 0..width {
-            let set = row[x / 8] & (0x80 >> (x % 8)) != 0;
-            image.set(x as u32, y as u32, if set { 0 } else { 0xffffff });
-        }
-    }
-    Ok(image)
+    Image::from_bits(
+        width as u32,
+        height as u32,
+        bits,
+        stride,
+        BitOrder::MsbFirst,
+        [0xffffff, 0],
+    )
 }
 
 #[cfg(test)]

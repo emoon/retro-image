@@ -125,7 +125,6 @@ impl Picture<'_> {
             };
             let mode = row.gtia | line.prior >> 6;
             let objects = line.pmg.draw();
-            let fifth = line.prior & 0x10 != 0;
             for x in 0..WIDTH {
                 let pixel = self.playfield(x, y, row, mode, &colors);
                 // A VBXE cell supplies its own playfield colours 0-2, which
@@ -135,16 +134,12 @@ impl Picture<'_> {
                     playfield: [pf0, pf1, pf2, colors.playfield[3] & 0xfe],
                     background: colors.background & 0xfe,
                 });
-                let objs = objects.pixels[x];
-                let mut players = pixel.players | objs & 0x0f;
-                let mut playfield = pixel.playfield;
-                if fifth {
-                    if objs & 0xf0 != 0 {
-                        playfield |= 8;
-                    }
-                } else {
-                    players |= objs >> 4;
-                }
+                let (players, playfield) = gtia::add_objects(
+                    line.prior,
+                    objects.pixels[x],
+                    pixel.players,
+                    pixel.playfield,
+                );
                 let mut color = gtia::resolve(line.prior, players, playfield, &colors);
                 if let Some(luminance) = pixel.luminance {
                     color = color & 0xf0 | luminance;
@@ -200,11 +195,10 @@ impl Picture<'_> {
             (0, None) | (1 | 3, _) => empty,
             (0, Some((byte, inverse))) if row.antic4 => {
                 let value = (byte >> (6 - bit / 2 * 2)) & 3;
-                let playfield = match value {
-                    0 => 0,
-                    3 if inverse && self.antic4_inverse => 8,
-                    _ => 1 << (value - 1),
-                };
+                let playfield = gtia::playfield_bit(gtia::antic4_register(
+                    value,
+                    inverse && self.antic4_inverse,
+                ));
                 Pixel { playfield, ..empty }
             }
             (0, Some((byte, _))) => {

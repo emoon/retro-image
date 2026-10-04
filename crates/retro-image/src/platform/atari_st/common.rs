@@ -158,7 +158,7 @@ pub(super) fn decode_screen_by_line(
             image.set(x as u32, y as u32, *colors.get(usize::from(index))?);
         }
     }
-    Some(image.scaled(1, resolution.y_scale()))
+    image.scaled(1, resolution.y_scale()).ok()
 }
 
 /// Palette index of pixel `x` on a word-interleaved line starting at `line`.
@@ -224,16 +224,8 @@ pub(super) fn planar_image(
         indices
     };
     let image = Image::from_indexed(width, height, &indices, palette).ok()?;
-    Some(if y_scale == 1 {
-        image
-    } else {
-        image.scaled(1, y_scale)
-    })
+    image.scaled(1, y_scale).ok()
 }
-
-/// Upper bound on a picture's area, so corrupt headers can't make a
-/// decoder allocate gigabytes.
-pub(super) const MAX_PIXELS: usize = 1 << 24;
 
 /// Big-endian words of `data` (a trailing odd byte is ignored).
 pub(super) fn words(data: &[u8]) -> Vec<u16> {

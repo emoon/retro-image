@@ -36,6 +36,7 @@
 //! SOFTWARE.
 //! ```
 
+use super::unpack::{Run, escape_rle};
 use super::vic2::rgb;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -43,23 +44,9 @@ use alloc::vec::Vec;
 /// C64 colour of each GoDot 4-bit index (brightness order).
 const COLORS: [u8; 16] = [0, 6, 9, 11, 2, 4, 8, 12, 14, 10, 5, 15, 3, 7, 13, 1];
 
-/// Unpacks `$AD count value` runs (count 0 = 256) until `len` bytes.
+/// Unpacks `$AD count value` runs (count 0 = 256) to exactly `len` bytes.
 fn unpack(packed: &[u8], len: usize) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(len);
-    let mut bytes = packed.iter().copied();
-    while out.len() < len {
-        match bytes.next()? {
-            0xad => {
-                let count = bytes.next()?;
-                let value = bytes.next()?;
-                let count = if count == 0 { 256 } else { usize::from(count) };
-                out.extend(core::iter::repeat_n(value, count));
-            }
-            byte => out.push(byte),
-        }
-    }
-    out.truncate(len);
-    Some(out)
+    escape_rle(packed, 0xad, Run::CountValue, len).filter(|out| out.len() == len)
 }
 
 /// Renders `columns`×`rows` tiles stored row by row.

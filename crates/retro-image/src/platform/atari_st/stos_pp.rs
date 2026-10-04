@@ -184,7 +184,11 @@ fn decode(data: &[u8], variant: Variant) -> Result<Image, DecodeError> {
     };
     let image = Image::from_indexed(width as u32, height as u32, &indices, &palette)?;
     let medium = matches!(layout, Layout::Standard { planes: 2 } | Layout::Daj);
-    Ok(if medium { image.scaled(1, 2) } else { image })
+    if medium {
+        image.scaled(1, 2)
+    } else {
+        Ok(image)
+    }
 }
 
 /// The unpacked planes: `plane_len` bytes per plane, each cut into lumps of

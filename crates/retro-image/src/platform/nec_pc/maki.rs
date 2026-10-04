@@ -30,10 +30,8 @@ use alloc::vec::Vec;
 
 use super::Machine;
 use super::precision::Precision;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
-
-/// Largest picture accepted, in output pixels.
-const MAX_PIXELS: usize = 1 << 22;
 
 fn read_palette(grb: &[u8], precision: Precision) -> Vec<u32> {
     grb.as_chunks::<3>()
@@ -163,9 +161,7 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
     let byte_width = right - left;
     let height = header.bottom - header.top + 1;
     let width = header.right - left * pixels_per_byte + 1;
-    if byte_width * pixels_per_byte * height > MAX_PIXELS {
-        return None;
-    }
+    check_size(byte_width.checked_mul(pixels_per_byte)?, height).ok()?;
     let mut bytes = vec![0u8; byte_width * height];
     let mut action = vec![0u8; byte_width / 4];
     let byte = |i: usize| data.get(i).copied().unwrap_or(0);
@@ -286,7 +282,7 @@ fn msx_picture(
         1 + u32::from(!wide_screen && interlaced),
         1 + u32::from(wide_screen && !interlaced),
     );
-    Ok(image.scaled(sx, sy))
+    image.scaled(sx, sy)
 }
 
 /// Decodes a MAG picture if it was saved on `machine`.
@@ -321,7 +317,8 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
         };
         let palette = read_palette(grb, precision);
         let bpp = header.bits_per_pixel();
-        indexed(&unpacked, bpp, unpacked.width, &palette)?.scaled(1, 1 + u32::from(double_height))
+        indexed(&unpacked, bpp, unpacked.width, &palette)?
+            .scaled(1, 1 + u32::from(double_height))?
     };
     if image.width() == 0 {
         return Err(DecodeError::Unrecognized);

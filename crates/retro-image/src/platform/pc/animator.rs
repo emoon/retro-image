@@ -39,9 +39,6 @@ pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let width = usize::from(le16(data, 2).ok_or(FAIL)?);
     let height = usize::from(le16(data, 4).ok_or(FAIL)?);
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     let pixels = data
         .get(PIXELS_AT..PIXELS_AT + width * height)

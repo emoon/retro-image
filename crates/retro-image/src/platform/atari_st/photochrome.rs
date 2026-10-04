@@ -11,7 +11,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{interleaved_index, st_rgb, uses_ste_bits};
+use super::common::{interleaved_index, separate_planes_to_interleaved, st_rgb, uses_ste_bits};
 use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
@@ -56,13 +56,7 @@ struct Frame {
 
 impl Frame {
     fn new(planes: &[u8], palette: &[u8]) -> Self {
-        let mut screen = alloc::vec![0; SCREEN_LEN];
-        for (i, &b) in planes.iter().enumerate() {
-            let plane = i / 8000;
-            let y = i / 40 % 200;
-            let byte = i % 40;
-            screen[y * 160 + byte / 2 * 8 + plane * 2 + byte % 2] = b;
-        }
+        let screen = separate_planes_to_interleaved(planes, 4);
         let palette = palette
             .as_chunks::<2>()
             .0

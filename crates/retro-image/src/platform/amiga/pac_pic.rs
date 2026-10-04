@@ -9,7 +9,7 @@
 //!   Copyright (C) 2016-2026 Jason Summers).
 //! - The AmBk bank header: <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
-use super::ilbm::rgb12;
+use super::ilbm::{half_brite, ham, rgb12};
 use crate::bytes::{be16, be32};
 use crate::codec::stos_pictbank;
 use crate::image::check_size;
@@ -32,7 +32,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let mut palette = [0u32; 64];
     for (i, word) in screen[26..90].as_chunks::<2>().0.iter().enumerate() {
         palette[i] = rgb12(u16::from_be_bytes([word[0], word[1]]));
-        palette[i + 32] = (palette[i] >> 1) & 0x7f7f7f;
+        palette[i + 32] = half_brite(palette[i]);
     }
 
     let start = 20 + SCREEN_HEADER_LEN;
@@ -47,7 +47,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let rle_pos = start.saturating_add(be32(picture, 16).ok_or(fail)? as usize);
     let points_pos = start.saturating_add(be32(picture, 20).ok_or(fail)? as usize);
     let (width, height) = (row_len * 8, lumps * lump_lines);
-    if width == 0 || height == 0 || !(1..=6).contains(&planes) {
+    if !(1..=6).contains(&planes) {
         return Err(fail);
     }
     check_size(width, height)?;
@@ -55,7 +55,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = stos_pictbank::unpack(data, start + 24, rle_pos, points_pos, plane_len * planes)
         .ok_or(fail)?;
 
-    let ham = mode & 0x800 != 0 && planes == 6;
+    let is_ham = mode & 0x800 != 0 && planes == 6;
     let mut image = Image::new(width as u32, height as u32);
     let mut held = 0;
     for y in 0..height {
@@ -68,14 +68,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             let value = (0..planes).fold(0, |v, p| {
                 v | usize::from(unpacked[p * plane_len + offset] >> (7 - x % 8) & 1) << p
             });
-            let color = if ham {
-                let data = (value & 15) as u32 * 0x11;
-                match value >> 4 {
-                    0 => palette[value & 15],
-                    1 => (held & 0xffff00) | data,
-                    2 => (held & 0x00ffff) | data << 16,
-                    _ => (held & 0xff00ff) | data << 8,
-                }
+            let color = if is_ham {
+                ham(
+                    held,
+                    (value >> 4) as u32,
+                    (value & 15) as u32 * 0x11,
+                    palette[value & 15],
+                )
             } else {
                 palette[value]
             };

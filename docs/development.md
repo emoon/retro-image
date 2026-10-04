@@ -26,7 +26,15 @@ shows how to fetch RECOIL's example set into `corpus/`.
   [fuzz/README.md](../fuzz/README.md).
 
 Both tests skip the corpus silently when it isn't at `<workspace>/corpus`. In a git
-worktree, set `RETRO_IMAGE_CORPUS=/path/to/corpus`.
+worktree, set `RETRO_IMAGE_CORPUS=/path/to/corpus`. Set `RETRO_IMAGE_REQUIRE_ORACLE=1`
+to make a missing corpus or `recoil2png` a failure instead of a skip.
+
+Run them with plain `cargo test`, not `--release`: the test profile is optimised but
+keeps the overflow checks that the release profile drops.
+
+The oracle also fails when a recorded divergence is never reached, and when RECOIL
+renders a file whose extension we claim but every format of ours rejects. Known cases
+of the latter are listed with their evidence in `crates/retro-image/tests/gaps.tsv`.
 
 CI (`.github/workflows/ci.yml`) has no `recoil2png` and only RECOIL's example set, so it
 runs the robustness test but not the oracle. Run the oracle locally before merging a

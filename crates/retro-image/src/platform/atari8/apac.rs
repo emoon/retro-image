@@ -23,6 +23,7 @@
 //!   luminance lines are Graphics 15 lines; on scanline 0, which has no hue
 //!   line above, the Graphics 15 colour is shown unchanged.
 
+use super::antic;
 use super::palette::{register_rgb, rgb};
 use super::screen::GREY_COLORS;
 use crate::{DecodeError, Image};
@@ -37,7 +38,7 @@ pub(super) fn decode_planar(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (hue, luminance) = (&data[..3840], &data[3840..7680]);
-    Ok(apac_80x96(hue, luminance))
+    apac_80x96(hue, luminance)
 }
 
 /// 80x96 APAC stored as alternating hue and luminance lines (APA, APC, PLM).
@@ -47,7 +48,7 @@ pub(super) fn decode_interleaved(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (hue, luminance) = deinterleave(&data[..7680]);
-    Ok(apac_80x96(&hue, &luminance))
+    apac_80x96(&hue, &luminance)
 }
 
 /// Interlaced 80x192 APAC: 192 luminance lines, then 192 hue lines at offset
@@ -65,7 +66,7 @@ pub(super) fn decode_interlaced(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| rgb(nibble(luminance, 0, x / 2)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// Champions' Interlace: Graphics 15 luminance lines, then GTIA mode 11 hue
@@ -90,11 +91,11 @@ pub(super) fn decode_cin(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| register_rgb(register(0, x)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// 80x96 APAC: every hue/luminance line pair is two scanlines, hue first.
-pub(super) fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Image {
+pub(super) fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Result<Image, DecodeError> {
     let picture = Scanlines {
         lines: 192,
         luminance: |y, x| nibble(luminance, y / 2, x / 2),
@@ -120,12 +121,7 @@ pub(super) fn deinterleave(data: &[u8]) -> ([u8; 3840], [u8; 3840]) {
 
 /// 4-bit pixel `x` of line `y` in a plane of 40-byte lines.
 pub(super) fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
-    let byte = plane[y * LINE + x / 2];
-    if x.is_multiple_of(2) {
-        byte >> 4
-    } else {
-        byte & 0x0f
-    }
+    antic::nibble(&plane[y * LINE..], x)
 }
 
 /// A picture of `lines` scanlines, 160 half-pixels wide (2 output pixels
@@ -147,7 +143,7 @@ where
 {
     /// Renders 320 pixels wide, averaging one frame per entry of `frames`;
     /// an entry tells whether even scanlines are hue lines in that frame.
-    pub fn render(&self, frames: &[bool]) -> Image {
+    pub fn render(&self, frames: &[bool]) -> Result<Image, DecodeError> {
         let frames: Vec<Image> = frames
             .iter()
             .map(|&even_hue| {

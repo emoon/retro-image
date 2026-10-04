@@ -19,10 +19,8 @@ use alloc::vec::Vec;
 
 use super::Machine;
 use super::precision::Precision;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
-
-/// Largest picture accepted, in pixels.
-const MAX_PIXELS: usize = 1 << 22;
 
 struct Header<'a> {
     model: &'a [u8],
@@ -248,9 +246,10 @@ impl Decoder<'_> {
 /// Decodes a Pi picture if it was saved on `machine`.
 pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
     let header = Header::parse(data).ok_or(DecodeError::Unrecognized)?;
+    check_size(header.width, header.height)?;
     let pixels = header.width * header.height;
     // Pairs are copied from the line above, so lines need at least 2 bytes.
-    if header.machine() != machine || header.width < 2 || pixels == 0 || pixels > MAX_PIXELS {
+    if header.machine() != machine || header.width < 2 {
         return Err(DecodeError::Unrecognized);
     }
     let colours = header.colours;
@@ -283,7 +282,7 @@ pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Im
         &decoder.out,
         &palette,
     )?;
-    Ok(image.scaled(1, 1 + u32::from(header.doubles_height())))
+    image.scaled(1, 1 + u32::from(header.doubles_height()))
 }
 
 #[cfg(test)]

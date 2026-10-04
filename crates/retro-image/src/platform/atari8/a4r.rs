@@ -51,7 +51,7 @@ pub(super) fn decode_a4r(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let picture = unpack(stream, b0 & 0x7f, b1 & 0x7f, PICTURE).ok_or(DecodeError::Unrecognized)?;
-    Ok(screen::gtia9(screen::bitmap(&picture, 40, 4), 0x00))
+    screen::gtia9(screen::bitmap(&picture, 40, 4), 0x00)
 }
 
 /// Unpacks the stream to its end and returns the picture bytes; `None` if a

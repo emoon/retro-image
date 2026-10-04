@@ -123,7 +123,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             None => field.colors(row, |x, color| image.set(x as u32, y as u32, color)),
         }
     }
-    Ok(if lace { image.scaled(2, 1) } else { image })
+    if lace { image.scaled(2, 1) } else { Ok(image) }
 }
 
 #[cfg(test)]

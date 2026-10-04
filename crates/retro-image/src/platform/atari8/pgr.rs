@@ -35,12 +35,13 @@
 //! cropped.
 //!
 //! The event stream has one entry list per scanline, 240 lines. Each event
-//! byte `b` writes register `b & 0x1f` (see [`Registers`]; 0x1c is a no-op)
+//! byte `b` writes register `b & 0x1f` (see [`Registers`]; 0x1c writes nothing)
 //! with the byte that follows if `b & 0x20` is set, else with the last value
 //! byte seen. The event ends the scanline if `b & 0x80` is set; so does a
-//! bare `1C` or `3C`. Writes apply from the start of their scanline and
-//! persist. Events on registers 0x1d-0x1f (which move later writes into the
-//! middle of the scanline by ANTIC DMA timing) and player/missile DMA are not
+//! bare `1C` or `3C`; any other event on register 0x1c is rejected, as are
+//! 0x1d-0x1f. Writes apply from the start of their scanline and persist.
+//! Events on registers 0x1d-0x1f (which move later writes into the middle of
+//! the scanline by ANTIC DMA timing) and player/missile DMA are not
 //! understood, and such files are rejected.
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
@@ -233,7 +234,6 @@ fn render_line(
         graf_missile: r[0x11],
     };
     let objects = pmg.draw();
-    let fifth = prior & 0x10 != 0;
     // Output pixel of the first screen byte, so that 40 bytes are centred.
     let left = 8 * (bytes_per_line as isize / 2 - 21);
     for (x, &objs) in objects.pixels.iter().enumerate() {
@@ -248,7 +248,7 @@ fn render_line(
             Source::Blank => (0, None, 0),
             Source::Four(address) => {
                 let value = cell(address).map_or(0, |byte| byte >> (6 - bit / 2 * 2) & 3);
-                (if value == 0 { 0 } else { 1 << (value - 1) }, None, 0)
+                (gtia::playfield_bit(usize::from(value)), None, 0)
             }
             Source::Hires(address) => {
                 // Outside the screen data only the background shows.
@@ -265,14 +265,7 @@ fn render_line(
         if gtia9 {
             playfield = 0;
         }
-        let mut players = objs & 0x0f;
-        if fifth {
-            if objs & 0xf0 != 0 {
-                playfield |= 8;
-            }
-        } else {
-            players |= objs >> 4;
-        }
+        let (players, playfield) = gtia::add_objects(prior, objs, 0, playfield);
         let mut color = gtia::resolve(prior, players, playfield, &colors);
         if let (false, Some(luminance)) = (gtia9, luminance) {
             color = color & 0xf0 | luminance;

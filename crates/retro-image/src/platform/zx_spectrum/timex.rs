@@ -15,7 +15,7 @@
 
 use super::screen::{
     BITMAP_LEN, COLUMNS, Frame, HEIGHT, SCR_LEN, WIDTH, attribute_color, bitmap_byte,
-    bitmap_offset, blend, rgb_bits,
+    bitmap_offset, blend, rgb_bits, widen3,
 };
 use crate::{DecodeError, Image};
 
@@ -43,7 +43,7 @@ pub(super) fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HIRES_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(draw_hires(data).into_image().scaled(1, 2))
+    draw_hires(data).into_image().scaled(1, 2)
 }
 
 /// HRG: two hi-res screens shown as gigascreen.
@@ -52,7 +52,7 @@ pub(super) fn decode_hrg(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (first, second) = data.split_at(HIRES_LEN);
-    Ok(blend(&[draw_hires(first), draw_hires(second)]).scaled(1, 2))
+    blend(&[draw_hires(first), draw_hires(second)]).scaled(1, 2)
 }
 
 /// One hi-res screen: 8-pixel columns alternate between the two bitmaps;
@@ -113,7 +113,6 @@ pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
 /// GRB332 palette byte: 3-bit green and red widen by repeating their bits,
 /// 2-bit blue by multiplying by 0x55.
 pub(super) fn grb332(value: u8) -> u32 {
-    let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
     let green = widen3(value >> 5);
     let red = widen3((value >> 2) & 7);
     let blue = u32::from(value & 3) * 0x55;

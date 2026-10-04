@@ -61,18 +61,18 @@ impl RomCharset {
 }
 
 /// A character screen: `columns`×`rows` screen codes and colours.
-struct TextScreen<'a> {
-    columns: usize,
-    rows: usize,
-    screen: &'a [u8],
-    colors: &'a [u8],
-    background: u8,
+pub(super) struct TextScreen<'a> {
+    pub(super) columns: usize,
+    pub(super) rows: usize,
+    pub(super) screen: &'a [u8],
+    pub(super) colors: &'a [u8],
+    pub(super) background: u8,
     /// 8 bytes per character, 256 characters.
-    charset: &'a [u8],
+    pub(super) charset: &'a [u8],
 }
 
 impl TextScreen<'_> {
-    fn render(&self) -> Result<Image, DecodeError> {
+    pub(super) fn render(&self) -> Result<Image, DecodeError> {
         let cells = self.columns * self.rows;
         if self.screen.len() < cells || self.colors.len() < cells || self.charset.len() < 2048 {
             return Err(DecodeError::Unrecognized);

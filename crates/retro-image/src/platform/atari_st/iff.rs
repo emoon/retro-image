@@ -125,6 +125,9 @@ fn decode(data: &[u8]) -> Option<Image> {
     let line_palettes = rasters
         .and_then(|chunk| super::rasters::line_palette_words(chunk, h.height))
         .map(|words| super::rasters::line_colors(&words, true));
+    if line_palettes.is_some() && h.planes > 4 {
+        return None;
+    }
     let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32);
     for (y, line) in bitmap.chunks_exact(row_len * h.planes).enumerate() {
         for x in 0..h.width {

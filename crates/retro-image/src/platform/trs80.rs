@@ -41,7 +41,6 @@ pub(super) static FORMATS: &[Format] = &[
         decode_pmode4,
     ),
     Format::new("TRS-80 Color Computer", "128x96", &["p11"], decode_pmode1),
-    // Wave 5: Amiga and misc
     Format::new("TRS-80", "MagicDraw", &["shr"], magicdraw::decode),
     // Color Computer 3 (sources in coco3.rs)
     Format::new(
@@ -98,7 +97,7 @@ fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
     if !(LEN..=LEN + 1024).contains(&data.len()) {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(mono(data, 640, 240, WHITE)?.scaled(1, 2))
+    mono(data, 640, 240, WHITE)?.scaled(1, 2)
 }
 
 fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
@@ -176,7 +175,7 @@ fn decode_pmode1(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .flat_map(|&b| [b >> 6, b >> 4 & 3, b >> 2 & 3, b & 3])
         .collect();
-    Ok(Image::from_indexed(128, 96, &indices, &PMODE1_COLORS)?.scaled(2, 2))
+    Image::from_indexed(128, 96, &indices, &PMODE1_COLORS)?.scaled(2, 2)
 }
 
 #[cfg(test)]

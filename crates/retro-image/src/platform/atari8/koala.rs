@@ -90,9 +90,9 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     match pic.mode {
         ANTIC_E => {
             let colors = [background, pic.colors[0], pic.colors[1], pic.colors[2]];
-            Ok(bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)])))
+            bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)]))
         }
-        ANTIC_F => Ok(gtia9(bitmap, background)),
+        ANTIC_F => gtia9(bitmap, background),
         _ => Err(DecodeError::Unrecognized),
     }
 }

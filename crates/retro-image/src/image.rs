@@ -21,25 +21,12 @@ pub(crate) enum BitOrder {
 /// be able to demand gigabytes.
 const MAX_PIXELS: usize = 1 << 26;
 
-/// Fails if a `width` x `height` picture exceeds [`MAX_PIXELS`]. Call before
-/// allocating anything sized from header dimensions.
+/// Fails if a `width` x `height` picture is empty or exceeds [`MAX_PIXELS`].
+/// The one size gate: call before allocating anything sized from header
+/// dimensions. A format with a smaller hard limit states it locally.
 pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError> {
     match width.checked_mul(height) {
-        Some(pixels) if pixels <= MAX_PIXELS => Ok(()),
-        _ => Err(DecodeError::Unrecognized),
-    }
-}
-
-/// [`check_size`] for the picture left after `Image::scaled(sx, sy)`. Scaling
-/// multiplies the size, so a source that passed the cap can still exceed it.
-pub(crate) fn check_scaled(
-    width: usize,
-    height: usize,
-    sx: usize,
-    sy: usize,
-) -> Result<(), DecodeError> {
-    match (width.checked_mul(sx), height.checked_mul(sy)) {
-        (Some(w), Some(h)) => check_size(w, h),
+        Some(pixels) if pixels != 0 && pixels <= MAX_PIXELS => Ok(()),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -175,28 +162,30 @@ impl Image {
     }
 
     /// Every pixel repeated `sx` times horizontally and `sy` times vertically.
-    pub(crate) fn scaled(&self, sx: u32, sy: u32) -> Self {
-        let (width, height) = (self.width * sx, self.height * sy);
+    /// Fails if the result would be empty or exceed the [`check_size`] cap.
+    pub(crate) fn scaled(&self, sx: u32, sy: u32) -> Result<Self, DecodeError> {
+        let width = (self.width as usize).saturating_mul(sx as usize);
+        let height = (self.height as usize).saturating_mul(sy as usize);
+        check_size(width, height)?;
+        let (width, height) = (width as u32, height as u32);
         let out_row = width as usize * 3;
         let mut rgb = Vec::with_capacity(out_row * height as usize);
-        if out_row > 0 && sy > 0 {
-            for row in self.rgb.chunks_exact(self.width as usize * 3) {
-                let start = rgb.len();
-                if sx == 1 {
-                    rgb.extend_from_slice(row);
-                } else {
-                    for pixel in row.as_chunks::<3>().0 {
-                        for _ in 0..sx {
-                            rgb.extend_from_slice(pixel);
-                        }
+        for row in self.rgb.chunks_exact(self.width as usize * 3) {
+            let start = rgb.len();
+            if sx == 1 {
+                rgb.extend_from_slice(row);
+            } else {
+                for pixel in row.as_chunks::<3>().0 {
+                    for _ in 0..sx {
+                        rgb.extend_from_slice(pixel);
                     }
                 }
-                for _ in 1..sy {
-                    rgb.extend_from_within(start..start + out_row);
-                }
+            }
+            for _ in 1..sy {
+                rgb.extend_from_within(start..start + out_row);
             }
         }
-        Self { width, height, rgb }
+        Ok(Self { width, height, rgb })
     }
 
     /// The per-channel average of equally sized frames, rounding down: how
@@ -363,10 +352,20 @@ mod tests {
     #[test]
     fn scaled_repeats_pixels() {
         let image = Image::from_indexed(2, 1, &[0, 1], &[0x000000, 0xffffff]).unwrap();
-        let big = image.scaled(2, 3);
+        let big = image.scaled(2, 3).unwrap();
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    #[test]
+    fn size_gate_rejects_empty_and_oversized() {
+        assert!(check_size(0, 5).is_err());
+        assert!(check_size(5, 0).is_err());
+        assert!(check_size(1 << 14, 1 << 14).is_err());
+        let image = Image::from_indexed(2, 1, &[0, 1], &[0, 1]).unwrap();
+        assert!(image.scaled(1 << 14, 1 << 14).is_err());
+        assert!(image.scaled(0, 1).is_err());
     }
 
     #[test]

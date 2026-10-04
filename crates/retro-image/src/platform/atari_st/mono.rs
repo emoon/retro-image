@@ -26,7 +26,7 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, MONO_PALETTE, crop, mono_image, planar_image, st_palette};
+use super::common::{MONO_PALETTE, crop, mono_image, planar_image, st_palette};
 use crate::bytes::{be16, be32, le16, le32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
@@ -230,9 +230,7 @@ fn decode_gdos_fnt_inner(data: &[u8]) -> Option<Image> {
         x += w;
     }
     let height = (line + 1) * form_height;
-    if width.checked_mul(height)? > MAX_PIXELS {
-        return None;
-    }
+    check_size(width, height).ok()?;
     let mut ink = alloc::vec![0u8; width * height];
     for (src, w, x, line) in placed {
         for col in 0..w.min(width - x) {
@@ -412,9 +410,7 @@ fn decode_crg_inner(data: &[u8]) -> Option<Image> {
     }
     let width = be32(data, 20)? as usize;
     let height = be32(data, 24)? as usize;
-    if width == 0 || height == 0 || width.checked_mul(height)? > MAX_PIXELS {
-        return None;
-    }
+    check_size(width, height).ok()?;
     let row_len = width.div_ceil(8);
     let len = row_len * height;
     let mut bitmap = Vec::with_capacity(len);

@@ -50,6 +50,8 @@ struct Info {
     top_down: bool,
     bpp: usize,
     compression: Compression,
+    /// BI_ALPHABITFIELDS: a fourth mask follows a 40-byte header's three.
+    alpha_mask: bool,
     colors_used: usize,
     /// Bytes per palette entry.
     entry_len: usize,
@@ -86,6 +88,7 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
         }
     }
     let os2_v2 = header_len == 16 || header_len == 64;
+    let alpha_mask = compression == 6;
     let compression = match (compression, bpp) {
         (0, 1 | 4 | 8 | 16 | 24 | 32) => Compression::Rgb,
         (1, 8) => Compression::Rle8,
@@ -93,7 +96,7 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
         (3 | 6, 16 | 32) if !os2_v2 => Compression::Bitfields,
         _ => return Err(fail),
     };
-    if planes != 1 || width == 0 || height == 0 {
+    if planes != 1 {
         return Err(fail);
     }
     check_size(width, height)?;
@@ -104,6 +107,7 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
         top_down,
         bpp,
         compression,
+        alpha_mask,
         colors_used,
         entry_len: if header_len == 12 { 3 } else { 4 },
         os2_v2,
@@ -206,7 +210,7 @@ fn decode_pixels(dib: &[u8], info: &Info, pixels: Option<usize>) -> Result<Image
             *mask = le32(dib, MASKS_AT + i * 4).ok_or(fail)?;
         }
         if header_len == 40 {
-            after_header += 12;
+            after_header += if info.alpha_mask { 16 } else { 12 };
         }
     }
 

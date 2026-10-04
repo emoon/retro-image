@@ -306,9 +306,6 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(le16(data, 8).ok_or(FAIL)?);
     let height = usize::from(le16(data, 10).ok_or(FAIL)?);
     let depth = le16(data, 12).ok_or(FAIL)?;
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     let declared = usize::try_from(le32(data, 0).ok_or(FAIL)?).map_err(|_| FAIL)?;
     let end = if declared == 0 {
@@ -320,7 +317,7 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     if magic == FLH {
         let mut screen = HiScreen::new(data, width, height, depth)?;
         return if first_picture(data, end, &mut screen) {
-            screen.into_image()
+            Ok(screen.into_image())
         } else {
             Err(FAIL)
         };

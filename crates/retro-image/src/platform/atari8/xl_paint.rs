@@ -31,6 +31,7 @@
 //!     as a distinct colour.
 
 use super::antic::Bitmap;
+use super::interlace::mcp_picture;
 use super::palette::register_rgb;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -38,15 +39,6 @@ use alloc::vec::Vec;
 const FRAME: usize = 7680;
 const LINES: usize = 192;
 const TABLE: usize = 192;
-
-fn frame(data: &[u8]) -> Bitmap<'_> {
-    Bitmap {
-        data: &data[..FRAME],
-        bytes_per_line: 40,
-        lines: LINES,
-        bits: 2,
-    }
-}
 
 /// RAW: `XLPB`, two frames, then two sets of playfield 0-2 and background.
 /// The first frame uses the first set on even lines and the second on odd
@@ -56,15 +48,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(b"XLPB")
         .filter(|rest| rest.len() == 2 * FRAME + 8)
         .ok_or(DecodeError::Unrecognized)?;
-    let (frames, sets) = rest.split_at(2 * FRAME);
-    let draw = |data: &[u8], f: usize| {
-        frame(data).render(2, 1, |line, value| {
-            let half = (f + line) % 2;
-            register_rgb(set_color(&sets[4 * half..4 * half + 4], value))
-        })
-    };
-    let (first, second) = frames.split_at(FRAME);
-    Ok(Image::blend(&[&draw(first, 0), &draw(second, 1)]))
+    mcp_picture(rest, LINES)
 }
 
 /// A colour set stored as playfield 0-2, then the background.
@@ -92,7 +76,7 @@ pub(super) fn decode_max(data: &[u8]) -> Result<Image, DecodeError> {
             register_rgb(tables[table * TABLE + line])
         })
     };
-    Ok(Image::blend(&[&draw(0, 4), &draw(1, 0)]))
+    Ok(Image::blend(&[&draw(0, 4)?, &draw(1, 0)?]))
 }
 
 /// XLP: an optional `XLPC`, playfield 0-2 and background, then packed
@@ -114,7 +98,7 @@ pub(super) fn decode_xlp(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let stored = Stored::new(packed, lines, compact)?;
     let draw = |s: usize| stored.render(s, |_, value| register_rgb(set_color(colors, value)));
-    Ok(Image::blend(&[&draw(0), &draw(1)]))
+    Ok(Image::blend(&[&draw(0)?, &draw(1)?]))
 }
 
 /// Two frames of 40 byte columns, as unpacked.
@@ -131,7 +115,7 @@ impl Stored {
 
     /// Stored frame `s`, 2 bits per pixel, as a 160-pixel-wide picture of
     /// double-width pixels; `color(line, value)` is the RGB of a pixel.
-    fn render(&self, s: usize, color: impl Fn(usize, u8) -> u32) -> Image {
+    fn render(&self, s: usize, color: impl Fn(usize, u8) -> u32) -> Result<Image, DecodeError> {
         let mut row_major = Vec::with_capacity(40 * self.lines);
         for line in 0..self.lines {
             for column in 0..40 {
@@ -262,7 +246,7 @@ mod tests {
             data: stored,
             lines: LINES,
         };
-        let image = stored.render(0, |_, value| u32::from(value));
+        let image = stored.render(0, |_, value| u32::from(value)).unwrap();
         assert_eq!(image.get(8, 2), 3);
         assert_eq!(image.get(8, 3), 0);
     }

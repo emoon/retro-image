@@ -25,6 +25,7 @@ use alloc::vec::Vec;
 
 use super::artmaster88::unpack_plane;
 use crate::bytes::le16;
+use crate::image::planar_pixels;
 use crate::{DecodeError, Image};
 
 const SIGNATURE: &[u8] = b"SS_SIF    0.0";
@@ -70,14 +71,12 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
     for _ in 0..4 {
         planes.push(unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?);
     }
-    let indices: Vec<u8> = (0..WIDTH * HEIGHT)
-        .map(|i| {
-            let (byte, shift) = (i / 8, 7 - i % 8);
-            planes
-                .iter()
-                .enumerate()
-                .fold(0, |v, (p, plane)| v | (plane[byte] >> shift & 1) << p)
-        })
-        .collect();
+    let planes = planes.concat();
+    let indices: Vec<u8> = planar_pixels(&planes, WIDTH, HEIGHT, WIDTH / 8, 4, |plane, y| {
+        plane * PLANE_BYTES + y * (WIDTH / 8)
+    })
+    .into_iter()
+    .map(|v| v as u8)
+    .collect();
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &palette)
 }

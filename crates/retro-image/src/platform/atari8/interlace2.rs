@@ -28,7 +28,8 @@
 //!   in greys 0, 6, 2, 10 for pixel values 0-3, drawn 2 wide and averaged;
 //!   the 3 trailing bytes are not read.
 //! - ING: two frames of 200 lines x 40 bytes (2 bits), then four colour
-//!   registers shared by both frames. Anything after them is ignored.
+//!   registers shared by both frames. Anything after them is ignored. Same
+//!   layout as InterPainter, so `interlace::decode_inp` decodes it.
 //! - HR: exactly 16384 bytes: two 1-bit frames of 256 lines x 32 bytes, of
 //!   which 239 lines are shown; clear is black, set is white, the frames are
 //!   averaged (3 shades).
@@ -62,7 +63,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 /// Two frames of 2-bit pixels, 32 bytes per line, drawn 2 wide.
-fn narrow_frames(data: &[u8], lines: usize, color: impl Fn(usize, u8) -> u32) -> Image {
+fn narrow_frames(
+    data: &[u8],
+    lines: usize,
+    color: impl Fn(usize, u8) -> u32,
+) -> Result<Image, DecodeError> {
     let frame = |data: &[u8], which: usize| {
         let bitmap = Bitmap {
             data,
@@ -73,7 +78,7 @@ fn narrow_frames(data: &[u8], lines: usize, color: impl Fn(usize, u8) -> u32) ->
         bitmap.render(2, 1, |_, value| color(which, value))
     };
     let (first, second) = data.split_at(32 * lines);
-    Image::blend(&[&frame(first, 0), &frame(second, 1)])
+    Ok(Image::blend(&[&frame(first, 0)?, &frame(second, 1)?]))
 }
 
 /// Interlace Graphics Editor: a binary-load header, `FF 5F`, 2 x 4 colour
@@ -84,9 +89,9 @@ pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let colors = &data[8..16];
-    Ok(narrow_frames(&data[16..], 96, |frame, value| {
+    narrow_frames(&data[16..], 96, |frame, value| {
         register_rgb(colors[4 * frame + usize::from(value)])
-    }))
+    })
 }
 
 /// Interlace Logo Designer: two 128x128 frames in four greys.
@@ -95,28 +100,9 @@ pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * 32 * 128 + 3 {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(narrow_frames(data, 128, |_, value| {
+    narrow_frames(data, 128, |_, value| {
         register_rgb(GREYS[usize::from(value)])
-    }))
-}
-
-/// ING 15: two 160x200 frames, then four colour registers.
-pub(super) fn decode_ing(data: &[u8]) -> Result<Image, DecodeError> {
-    const FRAME: usize = 8000;
-    if data.len() < 2 * FRAME + 4 {
-        return Err(DecodeError::Unrecognized);
-    }
-    let colors = &data[2 * FRAME..2 * FRAME + 4];
-    let frame = |data: &[u8]| {
-        let bitmap = Bitmap {
-            data: &data[..FRAME],
-            bytes_per_line: 40,
-            lines: 200,
-            bits: 2,
-        };
-        bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)]))
-    };
-    Ok(Image::blend(&[&frame(data), &frame(&data[FRAME..])]))
+    })
 }
 
 /// Atari HR: two 256x239 one-bit frames, averaged into black, grey and white.
@@ -135,7 +121,7 @@ pub(super) fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
         };
         bitmap.render(1, 1, |_, value| if value == 0 { 0 } else { white })
     };
-    Ok(Image::blend(&[&frame(data), &frame(&data[FRAME..])]))
+    Ok(Image::blend(&[&frame(data)?, &frame(&data[FRAME..])?]))
 }
 
 /// MGA: an 80x96 APAC picture of alternating luminance and hue lines (the
@@ -145,7 +131,7 @@ pub(super) fn decode_mga(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (luminance, hue) = deinterleave(&data[..7680]);
-    Ok(apac_80x96(&hue, &luminance))
+    apac_80x96(&hue, &luminance)
 }
 
 /// Bugbiter APAC239i: a header with a title, then a size word and 239
@@ -173,7 +159,7 @@ pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| rgb(nibble(luminance, 0, x / 2)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// Champions' Interlace, packed: unpacks to a 16384-byte CIN picture.
@@ -235,18 +221,6 @@ fn unpack(mut packed: &[u8], size: usize) -> Result<Vec<u8>, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn ing_uses_shared_registers() {
-        let mut data = vec![0u8; 16004];
-        data[0] = 0x40; // frame 1, pixel 1 = value 1
-        data[16000..].copy_from_slice(&[0x00, 0x0e, 0x00, 0x00]);
-        let image = decode_ing(&data).unwrap();
-        // Frame 2 shows value 0 (black) there.
-        assert_eq!(image.get(0, 0), 0x777777);
-        assert_eq!(image.get(2, 0), 0);
-        assert!(decode_ing(&data[..16003]).is_err());
-    }
 
     #[test]
     fn hr_averages_one_bit_frames() {

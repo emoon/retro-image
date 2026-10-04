@@ -44,6 +44,12 @@ pub(super) fn register_rgb(color: u8) -> u32 {
     rgb(color & 0xfe)
 }
 
+/// Per-channel average of `0xRRGGBB` colours, rounded down.
+pub(super) fn average<const N: usize>(colors: [u32; N]) -> u32 {
+    let channel = |shift: u32| colors.iter().map(|c| c >> shift & 0xff).sum::<u32>() / N as u32;
+    channel(16) << 16 | channel(8) << 8 | channel(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

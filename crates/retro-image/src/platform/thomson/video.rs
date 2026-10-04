@@ -53,7 +53,7 @@
 //! SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //! ```
 
-use crate::Image;
+use crate::{DecodeError, Image};
 
 /// Screen bytes stored column by column, `lines` bytes per column, as in
 /// MAP files. Columns are 8 pixels wide in 40 columns and bitmap 4 (where
@@ -108,7 +108,7 @@ pub(super) fn bitmap4(rama: Columns, ramb: Columns, palette: &[u32; 16]) -> Imag
 }
 
 /// Bitmap 16: two 4-bit pixels per byte, high nibble left, shown 2x1.
-pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Image {
+pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Result<Image, DecodeError> {
     let mut image = Image::new((bytes.count() * 2) as u32, bytes.lines as u32);
     for x in 0..bytes.count() {
         for y in 0..bytes.lines {
@@ -125,7 +125,7 @@ pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Image {
 }
 
 /// 80 columns: set bits in colour 1, clear bits in colour 0, shown 1x2.
-pub(super) fn columns80(bytes: Columns, palette: &[u32; 16]) -> Image {
+pub(super) fn columns80(bytes: Columns, palette: &[u32; 16]) -> Result<Image, DecodeError> {
     draw_bits(bytes, palette, |_, _, bit| usize::from(bit)).scaled(1, 2)
 }
 
@@ -213,7 +213,8 @@ mod tests {
                 lines: 2,
             },
             &PALETTE,
-        );
+        )
+        .unwrap();
         assert_eq!((image.width(), image.height()), (8, 2));
         let row: [u32; 8] = core::array::from_fn(|x| image.get(x as u32, 1));
         assert_eq!(row, [3, 3, 4, 4, 7, 7, 8, 8]);
@@ -227,7 +228,8 @@ mod tests {
                 lines: 1,
             },
             &PALETTE,
-        );
+        )
+        .unwrap();
         assert_eq!((image.width(), image.height()), (8, 2));
         assert_eq!((image.get(0, 1), image.get(1, 1)), (1, 0));
     }

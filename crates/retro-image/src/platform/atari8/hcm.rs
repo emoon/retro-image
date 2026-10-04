@@ -64,10 +64,7 @@ pub(super) fn decode_hcm(data: &[u8]) -> Result<Image, DecodeError> {
         let players = line_players(data, y, mode2);
         for x in 0..128 {
             let value = bitmap.pixel(x, y);
-            let playfield = match value {
-                0 => 0,
-                v => 1 << (v - 1),
-            };
+            let playfield = gtia::playfield_bit(usize::from(value));
             let color = gtia::resolve(prior, players[x / 4], playfield, &colors);
             let rgb = register_rgb(color);
             image.set(2 * x as u32, y as u32, rgb);

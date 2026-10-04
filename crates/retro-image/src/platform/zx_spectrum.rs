@@ -190,7 +190,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("ZX Spectrum", "SZX snapshot", &["szx"], szx::decode_szx).signature(),
     Format::new("ZX Spectrum", "TAP tape", &["tap"], tape::decode_tap),
     Format::new("ZX Spectrum", "TZX tape", &["tzx"], tape::decode_tzx).signature(),
-    // Wave 5: FLF
     Format::new(
         "ZX Spectrum",
         "Turbo Rascal Syntax Error",

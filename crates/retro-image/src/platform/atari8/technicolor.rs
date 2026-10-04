@@ -16,6 +16,7 @@
 //!   unpack to exactly RECOIL's 4766-byte `HAYWAIN` sample pair. A last run
 //!   may overshoot the 4760 bytes, and bytes after it are disk slack.
 
+use super::antic;
 use super::palette::rgb;
 use crate::{Companions, DecodeError, Image};
 use alloc::vec::Vec;
@@ -28,14 +29,7 @@ const PLANE: usize = LINES * 40;
 pub(super) fn decode_lum(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let luminances = plane(data).ok_or(DecodeError::Unrecognized)?;
     let hues = companions.get("col").and_then(|col| plane(&col));
-    let nibble = |plane: &[u8], line: usize, x: usize| {
-        let byte = plane[line * 40 + x / 2];
-        if x.is_multiple_of(2) {
-            byte >> 4
-        } else {
-            byte & 0x0f
-        }
-    };
+    let nibble = |plane: &[u8], line: usize, x: usize| antic::nibble(&plane[line * 40..], x);
     let mut image = Image::new(80, 2 * LINES as u32);
     for line in 0..LINES {
         for x in 0..80 {
@@ -52,7 +46,7 @@ pub(super) fn decode_lum(data: &[u8], companions: &dyn Companions) -> Result<Ima
             image.set(x as u32, 2 * line as u32 + 1, bottom);
         }
     }
-    Ok(image.scaled(4, 1))
+    image.scaled(4, 1)
 }
 
 /// The 119 lines of a file after its header, unpacked if needed.

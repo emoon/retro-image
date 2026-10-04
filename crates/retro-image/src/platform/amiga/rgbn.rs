@@ -18,7 +18,7 @@
 use super::iff::find;
 use super::ilbm::{Header, scale_factors};
 use crate::bytes::{be16, be32};
-use crate::image::check_scaled;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 /// Which of the two entry layouts a FORM uses.
@@ -59,7 +59,7 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
         .and_then(|c| be32(c, 0))
         .unwrap_or(0);
     let (sx, sy) = scale_factors(camg);
-    check_scaled(header.width, header.height, sx as usize, sy as usize)?;
+    check_size(header.width, header.height)?;
     let total = header.width * header.height;
     // Every entry is at least 2 bytes and repeats at most 65536 pixels.
     if total > body.len().saturating_mul(32768) {
@@ -79,7 +79,7 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
         }
         done = end;
     }
-    Ok(image.scaled(sx, sy))
+    image.scaled(sx, sy)
 }
 
 /// The colour, repeat count and byte length of the RGBN entry at `pos`.

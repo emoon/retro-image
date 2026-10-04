@@ -60,6 +60,9 @@ fn text_nibbles(data: &[u8]) -> Option<Vec<u8>> {
     }
     let mut number = || -> Option<usize> { core::str::from_utf8(words.next()?).ok()?.parse().ok() };
     let (width, height) = (number()?, number()?);
+    if width > 0xfffff || height > 0xfffff {
+        return None;
+    }
     let hex = words.next()?;
     let mut nibbles = Vec::with_capacity(20 + hex.len());
     for value in [GROB, 0, height, width] {
@@ -93,9 +96,6 @@ impl<'a> Grob<'a> {
         }
         let (length, height, width) =
             (field(nibbles, 5)?, field(nibbles, 10)?, field(nibbles, 15)?);
-        if width == 0 || height == 0 {
-            return None;
-        }
         check_size(width, height).ok()?;
         let pixel_len = width.div_ceil(8).checked_mul(2)?.checked_mul(height)?;
         let pixels = nibbles.get(20..pixel_len.checked_add(20)?)?;

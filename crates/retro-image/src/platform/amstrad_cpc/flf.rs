@@ -34,5 +34,5 @@ pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
         };
     }
     let image = Image::from_indexed(WIDTH as u32, HEIGHT as u32, pens, &palette)?;
-    Ok(image.scaled(2, 1))
+    image.scaled(2, 1)
 }

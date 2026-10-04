@@ -78,9 +78,6 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let width = usize::from(le16(data, 6).ok_or(FAIL)?);
     let height = usize::from(le16(data, 8).ok_or(FAIL)?);
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     let mut palette = default_palette();
     let mut pos = HEADER_LEN;

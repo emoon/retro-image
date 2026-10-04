@@ -34,7 +34,7 @@ pub(super) fn decode_cpi(data: &[u8]) -> Result<Image, DecodeError> {
         lines: 192,
         bits: 2,
     };
-    Ok(bitmap.render(2, 1, |_, value| register_rgb(COLORS[usize::from(value)])))
+    bitmap.render(2, 1, |_, value| register_rgb(COLORS[usize::from(value)]))
 }
 
 /// Unpacks the first [`UNPACKED`] bytes; `None` if the stream ends sooner.

@@ -23,10 +23,8 @@ use alloc::vec::Vec;
 
 use super::super::nec_pc::Machine;
 use crate::bytes::be16;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
-
-/// Largest picture accepted, in pixels.
-const MAX_PIXELS: usize = 1 << 22;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Colour {
@@ -213,6 +211,7 @@ impl Cache {
     }
 }
 
+const MAX_PIXELS: usize = 1 << 22;
 const NO_MARK: u32 = u32::MAX;
 
 /// Decodes the change-point stream into one colour value per pixel.
@@ -270,9 +269,15 @@ fn unpack(header: &Header) -> Option<Vec<u32>> {
 pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
     let header = Header::parse(data).ok_or(DecodeError::Unrecognized)?;
     let (width, height) = (header.width, header.height);
-    if header.machine != machine || width == 0 || height == 0 || width * height > MAX_PIXELS {
+    if header.machine != machine {
         return Err(DecodeError::Unrecognized);
     }
+    // `unpack` holds 8 bytes per pixel and VaTiled output is twice as tall, so
+    // PIC stays below the crate-wide cap.
+    if width * height > MAX_PIXELS {
+        return Err(DecodeError::Unrecognized);
+    }
+    check_size(width, height)?;
     let values = unpack(&header).ok_or(DecodeError::Unrecognized)?;
     if header.colour == Colour::VaTiled {
         // Word (x, y) holds pixels 2x and 2x + 1 of a line made of output lines

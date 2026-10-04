@@ -16,9 +16,9 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, st_rgb, vdi_level};
+use super::common::{st_rgb, vdi_level};
 use crate::bytes::be16;
-use crate::image::planar_pixels;
+use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
@@ -53,12 +53,10 @@ fn header(data: &[u8]) -> Option<Header> {
         || header.header_len > data.len()
         || !(1..=8).contains(&header.pattern_len)
         || !matches!(header.planes, 1..=8 | 15 | 16 | 24 | 32)
-        || header.width == 0
-        || header.height == 0
-        || header.width * header.height > MAX_PIXELS
     {
         return None;
     }
+    check_size(header.width, header.height).ok()?;
     Some(header)
 }
 
@@ -115,11 +113,7 @@ fn decode(data: &[u8]) -> Option<Image> {
             image.set(x as u32, y as u32, color);
         }
     }
-    Some(if (sx, sy) == (1, 1) {
-        image
-    } else {
-        image.scaled(sx as u32, sy as u32)
-    })
+    image.scaled(sx as u32, sy as u32).ok()
 }
 
 /// TIMG: `TIMG`, a word (3) and the red, green and blue bit counts.
@@ -153,6 +147,13 @@ fn timg_color(index: usize, bits: [u32; 3]) -> u32 {
     color
 }
 
+/// `xRRRRRGG GGGBBBBB` to `0xRRGGBB`.
+fn rgb555(word: u16) -> u32 {
+    let word = u32::from(word);
+    let (r, g, b) = (word >> 10 & 0x1f, word >> 5 & 0x1f, word & 0x1f);
+    (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2)
+}
+
 /// True colour lines are chunky xRGB1555 or RGB565 words, RGB or xRGB
 /// pixels; they are never scaled for pixel aspect.
 fn true_color(data: &[u8], h: &Header) -> Option<Image> {
@@ -163,6 +164,7 @@ fn true_color(data: &[u8], h: &Header) -> Option<Image> {
     for (y, line) in bitmap.chunks_exact(line_len).enumerate() {
         for (x, p) in line.chunks_exact(bytes).enumerate() {
             let color = match bytes {
+                2 if h.planes == 15 => rgb555(u16::from_be_bytes([p[0], p[1]])),
                 2 => super::falcon::rgb565(u16::from_be_bytes([p[0], p[1]])),
                 _ => u32::from_be_bytes([0, p[bytes - 3], p[bytes - 2], p[bytes - 1]]),
             };
