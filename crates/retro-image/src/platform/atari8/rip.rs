@@ -17,8 +17,8 @@
 //!
 //! Header: `RIP`, four bytes of version text, a mode byte, then big-endian
 //! 16-bit fields: 0 or 1 (packed; the data is packed when it starts with
-//! `PCK`), the header length (the offset of the PCK data), the width in 4-pixel units (even,
-//! 2-80), the height (1-239) and the title length; then `T:`, the title, a
+//! `PCK`), the header length (the offset of the PCK data), the width in
+//! 4-pixel units (even, 2-80), the height (1-239) and the title length; then `T:`, the title, a
 //! tab, `CM:` and 9 colour bytes (the registers 704-712). The data follows.
 //! Bytes per line are width / 2. Modes (the byte after the version):
 //! - `0e`: one Graphics 15 frame; 0 is the background (register 8), 1-3 are

@@ -38,9 +38,10 @@
 //! byte `b` writes register `b & 0x1f` (see [`Registers`]; 0x1c writes nothing)
 //! with the byte that follows if `b & 0x20` is set, else with the last value
 //! byte seen. The event ends the scanline if `b & 0x80` is set; so does a
-//! bare `1C` or `3C` (`9C` and `BC` are rejected with 0x1d-0x1f). Writes apply from the start of their scanline and
-//! persist. Events on registers 0x1d-0x1f (which move later writes into the
-//! middle of the scanline by ANTIC DMA timing) and player/missile DMA are not
+//! bare `1C` or `3C`; any other event on register 0x1c is rejected, as are
+//! 0x1d-0x1f. Writes apply from the start of their scanline and persist.
+//! Events on registers 0x1d-0x1f (which move later writes into the middle of
+//! the scanline by ANTIC DMA timing) and player/missile DMA are not
 //! understood, and such files are rejected.
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
