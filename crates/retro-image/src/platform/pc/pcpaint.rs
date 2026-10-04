@@ -214,9 +214,6 @@ pub(super) fn decode_clp(data: &[u8]) -> Result<Image, DecodeError> {
 fn dimensions(data: &[u8]) -> Result<(usize, usize), DecodeError> {
     let width = usize::from(le16(data, 2).ok_or(FAIL)?);
     let height = usize::from(le16(data, 4).ok_or(FAIL)?);
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     Ok((width, height))
 }

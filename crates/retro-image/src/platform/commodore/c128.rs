@@ -115,7 +115,7 @@ pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(u16::from_be_bytes([*w0, *w1]));
     let height = usize::from(u16::from_be_bytes([*h0, *h1]));
     let stride = width.div_ceil(8);
-    if width == 0 || height == 0 || bits.len() != stride * height {
+    if bits.len() != stride * height {
         return Err(DecodeError::Unrecognized);
     }
     check_size(width, height)?;

@@ -195,11 +195,11 @@ pub(super) fn decode_vef(data: &[u8]) -> Result<Image, DecodeError> {
     let image = picture(width as u32, HEIGHT as u32, bits, &header[2..], &packed)?;
     // The screen is 4:3 whatever the mode, so 640-pixel modes have tall
     // pixels and the 160-pixel mode wide ones: square them up.
-    Ok(match width {
+    match width {
         640 => image.scaled(1, 2),
         160 => image.scaled(2, 1),
-        _ => image,
-    })
+        _ => Ok(image),
+    }
 }
 
 /// The 400 half-row blocks of a compressed VEF. A packet running past the

@@ -43,7 +43,7 @@ pub(super) fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HIRES_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(draw_hires(data).into_image().scaled(1, 2))
+    draw_hires(data).into_image().scaled(1, 2)
 }
 
 /// HRG: two hi-res screens shown as gigascreen.
@@ -52,7 +52,7 @@ pub(super) fn decode_hrg(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (first, second) = data.split_at(HIRES_LEN);
-    Ok(blend(&[draw_hires(first), draw_hires(second)]).scaled(1, 2))
+    blend(&[draw_hires(first), draw_hires(second)]).scaled(1, 2)
 }
 
 /// One hi-res screen: 8-pixel columns alternate between the two bitmaps;

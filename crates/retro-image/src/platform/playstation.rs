@@ -68,9 +68,6 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
         2 => w,
         _ => w * 2 / 3,
     };
-    if width == 0 || height == 0 {
-        return Err(fail);
-    }
     check_size(width, height)?;
     let row_len = w * 2;
     let lookup = |i: usize| le16(clut, i * 2).map_or(0, color15);

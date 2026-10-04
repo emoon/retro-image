@@ -182,11 +182,11 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     }
     let image = Image::from_indexed(WIDTH as u32, height as u32, &indices, &palette())?;
     // The 200-line picture is shown with every line doubled.
-    Ok(if full_height {
-        image
+    if full_height {
+        Ok(image)
     } else {
         image.scaled(1, 2)
-    })
+    }
 }
 
 #[cfg(test)]

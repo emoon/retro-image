@@ -40,5 +40,5 @@ pub(super) fn decode_grf(data: &[u8]) -> Result<Image, DecodeError> {
             image.set((left + x) as u32, y as u32, palette[usize::from(entry)]);
         }
     }
-    Ok(image.scaled(1, 2))
+    image.scaled(1, 2)
 }

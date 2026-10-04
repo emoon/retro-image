@@ -61,7 +61,7 @@ use alloc::vec::Vec;
 
 use super::iff;
 use crate::bytes::{be16, be32};
-use crate::image::check_scaled;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const DISK_OBJECT_LEN: usize = 78;
@@ -114,10 +114,10 @@ fn decode_classic(data: &[u8]) -> Result<Image, DecodeError> {
     let height = usize::from(be16(header, 6).ok_or(fail)?);
     let depth = usize::from(be16(header, 8).ok_or(fail)?);
     // Only depths whose colours all have a known pen.
-    if width == 0 || height == 0 || !(2..=3).contains(&depth) || 1 << depth > palette.len() {
+    if !(2..=3).contains(&depth) || 1 << depth > palette.len() {
         return Err(fail);
     }
-    check_scaled(width, height, 1, 2)?;
+    check_size(width, height)?;
     let row_len = width.div_ceil(16) * 2;
     let plane_len = row_len * height;
     let start = start + IMAGE_HEADER_LEN;
@@ -130,7 +130,7 @@ fn decode_classic(data: &[u8]) -> Result<Image, DecodeError> {
             })
         })
         .collect();
-    Ok(Image::from_indexed(width as u32, height as u32, &indices, palette)?.scaled(1, 2))
+    Image::from_indexed(width as u32, height as u32, &indices, palette)?.scaled(1, 2)
 }
 
 /// The parts after the classic images that may hold better ones.

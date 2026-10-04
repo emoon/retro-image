@@ -94,5 +94,5 @@ pub(super) fn decode_hpm(data: &[u8]) -> Result<Image, DecodeError> {
             .unwrap_or(GREY_COLORS),
         None => GREY_COLORS,
     };
-    Ok(four_color(bitmap(screen, 40, 2), 2, 1, colors))
+    four_color(bitmap(screen, 40, 2), 2, 1, colors)
 }

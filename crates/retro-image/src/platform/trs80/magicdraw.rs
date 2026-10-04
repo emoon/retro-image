@@ -54,7 +54,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if decoded < SCREEN_LEN {
         return Err(fail);
     }
-    Ok(mono(&screen, WIDTH, HEIGHT, WHITE)?.scaled(1, 2))
+    mono(&screen, WIDTH, HEIGHT, WHITE)?.scaled(1, 2)
 }
 
 #[cfg(test)]

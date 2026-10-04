@@ -26,9 +26,6 @@ fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let word = |at| le16(data, at).map(usize::from).ok_or(fail);
     let (width, height) = (word(10)?, word(12)?);
     let offset = le32(data, 16).ok_or(fail)? as usize;
-    if width == 0 || height == 0 {
-        return Err(fail);
-    }
     check_size(width, height)?;
     let row_len = width.div_ceil(16) * 2;
     let start = 20usize.checked_add(offset).ok_or(fail)?;

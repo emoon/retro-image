@@ -20,19 +20,16 @@
 use alloc::vec::Vec;
 
 use super::common::{
-    MAX_PIXELS, line_planes_to_interleaved, palette_words, planar_image, st_palette, vdi_palette,
+    line_planes_to_interleaved, palette_words, planar_image, st_palette, vdi_palette,
 };
 use super::falcon::{rgb565, videl_palette};
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
-}
-
-fn check_size(width: usize, height: usize) -> Option<()> {
-    (width > 0 && height > 0 && width * height <= MAX_PIXELS).then_some(())
 }
 
 /// Lines are doubled for 640x200-like shapes.
@@ -41,9 +38,9 @@ fn y_scale(width: usize, height: usize) -> u32 {
 }
 
 /// Pixels are doubled for 320x480-like shapes.
-fn widen(image: Image) -> Image {
+fn widen(image: Image) -> Result<Image, DecodeError> {
     if image.height() * 2 < image.width() * 3 {
-        return image;
+        return Ok(image);
     }
     image.scaled(2, 1)
 }
@@ -56,7 +53,7 @@ fn chunky(
     bytes: usize,
     color: impl Fn(&[u8]) -> u32,
 ) -> Option<Image> {
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let data = data.get(..width * height * bytes)?;
     let mut image = Image::new(width as u32, height as u32);
     for (i, pixel) in data.chunks_exact(bytes).enumerate() {
@@ -86,7 +83,7 @@ fn decode_esm_inner(data: &[u8]) -> Option<Image> {
     let header_len = usize::from(be16(data, 4)?);
     let width = usize::from(be16(data, 6)?);
     let height = usize::from(be16(data, 8)?);
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let body = data.get(header_len..)?;
     match be16(data, 10)? {
         1 => {
@@ -120,7 +117,7 @@ fn decode_fun_inner(data: &[u8]) -> Option<Image> {
     let height = usize::from(be16(data, 6)?);
     let planes = usize::from(be16(data, 8)?);
     let frames = usize::from(be16(data, 10)?);
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let body = data.get(13..)?;
     if planes == 16 {
         return chunky(body, width, height, 2, word565);
@@ -164,7 +161,7 @@ fn decode_pix_inner(data: &[u8]) -> Option<Image> {
     let planes = usize::from(*data.get(7)?);
     let width = usize::from(be16(data, 8)?);
     let height = usize::from(be16(data, 10)?);
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let colors = if matches!(planes, 2 | 4 | 8) {
         1 << planes
     } else {
@@ -209,7 +206,7 @@ fn decode_pix_inner(data: &[u8]) -> Option<Image> {
 /// planes (below 16 bits) or chunky pixels, optionally PackBits per plane
 /// row.
 pub(super) fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
-    ok(decode_pnt_inner(data).map(widen))
+    widen(ok(decode_pnt_inner(data))?)
 }
 
 fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
@@ -221,7 +218,7 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
     let height = usize::from(be16(data, 10)?);
     let bits = usize::from(be16(data, 12)?);
     let compressed = be16(data, 14)? != 0;
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     if !matches!(bits, 1 | 2 | 4 | 8 | 16 | 24) {
         return None;
     }
@@ -348,7 +345,7 @@ fn decode_rag_inner(data: &[u8]) -> Option<Image> {
     let height = usize::from(be16(data, 14)?) + 1;
     let planes = usize::from(be16(data, 16)?);
     let palette_len = be32(data, 18)? as usize;
-    check_size(width, height)?;
+    check_size(width, height).ok()?;
     let body = data.get(30usize.checked_add(palette_len)?..)?;
     let palette = match palette_len {
         32 => st_palette(&palette_words(data, 30, 16)?),

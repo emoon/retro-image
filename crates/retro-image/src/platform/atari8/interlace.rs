@@ -62,8 +62,8 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
         .ok_or(DecodeError::Unrecognized)?;
     let color = |_, value: u8| register_rgb(colors[usize::from(value)]);
     Ok(Image::blend(&[
-        &frame(data, 200).render(2, 1, color),
-        &frame(&data[FRAME..], 200).render(2, 1, color),
+        &frame(data, 200).render(2, 1, color)?,
+        &frame(&data[FRAME..], 200).render(2, 1, color)?,
     ]))
 }
 
@@ -94,8 +94,8 @@ pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let (first, second) = frames.split_at(frame_len);
     Ok(Image::blend(&[
-        &frame_image(first, &sets[..4]),
-        &frame_image(second, &sets[4..]),
+        &frame_image(first, &sets[..4])?,
+        &frame_image(second, &sets[4..])?,
     ]))
 }
 
@@ -121,7 +121,7 @@ pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
     let multicolor = frame(&data[FRAME..], 200).render(2, 1, |_, value| {
         register_rgb(colors[2 + usize::from(value)])
     });
-    Ok(Image::blend(&[&hires, &multicolor]))
+    Ok(Image::blend(&[&hires?, &multicolor?]))
 }
 
 /// Atari Interlace Studio: two 160x200 frames at offsets 16 and 8208, then
@@ -133,8 +133,8 @@ pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
     let tables = &data[16384..];
     let color = |line: usize, value: u8| register_rgb(tables[usize::from(value) * 200 + line]);
     Ok(Image::blend(&[
-        &frame(&data[16..], 200).render(2, 1, color),
-        &frame(&data[8208..], 200).render(2, 1, color),
+        &frame(&data[16..], 200).render(2, 1, color)?,
+        &frame(&data[8208..], 200).render(2, 1, color)?,
     ]))
 }
 
@@ -150,7 +150,10 @@ pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
             register_rgb(sets[(line + first) % 2][usize::from(value)])
         })
     };
-    Ok(Image::blend(&[&frame_image(0, 0), &frame_image(FRAME, 1)]))
+    Ok(Image::blend(&[
+        &frame_image(0, 0)?,
+        &frame_image(FRAME, 1)?,
+    ]))
 }
 
 /// Paradox: two 160x100 halves, then two colour sets. Even output lines
@@ -167,9 +170,9 @@ pub(super) fn decode_mcpp(data: &[u8]) -> Result<Image, DecodeError> {
         let source = (i % 2) * HALF + (i / 2) * 40;
         line.copy_from_slice(&data[source..source + 40]);
     }
-    Ok(frame(&lines, 200).render(2, 1, |line, value| {
+    frame(&lines, 200).render(2, 1, |line, value| {
         register_rgb(sets[line % 2][usize::from(value)])
-    }))
+    })
 }
 
 /// Two sets of playfield 0-2 and background, as background-first palettes.

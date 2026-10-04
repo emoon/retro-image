@@ -62,7 +62,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .collect();
     let width: usize = objects.iter().map(|o| o.width).sum();
     let height = objects.iter().map(|o| o.height).max().unwrap_or(0);
-    if width == 0 || height == 0 || width > 0xffff {
+    if width > 0xffff {
         return Err(fail);
     }
     check_size(width, height)?;

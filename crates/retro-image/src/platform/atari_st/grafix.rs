@@ -16,8 +16,9 @@
 //!   by one bit, 257 clears the dictionary (back to 9 bits) and new entries
 //!   start at 258.
 
-use super::common::{MAX_PIXELS, crop, planar_image, vdi_palette};
+use super::common::{crop, planar_image, vdi_palette};
 use crate::bytes::{be16, be32};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
@@ -43,9 +44,7 @@ fn decode(data: &[u8]) -> Option<Image> {
         256 => 8,
         _ => return None,
     };
-    if width == 0 || height == 0 || width as usize * height as usize > MAX_PIXELS {
-        return None;
-    }
+    check_size(width as usize, height as usize).ok()?;
     let palette = vdi_palette(data.get(PALETTE..)?, colors)?;
     let padded = width.div_ceil(16) * 16;
     let len = (padded / 8 * planes) as usize * height as usize;

@@ -121,9 +121,6 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
     let header = data.get(..MSP_HEADER_LEN).ok_or(fail)?;
     let word = |at| le16(header, at).map(usize::from).ok_or(fail);
     let (width, height) = (word(4)?, word(6)?);
-    if width == 0 || height == 0 {
-        return Err(fail);
-    }
     check_size(width, height)?;
     let row_len = width.div_ceil(8);
     let bitmap = match &header[..4] {
@@ -237,7 +234,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     let header = data.get(..8).ok_or(fail)?;
     let word = |at| le16(header, at).map(usize::from).ok_or(fail);
     let (width, height) = (word(4)?, word(6)?);
-    if &header[..4] != b"AWBM" || width == 0 || height == 0 {
+    if &header[..4] != b"AWBM" {
         return Err(fail);
     }
     check_size(width, height)?;

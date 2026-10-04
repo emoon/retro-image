@@ -306,9 +306,6 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(le16(data, 8).ok_or(FAIL)?);
     let height = usize::from(le16(data, 10).ok_or(FAIL)?);
     let depth = le16(data, 12).ok_or(FAIL)?;
-    if width == 0 || height == 0 {
-        return Err(FAIL);
-    }
     check_size(width, height)?;
     let declared = usize::try_from(le32(data, 0).ok_or(FAIL)?).map_err(|_| FAIL)?;
     let end = if declared == 0 {

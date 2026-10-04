@@ -37,7 +37,7 @@ pub(super) fn decode_planar(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (hue, luminance) = (&data[..3840], &data[3840..7680]);
-    Ok(apac_80x96(hue, luminance))
+    apac_80x96(hue, luminance)
 }
 
 /// 80x96 APAC stored as alternating hue and luminance lines (APA, APC, PLM).
@@ -47,7 +47,7 @@ pub(super) fn decode_interleaved(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (hue, luminance) = deinterleave(&data[..7680]);
-    Ok(apac_80x96(&hue, &luminance))
+    apac_80x96(&hue, &luminance)
 }
 
 /// Interlaced 80x192 APAC: 192 luminance lines, then 192 hue lines at offset
@@ -65,7 +65,7 @@ pub(super) fn decode_interlaced(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| rgb(nibble(luminance, 0, x / 2)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// Champions' Interlace: Graphics 15 luminance lines, then GTIA mode 11 hue
@@ -90,11 +90,11 @@ pub(super) fn decode_cin(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| register_rgb(register(0, x)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// 80x96 APAC: every hue/luminance line pair is two scanlines, hue first.
-pub(super) fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Image {
+pub(super) fn apac_80x96(hue: &[u8], luminance: &[u8]) -> Result<Image, DecodeError> {
     let picture = Scanlines {
         lines: 192,
         luminance: |y, x| nibble(luminance, y / 2, x / 2),
@@ -147,7 +147,7 @@ where
 {
     /// Renders 320 pixels wide, averaging one frame per entry of `frames`;
     /// an entry tells whether even scanlines are hue lines in that frame.
-    pub fn render(&self, frames: &[bool]) -> Image {
+    pub fn render(&self, frames: &[bool]) -> Result<Image, DecodeError> {
         let frames: Vec<Image> = frames
             .iter()
             .map(|&even_hue| {

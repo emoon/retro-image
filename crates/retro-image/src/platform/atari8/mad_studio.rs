@@ -39,13 +39,13 @@ pub(super) fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
         bits: 1,
     };
     let color = register_rgb(color);
-    Ok(bitmap.render(
+    bitmap.render(
         PLAYER_PIXEL,
         1,
         |_, value| {
             if value == 0 { 0 } else { color }
         },
-    ))
+    )
 }
 
 /// Single missile: height (always 34), colour, 34 lines of 2 pixels.
@@ -90,11 +90,11 @@ pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
         bits: 1,
     };
     let color = register_rgb(color);
-    Ok(bitmap.render(
+    bitmap.render(
         PLAYER_PIXEL,
         1,
         |_, value| if value == 0 { 0 } else { color },
-    ))
+    )
 }
 
 /// AtariTools-800 missile: colour (all 8 bits used), then 240 lines of

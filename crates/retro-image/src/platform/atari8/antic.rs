@@ -8,7 +8,7 @@
 //!   drawn 2 pixels wide and GTIA modes 4 pixels wide) is observed from
 //!   `recoil2png` output (black box).
 
-use crate::Image;
+use crate::{DecodeError, Image};
 
 /// Packed bitmap: `lines` rows of `bytes_per_line` bytes, `bits` (1, 2 or 4)
 /// per pixel, most significant bits leftmost.
@@ -41,7 +41,7 @@ impl Bitmap<'_> {
         pixel_width: u32,
         pixel_height: u32,
         color: impl Fn(usize, u8) -> u32,
-    ) -> Image {
+    ) -> Result<Image, DecodeError> {
         let mut image = Image::new(self.width() as u32, self.lines as u32);
         for y in 0..self.lines {
             for x in 0..self.width() {
@@ -49,7 +49,7 @@ impl Bitmap<'_> {
             }
         }
         if (pixel_width, pixel_height) == (1, 1) {
-            image
+            Ok(image)
         } else {
             image.scaled(pixel_width, pixel_height)
         }

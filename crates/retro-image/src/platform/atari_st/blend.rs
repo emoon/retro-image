@@ -94,7 +94,7 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let even = field(0).ok_or(DecodeError::Unrecognized)?;
     let odd = field(1).ok_or(DecodeError::Unrecognized)?;
-    Ok(Image::blend(&[&even, &odd]).scaled(1, 2))
+    Image::blend(&[&even, &odd]).scaled(1, 2)
 }
 
 /// Hans Wessels' `find_hrm_index`; `None` where it would be negative.

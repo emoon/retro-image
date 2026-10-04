@@ -62,7 +62,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 /// Two frames of 2-bit pixels, 32 bytes per line, drawn 2 wide.
-fn narrow_frames(data: &[u8], lines: usize, color: impl Fn(usize, u8) -> u32) -> Image {
+fn narrow_frames(
+    data: &[u8],
+    lines: usize,
+    color: impl Fn(usize, u8) -> u32,
+) -> Result<Image, DecodeError> {
     let frame = |data: &[u8], which: usize| {
         let bitmap = Bitmap {
             data,
@@ -73,7 +77,7 @@ fn narrow_frames(data: &[u8], lines: usize, color: impl Fn(usize, u8) -> u32) ->
         bitmap.render(2, 1, |_, value| color(which, value))
     };
     let (first, second) = data.split_at(32 * lines);
-    Image::blend(&[&frame(first, 0), &frame(second, 1)])
+    Ok(Image::blend(&[&frame(first, 0)?, &frame(second, 1)?]))
 }
 
 /// Interlace Graphics Editor: a binary-load header, `FF 5F`, 2 x 4 colour
@@ -84,9 +88,9 @@ pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let colors = &data[8..16];
-    Ok(narrow_frames(&data[16..], 96, |frame, value| {
+    narrow_frames(&data[16..], 96, |frame, value| {
         register_rgb(colors[4 * frame + usize::from(value)])
-    }))
+    })
 }
 
 /// Interlace Logo Designer: two 128x128 frames in four greys.
@@ -95,9 +99,9 @@ pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * 32 * 128 + 3 {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(narrow_frames(data, 128, |_, value| {
+    narrow_frames(data, 128, |_, value| {
         register_rgb(GREYS[usize::from(value)])
-    }))
+    })
 }
 
 /// ING 15: two 160x200 frames, then four colour registers.
@@ -116,7 +120,7 @@ pub(super) fn decode_ing(data: &[u8]) -> Result<Image, DecodeError> {
         };
         bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)]))
     };
-    Ok(Image::blend(&[&frame(data), &frame(&data[FRAME..])]))
+    Ok(Image::blend(&[&frame(data)?, &frame(&data[FRAME..])?]))
 }
 
 /// Atari HR: two 256x239 one-bit frames, averaged into black, grey and white.
@@ -135,7 +139,7 @@ pub(super) fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
         };
         bitmap.render(1, 1, |_, value| if value == 0 { 0 } else { white })
     };
-    Ok(Image::blend(&[&frame(data), &frame(&data[FRAME..])]))
+    Ok(Image::blend(&[&frame(data)?, &frame(&data[FRAME..])?]))
 }
 
 /// MGA: an 80x96 APAC picture of alternating luminance and hue lines (the
@@ -145,7 +149,7 @@ pub(super) fn decode_mga(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (luminance, hue) = deinterleave(&data[..7680]);
-    Ok(apac_80x96(&hue, &luminance))
+    apac_80x96(&hue, &luminance)
 }
 
 /// Bugbiter APAC239i: a header with a title, then a size word and 239
@@ -173,7 +177,7 @@ pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
         hue: |y, x| nibble(hue, y, x / 2),
         top: |x| rgb(nibble(luminance, 0, x / 2)),
     };
-    Ok(picture.render(INTERLACED))
+    picture.render(INTERLACED)
 }
 
 /// Champions' Interlace, packed: unpacks to a 16384-byte CIN picture.

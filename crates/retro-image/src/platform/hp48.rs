@@ -93,9 +93,6 @@ impl<'a> Grob<'a> {
         }
         let (length, height, width) =
             (field(nibbles, 5)?, field(nibbles, 10)?, field(nibbles, 15)?);
-        if width == 0 || height == 0 {
-            return None;
-        }
         check_size(width, height).ok()?;
         let pixel_len = width.div_ceil(8).checked_mul(2)?.checked_mul(height)?;
         let pixels = nibbles.get(20..pixel_len.checked_add(20)?)?;

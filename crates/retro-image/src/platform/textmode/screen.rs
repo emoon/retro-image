@@ -27,10 +27,9 @@ pub(super) const PALETTE: [u32; 16] = super::super::pc::CGA_PALETTE;
 /// sizes (huge widths, cursor jumps, long runs) from allocating gigabytes.
 pub(super) const MAX_CELLS: usize = 1 << 18;
 
-/// Most pixels a picture may have, as for the other platforms (see
-/// `atari_st/common.rs`): with tall fonts and 9-pixel cells the cell limit
-/// alone would allow about 75 million. Taller pictures are cropped to the
-/// rows that fit.
+/// Pictures taller than this are cropped to the rows that fit rather than
+/// rejected: with tall fonts and 9-pixel cells the cell limit alone would
+/// allow about 75 million pixels.
 const MAX_PIXELS: usize = 1 << 24;
 
 /// Most columns a picture may have.

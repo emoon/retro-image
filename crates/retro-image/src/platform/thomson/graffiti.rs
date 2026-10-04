@@ -89,7 +89,7 @@ fn decode(
         .palette
         .or_else(|| companion_palette(companions, palette_extension))
         .unwrap_or(DEFAULT_PALETTE);
-    Ok(map.render(&palette))
+    map.render(&palette)
 }
 
 #[cfg(test)]

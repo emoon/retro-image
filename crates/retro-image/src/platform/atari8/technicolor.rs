@@ -52,7 +52,7 @@ pub(super) fn decode_lum(data: &[u8], companions: &dyn Companions) -> Result<Ima
             image.set(x as u32, 2 * line as u32 + 1, bottom);
         }
     }
-    Ok(image.scaled(4, 1))
+    image.scaled(4, 1)
 }
 
 /// The 119 lines of a file after its header, unpacked if needed.

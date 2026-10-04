@@ -54,7 +54,7 @@ pub(super) fn decode_cpr(data: &[u8]) -> Result<Image, DecodeError> {
         }
         screen
     };
-    Ok(hires(bitmap(&screen, LINE, 1), rgb(0x0c), rgb(0x00)))
+    hires(bitmap(&screen, LINE, 1), rgb(0x0c), rgb(0x00))
 }
 
 /// Runs the CPR token stream until `len` bytes are produced.
@@ -121,7 +121,7 @@ pub(super) fn decode_kpr(data: &[u8]) -> Result<Image, DecodeError> {
             screen[(row * 8 + line) * columns + column] = byte;
         }
     }
-    Ok(four_color(bitmap(&screen, columns, 2), 2, 1, GREY_COLORS))
+    four_color(bitmap(&screen, columns, 2), 2, 1, GREY_COLORS)
 }
 
 #[cfg(test)]

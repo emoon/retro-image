@@ -35,7 +35,7 @@ pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
         .collect();
     let image = planar_image(&data[514..], 320, 480, 8, &palette, 1);
     let image = image.ok_or(DecodeError::Unrecognized)?;
-    Ok(image.scaled(2, 1))
+    image.scaled(2, 1)
 }
 
 /// TT high (`PI6`): resolution word 6, two palette words, 1280x960

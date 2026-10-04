@@ -153,13 +153,13 @@ pub(super) fn decode_sna(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     let width = line_bytes * mode.pixels_per_byte();
-    Ok(render(
+    render(
         mode,
         width,
         rows * lines_per_row,
         |y| &screen[y * line_bytes..][..line_bytes],
         &pens,
-    ))
+    )
 }
 
 #[cfg(test)]

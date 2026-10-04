@@ -47,7 +47,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let rle_pos = start.saturating_add(be32(picture, 16).ok_or(fail)? as usize);
     let points_pos = start.saturating_add(be32(picture, 20).ok_or(fail)? as usize);
     let (width, height) = (row_len * 8, lumps * lump_lines);
-    if width == 0 || height == 0 || !(1..=6).contains(&planes) {
+    if !(1..=6).contains(&planes) {
         return Err(fail);
     }
     check_size(width, height)?;

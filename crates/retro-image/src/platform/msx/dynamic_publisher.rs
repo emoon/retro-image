@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use crate::image::check_scaled;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const BLACK: u32 = 0x000000;
@@ -48,11 +48,11 @@ fn mono(
     height: usize,
     pixel: impl Fn(usize, usize) -> bool,
 ) -> Result<Image, DecodeError> {
-    check_scaled(width, height, 1, 2)?;
+    check_size(width, height)?;
     let indices: Vec<u8> = (0..width * height)
         .map(|i| u8::from(pixel(i % width, i / width)))
         .collect();
-    Ok(Image::from_indexed(width as u32, height as u32, &indices, &[WHITE, BLACK])?.scaled(1, 2))
+    Image::from_indexed(width as u32, height as u32, &indices, &[WHITE, BLACK])?.scaled(1, 2)
 }
 
 /// 512-wide picture of RLE-packed, nibble-swapped patterns at `offset`.

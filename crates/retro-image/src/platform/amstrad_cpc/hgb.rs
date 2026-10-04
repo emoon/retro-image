@@ -40,5 +40,5 @@ pub(super) fn decode_hgb(data: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(image.scaled(1, 2))
+    image.scaled(1, 2)
 }

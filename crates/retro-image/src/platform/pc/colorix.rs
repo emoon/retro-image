@@ -51,7 +51,7 @@ pub(super) fn decode_rix(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(le16(data, 4).ok_or(fail)?);
     let height = usize::from(le16(data, 6).ok_or(fail)?);
     let (palette_type, storage) = (*data.get(8).ok_or(fail)?, *data.get(9).ok_or(fail)?);
-    if width == 0 || height == 0 || storage & ENCRYPTED != 0 {
+    if storage & ENCRYPTED != 0 {
         return Err(fail);
     }
     check_size(width, height)?;

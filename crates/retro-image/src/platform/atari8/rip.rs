@@ -122,10 +122,10 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(match mode {
         0x0e => gr15(first, &|_| {
             [registers[8], registers[4], registers[5], registers[6]]
-        }),
+        })?,
         0x1e => {
             let colors = |_| [registers[8], registers[4], registers[5], registers[6]];
-            Image::blend(&[&gr15(first, &colors), &gr15(second.ok_or(bad)?, &colors)])
+            Image::blend(&[&gr15(first, &colors)?, &gr15(second.ok_or(bad)?, &colors)?])
         }
         0x10 => {
             // The two sets of four registers swap between the frames on
@@ -139,8 +139,8 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
                 ]
             };
             Image::blend(&[
-                &gr15(first, &|y| set(1 - y % 2)),
-                &gr15(second.ok_or(bad)?, &|y| set(y % 2)),
+                &gr15(first, &|y| set(1 - y % 2))?,
+                &gr15(second.ok_or(bad)?, &|y| set(y % 2))?,
             ])
         }
         _ => {

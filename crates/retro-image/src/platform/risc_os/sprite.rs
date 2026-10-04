@@ -170,11 +170,7 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(if (sx, sy) == (1, 1) {
-        image
-    } else {
-        image.scaled(sx, sy)
-    })
+    image.scaled(sx, sy)
 }
 
 /// A sprite name: 1-12 printable characters, padded with NULs.

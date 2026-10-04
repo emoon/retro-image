@@ -202,9 +202,6 @@ fn render(root: &Value) -> Option<Image> {
     let frame = frames.get(usize::try_from(first).ok()?)?;
     let width = usize::try_from(frame.get("width")?.as_int()?).ok()?;
     let height = usize::try_from(frame.get("height")?.as_int()?).ok()?;
-    if width == 0 || height == 0 {
-        return None;
-    }
     check_size(width.checked_mul(8)?, height.checked_mul(8)?).ok()?;
     let font = charset(frame.get("charset")?.as_str()?, width)?;
     let background = frame.get("backgroundColor")?.as_int()?;

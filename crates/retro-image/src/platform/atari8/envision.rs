@@ -24,6 +24,7 @@
 
 use super::antic::fill;
 use super::palette::register_rgb;
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const HEADER: usize = 8;
@@ -33,8 +34,6 @@ const ROW_TABLE: usize = 208;
 const FONT_COUNT_ENTRY: usize = 206;
 const VERSION_ENTRY: usize = 207;
 const MAX_HEIGHT: usize = 204;
-/// Largest EnvisionPC picture we draw.
-const MAX_PIXELS: usize = 1 << 25;
 /// An extra font: number, name, glyphs.
 const EXTRA_FONT: usize = 1 + 8 + FONT;
 
@@ -142,10 +141,10 @@ pub(super) fn decode_map_pc(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(u16::from_le_bytes([w_low, w_high]));
     let height = usize::from(u16::from_le_bytes([h_low, h_high]));
     let (cell_width, cell_height, _) = mode.cell();
-    let pixels = width * height * (cell_width * cell_height) as usize;
-    if width == 0 || height == 0 || width > 32767 || pixels > MAX_PIXELS {
+    if width > 32767 {
         return Err(DecodeError::Unrecognized);
     }
+    check_size(width * cell_width as usize, height * cell_height as usize)?;
     let (map, rest) = rest
         .split_at_checked(width * height)
         .ok_or(DecodeError::Unrecognized)?;

@@ -25,7 +25,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::{check_scaled, check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 pub(super) const CAMG_LACE: u32 = 0x4;
@@ -105,8 +105,6 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
-    let (sx, sy) = scale_factors(camg.unwrap_or(0));
-    check_scaled(header.width, header.height, sx as usize, sy as usize)?;
     let mut image = Image::new(header.width as u32, header.height as u32);
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
         if let Some(line_palettes) = &line_palettes {
@@ -114,7 +112,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         }
         mode.render_row(row, &palette, image.row_mut(y as u32));
     }
-    Ok(scale(image, camg.unwrap_or(0)))
+    scale(image, camg.unwrap_or(0))
 }
 
 /// The BMHD, CAMG and raw pixel values (palette indices or packed RGB,
@@ -369,7 +367,7 @@ pub(super) fn scale_factors(camg: u32) -> (u32, u32) {
     }
 }
 
-fn scale(image: Image, camg: u32) -> Image {
+fn scale(image: Image, camg: u32) -> Result<Image, DecodeError> {
     let (sx, sy) = scale_factors(camg);
     image.scaled(sx, sy)
 }

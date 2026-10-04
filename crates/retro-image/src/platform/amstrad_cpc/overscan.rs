@@ -128,7 +128,7 @@ pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
         .map(|y| (0..LINE_BYTES).map(|x| memory.screen_byte(x, y)).collect())
         .collect();
     let width = LINE_BYTES * mode.pixels_per_byte();
-    Ok(render(mode, width, LINES, |y| &lines[y], &pens))
+    render(mode, width, LINES, |y| &lines[y], &pens)
 }
 
 #[cfg(test)]

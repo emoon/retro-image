@@ -93,7 +93,7 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
         (3 | 6, 16 | 32) if !os2_v2 => Compression::Bitfields,
         _ => return Err(fail),
     };
-    if planes != 1 || width == 0 || height == 0 {
+    if planes != 1 {
         return Err(fail);
     }
     check_size(width, height)?;

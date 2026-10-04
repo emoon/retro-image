@@ -40,5 +40,5 @@ pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
         *color = physical_color(physical);
     }
     let image = Image::from_indexed(width as u32, HEIGHT as u32, pixels, &palette)?;
-    Ok(image.scaled(scale, 1))
+    image.scaled(scale, 1)
 }

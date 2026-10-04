@@ -122,11 +122,11 @@ fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
     if data.len() != mode.screen_len() {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(render(data, mode, &mode.palette))
+    render(data, mode, &mode.palette)
 }
 
 /// Renders screen memory with a logical-to-physical colour mapping.
-fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Image {
+fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Result<Image, DecodeError> {
     let pixels_per_byte = 8 / mode.bits_per_pixel;
     let width = mode.row_bytes / 8 * pixels_per_byte;
     let mut image = Image::new(width as u32, HEIGHT as u32);
@@ -219,7 +219,7 @@ fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
     if bits.position.div_ceil(8) != data.len() {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(render(&screen, mode, &palette))
+    render(&screen, mode, &palette)
 }
 
 struct BitReader<'a> {

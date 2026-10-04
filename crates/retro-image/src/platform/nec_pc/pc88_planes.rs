@@ -34,5 +34,5 @@ pub(super) fn image(blue: &[u8], red: &[u8], green: &[u8]) -> Result<Image, Deco
             bit(blue) | bit(red) << 1 | bit(green) << 2
         })
         .collect();
-    Ok(Image::from_indexed(WIDTH as u32, LINES as u32, &indices, &palette())?.scaled(1, 2))
+    Image::from_indexed(WIDTH as u32, LINES as u32, &indices, &palette())?.scaled(1, 2)
 }

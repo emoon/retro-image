@@ -236,9 +236,9 @@ impl Picture {
 pub(super) fn decode_rm2(data: &[u8]) -> Result<Image, DecodeError> {
     let pic = Picture::raw(data, Layout::Pairs)?;
     let registers = pic.registers(pic.start);
-    Ok(pic.nibbles().render(4, 1, |y, value| {
+    pic.nibbles().render(4, 1, |y, value| {
         register_rgb(registers.0[y][gtia10_register(value)])
-    }))
+    })
 }
 
 pub(super) fn decode_rm4(data: &[u8]) -> Result<Image, DecodeError> {
@@ -248,11 +248,11 @@ pub(super) fn decode_rm4(data: &[u8]) -> Result<Image, DecodeError> {
         bits: 2,
         ..pic.nibbles()
     };
-    Ok(bitmap.render(2, 1, |y, value| {
+    bitmap.render(2, 1, |y, value| {
         let registers = &registers.0[y];
         let color = [registers[8], registers[4], registers[5], registers[6]];
         register_rgb(color[usize::from(value)])
-    }))
+    })
 }
 
 /// GTIA mode 11 pixels: the data is ORed into the background's hue and a
@@ -275,10 +275,10 @@ pub(super) fn decode_rm0(data: &[u8]) -> Result<Image, DecodeError> {
         lines: 96,
         bits: 2,
     };
-    Ok(bitmap.render(2, 2, |y, value| {
+    bitmap.render(2, 2, |y, value| {
         let registers = &registers.0[y];
         register_rgb([registers[8], registers[4], registers[5], registers[6]][usize::from(value)])
-    }))
+    })
 }
 
 pub(super) fn decode_rm1(data: &[u8]) -> Result<Image, DecodeError> {
@@ -290,18 +290,16 @@ pub(super) fn decode_rm1(data: &[u8]) -> Result<Image, DecodeError> {
     start[8] &= 0xf0;
     let registers = pic.registers(start);
     // Pixel value = luminance, ORed into the background's (bit 0 dropped).
-    Ok(pic
-        .nibbles()
-        .render(4, 1, |y, value| rgb(registers.0[y][8] & 0xfe | value)))
+    pic.nibbles()
+        .render(4, 1, |y, value| rgb(registers.0[y][8] & 0xfe | value))
 }
 
 pub(super) fn decode_rm3(data: &[u8]) -> Result<Image, DecodeError> {
     let pic =
         Picture::raw(data, Layout::Pairs).or_else(|_| Picture::koala(data, koala::ANTIC_E))?;
     let registers = pic.registers(pic.start);
-    Ok(pic
-        .nibbles()
-        .render(4, 1, |y, value| gtia11_color(registers.0[y][8], value)))
+    pic.nibbles()
+        .render(4, 1, |y, value| gtia11_color(registers.0[y][8], value))
 }
 
 #[cfg(test)]

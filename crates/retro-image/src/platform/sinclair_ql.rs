@@ -28,7 +28,7 @@
 //!   for other 2:1 screens in this crate.
 
 use crate::bytes::be16;
-use crate::image::check_scaled;
+use crate::image::check_size;
 use crate::{DecodeError, Format, Image};
 
 const PLATFORM: &str = "Sinclair QL";
@@ -91,10 +91,10 @@ fn render(
 ) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let line_len = width.div_ceil(8) * 2;
-    if width == 0 || height == 0 || stride < line_len {
+    if stride < line_len {
         return Err(fail);
     }
-    check_scaled(width, height, 1, 2)?;
+    check_size(width, height)?;
     let needed = stride
         .checked_mul(height - 1)
         .and_then(|n| n.checked_add(line_len))
@@ -110,7 +110,7 @@ fn render(
             image.set(x as u32, y as u32, pixel(mode, word[0], word[1], x % 8));
         }
     }
-    Ok(image.scaled(1, 2))
+    image.scaled(1, 2)
 }
 
 /// Bytes per line of the QL screen.

@@ -16,9 +16,9 @@
 
 use alloc::vec::Vec;
 
-use super::common::{MAX_PIXELS, st_rgb, vdi_level};
+use super::common::{st_rgb, vdi_level};
 use crate::bytes::be16;
-use crate::image::planar_pixels;
+use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
@@ -53,12 +53,10 @@ fn header(data: &[u8]) -> Option<Header> {
         || header.header_len > data.len()
         || !(1..=8).contains(&header.pattern_len)
         || !matches!(header.planes, 1..=8 | 15 | 16 | 24 | 32)
-        || header.width == 0
-        || header.height == 0
-        || header.width * header.height > MAX_PIXELS
     {
         return None;
     }
+    check_size(header.width, header.height).ok()?;
     Some(header)
 }
 
@@ -115,11 +113,7 @@ fn decode(data: &[u8]) -> Option<Image> {
             image.set(x as u32, y as u32, color);
         }
     }
-    Some(if (sx, sy) == (1, 1) {
-        image
-    } else {
-        image.scaled(sx as u32, sy as u32)
-    })
+    image.scaled(sx as u32, sy as u32).ok()
 }
 
 /// TIMG: `TIMG`, a word (3) and the red, green and blue bit counts.

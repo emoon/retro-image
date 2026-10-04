@@ -71,16 +71,16 @@ pub(super) struct Map {
 
 impl Map {
     /// Draws the picture with `palette` (12-bit `0BGR` values).
-    pub(super) fn render(&self, palette: &[u16; 16]) -> Image {
+    pub(super) fn render(&self, palette: &[u16; 16]) -> Result<Image, DecodeError> {
         let palette = to_rgb(palette);
         let lines = self.lines;
         let columns = |bytes| Columns { bytes, lines };
         match &self.screen {
             Screen::Columns40 { rama, ramb } => {
-                video::columns40(columns(rama), columns(ramb), &palette)
+                Ok(video::columns40(columns(rama), columns(ramb), &palette))
             }
             Screen::Bitmap4 { rama, ramb } => {
-                video::bitmap4(columns(rama), columns(ramb), &palette)
+                Ok(video::bitmap4(columns(rama), columns(ramb), &palette))
             }
             Screen::Bitmap16(bytes) => video::bitmap16(columns(bytes), &palette),
             Screen::Columns80(bytes) => video::columns80(columns(bytes), &palette),
@@ -96,7 +96,7 @@ pub(super) fn decode_map(data: &[u8], companions: &dyn Companions) -> Result<Ima
         .palette
         .or_else(|| super::graffiti::companion_palette(companions, "dst"))
         .unwrap_or(DEFAULT_PALETTE);
-    Ok(map.render(&palette))
+    map.render(&palette)
 }
 
 /// Parses a MAP file, checking the whole structure.
@@ -272,7 +272,7 @@ mod tests {
     fn decodes_the_article_example() {
         let map = parse(&file(&EXAMPLE_40)).unwrap();
         assert_eq!(map.palette, None);
-        let image = map.render(&DEFAULT_PALETTE);
+        let image = map.render(&DEFAULT_PALETTE).unwrap();
         assert_eq!((image.width(), image.height()), (16, 8));
         assert_eq!(image.get(0, 0), 0x000000);
         assert_eq!(image.get(1, 1), 0xff0000); // 0x7f: forme bit 1 at x = 1
@@ -289,7 +289,7 @@ mod tests {
             map.screen,
             Screen::Bitmap16([[0x12; 8], [0x34; 8]].concat())
         );
-        let image = map.render(&DEFAULT_PALETTE);
+        let image = map.render(&DEFAULT_PALETTE).unwrap();
         assert_eq!((image.width(), image.height()), (8, 8));
         assert_eq!(image.get(2, 0), 0x00ff00); // colour 2
         assert_eq!(image.get(6, 0), 0x0000ff); // colour 4

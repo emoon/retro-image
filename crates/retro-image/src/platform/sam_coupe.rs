@@ -150,7 +150,7 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
         let (x, y) = ((i % RAW_WIDTH) as u32, (i / RAW_WIDTH) as u32);
         image.set(x, y, color(value));
     }
-    Ok(image.scaled(1, 2))
+    image.scaled(1, 2)
 }
 
 /// CLUT contents per scan line.
@@ -258,7 +258,7 @@ fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Im
     }
     // Mode 3 pixels are half as wide as they are high.
     if mode == Mode::Three {
-        image.scaled(1, 2)
+        image.scaled(1, 2).expect("fixed-size screen")
     } else {
         image
     }

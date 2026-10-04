@@ -13,10 +13,8 @@
 
 use super::bitbuster;
 use super::vdp::{self, level5};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
-
-/// Largest picture accepted, in pixels.
-const MAX_PIXELS: usize = 1 << 22;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Colours {
@@ -49,10 +47,10 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
     let height = u16::from_le_bytes([header[5], header[6]]) as usize;
     let compression = header[7];
     let data_size = u32::from_le_bytes([header[8], header[9], header[10], 0]) as usize;
-    if !matches!(depth, 2 | 4 | 8 | 16) || width == 0 || height == 0 || width * height > MAX_PIXELS
-    {
+    if !matches!(depth, 2 | 4 | 8 | 16) {
         return None;
     }
+    check_size(width, height).ok()?;
     let palette_at = 5 + header_size;
     let palette = data.get(palette_at..palette_at + palette_len)?;
     let packed = data.get(palette_at + palette_len..)?;
