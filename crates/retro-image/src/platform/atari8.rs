@@ -19,6 +19,7 @@ mod graph2font;
 mod gtia;
 mod hcm;
 mod hip;
+mod hpm;
 mod ice;
 mod ice_single;
 mod interlace;
@@ -99,6 +100,7 @@ pub(super) static FORMATS: &[Format] = &[
         screen::decode_wnd,
     ),
     Format::new(ATARI8, "Vidig Paint", &["rap"], screen::decode_rap),
+    Format::new(ATARI8, "Grass' Slideshow", &["hpm"], hpm::decode_hpm),
     Format::new(ATARI8, "APAC 80x96", &["256", "ap2"], apac::decode_planar),
     Format::new(
         ATARI8,
