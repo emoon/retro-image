@@ -118,10 +118,18 @@ The file is an Atari binary-load record: `FF FF`, start (always 0x8206), end; le
 - Events normally take effect at the start of their scanline, last write wins.
 
 Exact (scratch decoder == `recoil2png`): JOYRIDE (both copies), LOTUS, LOOK (static), PLAZMA and ENDRM (GTIA 9, COLBK events). For DALM (players, 0x11 priority, fifth player) the same
-model with the players/missiles code from `gtia.rs` leaves 1140 of 80640 pixels different (single pixels at player edges and some 0xA0 vs 0xA6 shades); dragon.pgr differs in 6624 pixels.
-Cause (dragon, confirmed by synthetic probes): events with reg 0x1E/0x1F and a value byte (0xBE, 0xBF, 0xFE, 0xFF, 0x7F, 0x3F...) make **following writes land mid-scanline** at CPU-cycle positions
-(multiples of 16 output pixels with irregular steps that look like ANTIC DMA cycle stealing). Reproducing that needs a cycle-accurate ANTIC DMA model; not attempted. So PGR is best done in two stages:
-the exact static subset first (6 of 8 samples), reject or approximate files that use reg 0x1C-0x1F value events.
+model with the players/missiles code from `gtia.rs` leaves 1140 of 80640 pixels different (single pixels at player edges and some 0xA0 vs 0xA6 shades).
+**dragon.pgr, solved.** Events on registers 0x1C-0x1F are waits that move later writes into the scanline, and its DMACTL (3E) turns on player/missile DMA. Pixel-exact against `recoil2png` after
+modelling the display kernel and ANTIC (all by probing `recoil2png` with COLBK write chains in blank and mode E rows; the simulated write positions matched every probe):
+
+- Events start at CPU cycle -9 of a scanline (x = 4 * cycle - 86; writes landing left of x = 0 take effect at 0). Costs in work cycles: write 4, +2 with a value byte; an event on register 0x1C + n:
+  8n + 2 (bit 5) + 2 (bit 6) + 4 (bit 7). Only 1C and 3C and writes with bit 7 end a scanline; 1D-1F with bit 7 do not.
+- The CPU progresses only on cycles ANTIC leaves free. Stolen: DL fetch at 9 (10-11 more for an LMS line), refresh at 25, 29 .. 57, player DMA 0-4, missile-only DMA 0, playfield fetch on every
+  second cycle from 20 (40 bytes) or 28 (32 bytes) for as many cycles as bytes. The 48-byte start was not observed.
+- Player/missile memory at 8000, single-line: missiles +300, players +400, +500, +600, +700; picture line y reads byte y + 8. DMACTL bit 3 loads the players, bit 2 the missiles; the load
+  takes effect at x = 0, so objects starting left of the picture show the previous line's byte.
+- An object starts when the beam reaches HPOS (x = 2 * HPOS - 88) and keeps the graphics it started with; an HPOS write after that does not move it, and one landing after the new position was
+  passed does not start it. A size write stretches the remaining bits from x + 2.
 
 Detection: `FF FF 06 82`, length consistent, `PowerGFX` at offset 8.
 
