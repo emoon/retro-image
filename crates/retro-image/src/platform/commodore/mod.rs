@@ -29,6 +29,7 @@ mod logo;
 mod mufli;
 mod mwin;
 mod nufli;
+mod petmate;
 mod petscii;
 mod prg;
 mod printfox;
@@ -298,6 +299,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "SHF-XL Edit", &["shx"], superhires::decode_shx),
     Format::new(C64, "NUFLI Editor", &["nuf"], nufli::decode_nufli),
     Format::new(C64, "UFLI-editor", &["ufl"], ufli::decode_ufli),
+    Format::new(C64, "Petmate", &["petmate"], petmate::decode_petmate).signature(),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(PLUS4, "Four-grey 128x64", &["p4i"], ted::decode_p4i_grey),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),

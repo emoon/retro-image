@@ -24,6 +24,7 @@ mod codec;
 mod error;
 mod format;
 mod image;
+mod json;
 mod platform;
 mod simd;
 
