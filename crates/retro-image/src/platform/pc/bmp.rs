@@ -135,6 +135,18 @@ pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
+/// The bitmap of an icon or cursor entry: a headerless DIB whose height
+/// counts the colour bitmap plus a 1-bit mask of the same size, so only the
+/// first half of the rows is decoded.
+pub(super) fn decode_icon_dib(data: &[u8]) -> Result<Image, DecodeError> {
+    let mut info = parse_info(data)?;
+    info.height /= 2;
+    if info.height == 0 {
+        return Err(DecodeError::Unrecognized);
+    }
+    decode_pixels(data, &info, None)
+}
+
 /// A headerless DIB: the info header, palette and pixels, no file header.
 pub(super) fn decode_dib(data: &[u8]) -> Result<Image, DecodeError> {
     let info = parse_info(data)?;
