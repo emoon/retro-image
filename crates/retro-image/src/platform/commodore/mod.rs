@@ -323,7 +323,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(VIC20, "Best Paint", &["bp"], vic20::decode_best_paint),
     Format::with_companions(VIC20, "Picasso", &["pic0"], vic20::decode_picasso),
     Format::new(C128, "BASIC 8", &["ip", "brus", "pict"], c128::decode_brus).signature(),
-    // Wave 5: C64
     Format::new(C64, "Centauri Logo-Editor", &["cle"], cle::decode_cle),
     Format::new(C64, "Hires-Editor", &["het"], bitmap::decode_hires_editor),
     Format::new(
@@ -368,7 +367,6 @@ pub(super) static FORMATS: &[Format] = &[
         &["fcp", "fpt"],
         bitmap::decode_face_painter,
     ),
-    // Wave 5: FLF
     Format::new(C64, "Turbo Rascal Syntax Error", &["flf"], flf::decode_c64).signature(),
     Format::new(
         VIC20,
@@ -377,7 +375,6 @@ pub(super) static FORMATS: &[Format] = &[
         flf::decode_vic20,
     )
     .signature(),
-    // Wave 5b: C64
     Format::new(C64, "EMC-editor", &["emc"], emc::decode_emc),
     Format::new(C64, "MUFLI Editor", &["muf"], mufli::decode_muf),
     Format::new(C64, "MUIFLI Editor", &["mui"], mufli::decode_mui),
@@ -393,27 +390,22 @@ pub(super) static FORMATS: &[Format] = &[
         &["mwi", "mwin"],
         mwin::decode_mwin,
     ),
-    // Wave 6: C64 NUFLI packed
     Format::new(
         C64,
         "NUFLI Editor (compressed)",
         &["nup"],
         nufli::decode_nup,
     ),
-    // Wave 6: C64 FLI Editor + HCB
     Format::new(C64, "FLI Editor", &["fed"], fli::decode_fed),
     Format::new(C64, "HCB-editor", &["hcb"], hcb::decode_hcb),
-    // Wave 6: C64 PetDraw and Super Hires Editor
     Format::new(C64, "PetDraw64", &["pdr"], petscii::decode_petdraw),
     Format::new(C64, "Super Hires Editor", &["she"], she::decode_she),
-    // Wave 6: C64 VHI + X-FLI
     Format::new(
         C64,
         "Vertical Hires Interlace Editor",
         &["vhi"],
         vhi::decode_vhi,
     ),
-    // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
     Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
     Format::new(

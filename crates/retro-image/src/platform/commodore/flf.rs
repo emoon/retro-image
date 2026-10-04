@@ -19,11 +19,10 @@
 //! - 9 (VIC-20): 20-byte header with the width and height in cells at
 //!   offsets 18 and 19, then that many multicolour cells with colours 0-7.
 
-use super::petscii::CHARGEN;
+use super::petscii::{CHARGEN, TextScreen};
 use super::{vic2, vic20};
 use crate::codec::flf::{self, CELL_LEN, CellMode, Fluff};
 use crate::{DecodeError, Image};
-use alloc::vec::Vec;
 
 const COLS: usize = 40;
 const ROWS: usize = 25;
@@ -42,12 +41,12 @@ pub(super) fn decode_c64(data: &[u8]) -> Result<Image, DecodeError> {
         1 => cells(15, CellMode::Multicolor),
         4 | 5 => cells(18, CellMode::Multicolor),
         6 => cells(18, CellMode::Hires),
-        7 => decode_text(&fluff, &palette),
+        7 => decode_text(&fluff),
         _ => Err(DecodeError::Unrecognized),
     }
 }
 
-fn decode_text(fluff: &Fluff, palette: &[u32; 16]) -> Result<Image, DecodeError> {
+fn decode_text(fluff: &Fluff) -> Result<Image, DecodeError> {
     let background = fluff.byte(13)? & 15;
     let (cols, rows) = (usize::from(fluff.byte(15)?), usize::from(fluff.byte(16)?));
     if cols == 0 || rows == 0 {
@@ -61,21 +60,15 @@ fn decode_text(fluff: &Fluff, palette: &[u32; 16]) -> Result<Image, DecodeError>
     if rest.len() != 16 {
         return Err(DecodeError::Unrecognized);
     }
-    let width = cols * 8;
-    let mut indices: Vec<u8> = alloc::vec![background; width * rows * 8];
-    for (n, (&code, &color)) in screen.iter().zip(colors).enumerate() {
-        let glyph = &CHARGEN[usize::from(code) * 8..][..8];
-        let (x0, y0) = (n % cols * 8, n / cols * 8);
-        for (y, &bits) in glyph.iter().enumerate() {
-            let row = &mut indices[(y0 + y) * width + x0..][..8];
-            for (x, out) in row.iter_mut().enumerate() {
-                if bits >> (7 - x) & 1 != 0 {
-                    *out = color & 15;
-                }
-            }
-        }
+    TextScreen {
+        columns: cols,
+        rows,
+        screen,
+        colors,
+        background,
+        charset: &CHARGEN[..2048],
     }
-    Image::from_indexed(width as u32, (rows * 8) as u32, &indices, palette)
+    .render()
 }
 
 pub(super) fn decode_vic20(data: &[u8]) -> Result<Image, DecodeError> {

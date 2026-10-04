@@ -14,6 +14,7 @@
 //! literal bytes (n 0 = 256). The stream is read only until the picture's
 //! screen RAM is complete; whatever follows is ignored.
 
+use super::bitmap::with_header;
 use super::prg::Prg;
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
@@ -33,9 +34,7 @@ pub(super) fn decode_vhi(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
     // `Prg` wants the load-address header in front of the memory image.
-    let mut image = alloc::vec![0, 0];
-    image.extend(unpack(packed)?);
-    decode_image(&image)
+    decode_image(&with_header(unpack(packed)?))
 }
 
 fn decode_image(data: &[u8]) -> Result<Image, DecodeError> {

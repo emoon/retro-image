@@ -65,14 +65,14 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
     let old = mode & 0x3f != 0;
     let cells = columns * rows;
     let (background, escape) = match (old, hires) {
+        // Hires has no background, only the escape.
+        (_, true) => (0, chunks.byte()?),
         // New format: escape, then background.
-        (false, true) => (0, chunks.byte()?),
         (false, false) => {
             let escape = chunks.byte()?;
             (chunks.byte()?, escape)
         }
         // Old format: background, then escape.
-        (true, true) => (0, chunks.byte()?),
         (true, false) => (chunks.byte()?, chunks.byte()?),
     };
     let bitmap = chunks.unpack(escape, cells * 8)?;
