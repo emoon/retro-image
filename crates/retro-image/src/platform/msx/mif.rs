@@ -79,11 +79,7 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
     let mode = Mode::from_byte(*data.first()?)?;
     let (palette, packed) = if mode.has_palette() {
         let table = data.get(2..34)?;
-        let mut palette = [0; 16];
-        for (entry, bytes) in palette.iter_mut().zip(table.as_chunks::<2>().0) {
-            *entry = vdp::palette_entry(bytes[0], bytes[1]);
-        }
-        (Some(palette), &data[34..])
+        (Some(vdp::palette_table(table)), &data[34..])
     } else {
         (None, data.get(2..)?)
     };

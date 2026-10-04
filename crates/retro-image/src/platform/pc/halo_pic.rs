@@ -27,7 +27,7 @@
 
 use alloc::vec::Vec;
 
-use super::CGA_PALETTE;
+use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
 use crate::image::planar_pixels;
 use crate::{BitOrder, DecodeError, Image};
@@ -233,10 +233,10 @@ fn cga_palette(data: &[u8], header: usize) -> [u32; 4] {
         (0, 0)
     };
     let set = match (b12 & 0x10 != 0, b14 & 1 != 0) {
-        (true, true) => [0x000000, 0x55ffff, 0xff55ff, 0xffffff],
-        (false, true) => [0x000000, 0x00aaaa, 0xaa00aa, 0xaaaaaa],
-        (true, false) => [0x000000, 0x55ff55, 0xff5555, 0xffff55],
-        (false, false) => [0x000000, 0x00aa00, 0xaa0000, 0xaa5500],
+        (true, true) => cga_set([11, 13, 15]),
+        (false, true) => cga_set([3, 5, 7]),
+        (true, false) => cga_set([10, 12, 14]),
+        (false, false) => cga_set([2, 4, 6]),
     };
     let mut palette = set;
     palette[0] = CGA_PALETTE[usize::from(b12 & 15)];
