@@ -34,6 +34,7 @@ mod petscii;
 mod prg;
 mod printfox;
 mod printmaster;
+mod printshop;
 mod sh_editors;
 mod she;
 mod sprites;
@@ -415,6 +416,12 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 6: C64 X-FLI
     Format::new(C64, "X-FLI Editor", &["xfl"], xfl::decode_xfl),
     Format::new(C64, "PrintMaster", &["gra"], printmaster::decode_gra),
+    Format::new(
+        C64,
+        "Print Shop",
+        &["gra", "prg"],
+        printshop::decode_print_shop,
+    ),
     Format::new(C64, "GEOS geoPaint", &["cvt"], geos::decode_geopaint).signature(),
     Format::new(C64, "GEOS Photo Album", &["cvt"], geos::decode_photo_album).signature(),
     Format::new(C64, "GEOS Photo Scrap", &["cvt"], geos::decode_photo_scrap).signature(),

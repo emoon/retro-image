@@ -1,6 +1,8 @@
 //! CharPad projects (`.ctm`, versions 4 to 9): a character set, tiles built
 //! from characters and a map of tiles, rendered as the whole map. Text
-//! modes only (hires and multicolour characters).
+//! modes (hires and multicolour characters) and, from version 8, the hires
+//! and multicolour bitmap modes, where each "character" is one 8x8 bitmap
+//! cell.
 //!
 //! Sources:
 //! - CTM version 4 description (header fields, section order, character
@@ -13,6 +15,8 @@
 //!   from the character attributes; bit 2 of the flags byte makes every
 //!   character multicolour (`01`/`10` the shared multicolours, `11` the
 //!   attribute colour bits 0-2).
+//! - Bitmap modes: how colours are stored and ordered is described under
+//!   `blocks.rs`.
 //! - Versions 6 to 9 are block based; `blocks.rs` lists their sources.
 //!   The `tests/divergences/commodore.tsv` entries record how the CharPad
 //!   projects RECOIL rejects were checked.
@@ -84,8 +88,50 @@ impl<'a> ColorTable<'a> {
             .then(|| self.data.len() / self.stride)
     }
 
-    fn get(&self, index: usize) -> u8 {
-        self.data[index * self.stride + self.offset]
+    /// The colour bytes of entry `index`, up to three, zero padded. Bitmap
+    /// modes keep two or three per entry; the other modes use the byte at
+    /// `offset`.
+    fn colors(&self, index: usize, mode: Mode) -> [u8; 3] {
+        let entry = &self.data[index * self.stride..(index + 1) * self.stride];
+        let mut out = [0; 3];
+        if mode.is_bitmap() {
+            out[..entry.len()].copy_from_slice(entry);
+        } else {
+            out[0] = entry[self.offset];
+        }
+        out
+    }
+}
+
+/// A CharPad screen mode, which decides how character bytes become pixels.
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    TextHires,
+    TextMulticolor,
+    BitmapHires,
+    BitmapMulticolor,
+}
+
+impl Mode {
+    fn text(multicolor: bool) -> Self {
+        if multicolor {
+            Mode::TextMulticolor
+        } else {
+            Mode::TextHires
+        }
+    }
+
+    fn is_bitmap(self) -> bool {
+        matches!(self, Mode::BitmapHires | Mode::BitmapMulticolor)
+    }
+
+    /// Colour bytes per entry of a per-character or per-tile colour block.
+    fn color_bytes(self) -> usize {
+        match self {
+            Mode::BitmapHires => 2,
+            Mode::BitmapMulticolor => 3,
+            _ => 1,
+        }
     }
 }
 
@@ -111,7 +157,7 @@ enum Cells<'a> {
 
 /// Everything needed to draw a project, as found in the file.
 struct Project<'a> {
-    multicolor: bool,
+    mode: Mode,
     background: u8,
     multi1: u8,
     multi2: u8,
@@ -148,7 +194,8 @@ impl Project<'_> {
         let chars = self.chars.len() / 8;
         let map_entries = self.map_width * self.map_height;
         let colors_fit = match self.colors {
-            Colors::Global(_) => true,
+            // Bitmap colours are per cell; one shared colour can't describe them.
+            Colors::Global(_) => !self.mode.is_bitmap(),
             Colors::PerTile(colors) => colors.len() == Some(self.tile_count),
             Colors::PerChar(colors) => colors.len() == Some(chars),
             Colors::PerCell(colors) => colors.len() == Some(self.tile_count * tile_cells),
@@ -187,12 +234,16 @@ impl Project<'_> {
         }
     }
 
-    fn color_at(&self, tile: usize, cell: usize, char: usize) -> u8 {
+    /// The colour bytes of one character cell (see [`ColorTable::colors`]).
+    fn color_at(&self, tile: usize, cell: usize, char: usize) -> [u8; 3] {
+        let mode = self.mode;
         match self.colors {
-            Colors::Global(color) => color,
-            Colors::PerTile(colors) => colors.get(tile),
-            Colors::PerChar(colors) => colors.get(char),
-            Colors::PerCell(colors) => colors.get(tile * self.tile_width * self.tile_height + cell),
+            Colors::Global(color) => [color, 0, 0],
+            Colors::PerTile(colors) => colors.colors(tile, mode),
+            Colors::PerChar(colors) => colors.colors(char, mode),
+            Colors::PerCell(colors) => {
+                colors.colors(tile * self.tile_width * self.tile_height + cell, mode)
+            }
         }
     }
 
@@ -209,7 +260,7 @@ impl Project<'_> {
                     .tile_at(cell_y / self.tile_height * self.map_width + cell_x / self.tile_width);
                 let cell = cell_y % self.tile_height * self.tile_width + cell_x % self.tile_width;
                 let char = self.char_at(tile, cell);
-                let color = self.color_at(tile, cell, char) & 15;
+                let color = self.color_at(tile, cell, char);
                 let rows = &self.chars[char * 8..char * 8 + 8];
                 for (y, &byte) in rows.iter().enumerate() {
                     let start = (cell_y * 8 + y) * width + cell_x * 8;
@@ -220,19 +271,28 @@ impl Project<'_> {
         Some(vic2::image(width, height, pixels))
     }
 
-    fn draw_row(&self, byte: u8, color: u8, out: &mut [u8]) {
+    /// Colour bytes: text modes use `color[0]` as the character colour. Bitmap
+    /// modes use them as (colour RAM, screen RAM low nybble, screen RAM high
+    /// nybble) for multicolour, and as (paper, ink) for hires.
+    fn draw_row(&self, byte: u8, color: [u8; 3], out: &mut [u8]) {
+        let [c0, c1, c2] = color.map(|c| c & 15);
         for (x, pixel) in out.iter_mut().enumerate() {
-            *pixel = if self.multicolor {
-                match byte >> (6 - (x & 6)) & 3 {
-                    0 => self.background,
-                    1 => self.multi1,
-                    2 => self.multi2,
-                    _ => color & 7,
-                }
-            } else if byte & (0x80 >> x) != 0 {
-                color
-            } else {
-                self.background
+            let bit = byte & (0x80 >> x) != 0;
+            let pair = byte >> (6 - (x & 6)) & 3;
+            *pixel = match self.mode {
+                Mode::TextHires if bit => c0,
+                Mode::BitmapHires if bit => c1,
+                Mode::BitmapHires => c0,
+                Mode::TextHires => self.background,
+                _ => match (self.mode, pair) {
+                    (_, 0) => self.background,
+                    (Mode::TextMulticolor, 1) => self.multi1,
+                    (Mode::TextMulticolor, 2) => self.multi2,
+                    (Mode::TextMulticolor, _) => c0 & 7,
+                    (_, 1) => c2,
+                    (_, 2) => c1,
+                    _ => c0,
+                },
             };
         }
     }
@@ -298,7 +358,8 @@ mod tests {
     }
 
     #[test]
-    fn bitmap_and_extended_modes_are_rejected() {
+    fn extended_and_global_bitmap_modes_are_rejected() {
+        // Mode 2 isn't decoded; the bitmap modes need per-cell colours.
         for mode in [2, 3, 4] {
             assert!(decode_ctm(&version9(mode)).is_err());
         }

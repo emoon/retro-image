@@ -149,11 +149,11 @@ pub(super) fn decode_geopaint(data: &[u8]) -> Result<Image, DecodeError> {
 
 pub(super) fn decode_photo_album(data: &[u8]) -> Result<Image, DecodeError> {
     let records = Cvt::parse(data, b"photo album", Structure::Vlir)?.records()?;
-    let first = records
+    records
         .into_iter()
-        .find(|r| !r.is_empty())
-        .ok_or(DecodeError::Unrecognized)?;
-    decode_scrap_data(first)
+        .filter(|r| !r.is_empty())
+        .find_map(|r| decode_scrap_data(r).ok())
+        .ok_or(DecodeError::Unrecognized)
 }
 
 pub(super) fn decode_photo_scrap(data: &[u8]) -> Result<Image, DecodeError> {
@@ -218,8 +218,8 @@ fn unpack_paint(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
 
 /// GEOS bitmap compression: `0..=127` repeat the next byte, `128..=219`
 /// copy `n - 128` literal bytes, `220..=255` repeat the following
-/// length-prefixed pattern `n - 220` times. Fails unless exactly `len`
-/// bytes come out.
+/// length-prefixed pattern `n - 220` times. Fails when the data ends before
+/// `len` bytes are out; a final run that overshoots is cut to `len`.
 fn unpack_bitmap(data: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::new();
     let mut at = 0;
@@ -249,11 +249,9 @@ fn unpack_bitmap(data: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
             }
         }
     }
-    if out.len() == len {
-        Ok(out)
-    } else {
-        Err(DecodeError::Unrecognized)
-    }
+    // Some albums end the last run past the bitmap; the surplus is padding.
+    out.truncate(len);
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -276,7 +274,9 @@ mod tests {
             [0xaa, 0xaa, 0xaa, 1, 2, 7, 8]
         );
         assert!(unpack_bitmap(&packed, 8).is_err());
-        assert!(unpack_bitmap(&[5, 1], 4).is_err());
+        // A last run that overshoots is cut; missing data is an error.
+        assert_eq!(unpack_bitmap(&[5, 1], 4).unwrap(), [1, 1, 1, 1]);
+        assert!(unpack_bitmap(&[5], 4).is_err());
     }
 
     #[test]
