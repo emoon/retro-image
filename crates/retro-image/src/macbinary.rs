@@ -37,6 +37,13 @@ impl<'a> MacBinary<'a> {
     }
 }
 
+/// The data fork of a MacBinary file, or `data` itself when it has no valid
+/// MacBinary header. For formats that tell their own bytes apart by content
+/// and merely sometimes arrive wrapped.
+pub(crate) fn data_fork_or_self(data: &[u8]) -> &[u8] {
+    MacBinary::parse(data).map_or(data, |m| m.data_fork)
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::vec;
@@ -53,6 +60,8 @@ mod tests {
         assert_eq!(MacBinary::parse(&file).unwrap().data_fork, b"abc");
         assert_eq!(MacBinary::parse(&file).unwrap().file_type, *b"GIFf");
         assert!(MacBinary::parse(b"GIF89a").is_none());
+        assert_eq!(data_fork_or_self(&file), b"abc");
+        assert_eq!(data_fork_or_self(b"GIF89a"), b"GIF89a");
         // A fork running past the end of the file is not MacBinary.
         file[83..87].copy_from_slice(&99u32.to_be_bytes());
         assert!(MacBinary::parse(&file).is_none());

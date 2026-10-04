@@ -15,7 +15,7 @@
 //!
 //! The alpha channel of 32-bit pixels and of V4/V5 masks is ignored, as for
 //! Targa. JPEG and PNG payloads (compression 4 and 5) are rejected. A
-//! headerless DIB starts at the info header and is chosen by extension only.
+//! MacBinary wrapper (`crate::macbinary`) is removed first. A headerless DIB starts at the info header and is chosen by extension only.
 //!
 //! Verification: no RECOIL oracle for this format; output was compared pixel
 //! for pixel with Deark's PNG output on the sample files.
@@ -26,6 +26,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
 use crate::image::check_size;
+use crate::macbinary::data_fork_or_self;
 use crate::{DecodeError, Image};
 
 const FILE_HEADER_LEN: usize = 14;
@@ -125,6 +126,7 @@ fn parse_file(data: &[u8]) -> Result<(Info, usize), DecodeError> {
 }
 
 pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
+    let data = data_fork_or_self(data);
     let (info, offset) = parse_file(data)?;
     decode_pixels(
         &data[FILE_HEADER_LEN..],
