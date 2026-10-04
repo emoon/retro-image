@@ -43,6 +43,11 @@ pub(super) fn color(index: u8, bright: bool) -> u32 {
     rgb_bits(index, level)
 }
 
+/// A 3-bit channel widened to 8 bits by repeating its bits.
+pub(super) fn widen3(v: u8) -> u32 {
+    u32::from(v << 5 | v << 2 | v >> 1)
+}
+
 /// GRB colour index scaled to `level` per set bit.
 pub(super) fn rgb_bits(index: u8, level: u32) -> u32 {
     let channel = |bit: u8| if index & bit != 0 { level } else { 0 };

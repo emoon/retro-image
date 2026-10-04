@@ -15,7 +15,7 @@
 
 use super::screen::{
     BITMAP_LEN, COLUMNS, Frame, HEIGHT, SCR_LEN, WIDTH, attribute_color, bitmap_byte,
-    bitmap_offset, blend, rgb_bits,
+    bitmap_offset, blend, rgb_bits, widen3,
 };
 use crate::{DecodeError, Image};
 
@@ -113,7 +113,6 @@ pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
 /// GRB332 palette byte: 3-bit green and red widen by repeating their bits,
 /// 2-bit blue by multiplying by 0x55.
 pub(super) fn grb332(value: u8) -> u32 {
-    let widen3 = |v: u8| u32::from(v << 5 | v << 2 | v >> 1);
     let green = widen3(value >> 5);
     let red = widen3((value >> 2) & 7);
     let blue = u32::from(value & 3) * 0x55;
