@@ -23,10 +23,11 @@
 //! | Face Painter | Koala layout at `$4000` plus one trailing byte: reverse engineered from 3 samples by mutating bytes and watching `recoil2png` (bitmap `$4000`, screen `$5F40`, colour `$6328`, background `$6710`; the byte after it changes nothing) |
 //! | Dolphin Ed | Drazpaint's memory map at `$5800` with the background at `$5FE8` (offset 2026), 10242 bytes: reverse engineered from 1 sample by mutating bytes and watching `recoil2png`. The background is found by changing it (the sample's own is black) |
 //! | Hires-Editor (HET) | Doodle's map (screen `$5C00`, bitmap `$6000`) in a 9217-byte file, one byte short of Doodle's: reverse engineered from 1 sample by mutating bytes and watching `recoil2png`; the bytes after the bitmap change nothing |
+//! | Zoomatic (ZOM) | Koala's layout (bitmap, screen RAM, colour RAM, background; 10001 bytes) in the escape-last RLE of [`escape_last_rle`]. Read from the save routine of Zoomatic 5.7, which packs `$6000-$8710` after copying the screen RAMs behind the bitmap, and from the loader in Showmatic; checked against `recoil2png` with Koala pictures repacked that way |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
-use super::unpack::{Run, escape_rle, escape_rle_counted};
+use super::unpack::{Run, escape_last_rle, escape_rle, escape_rle_counted};
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -447,6 +448,12 @@ pub(super) fn decode_koala_packed(data: &[u8]) -> Result<Image, DecodeError> {
     let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
     let unpacked =
         escape_rle(packed, 0xfe, Run::ValueCount, 10001).ok_or(DecodeError::Unrecognized)?;
+    koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
+}
+
+/// Zoomatic: a Koala picture in the escape-last RLE.
+pub(super) fn decode_zoomatic(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = escape_last_rle(data, 10001).ok_or(DecodeError::Unrecognized)?;
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
 }
 

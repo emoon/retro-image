@@ -17,6 +17,7 @@
 //! | Flip (FBI), FLI Graph packed | GD Flip <https://www.godot64.de/german/l_flipr.htm>, CB "FLI Graph 2.2" |
 //! | Hires Manager (HIM) | CB "Hires Manager", GD HiManRaw; for the packed form, the exclusive end address and literal lengths were checked against a sample that exists both packed and unpacked |
 //! | FLI Profi (FPR) | CB "FLI-Profi" (load `$3780`, sprites from `$3780`, colour `$3C00`, screens `$4000`, bitmap `$6000`); how the leftmost 24 pixels are drawn was reverse engineered by probing `recoil2png` with modified and random files (see [`decode_fli_profi`]) |
+//! | Flimatic (FLM) | FLI Designer's memory map (colour RAM `$3C00`, screens `$4000`, bitmap `$6000`) plus 64 bytes, packed with the escape-last RLE ([`escape_last_rle`]). Read from the save and load routines of Flimatic 3.7, which pack `$3C00-$7F7F`; the background colour is the low nibble of `$7F7F` (the editor's own screen code reads it, and changing it in `recoil2png` input recolours the picture), and the bytes `$7F40-$7F7E` change nothing in `recoil2png` |
 //! | CFLI Designer (CFLI) | Reverse engineered from 3 samples: load `$4000`, eight screen RAMs and no bitmap; the picture is hires FLI over a bitmap of `$AA` bytes, so each pixel pair shows both screen nibbles. Checked against `recoil2png` output |
 //!
 //! Picture heights of Hires FLI Designer (112 lines) and Hires Manager
@@ -25,7 +26,7 @@
 
 use super::bitmap::with_header;
 use super::prg::Prg;
-use super::unpack::backward_rle;
+use super::unpack::{backward_rle, escape_last_rle};
 use super::vic2::{BITMAP_LEN, Background, Bitmap, FLI_BUG, Frame, SCREEN_LEN, Screens};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -186,6 +187,16 @@ fn unpack_38f0(data: &[u8], start: u16) -> Result<Vec<u8>, DecodeError> {
     ) + 1;
     let unpacked = backward_rle(&data[18..], header[2], len).ok_or(DecodeError::Unrecognized)?;
     Ok(with_header(unpacked))
+}
+
+/// Flimatic: FLI Designer's layout with the background in `$7F7F`.
+pub(super) fn decode_flimatic(data: &[u8]) -> Result<Image, DecodeError> {
+    const FLIMATIC: Fli = Fli {
+        background: Bg::Byte(0x7f7f),
+        ..FLI_DESIGNER
+    };
+    let unpacked = escape_last_rle(data, 0x7f80 - 0x3c00).ok_or(DecodeError::Unrecognized)?;
+    FLIMATIC.decode_unchecked(&with_header(unpacked))
 }
 
 /// Flip (FLI Painter): FLI Designer layout, plain or packed.

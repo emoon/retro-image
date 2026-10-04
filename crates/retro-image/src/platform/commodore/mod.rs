@@ -29,10 +29,12 @@ mod logo;
 mod mufli;
 mod mwin;
 mod nufli;
+mod petmate;
 mod petscii;
 mod prg;
 mod printfox;
 mod printmaster;
+mod sh_editors;
 mod she;
 mod sprites;
 mod superhires;
@@ -99,6 +101,19 @@ pub(super) static FORMATS: &[Format] = &[
         &["pi", "bpl"],
         bitmap::decode_blazing_paddles,
     ),
+    Format::new(
+        C64,
+        "Super-hires Editor I",
+        &["sh1"],
+        sh_editors::decode_sh1,
+    ),
+    Format::new(
+        C64,
+        "Super-hires Editor II",
+        &["sh2"],
+        sh_editors::decode_sh2,
+    ),
+    Format::new(C64, "Zoomatic", &["zom"], bitmap::decode_zoomatic),
     Format::new(C64, "Vidcom 64", &["vid"], bitmap::decode_vidcom),
     Format::new(C64, "Picasso 64", &["p64"], bitmap::decode_picasso_64),
     Format::new(C64, "Cheese", &["che"], bitmap::decode_cheese),
@@ -180,6 +195,7 @@ pub(super) static FORMATS: &[Format] = &[
         fli::decode_fli_graph,
     ),
     Format::new(C64, "Flip", &["fbi"], fli::decode_flip),
+    Format::new(C64, "Flimatic", &["flm"], fli::decode_flimatic),
     Format::new(C64, "AFLI-editor", &["afl"], fli::decode_afli_editor),
     Format::new(
         C64,
@@ -298,6 +314,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(C64, "SHF-XL Edit", &["shx"], superhires::decode_shx),
     Format::new(C64, "NUFLI Editor", &["nuf"], nufli::decode_nufli),
     Format::new(C64, "UFLI-editor", &["ufl"], ufli::decode_ufli),
+    Format::new(C64, "Petmate", &["petmate"], petmate::decode_petmate).signature(),
     Format::new(PLUS4, "Botticelli", &["p4i"], ted::decode_p4i),
     Format::new(PLUS4, "Four-grey 128x64", &["p4i"], ted::decode_p4i_grey),
     Format::new(C128, "VDC BitMap", &["vbm", "bm"], c128::decode_vbm).signature(),

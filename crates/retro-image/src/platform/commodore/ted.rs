@@ -40,7 +40,7 @@ const PALETTE: [u32; 128] = [
 ];
 
 /// RGB of a TED colour register value (bits 6-4 luminance, bits 3-0 hue).
-fn rgb(color: u8) -> u32 {
+pub(super) fn rgb(color: u8) -> u32 {
     PALETTE[usize::from(color & 0x7f)]
 }
 
