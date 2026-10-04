@@ -29,6 +29,13 @@
 //! - Graphics Processor: <http://fileformats.archiveteam.org/wiki/Graphics_Processor>
 //!   and survey notes in `docs/research/atari-st-tt-falcon.md` (raw and RLE
 //!   modes); offsets and RLE records derived from sample files.
+//! - Raw low-resolution screen dumps (`DAT`, possibly Pack-Ice packed): the
+//!   32000-byte screen memory layout is the Atari Compendium one cited in
+//!   `common.rs`; the files carry no palette, so the 16 colours are a grey
+//!   ramp. Derived from the two Pack-Ice samples `00SCREEN.DAT` and
+//!   `33SCREEN.DAT` (they unpack to exactly 32000 bytes and show a coherent
+//!   picture as 4-plane low resolution); the survey is
+//!   `docs/research/next-amiga-pc.md` 3.2 and 4.13.
 //! - Atari Image Manager (`IM`, `COL`): no documentation found; derived from
 //!   sample files and `recoil2png` output.
 
@@ -99,6 +106,30 @@ pub(super) fn decode_doo(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     ok(decode_screen(Resolution::High, data, &[]))
+}
+
+/// A raw low-resolution screen dump, possibly Pack-Ice packed. There is
+/// no palette in the file, so the pens are a grey ramp.
+pub(super) fn decode_raw_screen(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = if crate::codec::pack_ice::is_packed(data) {
+        Some(crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?)
+    } else {
+        None
+    };
+    let screen = unpacked.as_deref().unwrap_or(data);
+    if screen.len() != SCREEN_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
+    let resolution = Resolution::Low;
+    let greys: alloc::vec::Vec<u32> = (0..16u32).map(|i| i * 0x11_11_11).collect();
+    ok(planar_image(
+        screen,
+        resolution.width(),
+        resolution.height(),
+        resolution.planes(),
+        &greys,
+        resolution.y_scale(),
+    ))
 }
 
 /// `ART` files: Art Director, GFA Artist, Palette Master or a Doodle-like

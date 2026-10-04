@@ -87,6 +87,11 @@ pub(super) static FORMATS: &[Format] = &[
         simple::decode_art,
     ),
     st("ColorSTar", &["bil"], simple::decode_bil),
+    st(
+        "Raw low-resolution screen",
+        &["dat"],
+        simple::decode_raw_screen,
+    ),
     st("PaintPro / PlusPaint", &["pic"], simple::decode_pic),
     st("Dali (low resolution)", &["sd0"], simple::decode_sd0),
     st("Dali (medium resolution)", &["sd1"], simple::decode_sd1),
