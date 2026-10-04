@@ -23,3 +23,5 @@ hostile/atari8/pigwa-forever/MGV12/GIRL1.SFD	320x192	14da0f110feb5c7d	SFDN GR9 w
 hostile/atari8/pigwa-forever/MGV12/GIRL2.SFD	320x192	c4a34e6d02c45395	SFDN GR9 with a 4-byte tail (see comment above); reviewed: coherent grey picture of a reclining figure.
 # Gaps A
 PAINTD.PIC	320x192	7c8a24e7c964c3ab	Known wrong: a 7680-byte .PIC named PAINT plus one character is APAC 80x96 for RECOIL (probed with renamed copies), but the decoder API has no file name, so we draw it as Graphics 8 like any other 7680-byte .PIC (SCHALT.PIC). Fix needs the stem passed to decoders.
+# Graphics Magician Picture Painter
+extra/atari8/pigwa-forever/GRMAGIC/ROCKETOR.SPC	320x192	0c521ed5dcd815c1	Eight C0 brush stamps with operands (46,60)..(33,52). recoil2png paints every stamp at (0,0) but clips by the operand: a stamp vanishes exactly when its top-left (x,y) leaves the canvas, so it computes (x,y) and then ignores it. Forcing our stamps to (0,0) reproduces RECOIL pixel for pixel; we draw them at (x,y), where they land as small brown blobs on the rocket wing.

@@ -27,9 +27,9 @@ extension than we register.
 | Apple IIGS | 6 | 0 | 0 |
 | Apple IIe | 1 | 0 | 0 |
 | Apple Macintosh | 1 | 0 | 0 |
-| Atari 8-bit | 135 | 6 | 2 |
+| Atari 8-bit | 136 | 6 | 1 |
 | Atari 8-bit VBXE | 2 | 0 | 0 |
-| Atari Falcon | 26 | 2 | 0 |
+| Atari Falcon | 25 | 2 | 1 |
 | Atari Portfolio | 2 | 0 | 0 |
 | Atari ST/STE | 82 | 13 | 0 |
 | Atari TT | 3 | 0 | 0 |
@@ -73,7 +73,7 @@ extension than we register.
 | Platform | Extensions | Description | Ours |
 |---|---|---|---|
 | Atari 8-bit | PIX |  |  |
-| Atari 8-bit | SPC | The Graphics Magician Picture Painter |  |
+| Atari Falcon | TIMG |  |  |
 | Commodore 64 | BDP | Boogie Down Paint |  |
 | Commodore 64 | ESH | Extend Super Hires Interlace Editor |  |
 | Commodore 64 | FP | Fuckpaint |  |

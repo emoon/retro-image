@@ -17,7 +17,7 @@ Other extensions from the task list (BG9, MIL, RIP, WIN, ZIM, FLI, P4I, NL3, ML1
 | VSC (+G2F) | 2 | exact; recipe confirmed | needs the `Companions` API change |
 | PIC (Atari variants) | 5 files fail | OPIS (Koala text mode), BLASTER (4325), BARAHIR (7685), PAINTD (7680 APAC), SCHALT (7680 GR8): all exact | small |
 | HPM Grass' Slideshow | 1 | RLE and 2bpp layout exact; colour source unresolved | partial |
-| SPC Graphics Magician | 4 | not attempted (vector plus fill) | low value |
+| SPC Graphics Magician | 4 | done (see `graphics_magician.rs`) | done |
 
 Suggested order: BGP, MPL174, PIC variants (cheap, exact) then A4R (8 files, exact) then VSC (API decision) then PGR exact subset, then HPM (colour heuristic), SPC last.
 
@@ -135,12 +135,9 @@ JORDAN.HPM, exact structure: stream of tokens, `00 v n` = run of byte `v` repeat
 (0x74: 00 74 58 7E; 0xE4: 00 E4 C8 BE; 0x30: 0E 30 C6 7A) and extra bytes beyond change them again. It looks like a table keyed by the trailer rather than a rule. With one sample, implement
 "trailer 0x34/0x35 -> (0, 34, 38, 3C), else grey (0, 04, 08, 0C)" at most, marked as a guess.
 
-## 8. SPC Graphics Magician Picture Painter (COIN1 111, COIN2 153, TEST 255, ROCKETOR 574 bytes; the other `.SPC` in corpus are ST Spectrum 512)
+## 8. SPC Graphics Magician Picture Painter (COIN1, COIN2, TEST, ROCKETOR)
 
-Observations only. Files start with a 16-bit length (file size - 3) and end with `00`. Commands seen: `80 x y` move, `A0 x y` line to, `60 n`, `E0 x y` fill; coordinates in a 160x192 space
-(pixels doubled to 320x192). COIN1 and COIN2 render as filled coin outlines in one colour; TEST and ROCKETOR look like random vectors because RECOIL's interpretation of colour/pattern codes
-is not recoverable from these samples. A pixel-exact decoder needs the line and flood-fill rules; skipped as low value (4 samples, 2 of them test files). Reference for the Apple II original:
-[Graphics Magician disassembly](https://6502disassembly.com/a2-graphics-magician/) (prose only; the Atari port differs).
+Done: `graphics_magician.rs`. All four match recoil2png except ROCKETOR, whose brush stamps recoil2png paints at the wrong place (divergence recorded).
 
 ## Method note and tooling
 
