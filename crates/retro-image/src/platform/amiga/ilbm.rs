@@ -358,7 +358,7 @@ pub(super) fn ham(held: u32, control: u32, component: u32, base: u32) -> u32 {
 pub(super) fn scale_factors(camg: u32) -> (u32, u32) {
     let lace = camg & CAMG_LACE != 0;
     let hires = camg & CAMG_HIRES != 0;
-    let native_monitor = matches!(camg >> 16, 0 | 1 | 2);
+    let native_monitor = matches!(camg >> 16, 0..=2);
     let super_hires = hires && camg & CAMG_SUPER != 0 && native_monitor;
     match (super_hires, hires, lace) {
         (true, _, true) => (1, 2),
