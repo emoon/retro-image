@@ -9,6 +9,13 @@
 //! repacked copies. The flag-table backward packer ([`flag_table_rle`]) was
 //! reverse engineered from a disassembly of the depacker stub in the packed
 //! True Paint samples (the code is in the files; no outside source).
+//! The escape-last packer ([`escape_last_rle`]) was read from the original
+//! programs: the save routine of Flimatic 3.7 (`FLIMATIC.D64`,
+//! `000_FLIMATIC_3.7_SHP.prg`) and Zoomatic 5.7 (`ZOOMATIC.D64`,
+//! `000_ZOOMATIC_5.7__PD.prg`, run through a 6502 emulator to get past its
+//! cruncher) and the loader of Showmatic (`002_SHOWMATIC_____PD.prg`),
+//! all from the CSDb tools archive <https://csdb.dk>. The disassembly was
+//! done by the project maintainer's permission; no code was copied.
 
 use alloc::vec::Vec;
 
@@ -86,6 +93,18 @@ pub(super) fn backward_rle(packed: &[u8], escape: u8, len: usize) -> Option<Vec<
         }
     }
     Some(out)
+}
+
+/// Unpacks the escape-last RLE of Zoomatic and Flimatic: a load address,
+/// then bytes where `value count escape` is a run (count 0 = 256) and every
+/// other byte is a literal, and the escape byte itself as the last byte of
+/// the file. The programs' loaders read it from the end backwards, which
+/// is why a count or value equal to the escape byte is no problem. The
+/// result is the last `len` bytes unpacked; `None` if the data runs out
+/// before. Extra data before the wanted part is ignored.
+pub(super) fn escape_last_rle(data: &[u8], len: usize) -> Option<Vec<u8>> {
+    let (&escape, rest) = data.split_last()?;
+    backward_rle_filled(rest.get(2..)?, escape, len).map(|(out, _)| out)
 }
 
 /// Unpacks like [`backward_rle`] until the output's start is reached;

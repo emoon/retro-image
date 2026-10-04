@@ -100,6 +100,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["pi", "bpl"],
         bitmap::decode_blazing_paddles,
     ),
+    Format::new(C64, "Zoomatic", &["zom"], bitmap::decode_zoomatic),
     Format::new(C64, "Vidcom 64", &["vid"], bitmap::decode_vidcom),
     Format::new(C64, "Picasso 64", &["p64"], bitmap::decode_picasso_64),
     Format::new(C64, "Cheese", &["che"], bitmap::decode_cheese),
@@ -181,6 +182,7 @@ pub(super) static FORMATS: &[Format] = &[
         fli::decode_fli_graph,
     ),
     Format::new(C64, "Flip", &["fbi"], fli::decode_flip),
+    Format::new(C64, "Flimatic", &["flm"], fli::decode_flimatic),
     Format::new(C64, "AFLI-editor", &["afl"], fli::decode_afli_editor),
     Format::new(
         C64,
