@@ -28,6 +28,10 @@
 //!   `S1x` (odd lines), both in the even page's palette, without sprites,
 //!   256-wide modes doubled horizontally, and falls back to the even page
 //!   when the odd one is missing, invalid or shorter.
+//! - Graph Saurus `SRI` (interlaced Screen 7): headerless, exactly 108544
+//!   bytes, a plain 512x424 raster of two stacked Screen 7 fields, probed with
+//!   synthesized files fed to `recoil2png` (no real sample found); the palette
+//!   comes from `PL7` as for `SR7`, else the default MSX2 palette.
 //! - Reverse engineered from MSX-FAN samples (RECOIL rejects them): pictures
 //!   packed with "ukp" (see `ukp.rs`), Graph Saurus Screen 5 pages saved from
 //!   page 1, and palette files saved as a BSAVE of the VRAM palette table.
@@ -435,6 +439,22 @@ pub(super) fn decode_graph_saurus_interlaced(
     })
 }
 
+/// Bytes of an `SRI` file: two Screen 7 fields of 212 lines.
+const SRI_SIZE: usize = 2 * 212 * 256;
+
+/// Graph Saurus `SRI`: a headerless 512x424 Screen 7 raster, with its palette
+/// in `PL7` when available.
+pub(super) fn decode_sri(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+    if data.len() != SRI_SIZE {
+        return Err(DecodeError::Unrecognized);
+    }
+    let mode = Bitmap::Graphic6;
+    let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
+    let mut image = Image::new(mode.screen_width() as u32, 424);
+    draw_packed(mode, data, &mut image, &palette);
+    Ok(image)
+}
+
 /// Graph Saurus RLE: a byte of 16 or more is a literal, 1-15 repeats the next
 /// byte that many times, and 0 repeats the byte after next (next byte) times.
 fn unpack_graph_saurus(packed: &[u8]) -> Vec<u8> {
@@ -711,6 +731,18 @@ mod tests {
         assert_eq!((image.width(), image.height()), (512, 4));
         let alone = decode_graph_saurus_interlaced(&even, &Files(&[("pl7", &palette)])).unwrap();
         assert_eq!((alone.width(), alone.height()), (512, 4));
+    }
+
+    #[test]
+    fn sri_is_a_headerless_stacked_raster_of_exact_size() {
+        let mut data = vec![0u8; SRI_SIZE];
+        data[SRI_SIZE - 1] = 0x01;
+        let image = decode_sri(&data, &NoCompanions).unwrap();
+        assert_eq!((image.width(), image.height()), (512, 424));
+        assert_eq!(image.get(511, 423), vdp::MSX2_PALETTE[1]);
+        assert!(decode_sri(&data[1..], &NoCompanions).is_err());
+        data.push(0);
+        assert!(decode_sri(&data, &NoCompanions).is_err());
     }
 
     #[test]

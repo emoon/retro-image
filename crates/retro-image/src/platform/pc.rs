@@ -13,12 +13,15 @@
 //!   `recoil2png` output).
 //! - Handy Scanner HS2: Deark `misc2.c` (MIT licence): headerless 1-bit
 //!   bitmap, 105 bytes (840 pixels) per row.
-//! - PCX, Targa and Dr. Halo: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`
+//! - PCX, Targa, Dr. Halo, BMP and GIF: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`,
+//!   `pc/bmp.rs`, `pc/gif.rs`
 //!   (survey: `docs/research/gaps-pc-japan.md`).
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
+mod bmp;
 mod flf;
+mod gif;
 mod halo;
 mod image72;
 mod pcx;
@@ -38,6 +41,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
+    Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
+    Format::new(
+        "PC",
+        "Windows DIB without file header",
+        &["dib"],
+        bmp::decode_dib,
+    ),
+    Format::new("PC", "CompuServe GIF", &["gif", "fra"], gif::decode_gif).signature(),
     Format::new("PC", "Truevision Targa", &["tga"], tga::decode_tga),
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     // Wave 5: FLF

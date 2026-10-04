@@ -18,7 +18,9 @@ mod multicolor;
 mod next;
 mod profi;
 mod screen;
+mod snapshot;
 mod standard;
+mod tape;
 mod timex;
 mod zx81;
 mod zxp;
@@ -172,6 +174,20 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("ZX81", "ZXpaintyONE", &["zp1"], zx81::decode_zp1),
     Format::new("ZX81", "ZXpaintyONE v2.0", &["raw"], zx81::decode_raw),
     Format::new("ZX Spectrum", "ZX-Paintbrush", &["zxp"], zxp::decode_zxp).signature(),
+    Format::new(
+        "ZX Spectrum",
+        "Z80 snapshot",
+        &["z80"],
+        snapshot::decode_z80,
+    ),
+    Format::new(
+        "ZX Spectrum",
+        "SNA snapshot",
+        &["sna"],
+        snapshot::decode_sna,
+    ),
+    Format::new("ZX Spectrum", "TAP tape", &["tap"], tape::decode_tap),
+    Format::new("ZX Spectrum", "TZX tape", &["tzx"], tape::decode_tzx).signature(),
     // Wave 5: FLF
     Format::new(
         "ZX Spectrum",

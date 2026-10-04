@@ -356,7 +356,15 @@ pub(super) static FORMATS: &[Format] = &[
     ),
     Format::new(ATARI8, "ColorViewSquash", &["rgb"], colorview::decode_rgb),
     Format::new(ATARI8, "Rocky Interlace Picture", &["rip"], rip::decode_rip),
+    Format::new(
+        ATARI8,
+        "Rambrandt Graphics 7+",
+        &["rm0"],
+        rambrandt::decode_rm0,
+    ),
+    Format::new(ATARI8, "Rambrandt GTIA 9", &["rm1"], rambrandt::decode_rm1),
     Format::new(ATARI8, "Rambrandt GTIA 10", &["rm2"], rambrandt::decode_rm2),
+    Format::new(ATARI8, "Rambrandt GTIA 11", &["rm3"], rambrandt::decode_rm3),
     Format::new(
         ATARI8,
         "Rambrandt Graphics 15",

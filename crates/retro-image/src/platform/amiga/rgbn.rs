@@ -9,6 +9,11 @@
 //! end of the picture is clamped, a short body is rejected, a 16-bit RGBN
 //! count of 0 means 65536, and CAMG hires/interlace scale the picture like
 //! ILBM.
+//!
+//! Reverse engineered from two real RGB8 files (`Vogel_Kamera.24`,
+//! `WorldMap2.24`) whose BMHD says compression 3: the BODY is exactly width x
+//! height x 4 bytes, every entry ends in a repeat count of 1, so the layout is
+//! the compression 4 one with a mislabelled field. RECOIL rejects them.
 
 use super::iff::find;
 use super::ilbm::{Header, scale_factors};
@@ -32,12 +37,21 @@ impl Kind {
             Kind::Rgb8 => 25,
         }
     }
+
+    /// BMHD compression values with the entry layout: 4 by the spec, and 3 in
+    /// real RGB8 files.
+    fn accepts(self, compression: u8) -> bool {
+        match self {
+            Kind::Rgbn => compression == 4,
+            Kind::Rgb8 => matches!(compression, 3 | 4),
+        }
+    }
 }
 
 pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let header = Header::parse(contents).ok_or(fail)?;
-    if header.planes != kind.planes() || header.compression != 4 {
+    if header.planes != kind.planes() || !kind.accepts(header.compression) {
         return Err(fail);
     }
     let body = find(contents, b"BODY").ok_or(fail)?;
@@ -151,6 +165,17 @@ mod tests {
         assert_eq!(image.get(3, 0), 0x123456);
         assert_eq!(image.get(0, 1), 0xffffff);
         let data = form(b"RGB8", 25, 4, 1, 0, &[1, 2, 3, 0]);
+        assert!(decode_form(&data, Kind::Rgb8).is_err());
+    }
+
+    #[test]
+    fn rgb8_accepts_compression_3_only() {
+        let mut data = form(b"RGB8", 25, 2, 1, 0, &[1, 2, 3, 1, 4, 5, 6, 1]);
+        let at = data.windows(4).position(|w| w == b"BMHD").unwrap() + 8 + 10;
+        data[at] = 3;
+        assert_eq!(decode_form(&data, Kind::Rgb8).unwrap().get(1, 0), 0x040506);
+        assert!(decode_form(&data, Kind::Rgbn).is_err());
+        data[at] = 2;
         assert!(decode_form(&data, Kind::Rgb8).is_err());
     }
 

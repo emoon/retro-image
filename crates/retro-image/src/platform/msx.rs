@@ -63,6 +63,12 @@ pub(super) static FORMATS: &[Format] = &[
         &["sr0"],
         screen::decode_graph_saurus_interlaced,
     ),
+    Format::with_companions(
+        "MSX2",
+        "Graph Saurus Screen 7 interlaced (headerless)",
+        &["sri"],
+        screen::decode_sri,
+    ),
     Format::with_companions("MSX2", "Graph Saurus Screen 8", &["sr8"], |d, c| {
         screen::decode_graph_saurus(Bitmap::Graphic7, d, c)
     }),

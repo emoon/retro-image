@@ -82,6 +82,7 @@ pub(super) static FORMATS: &[Format] = &[
     // Wave 5b: Japanese
     Format::new("NEC PC-98", "ARTV", &["arv"], arv::decode_arv).signature(),
     Format::new("NEC PC-88 VA", "Kitty", &["kt4"], kt4::decode_kt4),
+    Format::new("NEC PC-88", "Kitty", &["kty"], kt4::decode_kt4),
     // other
     Format::new(
         "NEC PC-98",

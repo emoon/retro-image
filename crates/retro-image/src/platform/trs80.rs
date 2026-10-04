@@ -20,7 +20,10 @@
 //!   doubled lines on HR, doubled pixels on PMODE 1 and RLE pixels left over
 //!   at the end taking the last run's colour: observed from `recoil2png`
 //!   output.
+//! - Color Computer 3 HRS, MGE, RAT and VEF: see `coco3.rs`; survey
+//!   `docs/research/next-zx-misc.md`.
 
+mod coco3;
 mod magicdraw;
 
 use alloc::vec::Vec;
@@ -40,6 +43,31 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("TRS-80 Color Computer", "128x96", &["p11"], decode_pmode1),
     // Wave 5: Amiga and misc
     Format::new("TRS-80", "MagicDraw", &["shr"], magicdraw::decode),
+    // Color Computer 3 (sources in coco3.rs)
+    Format::new(
+        "TRS-80 Color Computer 3",
+        "HRS",
+        &["hrs"],
+        coco3::decode_hrs,
+    ),
+    Format::new(
+        "TRS-80 Color Computer 3",
+        "MGE",
+        &["mge"],
+        coco3::decode_mge,
+    ),
+    Format::new(
+        "TRS-80 Color Computer 3",
+        "RAT",
+        &["rat"],
+        coco3::decode_rat,
+    ),
+    Format::new(
+        "TRS-80 Color Computer 3",
+        "VEF",
+        &["vef"],
+        coco3::decode_vef,
+    ),
 ];
 
 const WHITE: u32 = 0xffffff;
