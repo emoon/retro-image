@@ -26,8 +26,8 @@
 
 use alloc::vec::Vec;
 
-use super::{MASTER_PALETTE, PATTERN_TABLE_LEN, tile_pixel};
-use crate::image::check_size;
+use super::PATTERN_TABLE_LEN;
+use super::nametable::Nametable;
 use crate::{DecodeError, Image};
 
 const MAGIC: &[u8] = b"NSTssTXT";
@@ -59,27 +59,15 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     {
         return Err(DecodeError::Unrecognized);
     }
-    check_size(width * 8, height * 8)?;
-
-    let colors = (0..width * 8 * height * 8).map(|i| {
-        let (x, y) = (i % (width * 8), i / (width * 8));
-        let (tx, ty) = (x / 8, y / 8);
-        let value = tile_pixel(&pattern, usize::from(names[ty * width + tx]), x % 8, y % 8);
-        let attribute = attributes[ty / 4 * attribute_columns + tx / 4];
-        let shift = (ty / 2 % 2 * 2 + tx / 2 % 2) * 2;
-        let subpalette = usize::from(attribute >> shift & 3);
-        let color = if value == 0 {
-            palette[0]
-        } else {
-            palette[subpalette * 4 + usize::from(value)]
-        };
-        MASTER_PALETTE[usize::from(color & 0x3f)]
-    });
-    Ok(Image::from_colors(
-        (width * 8) as u32,
-        (height * 8) as u32,
-        colors,
-    ))
+    Nametable {
+        width,
+        height,
+        pattern: &pattern,
+        names: &names,
+        attributes: &attributes,
+        palette: &palette,
+    }
+    .draw()
 }
 
 /// The value of the `key=value` line whose key is exactly `key`.

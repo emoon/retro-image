@@ -45,7 +45,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(
         "BBC Micro",
         "Mode 7 screen",
-        &["bb7", "m7"],
+        &["bb7", "m7", "mode7"],
         teletext::decode_raw,
     ),
     Format::new(

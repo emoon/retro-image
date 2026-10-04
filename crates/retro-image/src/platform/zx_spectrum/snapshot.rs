@@ -15,8 +15,15 @@
 //!   RECOIL oracle for these formats; the output was checked against the
 //!   specs and by eye on the samples in `corpus/extra/zx-snapshots`.
 //!
-//! Left out: Timex machines (Z80 hardware 14, 15, 128), SamRam and Didaktik,
-//! whose screen mode is not part of what is read here. SZX is in `szx.rs`.
+//! The Timex TC2048 (Z80 hardware 14) is read when its screen port value
+//! (byte 35) is 0, the standard screen; the one sample
+//! (`corpus/extra/zx-timex-samram`, an emulator state after reset) uses no
+//! other mode, so the Timex hi-colour and hi-res modes are not read here.
+//! That byte's meaning is taken from the sample's manifest, not from the Z80
+//! specification, which doesn't mention Timex machines.
+//!
+//! Left out: the other Timex machines (Z80 hardware 15, 128), SamRam and
+//! Didaktik, whose screen mode is not part of what is read here. SZX is in `szx.rs`.
 
 use alloc::vec::Vec;
 
@@ -51,7 +58,7 @@ pub(super) fn decode_z80(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let hardware = *data.get(34).ok_or(DecodeError::Unrecognized)?;
     let port_7ffd = *data.get(35).ok_or(DecodeError::Unrecognized)?;
-    let page = if z80_has_banks(hardware, version_3)? && port_7ffd & SHADOW_SCREEN != 0 {
+    let page = if z80_has_banks(hardware, version_3, port_7ffd)? && port_7ffd & SHADOW_SCREEN != 0 {
         PAGE_BANK_7
     } else {
         PAGE_BANK_5
@@ -78,8 +85,11 @@ pub(super) fn decode_z80(data: &[u8]) -> Result<Image, DecodeError> {
 /// Whether the machine has the 128K paging port (so the screen select bit
 /// applies). Machines whose screen mode the snapshot does not describe here
 /// are rejected.
-fn z80_has_banks(hardware: u8, version_3: bool) -> Result<bool, DecodeError> {
+fn z80_has_banks(hardware: u8, version_3: bool, port: u8) -> Result<bool, DecodeError> {
     match (version_3, hardware) {
+        // TC2048: memory as a 48K; byte 35 holds the last OUT to the Timex
+        // screen port 0xFF, and only 0 (standard screen at 0x4000) is read.
+        (true, 14) if port == 0 => Ok(false),
         (false, 0 | 1) | (true, 0 | 1 | 3) => Ok(false),
         (false, 3 | 4) | (true, 4..=10 | 12 | 13) => Ok(true),
         _ => Err(DecodeError::Unrecognized),

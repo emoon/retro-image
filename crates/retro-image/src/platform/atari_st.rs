@@ -32,6 +32,7 @@ mod seq;
 mod signum_imc;
 mod simple;
 mod spectrum;
+mod stos_bank;
 mod stos_pp;
 mod tiny;
 mod tt;
@@ -251,6 +252,7 @@ pub(super) static FORMATS: &[Format] = &[
     st("STOS Picture Packer PP3", &["pp3"], stos_pp::decode_pp3),
     st("STOS Picture Packer DAJ", &["daj"], stos_pp::decode_daj),
     st("STOS packed screen", &["pac", "sz1"], stos_pp::decode_pac).signature(),
+    st("STOS memory bank", &["mbk"], stos_bank::decode).signature(),
     // Wave 5: FLF
     Format::new(
         "Atari ST",

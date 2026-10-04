@@ -1,5 +1,5 @@
-//! Nintendo Entertainment System: pattern tables (`.chr`) and NES Screen Tool
-//! sessions (`.nss`).
+//! Nintendo Entertainment System: pattern tables (`.chr`), nametables (`.nam`)
+//! and NES Screen Tool sessions (`.nss`).
 //!
 //! Sources (details per format in each submodule):
 //! - Pattern table encoding (16 bytes per 8x8 tile, two bit planes):
@@ -20,6 +20,8 @@
 //! the renders are recorded in `tests/divergences/gameboy-nes.tsv`.
 
 mod chr;
+mod nam;
+mod nametable;
 mod nss;
 
 use crate::Format;
@@ -50,5 +52,6 @@ fn tile_pixel(table: &[u8], tile: usize, x: usize, y: usize) -> u8 {
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NES", "Pattern table", &["chr"], chr::decode),
+    Format::with_companions("NES", "Nametable", &["nam"], nam::decode),
     Format::new("NES", "NES Screen Tool session", &["nss"], nss::decode).signature(),
 ];
