@@ -10,10 +10,11 @@ reads 571 formats from 52 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Sp
 Amstrad CPC, MSX, PC-98 and a long tail of rarer machines. Every format is listed in
 [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 
-[RECOIL](https://recoil.sourceforge.net) inspired the project, and the tests compare our
-output against it. We never used its code. The decoders come from public documentation,
-permissively licensed code, and sample files I took apart by hand. Where each one came from
-is in [docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md).
+[RECOIL](https://recoil.sourceforge.net) inspired the project, and the tests compare the
+output against it. None of its code was read or used. The decoders are written from public
+format documentation, permissively licensed code, and reverse engineering of sample files.
+[docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md) lists the
+sources for each format.
 
 ## Library
 
