@@ -379,10 +379,9 @@ pub(super) fn decode_sg3(data: &[u8]) -> Result<Image, DecodeError> {
 /// Micro Illustrator / Graphics 15: 160 pixels, 4 colours. A 4-byte tail is
 /// background and playfield 0-2; a 5-byte tail is playfield 0-2, background
 /// and an unused byte; no tail or a 3-byte one gives grey defaults, any
-/// other length is rejected. A 240-line picture
-/// takes per-line colours from a Graph2Font `.COL` file of 1024 or 1280
-/// bytes when present: table `value` (background, playfield 0-2), entry
-/// `line`.
+/// other length is rejected. A 240-line picture takes per-line colours from
+/// a Graph2Font `.COL` file of 1024 or 1280 bytes when present: table
+/// `value` (background, playfield 0-2), entry `line`.
 pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(data)?;
     let colors = match *tail {
