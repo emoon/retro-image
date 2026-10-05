@@ -12,7 +12,16 @@ use crate::bytes::be32;
 /// bytes too few) and the contents run to the end of the data. Bytes after a
 /// complete FORM are left out.
 pub(super) fn form(data: &[u8]) -> Option<([u8; 4], &[u8])> {
-    if data.len() < 12 || &data[..4] != b"FORM" {
+    if data.get(..4)? != b"FORM" {
+        return None;
+    }
+    group(data)
+}
+
+/// Returns the type and contents of any group chunk (`FORM`, `LIST`, `CAT `),
+/// with the declared length handled as described for [`form`].
+pub(super) fn group(data: &[u8]) -> Option<([u8; 4], &[u8])> {
+    if data.len() < 12 {
         return None;
     }
     let len = be32(data, 4)? as usize;

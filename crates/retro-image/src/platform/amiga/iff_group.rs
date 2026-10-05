@@ -18,8 +18,7 @@
 
 use alloc::vec::Vec;
 
-use super::iff::chunks;
-use crate::bytes::be32;
+use super::iff::{self, chunks};
 
 /// Nested groups followed, so a crafted file cannot recurse deeply.
 const MAX_DEPTH: usize = 4;
@@ -29,16 +28,13 @@ const MAX_DEPTH: usize = 4;
 /// finds the `FORM`'s own first. `None` unless `data` is a `LIST`, a `CAT` or
 /// a `FORM ANBM`.
 pub(super) fn first_form(data: &[u8]) -> Option<([u8; 4], Vec<u8>)> {
-    let kind: [u8; 4] = data.get(8..12)?.try_into().ok()?;
-    let group = match &data[..4] {
+    let (kind, contents) = iff::group(data)?;
+    let is_picture_group = match &data[..4] {
         b"LIST" | b"CAT " => true,
         b"FORM" => &kind == b"ANBM",
         _ => false,
     };
-    let len = (be32(data, 4)? as usize).saturating_add(8).min(data.len());
-    group
-        .then(|| walk(data.get(12..len.max(12))?, &mut Vec::new(), 0))
-        .flatten()
+    is_picture_group.then(|| walk(contents, &mut Vec::new(), 0))?
 }
 
 /// The first `FORM` among `children`. `props` holds the type and chunks of
@@ -167,6 +163,17 @@ mod tests {
             1,
             "the inner PROP is out of scope"
         );
+    }
+
+    #[test]
+    fn a_short_declared_length_runs_to_the_end_like_a_form() {
+        let frame = group(b"FORM", b"ILBM", &[chunk(b"BODY", b"pixels")]);
+        let mut list = group(b"LIST", b"ILBM", &[frame]);
+        // Declare 4 bytes too few: the FORM inside is cut, as in a short FORM.
+        let short = (list.len() - 8 - 4) as u32;
+        list[4..8].copy_from_slice(&short.to_be_bytes());
+        let (_, contents) = first_form(&list).unwrap();
+        assert_eq!(chunks(&contents).next().unwrap().1, b"pixels");
     }
 
     #[test]
