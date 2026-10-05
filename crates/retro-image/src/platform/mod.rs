@@ -17,6 +17,7 @@ mod game_boy;
 mod hp48;
 mod msx;
 mod nec_pc;
+mod neo_geo;
 mod nes;
 mod oric;
 mod pc;
@@ -66,4 +67,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     vector06c::FORMATS,
     vmu::FORMATS,
     zx_spectrum::FORMATS,
+    // Headerless formats on extensions that others claim too go last, so
+    // that those get the first try.
+    neo_geo::FORMATS,
 ];
