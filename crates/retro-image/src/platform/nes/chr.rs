@@ -1,9 +1,11 @@
 //! NES pattern table (`.chr`) as a sheet of tiles.
 //!
 //! Sources: pattern table encoding from the nesdev wiki,
-//! <https://www.nesdev.org/wiki/PPU_pattern_tables>; sizes (4 KiB for one
-//! pattern table, 8 KiB for both) observed from the samples in
-//! `corpus/extra/gameboy-nes/nes` (famidash, hxlnt; MIT).
+//! <https://www.nesdev.org/wiki/PPU_pattern_tables>; sizes observed from the
+//! samples in `corpus/extra/gameboy-nes/nes` (famidash, hxlnt; MIT: 4 and
+//! 8 KiB) and the `.chr` files of `christopherpow/nes-test-roms` in
+//! `corpus/extra/nintendo-rom-icons` (1, 1.5, 2, 4, 8, 16 and 128 KiB, so a
+//! file is any whole number of tiles, not only whole pattern tables).
 //!
 //! The file has no palette, so colour numbers 0-3 are shown as a black to
 //! white ramp. Tiles are laid out 16 to a row, 128 pixels wide; an 8 KiB file
@@ -12,15 +14,25 @@
 //! sheet so that it stays a picture a viewer can show (see
 //! [`tiles_per_row`]).
 
-use super::{PATTERN, PATTERN_TABLE_LEN};
+use super::PATTERN;
 use crate::{DecodeError, Image};
 
 /// Tiles in a row of the sheet of a pattern table.
 const TABLE_TILES_PER_ROW: usize = 16;
 const GREYS: [u32; 4] = [0x00_0000, 0x55_5555, 0xaa_aaaa, 0xff_ffff];
 
+/// Most bytes a `.chr` file may have: the 256 KiB of the biggest common
+/// CHR-ROM (MMC3 boards).
+const MAX_LEN: usize = 256 * 1024;
+
+/// Bytes of an Atari 8-bit character set (128 characters of 8 bytes), which
+/// the Atari decoders claim under the same extension: the fonts of
+/// `corpus/hostile/atari8/pigwa-forever` are 1024 bytes and look like noise
+/// as tiles. A 1 KiB NES file is not taken for tiles.
+const ATARI_FONT_LEN: usize = 1024;
+
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    if data.len() != PATTERN_TABLE_LEN && data.len() != 2 * PATTERN_TABLE_LEN {
+    if data.len() > MAX_LEN || data.len() == ATARI_FONT_LEN {
         return Err(DecodeError::Unrecognized);
     }
     sheet(data)
@@ -46,6 +58,22 @@ fn tiles_per_row(tiles: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn any_whole_number_of_tiles_up_to_the_cap_is_a_pattern_table() {
+        let size = |len: usize| {
+            decode(&alloc::vec![0; len])
+                .map(|image| (image.width(), image.height()))
+                .ok()
+        };
+        assert_eq!(size(1536), Some((128, 48)));
+        assert_eq!(size(16), Some((128, 8)));
+        assert_eq!(size(MAX_LEN), Some((512, 2048)));
+        assert_eq!(size(0), None);
+        assert_eq!(size(1535), None);
+        assert_eq!(size(ATARI_FONT_LEN), None);
+        assert_eq!(size(MAX_LEN + 16), None);
+    }
 
     #[test]
     fn big_banks_get_wider_sheets() {
