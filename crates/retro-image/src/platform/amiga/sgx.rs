@@ -15,24 +15,24 @@
 //! - Checked against samples: `testimg.sgx` (raw) and `testimg-lz77.sgx` give
 //!   identical pixels, and the zlib stream of the second inflates to exactly
 //!   the raw data of the first.
-//!
 //! - SVG files (the older name, "SVG Graphics File") may hold an XPK or
 //!   PowerPacker stream where SGX has `LZ77`; the XPK ones were seen with
 //!   RLEN and NUKE packers (`codec/xpk.rs`). The PowerPacker form is read as
 //!   the spec describes it and has no sample.
-//!
 //! - The 32-bit layout is red, green, blue, alpha, read off `abydos.rlen.svg`
 //!   (800x600, `ColorDepth` 32): bytes 0-2 are the rainbow and byte 3 is 0 or
 //!   255 with a few partial values at the edges. Transparent parts show
 //!   `TRANSPARENT_FILL`.
 //!
-//! Not decoded: planar bitmaps with 2 to 8 planes (the spec does not say
-//! whether the planes follow one another or interleave) and the pixel
-//! layouts it only recommends. Mono bitmaps, 48- and 64-bit pixels (the
-//! latter in the same channel order as 32-bit) and the HAM/EHB reading of
-//! 8-bit chunky data follow the spec but have no sample file.
+//! Only what a sample or a tool confirmed is drawn: 8-bit chunky data with a
+//! palette, 24-bit RGB (the spec's layout, no sample) and the 32-bit RGBA
+//! kind. Rejected rather than drawn from the spec alone: 1-bit and planar
+//! bitmaps (the spec does not say whether planes follow one another or
+//! interleave), 48- and 64-bit pixels, a 32-bit file whose `ColorDepth` does
+//! not count the alpha channel, and 8-bit data whose `ViewMode32` says HAM or
+//! extra-half-brite (plain indices would draw it wrong).
 
-use super::chunky::{Alpha, Direct, Fourth, Packing, Pixels, Rows, bitmap_bytes, render};
+use super::chunky::{Packing, Pixels, Rows, bitmap_bytes, render};
 use crate::bytes::{be16, be32};
 use crate::codec::{powerpacker, xpk};
 use crate::{DecodeError, Image};
@@ -63,10 +63,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = pixel_layout(bits, planes, depth, view_mode).ok_or(fail)?;
 
     let mut palette = [0u32; 256];
-    if matches!(
-        pixels,
-        Pixels::Mono | Pixels::Indexed8 | Pixels::ExtraHalfBrite | Pixels::Ham6 | Pixels::Ham8
-    ) {
+    if pixels == Pixels::Indexed8 {
         let colors = header.get(COLORS_AT..COLORS_AT + COLORS_LEN).ok_or(fail)?;
         for (entry, rgb) in palette.iter_mut().zip(colors.as_chunks::<3>().0) {
             *entry = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);
@@ -78,29 +75,15 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// The pixel layout for `PixelBits`, `PixelPlanes`, `ColorDepth` and
-/// `ViewMode32`, if it is one we decode.
+/// `ViewMode32`, if it is one a sample has confirmed.
 fn pixel_layout(bits: u8, planes: u8, depth: u32, view_mode: u32) -> Option<Pixels> {
     match (bits, planes) {
-        (1, 1) => Some(Pixels::Mono),
-        (8, 1) => Some(Pixels::indexed(depth, view_mode)),
-        (24, 1) => Some(direct(false, None)),
-        (48, 1) => Some(direct(true, None)),
+        (8, 1) => Pixels::indexed(depth, view_mode),
+        (24, 1) => Some(Pixels::Rgb24),
         // The fourth channel is alpha only if `ColorDepth` counts it.
-        (32, 1) => Some(direct(false, Some(depth == 32))),
-        (64, 1) => Some(direct(true, Some(depth == 64))),
+        (32, 1) if depth == 32 => Some(Pixels::Rgba32),
         _ => None,
     }
-}
-
-/// Red, green, blue, and for `Some(has_alpha)` a fourth channel after them.
-fn direct(wide: bool, fourth: Option<bool>) -> Pixels {
-    Pixels::Direct(Direct {
-        wide,
-        fourth: fourth.map(|has_alpha| Fourth {
-            first: false,
-            alpha: has_alpha.then_some(Alpha::Straight),
-        }),
-    })
 }
 
 /// How the bitmap data at the end of the header is packed, told by its
@@ -191,6 +174,48 @@ mod tests {
         assert!(decode(&lying).is_err());
         assert!(decode(&sgx(&[1, 2, 3])).is_err());
         assert!(decode(&sgx(&[1, 2, 3, 4])[..100]).is_err());
+    }
+
+    /// The 2x2 test file with other pixel fields: bits, planes, `ColorDepth`,
+    /// `ViewMode32` and bytes per line.
+    fn sgx_with(
+        bits: u8,
+        planes: u8,
+        depth: u32,
+        view_mode: u32,
+        bpl: u32,
+        body: &[u8],
+    ) -> Vec<u8> {
+        let mut file = sgx(body);
+        file[40..44].copy_from_slice(&depth.to_be_bytes());
+        file[44..48].copy_from_slice(&view_mode.to_be_bytes());
+        file[48] = bits;
+        file[49] = planes;
+        file[50..54].copy_from_slice(&bpl.to_be_bytes());
+        file
+    }
+
+    #[test]
+    fn only_confirmed_pixel_layouts_are_drawn() {
+        // 24-bit RGB and 32-bit RGBA (ColorDepth 32) draw.
+        let rgb = sgx_with(24, 1, 24, 0, 6, &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+        assert_eq!(decode(&rgb).unwrap().rgb()[..3], [1, 2, 3]);
+        let rgba = sgx_with(32, 1, 32, 0, 8, &[9; 16]);
+        assert!(decode(&rgba).is_ok());
+        // Mono, planar, 48- and 64-bit, RGBA whose depth does not count the
+        // alpha, and HAM or half-brite views of 8-bit data are left out.
+        let rejected = [
+            sgx_with(1, 1, 1, 0, 1, &[0; 2]),
+            sgx_with(1, 3, 3, 0, 1, &[0; 6]),
+            sgx_with(48, 1, 48, 0, 12, &[0; 24]),
+            sgx_with(64, 1, 64, 0, 16, &[0; 32]),
+            sgx_with(32, 1, 24, 0, 8, &[0; 16]),
+            sgx_with(8, 1, 6, 0x800, 2, &[0; 4]),
+            sgx_with(8, 1, 6, 0x80, 2, &[0; 4]),
+        ];
+        for (i, file) in rejected.iter().enumerate() {
+            assert!(decode(file).is_err(), "case {i}");
+        }
     }
 
     #[test]

@@ -5,9 +5,8 @@
 //! - `rgfx.h`, `RGFX-Chunks.txt`, `RGFX-Remarks.txt` and the readme of
 //!   IFF-RGFX v4.1, 2012-08-31 (<https://aminet.net/dev/misc/IFF-RGFX.zip>),
 //!   read as specification prose: the `RGHD` header (13 longs), `RSCM`,
-//!   `RCOL` (transparent color, 256 RGB entries), `RTRN` (alpha per color),
-//!   `RBOD` and the compression codes (0 none, 1 XPK, 2 a size plus zlib
-//!   stream).
+//!   `RCOL` (transparent color, 256 RGB entries), `RBOD` and the compression
+//!   codes (0 none, 1 XPK).
 //! - The 8-bit chunky and 24-bit types are confirmed on 16 samples
 //!   (Sembiance's `image/rgfx`): 15 files of 160x128 chunky 8-bit pictures
 //!   packed with XPK MASH, and `boundless_WB2.rgfx`, 800x600 RGB24 packed with
@@ -15,21 +14,18 @@
 //!   Their `RGHD` fields match `rgfx.h` (compression 1 at long 9, bitmap
 //!   type at long 12, pixel aspect 11:10 or 22:22).
 //!
-//! Decoded without a sample, from `rgfx.h` alone: the 32- and 64-bit ARGB
-//! types (alpha first, shown only if the `RMBT_ALPHA` or `RMBT_ALPHAINV` flag
-//! is set), 48-bit RGB, 15- and 16-bit types (read as big-endian words, `A`
-//! the top bit, as the "1 + 3x5 bit" note reads; the SGX spec's "5:5:5:1"
-//! would put it at the bottom), zlib compression, `RTRN` and the
-//! transparent color of `RCOL`. Not decoded: the planar type (the header has
-//! no plane count and the spec does not say how the planes are laid out) and
-//! the two float types (the byte order of a float is not stated). The pixel
-//! aspect and `RSCM`'s mode flags other than HAM and EHB are not used.
+//! Only what those samples exercise is decoded, plus the transparent color of
+//! `RCOL` (a few lines straight from `rgfx.h`, with a unit test). Everything
+//! else is rejected rather than drawn from the spec alone: the planar type
+//! (the header has no plane count and the spec does not say how planes are
+//! laid out), the float types, the 15-, 16-, 32-, 48- and 64-bit types,
+//! `RTRN`, zlib compression, and chunky data whose `RSCM` view mode says HAM
+//! or extra-half-brite. The pixel aspect and the other mode flags are not
+//! used.
 //!
 //! RECOIL has no RGFX support.
 
-use super::chunky::{
-    Alpha, Direct, Fourth, Packing, Pixels, Rows, bitmap_bytes, over_fill, render,
-};
+use super::chunky::{Packing, Pixels, Rows, bitmap_bytes, render};
 use super::iff::find;
 use crate::bytes::be32;
 use crate::image::TRANSPARENT_FILL;
@@ -37,16 +33,9 @@ use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 13 * 4;
 
-// Bitmap types, `RMBT_` in `rgfx.h`; the alpha flags are or-ed into them.
+// Bitmap types, `RMBT_` in `rgfx.h`.
 const CHUNKY8: u32 = 1 << 0;
 const RGB24: u32 = 1 << 1;
-const ARGB32: u32 = 1 << 2;
-const RGB15: u32 = 1 << 4;
-const ARGB16: u32 = 1 << 5;
-const RGB48: u32 = 1 << 6;
-const ARGB64: u32 = 1 << 7;
-const ALPHA: u32 = 1 << 30;
-const ALPHA_INVERSE: u32 = 1 << 31;
 
 /// Decodes the chunks of a `FORM RGFX`.
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
@@ -64,18 +53,19 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     let packing = match field(9)? {
         0 => Packing::Stored,
         1 => Packing::Xpk,
-        2 => Packing::Zlib,
         _ => return Err(fail),
     };
     let view_mode = find(contents, b"RSCM")
         .and_then(|m| be32(m, 0))
         .unwrap_or(0);
-    let pixels = pixel_layout(bitmap_type, pixel_bits, depth, view_mode).ok_or(fail)?;
+    let pixels = match (bitmap_type, pixel_bits) {
+        (CHUNKY8, 8) if (1..=8).contains(&depth) => Pixels::indexed(depth, view_mode),
+        (RGB24, 24) => Some(Pixels::Rgb24),
+        _ => None,
+    }
+    .ok_or(fail)?;
 
-    let palette = if matches!(
-        pixels,
-        Pixels::Indexed8 | Pixels::ExtraHalfBrite | Pixels::Ham6 | Pixels::Ham8
-    ) {
+    let palette = if pixels == Pixels::Indexed8 {
         palette(contents).ok_or(fail)?
     } else {
         [0; 256]
@@ -85,55 +75,14 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     render(pixels, rows, &bytes, &palette)
 }
 
-/// The pixel layout for the header's bitmap type (with its alpha flags),
-/// pixel size in bits, depth, and the view mode of `RSCM`.
-fn pixel_layout(bitmap_type: u32, pixel_bits: u32, depth: u32, view_mode: u32) -> Option<Pixels> {
-    let alpha = if bitmap_type & ALPHA_INVERSE != 0 {
-        Some(Alpha::Inverse)
-    } else if bitmap_type & ALPHA != 0 {
-        Some(Alpha::Straight)
-    } else {
-        None
-    };
-    let direct = |wide, fourth: bool| {
-        Pixels::Direct(Direct {
-            wide,
-            fourth: fourth.then_some(Fourth { first: true, alpha }),
-        })
-    };
-    Some(match (bitmap_type & !(ALPHA | ALPHA_INVERSE), pixel_bits) {
-        (CHUNKY8, 8) if (1..=8).contains(&depth) => Pixels::indexed(depth, view_mode),
-        (RGB24, 24) => direct(false, false),
-        (ARGB32, 32) => direct(false, true),
-        (RGB48, 48) => direct(true, false),
-        (ARGB64, 64) => direct(true, true),
-        (RGB15, 15) => Pixels::Rgb555(None),
-        (ARGB16, 16) => Pixels::Rgb555(alpha),
-        _ => return None,
-    })
-}
-
-/// The `RCOL` colors, made see-through where `RTRN` or the transparent
-/// color say so.
+/// The `RCOL` colors, with the transparent color (if the chunk says there is
+/// one) shown as the transparent fill.
 fn palette(contents: &[u8]) -> Option<[u32; 256]> {
     let rcol = find(contents, b"RCOL")?;
     let colors = rcol.get(8..8 + 256 * 3)?;
     let mut palette = [0u32; 256];
     for (entry, rgb) in palette.iter_mut().zip(colors.as_chunks::<3>().0) {
         *entry = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);
-    }
-    // Levels per color; only the two flag values the spec defines.
-    if let Some(rtrn) = find(contents, b"RTRN") {
-        let alpha = match be32(rtrn, 0)? {
-            0 => Some(Alpha::Straight),
-            1 => Some(Alpha::Inverse),
-            _ => None,
-        };
-        if let (Some(alpha), Some(levels)) = (alpha, rtrn.get(4..4 + 256)) {
-            for (entry, &level) in palette.iter_mut().zip(levels) {
-                *entry = over_fill(*entry, alpha.opacity(u32::from(level)));
-            }
-        }
     }
     if be32(rcol, 0)? == 1 {
         let index = be32(rcol, 4)? as usize;
@@ -205,7 +154,14 @@ mod tests {
     }
 
     #[test]
-    fn the_transparent_color_and_rtrn_show_the_fill() {
+    fn rgb24_pictures_need_no_palette() {
+        let body = chunk(b"RBOD", &[1, 2, 3, 4, 5, 6]);
+        let contents = [rghd(RGB24, 24, 6, 0), body].concat();
+        assert_eq!(decode(&contents).unwrap().rgb(), &[1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn the_transparent_color_shows_the_fill() {
         let fill = TRANSPARENT_FILL.to_be_bytes();
         let contents = [
             rghd(CHUNKY8, 8, 2, 0),
@@ -217,64 +173,47 @@ mod tests {
             decode(&contents).unwrap().rgb(),
             &[255, 0, 0, fill[1], fill[2], fill[3]]
         );
-        // RTRN with straight levels: color 1 fully transparent, the rest opaque.
-        let mut rtrn = alloc::vec![255u8; 4 + 256];
-        rtrn[..4].fill(0);
-        rtrn[5] = 0;
-        let contents = [
-            rghd(CHUNKY8, 8, 2, 0),
-            rcol(None),
-            chunk(b"RTRN", &rtrn),
-            chunk(b"RBOD", &[1, 2]),
-        ]
-        .concat();
-        assert_eq!(
-            decode(&contents).unwrap().rgb(),
-            &[fill[1], fill[2], fill[3], 0, 0, 255]
-        );
-        // The inverse flag turns the levels around.
-        rtrn[3] = 1;
-        let contents = [
-            rghd(CHUNKY8, 8, 2, 0),
-            rcol(None),
-            chunk(b"RTRN", &rtrn),
-            chunk(b"RBOD", &[1, 2]),
-        ]
-        .concat();
-        assert_eq!(
-            decode(&contents).unwrap().rgb(),
-            &[255, 0, 0, fill[1], fill[2], fill[3]]
-        );
     }
 
     #[test]
-    fn argb_shows_alpha_only_when_flagged() {
-        let pixels = [128, 10, 20, 30, 0, 40, 50, 60];
-        let body = chunk(b"RBOD", &pixels);
-        let plain = [rghd(ARGB32, 32, 8, 0), body.clone()].concat();
-        assert_eq!(
-            decode(&plain).unwrap().rgb(),
-            &[10, 20, 30, 40, 50, 60],
-            "alpha without its flag is padding"
-        );
-        let flagged = [rghd(ARGB32 | ALPHA, 32, 8, 0), body].concat();
-        let image = decode(&flagged).unwrap();
-        let fill = TRANSPARENT_FILL.to_be_bytes();
-        assert_eq!(&image.rgb()[3..], &fill[1..]);
-        assert_ne!(&image.rgb()[..3], &[10, 20, 30]);
-    }
-
-    #[test]
-    fn rejects_unknown_types_and_mismatched_sizes() {
-        let body = chunk(b"RBOD", &[0; 6]);
-        // Planar (type 0), floats, and a pixel size that disagrees with the type.
-        for (bitmap_type, bits) in [(0, 8), (1 << 8, 96), (RGB24, 32)] {
-            let contents = [rghd(bitmap_type, bits, 6, 0), body.clone()].concat();
-            assert!(decode(&contents).is_err());
+    fn rejects_what_no_sample_confirms() {
+        let body = chunk(b"RBOD", &[0; 8]);
+        // Planar (type 0), floats, 15-, 16-, 32-, 48- and 64-bit types, and a
+        // pixel size that disagrees with the type.
+        let types = [
+            (0, 8),
+            (1 << 8, 96),
+            (1 << 9, 128),
+            (1 << 4, 15),
+            (1 << 5, 16),
+            (1 << 2, 32),
+            (1 << 6, 48),
+            (1 << 7, 64),
+            (RGB24, 32),
+        ];
+        for (bitmap_type, bits) in types {
+            let contents = [rghd(bitmap_type, bits, 8, 0), body.clone()].concat();
+            assert!(decode(&contents).is_err(), "type {bitmap_type:#x}");
         }
-        // Rows narrower than the picture, and compression codes we do not know.
+        // Compression other than none and XPK, notably zlib.
+        for compression in [2, 3] {
+            assert!(decode(&[rghd(RGB24, 24, 6, compression), body.clone()].concat()).is_err());
+        }
+        // Rows narrower than the picture.
         assert!(decode(&[rghd(RGB24, 24, 5, 0), body.clone()].concat()).is_err());
-        assert!(decode(&[rghd(RGB24, 24, 6, 3), body.clone()].concat()).is_err());
-        assert!(decode(&[rghd(RGB24, 24, 6, 0), body].concat()).is_ok());
+        assert!(decode(&[rghd(RGB24, 24, 6, 0), body.clone()].concat()).is_ok());
+        // A HAM view of 8-bit chunky data: plain indices would draw it wrong.
+        let rscm = chunk(
+            b"RSCM",
+            &[0, 0, 8, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+        );
+        let ham = [
+            rghd(CHUNKY8, 8, 2, 0),
+            rcol(None),
+            rscm,
+            chunk(b"RBOD", &[1, 2]),
+        ]
+        .concat();
+        assert!(decode(&ham).is_err());
     }
 }
