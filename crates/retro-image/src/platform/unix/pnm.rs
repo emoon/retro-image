@@ -16,8 +16,8 @@
 //! tuple type of `GRAYSCALE`, `BLACKANDWHITE` or `RGB`, with or without the
 //! `_ALPHA` suffix, picks the channels; a PAM without a tuple type is read by
 //! depth (1 gray, 2 gray and alpha, 3 RGB, 4 RGB and alpha). Alpha is
-//! composited onto the shared transparent-fill gray. Only the first image of
-//! a file is decoded, and anything after it is ignored. The XV thumbnail
+//! kept as the image's straight alpha, scaled like the color samples. Only
+//! the first image of a file is decoded, and anything after it is ignored. The XV thumbnail
 //! variant of `P7` is not accepted.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's PPM reader pixel
@@ -31,7 +31,6 @@ use alloc::vec::Vec;
 
 use super::to_byte;
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{BitOrder, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -360,25 +359,25 @@ fn decode_samples(data: &[u8], header: &Header) -> Result<Image, DecodeError> {
     let channel = |source: &mut Samples| source.next().map(|v| u32::from(to_byte(v, maxval)));
     for y in 0..height as u32 {
         for x in 0..width as u32 {
-            let color = match layout {
-                Layout::Gray => channel(&mut source).ok_or(FAIL)? * 0x01_0101,
+            let (color, alpha) = match layout {
+                Layout::Gray => (channel(&mut source).ok_or(FAIL)? * 0x01_0101, 255),
                 Layout::GrayAlpha => {
                     let gray = channel(&mut source).ok_or(FAIL)? * 0x01_0101;
-                    over_fill(gray, channel(&mut source).ok_or(FAIL)? as u8)
+                    (gray, channel(&mut source).ok_or(FAIL)?)
                 }
                 Layout::Rgb | Layout::RgbAlpha => {
                     let r = channel(&mut source).ok_or(FAIL)?;
                     let g = channel(&mut source).ok_or(FAIL)?;
                     let b = channel(&mut source).ok_or(FAIL)?;
-                    let color = r << 16 | g << 8 | b;
-                    if layout == Layout::RgbAlpha {
-                        over_fill(color, channel(&mut source).ok_or(FAIL)? as u8)
+                    let alpha = if layout == Layout::RgbAlpha {
+                        channel(&mut source).ok_or(FAIL)?
                     } else {
-                        color
-                    }
+                        255
+                    };
+                    (r << 16 | g << 8 | b, alpha)
                 }
             };
-            image.set(x, y, color);
+            image.set_argb(x, y, alpha << 24 | color);
         }
     }
     Ok(image)
@@ -387,7 +386,6 @@ fn decode_samples(data: &[u8], header: &Header) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
 
     #[test]
     fn plain_bitmap_pixels_need_no_separators_and_one_is_black() {
@@ -417,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn pam_alpha_is_composited_and_the_tuple_type_is_checked() {
+    fn pam_alpha_is_kept_and_the_tuple_type_is_checked() {
         let pam = |tuple: &[u8], depth: &[u8], raster: &[u8]| {
             let mut file = b"P7\n# c\nWIDTH 2\nHEIGHT 1\nDEPTH ".to_vec();
             file.extend_from_slice(depth);
@@ -428,10 +426,9 @@ mod tests {
             decode_pnm(&file)
         };
         let image = pam(b"RGB_ALPHA", b"4", &[9, 8, 7, 255, 1, 2, 3, 0]).unwrap();
-        assert_eq!(
-            (image.get(0, 0), image.get(1, 0)),
-            (0x090807, TRANSPARENT_FILL)
-        );
+        assert_eq!(image.rgba(), [9, 8, 7, 255, 1, 2, 3, 0]);
+        let gray = pam(b"GRAYSCALE_ALPHA", b"2", &[200, 100, 5, 255]).unwrap();
+        assert_eq!(gray.rgba(), [200, 200, 200, 100, 5, 5, 5, 255]);
         assert!(pam(b"RGB", b"4", &[0; 8]).is_err());
         assert!(pam(b"CMYK", b"4", &[0; 8]).is_err());
     }

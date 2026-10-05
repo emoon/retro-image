@@ -1,5 +1,5 @@
 # Divergences for Unix raster files (Netpbm, Sun, SGI, XBM, XPM, XWD, farbfeld, Utah RLE); see README.md.
-extra/unix-rasters/sembiance/pam/abydos.pam	800x600	1e7b1fc212f7bee8	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pam/abydos.pam	800x600	f5a6670a6298aeec	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. The file has alpha; rgb() is the color channels, black where alpha is 0. The RGBA output equals the raster samples of the file, checked with a script
 extra/unix-rasters/sembiance/pam/input_truecolor10.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
 extra/unix-rasters/sembiance/pam/input_truecolor12.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
 extra/unix-rasters/sembiance/pam/input_truecolor16.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel

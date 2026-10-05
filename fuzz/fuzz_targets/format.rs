@@ -37,10 +37,18 @@ fuzz_target!(|data: &[u8]| {
     };
     let (main, companion) = rest.split_at(cut);
     if let Ok(image) = format.decode_with(main, &SameCompanion(companion)) {
+        let pixels = image.width() as usize * image.height() as usize;
         assert_eq!(
             image.rgb().len(),
-            image.width() as usize * image.height() as usize * 3,
+            pixels * 3,
             "{}: pixel buffer doesn't match the dimensions",
+            format.name
+        );
+        // `rgba` stops at the shorter plane, so a short alpha plane fails here.
+        assert_eq!(
+            image.rgba().len(),
+            pixels * 4,
+            "{}: alpha plane doesn't match the dimensions",
             format.name
         );
     }

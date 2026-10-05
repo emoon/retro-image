@@ -115,12 +115,20 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
         .collect()
 }
 
-/// A decoded picture: 8-bit RGB, row-major, top row first.
+/// A decoded picture: 8-bit color, row-major, top row first, and an alpha
+/// plane when some pixel is not opaque.
+///
+/// [`rgb`](Self::rgb) holds the color channels and ignores alpha;
+/// [`has_alpha`](Self::has_alpha) says whether that is the whole picture.
+/// Alpha is straight (not premultiplied): 0 is transparent, 255 opaque.
+/// Decoded images are canonical: an image whose pixels are all opaque has no
+/// alpha plane, and a fully transparent pixel is black.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
     width: u32,
     height: u32,
     rgb: Vec<u8>,
+    alpha: Option<Vec<u8>>,
 }
 
 impl Image {
@@ -134,6 +142,7 @@ impl Image {
             width,
             height,
             rgb: alloc::vec![0; len],
+            alpha: None,
         }
     }
 
@@ -158,22 +167,103 @@ impl Image {
         self.height
     }
 
-    /// Pixel data, 3 bytes (R, G, B) per pixel.
+    /// The color channels, 3 bytes (R, G, B) per pixel, ignoring alpha.
+    /// Use [`flatten`](Self::flatten) first for the picture as seen over a
+    /// background, or [`rgba`](Self::rgba) to keep the transparency.
     pub fn rgb(&self) -> &[u8] {
         &self.rgb
     }
 
-    /// Takes the pixel data, 3 bytes (R, G, B) per pixel.
+    /// Takes the color channels, 3 bytes (R, G, B) per pixel, dropping alpha.
     pub fn into_rgb(self) -> Vec<u8> {
         self.rgb
     }
 
-    /// Sets the pixel at (`x`, `y`) to `0xRRGGBB`.
+    /// Whether some pixel is not fully opaque, so that [`rgb`](Self::rgb) is
+    /// not the whole picture.
+    pub fn has_alpha(&self) -> bool {
+        self.alpha.is_some()
+    }
+
+    /// The pixels as straight RGBA, 4 bytes (R, G, B, A) per pixel; opaque
+    /// (255) when the image has no alpha. Allocates a copy.
+    pub fn rgba(&self) -> Vec<u8> {
+        let pixels = self.rgb.as_chunks::<3>().0;
+        let mut out = Vec::with_capacity(pixels.len() * 4);
+        match &self.alpha {
+            Some(alpha) => {
+                for (&[r, g, b], &a) in pixels.iter().zip(alpha) {
+                    out.extend_from_slice(&[r, g, b, a]);
+                }
+            }
+            None => {
+                for &[r, g, b] in pixels {
+                    out.extend_from_slice(&[r, g, b, 255]);
+                }
+            }
+        }
+        out
+    }
+
+    /// The picture drawn over an opaque `background` (R, G, B): an image
+    /// without alpha, for consumers that cannot show transparency.
+    pub fn flatten(&self, background: [u8; 3]) -> Self {
+        let Some(alpha) = &self.alpha else {
+            return self.clone();
+        };
+        let [r, g, b] = background;
+        let base = u32::from_be_bytes([0, r, g, b]);
+        let rgb = (self.rgb.as_chunks::<3>().0.iter().zip(alpha))
+            .flat_map(|(&[r, g, b], &a)| {
+                let [_, r, g, b] = over(base, u32::from_be_bytes([0, r, g, b]), a).to_be_bytes();
+                [r, g, b]
+            })
+            .collect();
+        Self {
+            width: self.width,
+            height: self.height,
+            rgb,
+            alpha: None,
+        }
+    }
+
+    /// The canonical form [`decode`](crate::decode) promises: no alpha plane
+    /// when every pixel is opaque, black under fully transparent pixels.
+    /// The one place decoders' output is made canonical, so equal pictures
+    /// compare equal whatever way a decoder built them.
+    pub(crate) fn normalized(mut self) -> Self {
+        let Some(alpha) = &self.alpha else {
+            return self;
+        };
+        if alpha.iter().all(|&a| a == 255) {
+            self.alpha = None;
+            return self;
+        }
+        for (pixel, &a) in self.rgb.as_chunks_mut::<3>().0.iter_mut().zip(alpha) {
+            if a == 0 {
+                *pixel = [0; 3];
+            }
+        }
+        self
+    }
+
+    /// Sets the pixel at (`x`, `y`) to the opaque color `0xRRGGBB`.
     #[inline]
     pub(crate) fn set(&mut self, x: u32, y: u32, color: u32) {
+        self.set_argb(x, y, 0xff00_0000 | color);
+    }
+
+    /// Sets the pixel at (`x`, `y`) to straight `0xAARRGGBB`. The alpha plane
+    /// appears with the first pixel that is not opaque.
+    #[inline]
+    pub(crate) fn set_argb(&mut self, x: u32, y: u32, argb: u32) {
         let i = y as usize * self.width as usize + x as usize;
-        let [_, r, g, b] = color.to_be_bytes();
+        let [a, r, g, b] = argb.to_be_bytes();
         self.rgb.as_chunks_mut::<3>().0[i] = [r, g, b];
+        if a != 255 || self.alpha.is_some() {
+            let pixels = self.rgb.len() / 3;
+            self.alpha.get_or_insert_with(|| alloc::vec![255; pixels])[i] = a;
+        }
     }
 
     /// Row `y` as RGB bytes. Panics if `y` is outside the image.
@@ -210,7 +300,12 @@ impl Image {
         table[..used].copy_from_slice(&palette[..used]);
         let mut rgb = alloc::vec![0; indices.len() * 3];
         simd::palette_to_rgb(indices, &table, &mut rgb);
-        Ok(Self { width, height, rgb })
+        Ok(Self {
+            width,
+            height,
+            rgb,
+            alpha: None,
+        })
     }
 
     /// An image from a 1-bit bitmap of `row_len`-byte rows; a pixel whose
@@ -255,29 +350,20 @@ impl Image {
         let width = (self.width as usize).saturating_mul(sx as usize);
         let height = (self.height as usize).saturating_mul(sy as usize);
         check_size(width, height)?;
-        let (width, height) = (width as u32, height as u32);
-        let out_row = width as usize * 3;
-        let mut rgb = Vec::with_capacity(out_row * height as usize);
-        for row in self.rgb.chunks_exact(self.width as usize * 3) {
-            let start = rgb.len();
-            if sx == 1 {
-                rgb.extend_from_slice(row);
-            } else {
-                for pixel in row.as_chunks::<3>().0 {
-                    for _ in 0..sx {
-                        rgb.extend_from_slice(pixel);
-                    }
-                }
-            }
-            for _ in 1..sy {
-                rgb.extend_from_within(start..start + out_row);
-            }
-        }
-        Ok(Self { width, height, rgb })
+        let (sx, sy) = (sx as usize, sy as usize);
+        let in_width = self.width as usize;
+        Ok(Self {
+            width: width as u32,
+            height: height as u32,
+            rgb: repeat_pixels::<3>(&self.rgb, in_width, sx, sy),
+            alpha: (self.alpha.as_deref()).map(|alpha| repeat_pixels::<1>(alpha, in_width, sx, sy)),
+        })
     }
 
     /// The per-channel average of equally sized frames, rounding down: how
     /// interlaced, flickering or gigascreen pictures look on screen.
+    /// Frames with alpha average their alpha the same way and weight their
+    /// colors by it, so a transparent pixel adds no color.
     ///
     /// Panics if `frames` is empty or the sizes differ (a decoder bug).
     pub(crate) fn blend(frames: &[&Self]) -> Self {
@@ -288,22 +374,76 @@ impl Image {
                 .all(|f| (f.width, f.height) == (first.width, first.height)),
             "blended frames must have equal sizes"
         );
-        let rgb = if let [a, b] = frames {
+        let (rgb, alpha) = if frames.iter().any(|f| f.alpha.is_some()) {
+            let (rgb, alpha) = blend_with_alpha(frames);
+            (rgb, Some(alpha))
+        } else if let [a, b] = frames {
             let mut rgb = alloc::vec![0; a.rgb.len()];
             simd::average_floor(&a.rgb, &b.rgb, &mut rgb);
-            rgb
+            (rgb, None)
         } else {
             let count = frames.len() as u32;
-            (0..first.rgb.len())
+            let rgb = (0..first.rgb.len())
                 .map(|i| (frames.iter().map(|f| u32::from(f.rgb[i])).sum::<u32>() / count) as u8)
-                .collect()
+                .collect();
+            (rgb, None)
         };
         Self {
             width: first.width,
             height: first.height,
             rgb,
+            alpha,
         }
     }
+}
+
+/// `plane` (rows of `width` pixels of `N` bytes) with every pixel repeated
+/// `sx` times horizontally and every row `sy` times.
+fn repeat_pixels<const N: usize>(plane: &[u8], width: usize, sx: usize, sy: usize) -> Vec<u8> {
+    let out_row = width * sx * N;
+    let mut out = Vec::with_capacity(out_row * (plane.len() / (width * N)) * sy);
+    for row in plane.chunks_exact(width * N) {
+        let start = out.len();
+        if sx == 1 {
+            out.extend_from_slice(row);
+        } else {
+            for pixel in row.as_chunks::<N>().0 {
+                for _ in 0..sx {
+                    out.extend_from_slice(pixel);
+                }
+            }
+        }
+        for _ in 1..sy {
+            out.extend_from_within(start..start + out_row);
+        }
+    }
+    out
+}
+
+/// The color and alpha planes of the average of `frames`, which are equally
+/// sized and not all opaque. Alpha is the plain average; each color channel
+/// is weighted by the frames' alpha. Both round down.
+fn blend_with_alpha(frames: &[&Image]) -> (Vec<u8>, Vec<u8>) {
+    let count = frames.len() as u32;
+    let alpha_at =
+        |frame: &Image, pixel: usize| frame.alpha.as_ref().map_or(255, |a| u32::from(a[pixel]));
+    let pixels = frames[0].rgb.len() / 3;
+    let mut rgb = alloc::vec![0; pixels * 3];
+    let mut alpha = alloc::vec![0; pixels];
+    for pixel in 0..pixels {
+        let weight: u32 = frames.iter().map(|f| alpha_at(f, pixel)).sum();
+        alpha[pixel] = (weight / count) as u8;
+        if weight == 0 {
+            continue;
+        }
+        for channel in 0..3 {
+            let sum: u32 = (frames.iter())
+                .map(|f| u32::from(f.rgb[pixel * 3 + channel]) * alpha_at(f, pixel))
+                .sum();
+            rgb[pixel * 3 + channel] = (sum / weight) as u8;
+        }
+    }
+    (rgb, alpha)
 }
 
 /// Pixel values of a `width` x `height` image stored as `planes`
@@ -424,6 +564,18 @@ mod tests {
     }
 
     #[test]
+    fn set_argb_adds_the_alpha_plane_on_the_first_clear_pixel() {
+        let mut image = Image::new(2, 1);
+        image.set_argb(0, 0, 0xff10_2030);
+        assert!(!image.has_alpha());
+        image.set_argb(1, 0, 0x4000_ff00);
+        assert_eq!(image.rgba(), [0x10, 0x20, 0x30, 255, 0, 255, 0, 0x40]);
+        // `set` draws an opaque pixel over whatever alpha was there.
+        image.set(1, 0, 0x000001);
+        assert_eq!(image.rgba()[7], 255);
+    }
+
+    #[test]
     #[should_panic(expected = "check_size")]
     fn new_refuses_sizes_that_overflow() {
         Image::new(u32::MAX, u32::MAX);
@@ -490,6 +642,74 @@ mod tests {
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    /// A 2 x 1 image of red and green with the given alpha values.
+    fn red_green(alpha: [u8; 2]) -> Image {
+        Image {
+            width: 2,
+            height: 1,
+            rgb: alloc::vec![255, 0, 0, 0, 255, 0],
+            alpha: Some(alpha.to_vec()),
+        }
+    }
+
+    #[test]
+    fn rgba_adds_the_alpha_plane_or_full_opacity() {
+        let opaque = Image::from_indexed(2, 1, &[0, 1], &[0x102030, 0x405060]).unwrap();
+        assert!(!opaque.has_alpha());
+        assert_eq!(
+            opaque.rgba(),
+            [0x10, 0x20, 0x30, 255, 0x40, 0x50, 0x60, 255]
+        );
+        let clear = red_green([0, 128]);
+        assert!(clear.has_alpha());
+        assert_eq!(clear.rgba(), [255, 0, 0, 0, 0, 255, 0, 128]);
+        assert_eq!(clear.rgb(), [255, 0, 0, 0, 255, 0]);
+    }
+
+    #[test]
+    fn flatten_draws_over_the_background() {
+        let flat = red_green([0, 255]).flatten([10, 20, 30]);
+        assert!(!flat.has_alpha());
+        assert_eq!(flat.rgb(), [10, 20, 30, 0, 255, 0]);
+        // Without alpha it is a plain copy.
+        assert_eq!(flat.flatten([1, 2, 3]), flat);
+        // Half of green over black: 255 * 128 / 255 = 128.
+        assert_eq!(
+            red_green([0, 128]).flatten([0, 0, 0]).rgb()[3..],
+            [0, 128, 0]
+        );
+    }
+
+    #[test]
+    fn normalized_drops_an_opaque_plane_and_blackens_clear_pixels() {
+        let opaque = red_green([255, 255]).normalized();
+        assert!(!opaque.has_alpha());
+        assert_eq!(opaque.rgb(), [255, 0, 0, 0, 255, 0]);
+        let mixed = red_green([0, 254]).normalized();
+        assert_eq!(mixed.rgba(), [0, 0, 0, 0, 0, 255, 0, 254]);
+    }
+
+    #[test]
+    fn scaled_repeats_alpha_with_the_pixels() {
+        let big = red_green([0, 200]).scaled(2, 2).unwrap();
+        assert_eq!((big.width(), big.height()), (4, 2));
+        assert_eq!(
+            big.alpha.as_deref(),
+            Some(&[0, 0, 200, 200, 0, 0, 200, 200][..])
+        );
+        assert_eq!(big.rgb().len(), 4 * 2 * 3);
+    }
+
+    #[test]
+    fn blend_weights_color_by_alpha() {
+        let clear = red_green([0, 255]);
+        let solid = Image::from_indexed(2, 1, &[0, 0], &[0x0000ff]).unwrap();
+        let both = Image::blend(&[&clear, &solid]);
+        // Pixel 0: the transparent red adds nothing, so blue stays blue at
+        // half the alpha. Pixel 1: green and blue are both opaque.
+        assert_eq!(both.rgba(), [0, 0, 255, 127, 0, 127, 127, 255]);
     }
 
     #[test]

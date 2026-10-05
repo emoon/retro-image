@@ -119,10 +119,11 @@ impl Format {
         data: &[u8],
         companions: &dyn Companions,
     ) -> Result<Image, DecodeError> {
-        match self.decoder {
+        let image = match self.decoder {
             Decoder::Single(decode) => decode(data),
             Decoder::WithCompanions(decode) => decode(data, companions),
-        }
+        }?;
+        Ok(image.normalized())
     }
 
     /// Whether `filename`'s extension is one of this format's, case-insensitively.

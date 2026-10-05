@@ -118,12 +118,12 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
             .to_owned(),
     };
     let image = retro_image::decode_with(&filename, &data, &SiblingFiles(&convert.input))?;
-    let (width, height, rgb) = match convert.size {
+    let raster = match convert.size {
         Some(size) => thumbnail::fit(&image, size),
-        None => (image.width(), image.height(), image.rgb().to_vec()),
+        None => Raster::of(&image),
     };
     // Encode fully before creating the output, so failures leave no file.
-    let png = encode_png(width, height, &rgb)?;
+    let png = encode_png(&raster)?;
     std::fs::write(&convert.output, png)?;
     Ok(())
 }
@@ -149,12 +149,42 @@ fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
     Ok(data)
 }
 
-fn encode_png(width: u32, height: u32, rgb: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+/// Pixels ready for a PNG: RGBA (4 bytes per pixel) for a picture with
+/// transparency, RGB (3 bytes) otherwise.
+struct Raster {
+    width: u32,
+    height: u32,
+    alpha: bool,
+    data: Vec<u8>,
+}
+
+impl Raster {
+    /// All of `image` at its own size.
+    fn of(image: &retro_image::Image) -> Self {
+        let alpha = image.has_alpha();
+        Self {
+            width: image.width(),
+            height: image.height(),
+            alpha,
+            data: if alpha {
+                image.rgba()
+            } else {
+                image.rgb().to_vec()
+            },
+        }
+    }
+}
+
+fn encode_png(raster: &Raster) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut png = Vec::new();
-    let mut encoder = png::Encoder::new(&mut png, width, height);
-    encoder.set_color(png::ColorType::Rgb);
+    let mut encoder = png::Encoder::new(&mut png, raster.width, raster.height);
+    encoder.set_color(if raster.alpha {
+        png::ColorType::Rgba
+    } else {
+        png::ColorType::Rgb
+    });
     encoder.set_depth(png::BitDepth::Eight);
-    encoder.write_header()?.write_image_data(rgb)?;
+    encoder.write_header()?.write_image_data(&raster.data)?;
     Ok(png)
 }
 
@@ -193,5 +223,36 @@ impl retro_image::Companions for SiblingFiles<'_> {
                     .is_some_and(|n| n.eq_ignore_ascii_case(&wanted))
             })
             .and_then(|entry| read_input(&entry.path()).ok())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A `width` x 1 image from straight RGBA samples, decoded through a PAM
+    /// (a format that keeps alpha) like any user file.
+    pub(crate) fn pam_image(width: u32, rgba: &[u8]) -> retro_image::Image {
+        let mut file = format!(
+            "P7\nWIDTH {width}\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n"
+        )
+        .into_bytes();
+        file.extend_from_slice(rgba);
+        retro_image::decode("picture.pam", &file).unwrap()
+    }
+
+    fn color_type(png_data: &[u8]) -> png::ColorType {
+        let decoder = png::Decoder::new(std::io::Cursor::new(png_data));
+        decoder.read_info().unwrap().info().color_type
+    }
+
+    #[test]
+    fn png_has_alpha_only_when_the_picture_has() {
+        let clear = pam_image(2, &[10, 20, 30, 255, 1, 2, 3, 0]);
+        let png = encode_png(&Raster::of(&clear)).unwrap();
+        assert_eq!(color_type(&png), png::ColorType::Rgba);
+        let solid = pam_image(2, &[10, 20, 30, 255, 1, 2, 3, 255]);
+        let png = encode_png(&Raster::of(&solid)).unwrap();
+        assert_eq!(color_type(&png), png::ColorType::Rgb);
     }
 }

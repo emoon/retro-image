@@ -279,7 +279,9 @@ fn record(format: &Format, input: &str, outcome: Outcome, failures: &mut Vec<Str
         }
         Ok(Ok(image)) => {
             let pixels = image.width() as usize * image.height() as usize;
-            if pixels == 0 || pixels > MAX_PIXELS || image.rgb().len() != pixels * 3 {
+            // `rgba` stops at the shorter plane, so a short alpha plane shows here too.
+            let malformed = image.rgb().len() != pixels * 3 || image.rgba().len() != pixels * 4;
+            if pixels == 0 || pixels > MAX_PIXELS || malformed {
                 failures.push(format!(
                     "{who}: {input}: malformed image {}x{} with {} bytes",
                     image.width(),
