@@ -36,6 +36,18 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
 /// light grey, which stays visible against both white and black artwork.
 pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 
+/// A color with alpha (red, green, blue, alpha, each 0 to 255) laid over the
+/// [`TRANSPARENT_FILL`], as `0xRRGGBB`: opaque colors stay, transparent ones
+/// become the fill, in between they are mixed.
+pub(crate) fn over_fill([r, g, b, alpha]: [u8; 4]) -> u32 {
+    let [_, fill_r, fill_g, fill_b] = TRANSPARENT_FILL.to_be_bytes();
+    let alpha = u32::from(alpha);
+    let mix = |color: u8, fill: u8| {
+        (u32::from(color) * alpha + u32::from(fill) * (255 - alpha) + 127) / 255
+    };
+    mix(r, fill_r) << 16 | mix(g, fill_g) << 8 | mix(b, fill_b)
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -300,6 +312,14 @@ fn crop_rows<T: Copy>(values: &mut Vec<T>, stride: usize, width: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn over_fill_mixes_by_alpha() {
+        assert_eq!(over_fill([1, 2, 3, 255]), 0x01_0203);
+        assert_eq!(over_fill([1, 2, 3, 0]), TRANSPARENT_FILL);
+        // Half transparent white over the grey 0xc0: (255 * 128 + 192 * 127) / 255 rounds to 0xe0.
+        assert_eq!(over_fill([255, 255, 255, 128]), 0xe0_e0e0);
+    }
 
     #[test]
     fn get_returns_what_set_stored() {

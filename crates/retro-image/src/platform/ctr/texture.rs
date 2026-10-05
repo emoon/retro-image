@@ -26,7 +26,7 @@
 //! used on the 3DS and is to be confirmed with a real file.
 
 use super::etc1;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{check_size, over_fill};
 use crate::morton::morton_index;
 use crate::{DecodeError, Image};
 
@@ -237,7 +237,7 @@ impl Texture<'_> {
                     let x = tile_column * TILE + n % TILE;
                     let y = height - 1 - (tile_row * TILE + n / TILE);
                     if x < visible_width && y < visible_height {
-                        colors[y * visible_width + x] = composite(pixel);
+                        colors[y * visible_width + x] = over_fill(pixel);
                     }
                 }
             }
@@ -250,19 +250,10 @@ impl Texture<'_> {
     }
 }
 
-/// `rgba` laid over the transparent fill, as 0xRRGGBB.
-fn composite([r, g, b, a]: [u8; 4]) -> u32 {
-    let [_, fill_r, fill_g, fill_b] = TRANSPARENT_FILL.to_be_bytes();
-    let alpha = u32::from(a);
-    let mix = |color: u8, fill: u8| {
-        (u32::from(color) * alpha + u32::from(fill) * (255 - alpha) + 127) / 255
-    };
-    mix(r, fill_r) << 16 | mix(g, fill_g) << 8 | mix(b, fill_b)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::image::TRANSPARENT_FILL;
     use alloc::vec::Vec;
 
     /// A 16 x 8 texture (two tiles) of `format` from `data`.
