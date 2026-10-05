@@ -25,7 +25,7 @@ fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
 }
 
 /// 15-bit colour: red in bits 0-4, green 5-9, blue 10-14.
-fn color15(word: u16) -> u32 {
+pub(super) fn color15(word: u16) -> u32 {
     let channel = |shift: usize| {
         let v = (word >> shift & 31) as u32;
         v << 3 | v >> 2

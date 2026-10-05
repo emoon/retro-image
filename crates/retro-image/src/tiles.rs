@@ -44,9 +44,16 @@
 //! Tiles of another size (PC Engine sprites are 16 x 16) override `width` and
 //! `height` of the closest constructor, e.g.
 //! `TileLayout { width: 16, height: 16, ..TileLayout::planar(4, 1) }`; a
-//! plane row is then `width / 8` bytes. Layouts that need more than that
-//! (Neo Geo tiles are assembled from quadrants, Neo Geo Pocket stores a row
-//! as a little-endian 16-bit word) call for a new field here first.
+//! plane row is then `width / 8` bytes.
+//!
+//! A tile can also be put together from smaller blocks that are stored one
+//! after another, each block laid out like a tile of its own size.
+//! [`TileLayout::in_blocks`] gives the block size and the position of each
+//! block in storage order. The Neo Geo's 16 x 16 sprite is four 8 x 8 blocks
+//! (top right, bottom right, top left, bottom left), and its 8 x 8 fix tile
+//! is four 2 x 8 columns. A layout that needs more than that (Neo Geo Pocket
+//! stores a row as a little-endian 16-bit word) calls for a new field here
+//! first.
 //!
 //! [`TileLayout::sheet`] draws the tiles of a data block as a picture, a
 //! given number to a row, through a palette into an [`Image`].
@@ -79,6 +86,21 @@ pub(crate) struct TileLayout {
     pub interleave: usize,
     /// Which end of a byte holds its leftmost pixel.
     pub order: BitOrder,
+    /// How the tile is put together from blocks, if it is not stored in one
+    /// piece. The fields above then describe each block (all but its size).
+    pub blocks: Option<Blocks>,
+}
+
+/// The blocks a tile is put together from, see [`TileLayout::in_blocks`].
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Blocks {
+    /// Pixels per row of a block.
+    pub width: usize,
+    /// Rows of a block.
+    pub height: usize,
+    /// The place of each block, in storage order, as (column, row) counted
+    /// in blocks from the top left of the tile.
+    pub order: &'static [(usize, usize)],
 }
 
 /// ORs the pixels of the bytes of `source`, `N` to a byte, into `row`, moved
@@ -123,6 +145,7 @@ impl TileLayout {
             plane_bits: 1,
             interleave,
             order: BitOrder::MsbFirst,
+            blocks: None,
         }
     }
 
@@ -137,6 +160,42 @@ impl TileLayout {
             plane_bits: bpp,
             interleave: 1,
             order,
+            blocks: None,
+        }
+    }
+
+    /// The same layout for a tile put together from blocks of `width` x
+    /// `height` pixels, which fill the tile exactly. `order` gives the place
+    /// of each block, in storage order, as (column, row) counted in blocks.
+    /// Planes, packing and bit order of `self` then describe each block, not
+    /// the tile.
+    pub(crate) const fn in_blocks(
+        self,
+        width: usize,
+        height: usize,
+        order: &'static [(usize, usize)],
+    ) -> Self {
+        assert!(width != 0 && height != 0);
+        let (columns, rows) = (self.width / width, self.height / height);
+        assert!(columns * width == self.width && rows * height == self.height);
+        assert!(order.len() == columns * rows);
+        let mut seen = 0;
+        while seen < order.len() {
+            assert!(order[seen].0 < columns && order[seen].1 < rows);
+            let mut other = 0;
+            while other < seen {
+                assert!(order[other].0 != order[seen].0 || order[other].1 != order[seen].1);
+                other += 1;
+            }
+            seen += 1;
+        }
+        Self {
+            blocks: Some(Blocks {
+                width,
+                height,
+                order,
+            }),
+            ..self
         }
     }
 
@@ -148,6 +207,14 @@ impl TileLayout {
     /// Decodes every tile of `tiles`, which holds one tile after another. A
     /// trailing partial tile is ignored.
     pub(crate) fn unpack(&self, tiles: &[u8]) -> Unpacked {
+        match self.blocks {
+            None => self.unpack_whole(tiles),
+            Some(blocks) => self.unpack_blocks(tiles, blocks),
+        }
+    }
+
+    /// [`Self::unpack`] for a tile that is stored in one piece.
+    fn unpack_whole(&self, tiles: &[u8]) -> Unpacked {
         let (len, size) = (self.tile_len(), self.width * self.height);
         let planes = self.bpp / self.plane_bits;
         let plane_row_len = self.width * self.plane_bits / 8;
@@ -182,6 +249,38 @@ impl TileLayout {
                         }
                         plane += 1;
                     }
+                }
+            }
+        }
+        Unpacked {
+            width: self.width,
+            height: self.height,
+            pixels,
+        }
+    }
+
+    /// [`Self::unpack`] for a tile put together from blocks: the blocks of
+    /// every tile are decoded as tiles of their own size, then placed.
+    fn unpack_blocks(&self, tiles: &[u8], blocks: Blocks) -> Unpacked {
+        let whole = tiles.len() / self.tile_len() * self.tile_len();
+        let block_layout = Self {
+            width: blocks.width,
+            height: blocks.height,
+            blocks: None,
+            ..*self
+        };
+        let decoded = block_layout.unpack_whole(&tiles[..whole]);
+        let per_tile = blocks.order.len();
+        let mut pixels = alloc::vec![0; whole / self.tile_len() * self.width * self.height];
+        for (tile, tile_pixels) in pixels
+            .chunks_exact_mut(self.width * self.height)
+            .enumerate()
+        {
+            for (number, &(column, row)) in blocks.order.iter().enumerate() {
+                for y in 0..blocks.height {
+                    let at = (row * blocks.height + y) * self.width + column * blocks.width;
+                    tile_pixels[at..][..blocks.width]
+                        .copy_from_slice(decoded.row(tile * per_tile + number, y));
                 }
             }
         }
@@ -356,6 +455,46 @@ mod tests {
         tile[32 + 2 * 3 + 1] = 0b0000_0001; // plane 1, row 3, pixel 15
         let row = decode_row(&sprite, &tile, 0, 3);
         assert_eq!((row[15], row[7], row[0]), (2, 0, 0));
+    }
+
+    #[test]
+    fn blocks_are_placed_in_storage_order() {
+        // Four 8 x 8 blocks: top right, bottom right, top left, bottom left.
+        let quadrants = TileLayout {
+            width: 16,
+            height: 16,
+            ..TileLayout::planar(1, 1)
+        }
+        .in_blocks(8, 8, &[(1, 0), (1, 1), (0, 0), (0, 1)]);
+        assert_eq!(quadrants.tile_len(), 32);
+        let mut tiles = [0u8; 64];
+        tiles[8 + 2] = 0x80; // block 1, row 2, leftmost pixel
+        tiles[16 + 7] = 0x01; // block 2, row 7, rightmost pixel
+        tiles[32 + 8] = 0x80; // the second tile, block 1, row 0
+        let unpacked = quadrants.unpack(&tiles);
+        assert_eq!(unpacked.count(), 2);
+        assert_eq!(unpacked.row(0, 10)[8], 1);
+        assert_eq!(unpacked.row(0, 7)[7], 1);
+        assert_eq!(unpacked.row(0, 7).iter().sum::<u8>(), 1);
+        assert_eq!(unpacked.row(1, 8)[8], 1);
+        assert_eq!(unpacked.row(1, 8).iter().sum::<u8>(), 1);
+    }
+
+    #[test]
+    fn blocks_need_not_be_square() {
+        // An 8 x 8 tile of four columns 2 pixels wide, stored right to left.
+        let columns = TileLayout::packed(4, BitOrder::LsbFirst).in_blocks(
+            2,
+            8,
+            &[(2, 0), (3, 0), (0, 0), (1, 0)],
+        );
+        let mut tile = [0u8; 32];
+        tile[0] = 0x21; // first column: pixels 4 and 5 of row 0
+        tile[8 + 1] = 0x43; // second column: pixels 6 and 7 of row 1
+        tile[24 + 7] = 0x05; // last column: pixels 2 and 3 of row 7
+        assert_eq!(decode_row(&columns, &tile, 0, 0), [0, 0, 0, 0, 1, 2, 0, 0]);
+        assert_eq!(decode_row(&columns, &tile, 0, 1), [0, 0, 0, 0, 0, 0, 3, 4]);
+        assert_eq!(decode_row(&columns, &tile, 0, 7), [0, 0, 5, 0, 0, 0, 0, 0]);
     }
 
     #[test]
