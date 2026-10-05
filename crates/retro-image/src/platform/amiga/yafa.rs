@@ -234,7 +234,7 @@ fn undo_delta(frame: &[u8], info: &Info) -> Option<Vec<u8>> {
         for column in 0..row_len / element {
             let mut row = 0;
             let mut put = |row: &mut usize, data: &mut usize| -> Option<()> {
-                let item = frame.get(*data..*data + element)?;
+                let item = frame.get(*data..data.checked_add(element)?)?;
                 let at = *row * row_len + column * element;
                 out.get_mut(at..at + element)?.copy_from_slice(item);
                 *data += element;
@@ -373,6 +373,23 @@ mod tests {
         assert_eq!(pixel(1, 1), RED);
         assert_eq!(pixel(0, 1), [0, 0, 0]);
         assert_eq!(pixel(15, 1), RED);
+    }
+
+    #[test]
+    fn delta_pointers_at_the_end_of_the_address_space_are_rejected() {
+        // The data list pointer plus an element size must not wrap (a panic
+        // in a 32-bit debug build).
+        let mut frame = alloc::vec![0u8; 64];
+        frame[..4].copy_from_slice(&64u32.to_be_bytes());
+        frame[32..36].copy_from_slice(&0xffff_ffffu32.to_be_bytes());
+        frame.extend_from_slice(&[1, 0x81]); // one column: copy one item
+        let contents = [
+            info(16, 1, 1, 0, FLAG_DELTA),
+            chunk(b"DRGB", &colors()),
+            chunk(b"BODY", &frame),
+        ]
+        .concat();
+        assert!(decode(&contents).is_err());
     }
 
     #[test]

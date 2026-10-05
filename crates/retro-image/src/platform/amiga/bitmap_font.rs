@@ -73,9 +73,11 @@ fn font_hunk(data: &[u8]) -> Option<&[u8]> {
     {
         return None;
     }
-    let size = (be32(data, 20)? & HUNK_SIZE_MASK) as usize * 4;
+    let size = ((be32(data, 20)? & HUNK_SIZE_MASK) as usize).checked_mul(4)?;
     let kind = be32(data, 24)?;
-    if (kind != HUNK_CODE && kind != HUNK_DATA) || be32(data, 28)? as usize * 4 != size {
+    if (kind != HUNK_CODE && kind != HUNK_DATA)
+        || (be32(data, 28)? as usize).checked_mul(4)? != size
+    {
         return None;
     }
     data.get(32..32usize.checked_add(size)?)
@@ -139,8 +141,8 @@ impl Font {
             hunk.get(plane..plane.checked_add(plane_len)?)?;
         }
         let colors = be32(hunk, ext + 8)? as usize;
-        let count = usize::from(be16(hunk, colors + 2)?);
-        let table_at = be32(hunk, colors + 4)? as usize;
+        let count = usize::from(be16(hunk, colors.checked_add(2)?)?);
+        let table_at = be32(hunk, colors.checked_add(4)?)? as usize;
         let table = hunk
             .get(table_at..table_at.checked_add(count * 2)?)?
             .as_chunks::<2>()
@@ -347,6 +349,22 @@ mod tests {
         let flat = decode(&font_file(&[STRIKE, swapped], &colors, 1)).unwrap();
         assert_eq!(flat.get(6 + 1 + 1, 1), 0xff0000);
         assert_eq!(flat.get(6 + 1 + 1, 2), TRANSPARENT_FILL);
+    }
+
+    #[test]
+    fn pointers_at_the_end_of_the_address_space_are_rejected() {
+        // Offsets are added to others: on a 32-bit target 0xffff_fffe + 4
+        // wraps, which is a panic in a debug build.
+        let swapped = [0x94, 0x00, 0xfa, 0x00];
+        let colors = [0x0000, 0x0f00, 0x00f0, 0x000f];
+        let file = font_file(&[STRIKE, swapped], &colors, 3);
+        let colors_at = 32 + TEXT_FONT_AT + TEXT_FONT_LEN + 8;
+        let mut far = file.clone();
+        put32(&mut far, colors_at, 0xffff_fffe);
+        assert!(decode(&far).is_err());
+        let mut huge_hunk = file;
+        put32(&mut huge_hunk, 28, 0xffff_ffff);
+        assert!(decode(&huge_hunk).is_err());
     }
 
     #[test]
