@@ -132,7 +132,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     }
     let (format, depth) = (word(2)?, word(3)?);
     let (width, height) = (word(4)? as usize, word(5)? as usize);
-    let (byte_order, bit_order) = (word(7)?, word(9)?);
+    let (byte_order, bit_order, bitmap_pad) = (word(7)?, word(9)?, word(10)? as usize);
     let (bitmap_unit, mut bits_per_pixel) = (word(8)? as usize, word(11)? as usize);
     let bytes_per_line = word(12)? as usize;
     let visual_class = word(13)?;
@@ -154,10 +154,16 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
         return Err(FAIL);
     }
     check_size(width, height)?;
-    // `MARBLES.XWD` says 24 bits per pixel but has 4 bytes per pixel. A row
-    // of 24-bit pixels never takes 4 bytes per pixel when it is wider than
-    // one pixel, so the header is taken to be wrong.
-    if bits_per_pixel == 24 && width > 1 && bytes_per_line == width * 4 {
+    // `MARBLES.XWD` says 24 bits per pixel but has 4 bytes per pixel. That is
+    // told from a row of 24-bit pixels padded to `bitmap_pad` (which also
+    // takes `width * 4` bytes at widths 1 to 3 with a pad of 32) by working
+    // out the padded length.
+    let padded = if bitmap_pad >= 8 && bitmap_pad % 8 == 0 {
+        (width * 3).next_multiple_of(bitmap_pad / 8)
+    } else {
+        width * 3
+    };
+    if bits_per_pixel == 24 && bytes_per_line == width * 4 && padded != width * 4 {
         bits_per_pixel = 32;
     }
     // A 1-bit row is made of whole bitmap units.
@@ -326,6 +332,7 @@ mod tests {
         msb_bits: bool,
         bits_per_pixel: u32,
         bytes_per_line: u32,
+        pad: u32,
         class: u32,
         masks: [u32; 3],
     }
@@ -340,6 +347,7 @@ mod tests {
         words[7] = u32::from(spec.msb_bytes);
         words[8] = spec.unit;
         words[9] = u32::from(spec.msb_bits);
+        words[10] = spec.pad;
         words[11] = spec.bits_per_pixel;
         words[12] = spec.bytes_per_line;
         words[13] = spec.class;
@@ -460,20 +468,52 @@ mod tests {
 
     #[test]
     fn rows_of_four_bytes_override_a_24_bit_header() {
+        // Like `MARBLES.XWD`: 24 bits per pixel, pad 8, rows of width * 4.
         let spec = Spec {
             format: Z_PIXMAP,
             depth: 24,
-            size: [2, 1],
+            size: [4, 1],
             msb_bytes: true,
             unit: 8,
             msb_bits: true,
             bits_per_pixel: 24,
-            bytes_per_line: 8,
+            bytes_per_line: 16,
+            pad: 8,
             class: TRUE_COLOR,
             masks: [0xff0000, 0xff00, 0xff],
         };
-        let image = decode_xwd(&file(&spec, &[], &[0, 1, 2, 3, 0, 4, 5, 6])).unwrap();
-        assert_eq!((image.get(0, 0), image.get(1, 0)), (0x010203, 0x040506));
+        let raster = [0, 1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0, 10, 11, 12];
+        let image = decode_xwd(&file(&spec, &[], &raster)).unwrap();
+        assert_eq!((image.get(0, 0), image.get(3, 0)), (0x010203, 0x0a0b0c));
+    }
+
+    #[test]
+    fn rows_of_two_and_three_padded_24_bit_pixels_stay_24_bit() {
+        // Padded to 32 bits, 24-bit rows take 8 and 12 bytes at widths 2 and
+        // 3, which is also width * 4.
+        for (width, row_len) in [(2u8, 8u32), (3, 12)] {
+            let spec = Spec {
+                format: Z_PIXMAP,
+                depth: 24,
+                size: [u32::from(width), 1],
+                msb_bytes: true,
+                unit: 32,
+                msb_bits: true,
+                bits_per_pixel: 24,
+                bytes_per_line: row_len,
+                pad: 32,
+                class: TRUE_COLOR,
+                masks: [0xff0000, 0xff00, 0xff],
+            };
+            let mut raster: Vec<u8> = (1..=3 * width).collect();
+            raster.resize(row_len as usize, 0);
+            let image = decode_xwd(&file(&spec, &[], &raster)).unwrap();
+            for x in 0..u32::from(width) {
+                let at = 3 * x as u8;
+                let expected = u32::from_be_bytes([0, at + 1, at + 2, at + 3]);
+                assert_eq!(image.get(x, 0), expected, "width {width}, column {x}");
+            }
+        }
     }
 
     #[test]
