@@ -33,24 +33,37 @@
 mod animator;
 mod animator_pro;
 mod bmp;
+mod bsave;
+mod cga;
 mod clipart;
 mod colorix;
+mod dcx;
+mod dgi;
 mod flf;
 mod flh;
 mod flic;
 mod fp_art;
 mod gif;
+mod gifexe;
 mod grasp_gl;
+mod gws_exepic;
 mod halo;
 mod halo_pic;
+mod hp_icn;
 mod ico;
 mod image72;
 mod inset_pix;
+mod kips;
+mod optiks;
+mod os2_icon;
 mod pcpaint;
 mod pcx;
+mod pcx2com;
+mod pixit;
 mod printmaster;
 mod printpartner;
 mod printshop;
+mod raw_cga;
 mod storyboard;
 mod tga;
 mod wpg;
@@ -80,7 +93,18 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "GRASP GL animation", &["gl"], grasp_gl::decode_gl).signature(),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
+    Format::new("PC", "ZSoft DCX multi-page PCX", &["dcx"], dcx::decode_dcx).signature(),
+    Format::new("PC", "Digi-Pic", &["dgi"], dgi::decode_dgi).signature(),
+    Format::new("PC", "HP 100LX/200LX icon", &["icn"], hp_icn::decode_icn).signature(),
+    Format::new("PC", "IBM KIPS bitmap", &["kps"], kips::decode_kps),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
+    Format::new(
+        "PC",
+        "OS/2 icon and pointer",
+        &["ico", "ptr"],
+        os2_icon::decode_os2_icon,
+    )
+    .signature(),
     Format::new(
         "PC",
         "Windows DIB without file header",
@@ -95,6 +119,41 @@ pub(super) static FORMATS: &[Format] = &[
     )
     .signature(),
     Format::new("PC", "CompuServe GIF", &["gif", "fra"], gif::decode_gif).signature(),
+    Format::new(
+        "PC",
+        "GIFEXE self-displaying GIF",
+        &[],
+        gifexe::decode_gifexe,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "Graphic Workshop self-displaying picture",
+        &[],
+        gws_exepic::decode_gws_exepic,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "OPTIKS self-displaying picture",
+        &[],
+        optiks::decode_optiks,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "PCX2COM self-displaying picture",
+        &[],
+        pcx2com::decode_pcx2com,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "PIXIT self-displaying picture",
+        &["pix"],
+        pixit::decode_pixit,
+    )
+    .signature(),
     Format::new(
         "PC",
         "ColoRIX VGA Paint",
@@ -151,6 +210,14 @@ pub(super) static FORMATS: &[Format] = &[
         &["pic", "cap", "tem"],
         storyboard::decode_new,
     ),
+    // Extension-gated and last: `FD` plus a plausible length is all there is.
+    Format::new(
+        "PC",
+        "BSAVE screen dump",
+        &["bsv", "scr", "pic", "scn", "raw", "dat", "img"],
+        bsave::decode_bsave,
+    ),
+    Format::new("PC", "Raw CGA screen", &["cga"], raw_cga::decode_raw_cga),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
