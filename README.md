@@ -59,6 +59,11 @@ retro-image --thumbnailer > ~/.local/share/thumbnailers/retro-image.thumbnailer
 update-mime-database ~/.local/share/mime
 ```
 
+The package gives the formats' extensions the type `image/x-retro-image` at a low priority, so
+a system type for `.pbm` or `.xpm` still wins. Names that ordinary files often carry (`.cnf`,
+`.tpl`, `.srm` and a few more) are left out. Those formats still decode from the command line,
+but file managers won't thumbnail them.
+
 ## Documentation
 
 - [Supported formats](https://github.com/emoon/retro-image/blob/main/docs/formats.md)

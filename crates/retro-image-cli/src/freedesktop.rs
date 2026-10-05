@@ -36,11 +36,21 @@ const MIME_TYPE: &str = "image/x-retro-image";
 /// extensions (e.g. `.pic`, `.scr`, `.img`) keep priority.
 const GLOB_WEIGHT: u32 = 30;
 
-/// Every extension of every format, lower-case, sorted and deduplicated.
+/// Extensions left out of the package because ordinary files carry them too
+/// (`my.cnf`, `report.tpl`, Minecraft's `.mcr`) and no system type claims them,
+/// so the glob would retype those files as retro images. The formats still
+/// decode by name; they just aren't claimed by the desktop.
+const TOO_GENERIC: &[&str] = &[
+    "anim", "cnf", "fix", "gl", "icon", "icons", "imag", "mcr", "srm", "tem", "tpl", "vms",
+];
+
+/// Every extension of every format except [`TOO_GENERIC`], lower-case, sorted
+/// and deduplicated.
 fn extensions() -> BTreeSet<String> {
     retro_image::formats()
         .flat_map(|f| f.extensions.iter())
         .map(|e| e.to_ascii_lowercase())
+        .filter(|e| !TOO_GENERIC.contains(&e.as_str()))
         .collect()
 }
 
@@ -112,6 +122,21 @@ mod tests {
         assert!(xml.contains("<glob pattern=\"*.scr\" weight=\"30\"/>"));
         assert_eq!(xml.matches("pattern=\"*.scr\"").count(), 1);
         assert!(!xml.contains("*.b&w"), "ampersands must be escaped");
+    }
+
+    #[test]
+    fn generic_extensions_are_not_claimed() {
+        let xml = mime_xml();
+        for ext in TOO_GENERIC {
+            assert!(
+                retro_image::formats().any(|f| f.extensions.contains(ext)),
+                "{ext} is on the denylist but no format uses it"
+            );
+            assert!(
+                !xml.contains(&format!("pattern=\"*.{ext}\"")),
+                "{ext} is claimed"
+            );
+        }
     }
 
     #[test]
