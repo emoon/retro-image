@@ -1,6 +1,6 @@
 //! Unix and workstation raster formats.
 //!
-//! Each format cites its own sources in its submodule: `unix/pnm.rs`.
+//! Each format cites its own sources in its submodule: `unix/pnm.rs`, `unix/sun.rs`.
 //! Survey: `docs/research/gaps-computers-extra.md` (candidate C4). These are
 //! general-purpose formats, like GIF and BMP on the PC, so no machine of the
 //! RECOIL list owns them; the platform is named `Unix`.
@@ -10,17 +10,27 @@
 //! which `Image` represents.
 
 mod pnm;
+mod sun;
 
 use crate::Format;
 use crate::image::TRANSPARENT_FILL;
 
-pub(super) static FORMATS: &[Format] = &[Format::new(
-    "Unix",
-    "Netpbm PBM, PGM, PPM and PAM",
-    &["pbm", "pgm", "ppm", "pnm", "pam"],
-    pnm::decode_pnm,
-)
-.signature()];
+pub(super) static FORMATS: &[Format] = &[
+    Format::new(
+        "Unix",
+        "Netpbm PBM, PGM, PPM and PAM",
+        &["pbm", "pgm", "ppm", "pnm", "pam"],
+        pnm::decode_pnm,
+    )
+    .signature(),
+    Format::new(
+        "Unix",
+        "Sun raster",
+        &["ras", "sun", "im1", "im8", "im24", "im32"],
+        sun::decode_sun,
+    )
+    .signature(),
+];
 
 /// Scales a sample of `0..=max` to `0..=255`, rounding to nearest. Values
 /// above `max` count as `max`.
