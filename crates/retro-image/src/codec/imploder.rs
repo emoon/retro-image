@@ -37,12 +37,10 @@
 //! verified, and tags Ancient lists without being sure of them (`RDC9`,
 //! `Dupa`, `FLT!`, `PARA`) are not accepted.
 
-use super::lz::{BackwardOutput, MsbBits, PrefixCode};
+use super::lz::{BackwardOutput, MAX_RAW_LEN, MsbBits, PrefixCode};
 use crate::bytes::{be16, be32};
 use alloc::vec::Vec;
 
-/// Largest unpacked size accepted.
-const MAX_RAW_LEN: usize = 1 << 24;
 /// Bytes of tables and checksum behind the stream.
 const TRAILER_LEN: usize = 0x32;
 /// The first stream bytes, which are stored rotated at the stream's end.
@@ -151,11 +149,8 @@ pub(crate) fn unpack(data: &[u8]) -> Option<Vec<u8>> {
     if data.get(trailer(16))? & 0x80 == 0 {
         reader.stream.at = reader.stream.at.checked_sub(1)?;
     }
-    // The anchor bit: the lowest set bit of this byte marks where bits start.
-    let half = u32::from(*data.get(trailer(17))?);
-    if let Some(anchor) = (0..7).find(|i| half >> i & 1 == 1) {
-        reader.bits = MsbBits::with(half >> (anchor + 1), 7 - anchor);
-    }
+    // The byte with the anchor bit that says where the bits start.
+    reader.bits = MsbBits::after_anchor(*data.get(trailer(17))?);
 
     let mut out = BackwardOutput::new(header.raw_len);
     let mut literals = be32(data, trailer(12))? as usize;

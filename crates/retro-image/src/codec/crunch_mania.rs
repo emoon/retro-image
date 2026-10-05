@@ -37,12 +37,10 @@
 //! tags Ancient maps to these modes (`DCS!`, `Iron`, `MSS!` and others) are
 //! not accepted.
 
-use super::lz::{BackwardOutput, LsbBits, PrefixCode, Ranges, Stream};
+use super::lz::{BackwardOutput, LsbBits, MAX_RAW_LEN, PrefixCode, Ranges, Stream};
 use crate::bytes::{be16, be32};
 use alloc::vec::Vec;
 
-/// Largest unpacked size accepted.
-const MAX_RAW_LEN: usize = 1 << 24;
 const HEADER_LEN: usize = 14;
 /// The bits behind the stream: 32 bits of content and a 16-bit shift.
 const TAIL_LEN: usize = 6;

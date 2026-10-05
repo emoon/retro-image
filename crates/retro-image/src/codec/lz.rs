@@ -35,6 +35,9 @@
 
 use alloc::vec::Vec;
 
+/// Largest unpacked size the depackers built on these helpers accept.
+pub(super) const MAX_RAW_LEN: usize = 1 << 24;
+
 /// Two ends of one buffer: a forward cursor and a backward cursor that must
 /// not cross.
 pub(super) struct Stream<'a> {
@@ -99,9 +102,19 @@ pub(super) struct MsbBits {
 }
 
 impl MsbBits {
-    /// A reader that starts with the low `left` bits of `content` still unread.
-    pub(super) fn with(content: u32, left: u32) -> Self {
-        Self { content, left }
+    /// A reader that starts with the bits of `byte` above its anchor: the
+    /// lowest set bit among bits 0 to 6 marks where the bits to use start
+    /// (the bits below it are padding). A byte with no such bit leaves the
+    /// reader empty.
+    pub(super) fn after_anchor(byte: u8) -> Self {
+        let byte = u32::from(byte);
+        match (0..7).find(|i| byte >> i & 1 == 1) {
+            Some(anchor) => Self {
+                content: byte >> (anchor + 1),
+                left: 7 - anchor,
+            },
+            None => Self::default(),
+        }
     }
 
     /// `count` (at most 24) bits; `fetch` supplies a word and its width.
@@ -416,6 +429,20 @@ mod tests {
     fn read_bits(bits: &str) -> impl FnMut() -> Option<u32> + '_ {
         let mut chars = bits.chars();
         move || chars.next().map(|c| u32::from(c == '1'))
+    }
+
+    #[test]
+    fn the_anchor_bit_marks_where_the_bits_start() {
+        // 0b0110_1000: the anchor is bit 3, so bits 4 to 7 are left: 0110.
+        let mut bits = MsbBits::after_anchor(0b0110_1000);
+        let mut none = || None;
+        assert_eq!(bits.read(4, &mut none), Some(0b0110));
+        assert_eq!(bits.read(1, &mut none), None, "nothing is left");
+        // An anchor in bit 0 leaves the 7 bits above it.
+        let mut bits = MsbBits::after_anchor(0b0111_1111);
+        assert_eq!(bits.read(7, &mut none), Some(0b011_1111));
+        // Bit 7 alone is no anchor: nothing is left.
+        assert_eq!(MsbBits::after_anchor(0x80).read(1, &mut none), None);
     }
 
     #[test]

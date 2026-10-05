@@ -42,13 +42,11 @@
 //! recognized.
 
 use super::lz::{
-    BackwardOutput, ByteBits, LsbBits, MsbBits, PrefixCode, Ranges, Stream, copy_back, put,
+    BackwardOutput, ByteBits, LsbBits, MAX_RAW_LEN, MsbBits, PrefixCode, Ranges, Stream, copy_back,
+    put,
 };
 use crate::bytes::{be16, be32};
 use alloc::vec::Vec;
-
-/// Largest unpacked size accepted.
-const MAX_RAW_LEN: usize = 1 << 24;
 
 const OLD_HEADER_LEN: usize = 12;
 const NEW_HEADER_LEN: usize = 18;
@@ -226,12 +224,8 @@ fn unpack_old(data: &[u8], header: &Header, method_two: bool) -> Option<Vec<u8>>
         distance_bits = sizes & 15;
         length_bits = (sizes >> 4) + 1;
     }
-    // The first byte holds the anchor bit: its lowest set bit marks where the
-    // bits to use start.
-    let first = u32::from(s.input.back_byte()?);
-    if let Some(anchor) = (0..7).find(|i| first >> i & 1 == 1) {
-        s.bits = MsbBits::with(first >> (anchor + 1), 7 - anchor);
-    }
+    // The first byte holds the anchor bit that says where the bits start.
+    s.bits = MsbBits::after_anchor(s.input.back_byte()?);
     let length_code = PrefixCode::new(&[(1, 0, 0), (2, 2, 1), (3, 6, 2), (4, 14, 3), (4, 15, 4)])?;
     let distance_code = PrefixCode::new(&[(1, 0, 1), (2, 2, 0), (2, 3, 2)])?;
     let lengths = Ranges::<5>::new([

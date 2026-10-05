@@ -108,11 +108,10 @@ fn unpack_plane(packed: &[u8], plane: &mut [u8], row_len: usize, height: usize) 
         let mut row = 0;
         while row < height {
             let code = word(&mut at)? as i16;
-            let (count, repeated) = if code < 0 {
-                (usize::from(code.unsigned_abs()) + 1, Some(word(&mut at)?))
-            } else {
-                (usize::from(code.unsigned_abs()) + 1, None)
-            };
+            // A negative code repeats the next word `-code + 1` times; otherwise
+            // `code + 1` words follow. The count is `|code| + 1` either way.
+            let count = usize::from(code.unsigned_abs()) + 1;
+            let repeated = if code < 0 { Some(word(&mut at)?) } else { None };
             if count > height - row {
                 return None;
             }
