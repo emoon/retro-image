@@ -27,9 +27,11 @@
 //! 16 to 255 start black; pixels nothing drew show register 0, or the shared
 //! transparent fill when P2 is 1; the pixel aspect (P1 and `Pan`:`Pad`) is not
 //! applied, because the common files say `"1;2` for plain square-pixel
-//! pictures; only the first control string is read, and it must be
-//! terminated (`ESC \` or `0x9c`), which is also what content detection
-//! relies on. Pictures are capped at 4096 x 4096. A file of VMS
+//! pictures; only the first control string is read, and it must start with
+//! `ESC P` (the 8-bit introducer `0x90` is not read: no sample uses it and a
+//! lone `0x90` is far too common in random data), hold only text (`0x20` to
+//! `0x7e`, tab, return, newline) and end with `ESC \` or `0x9c`, which is also
+//! what content detection relies on. Pictures are capped at 4096 x 4096. A file of VMS
 //! variable-length records (the sample `test.six`: each record starts with a
 //! 16-bit length) is joined first, which no other viewer does.
 
@@ -73,7 +75,6 @@ pub(super) static FORMATS: &[Format] =
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
 const ESC: u8 = 0x1b;
-const C1_DCS: u8 = 0x90;
 const C1_ST: u8 = 0x9c;
 /// How far into the file the control string may start: files begin with a
 /// few terminal setup sequences or a line of text.
@@ -229,10 +230,9 @@ fn join_records(data: &[u8]) -> Option<Vec<u8>> {
 fn control_string(data: &[u8]) -> Result<(usize, &[u8]), DecodeError> {
     let head = &data[..data.len().min(DCS_SEARCH_LEN)];
     let start = (0..head.len())
-        .find(|&i| head[i] == C1_DCS || (head[i] == ESC && head.get(i + 1) == Some(&b'P')))
+        .find(|&i| head[i] == ESC && head.get(i + 1) == Some(&b'P'))
         .ok_or(FAIL)?;
-    let params_at = start + if data[start] == ESC { 2 } else { 1 };
-    let ([_, p2, _], _, end) = parameters::<3>(data, params_at);
+    let ([_, p2, _], _, end) = parameters::<3>(data, start + 2);
     if data.get(end) != Some(&b'q') {
         return Err(FAIL);
     }
@@ -244,7 +244,12 @@ fn control_string(data: &[u8]) -> Result<(usize, &[u8]), DecodeError> {
     // the terminator; they end the picture's data, and the string ends at the
     // next `\` or `0x9c`.
     let terminated = body[stop] == C1_ST || body[stop..].iter().any(|&b| b == b'\\' || b == C1_ST);
-    if !terminated {
+    // The data is text (sixel characters, numbers and a few controls); a
+    // control string with other bytes in it is not a picture.
+    let text = body[..stop]
+        .iter()
+        .all(|&b| matches!(b, 0x20..=0x7e | b'\t' | b'\r' | b'\n'));
+    if !terminated || !text {
         return Err(FAIL);
     }
     Ok((p2, &body[..stop]))
@@ -439,6 +444,31 @@ mod tests {
         assert_eq!(image, decode_sixel(&plain).unwrap());
         // A plain file is not mistaken for records.
         assert!(join_records(&plain).is_none());
+    }
+
+    #[test]
+    fn only_a_plausible_control_string_is_sixel() {
+        // A lone 8-bit introducer is not a signature.
+        assert!(decode_sixel(b"\x90q~\x9c").is_err());
+        assert!(decode_sixel(b"\x1bPq~\x1b\\").is_ok());
+        // The data is text: other control bytes and high bytes are not sixel.
+        assert!(decode_sixel(b"\x1bPq~\x01~\x1b\\").is_err());
+        assert!(decode_sixel(b"\x1bPq~\xe9~\x1b\\").is_err());
+        // Random bytes do not decode as sixel (about 1 in 600 did before).
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut hits = 0;
+        for _ in 0..50_000 {
+            let buffer: Vec<u8> = (0..256)
+                .map(|_| {
+                    state ^= state << 13;
+                    state ^= state >> 7;
+                    state ^= state << 17;
+                    (state >> 24) as u8
+                })
+                .collect();
+            hits += usize::from(decode_sixel(&buffer).is_ok());
+        }
+        assert_eq!(hits, 0);
     }
 
     #[test]
