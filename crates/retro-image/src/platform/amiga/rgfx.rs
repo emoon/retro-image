@@ -81,7 +81,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         [0; 256]
     };
     let body = find(contents, b"RBOD").ok_or(fail)?;
-    let bytes = bitmap_bytes(packing, body, rows.len()?)?;
+    let bytes = bitmap_bytes(packing, body, rows.len(pixels)?)?;
     render(pixels, rows, &bytes, &palette)
 }
 

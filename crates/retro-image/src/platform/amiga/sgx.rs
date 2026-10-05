@@ -73,7 +73,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     let (packing, payload) = packing(&data[data_offset..]);
-    let body = bitmap_bytes(packing, payload, rows.len()?)?;
+    let body = bitmap_bytes(packing, payload, rows.len(pixels)?)?;
     render(pixels, rows, &body, &palette)
 }
 
@@ -191,6 +191,28 @@ mod tests {
         assert!(decode(&lying).is_err());
         assert!(decode(&sgx(&[1, 2, 3])).is_err());
         assert!(decode(&sgx(&[1, 2, 3, 4])[..100]).is_err());
+    }
+
+    #[test]
+    fn a_huge_row_length_is_rejected_before_unpacking() {
+        // A 1x1 picture with 1 GiB rows and an XPK RLEN body that claims as
+        // much: this used to allocate the gigabyte.
+        let mut file = sgx(&[]);
+        file[32..36].copy_from_slice(&1u32.to_be_bytes());
+        file[36..40].copy_from_slice(&1u32.to_be_bytes());
+        file[50..54].copy_from_slice(&0x4000_0000u32.to_be_bytes());
+        let mut xpk = b"XPKF".to_vec();
+        xpk.extend_from_slice(&[0; 4]);
+        xpk.extend_from_slice(b"RLEN");
+        xpk.extend_from_slice(&0x4000_0000u32.to_be_bytes());
+        xpk.resize(32, 0);
+        xpk.extend_from_slice(&[1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2]);
+        xpk.extend_from_slice(&0x4000_0000u32.to_be_bytes());
+        xpk.extend_from_slice(&[0, 0, 0, 0]);
+        let packed_len = (xpk.len() - 8) as u32;
+        xpk[4..8].copy_from_slice(&packed_len.to_be_bytes());
+        file.extend_from_slice(&xpk);
+        assert!(decode(&file).is_err());
     }
 
     #[test]

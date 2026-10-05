@@ -129,7 +129,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         bytes_per_line: info.width,
     };
     // Checks the picture size before anything is allocated from it.
-    rows.len()?;
+    rows.len(Pixels::Indexed8)?;
     let frame_len = info.frame_len();
     let per_frame_palette = info.flags & FLAG_PALETTE_PER_FRAME != 0;
 

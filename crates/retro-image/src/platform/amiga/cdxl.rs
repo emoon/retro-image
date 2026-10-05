@@ -72,7 +72,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         height,
         bytes_per_line: width,
     };
-    rows.len()?;
+    rows.len(mode)?;
     let row_len = width.div_ceil(16) * 2;
     let video_len = row_len * planes * height;
     // The frame holds the header, palette, picture and sound, in that order;

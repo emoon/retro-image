@@ -198,15 +198,16 @@ pub(super) struct Rows {
 }
 
 impl Rows {
-    /// Bytes the rows take.
-    pub fn len(&self) -> Result<usize, DecodeError> {
+    /// Bytes the rows take for `pixels`. A row may be padded, but not by more
+    /// than its pixel bytes plus 64: sizes read from a file must not be able
+    /// to demand a gigabyte for a picture of one pixel.
+    pub fn len(&self, pixels: Pixels) -> Result<usize, DecodeError> {
         check_size(self.width, self.height)?;
-        if self.bytes_per_line == 0 {
+        let fewest = pixels.min_row_len(self.width);
+        if self.bytes_per_line < fewest || self.bytes_per_line > fewest * 2 + 64 {
             return Err(DecodeError::Unrecognized);
         }
-        self.bytes_per_line
-            .checked_mul(self.height)
-            .ok_or(DecodeError::Unrecognized)
+        Ok(self.bytes_per_line * self.height)
     }
 }
 
@@ -217,8 +218,8 @@ pub(super) fn render(
     data: &[u8],
     palette: &[u32; 256],
 ) -> Result<Image, DecodeError> {
-    let len = rows.len()?;
-    if rows.bytes_per_line < pixels.min_row_len(rows.width) || data.len() < len {
+    let len = rows.len(pixels)?;
+    if data.len() < len {
         return Err(DecodeError::Unrecognized);
     }
     let mut image = Image::new(rows.width as u32, rows.height as u32);
@@ -296,6 +297,29 @@ mod tests {
         };
         let image = render(Pixels::Indexed8, rows, &data, &grays()).unwrap();
         assert_eq!(image.rgb(), &[1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
+    }
+
+    #[test]
+    fn row_lengths_far_beyond_the_pixels_are_rejected() {
+        // A 1x1 picture claiming 1 GiB per row must not be sized from that.
+        let rows = Rows {
+            width: 1,
+            height: 1,
+            bytes_per_line: 0x4000_0000,
+        };
+        assert!(rows.len(Pixels::Indexed8).is_err());
+        assert!(render(Pixels::Indexed8, rows, &[0], &grays()).is_err());
+        // Some padding is fine: up to twice the pixel bytes plus 64.
+        let padded = Rows {
+            bytes_per_line: 64 + 2,
+            ..rows
+        };
+        assert_eq!(padded.len(Pixels::Indexed8).unwrap(), 66);
+        let too_padded = Rows {
+            bytes_per_line: 64 + 3,
+            ..rows
+        };
+        assert!(too_padded.len(Pixels::Indexed8).is_err());
     }
 
     #[test]

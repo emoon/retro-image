@@ -108,6 +108,15 @@ pub(crate) fn is_packed(data: &[u8]) -> bool {
     Header::parse(data).is_some()
 }
 
+/// The most a chunk can expand: MASH reaches about 11,000 times on a run of
+/// one byte, the other packers less. A chunk claiming more is a lie told to
+/// make us allocate.
+const MAX_EXPANSION: usize = 1 << 14;
+
+fn expands_plausibly(packed: usize, raw: usize) -> bool {
+    raw <= packed.saturating_mul(MAX_EXPANSION)
+}
+
 /// Unpacks an XPK stream whose declared unpacked size is at most `limit`
 /// bytes (the caller knows how much it can use). `None` if it is not a
 /// stream we support, is damaged, or declares more than `limit`.
@@ -137,7 +146,7 @@ pub(crate) fn unpack(data: &[u8], limit: usize) -> Option<Vec<u8>> {
         let filled = out.len();
         match kind {
             CHUNK_RAW if raw_len == packed_len => out.extend_from_slice(body),
-            CHUNK_PACKED => {
+            CHUNK_PACKED if expands_plausibly(packed_len, raw_len) => {
                 out.resize(filled + raw_len, 0);
                 (header.unpacker)(body, &mut out[filled..])?;
             }
@@ -430,6 +439,40 @@ pub(crate) mod tests {
         // it must fail rather than loop or panic.
         let mut out = [0; 4];
         assert_eq!(nuke(&[0; 16], &mut out), None);
+    }
+
+    /// A stream with long chunk headers: one packed chunk of `raw_len`
+    /// bytes whose body is `body`, declaring `raw_len` for the whole.
+    fn long_stream(packer: &[u8; 4], raw_len: u32, body: &[u8]) -> Vec<u8> {
+        let mut file = b"XPKF".to_vec();
+        file.extend_from_slice(&[0; 4]);
+        file.extend_from_slice(packer);
+        file.extend_from_slice(&raw_len.to_be_bytes());
+        file.resize(32, 0);
+        file.extend_from_slice(&[1, 0, 0, 0]); // flags: long chunk headers
+        file.push(CHUNK_PACKED);
+        file.extend_from_slice(&[0, 0, 0]);
+        file.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        file.extend_from_slice(&raw_len.to_be_bytes());
+        file.extend_from_slice(body);
+        file.resize(file.len().next_multiple_of(4), 0);
+        let packed_len = (file.len() - 8) as u32;
+        file[4..8].copy_from_slice(&packed_len.to_be_bytes());
+        file
+    }
+
+    #[test]
+    fn chunks_cannot_claim_more_than_a_packer_can_produce() {
+        // Two bytes of RLEN cannot make 1 GiB; this used to be allocated and
+        // zero-filled before the packer ran.
+        let bomb = long_stream(b"RLEN", 0x4000_0000, &[0, 0]);
+        assert_eq!(unpack(&bomb, usize::MAX), None);
+        assert!(expands_plausibly(2, 2 << 14));
+        assert!(!expands_plausibly(2, (2 << 14) + 1));
+        assert!(!expands_plausibly(0, 1));
+        // A chunk of real RLEN data still unpacks (127 repeats of one byte).
+        let fine = long_stream(b"RLEN", 128, &[129, 7, 255, 7]);
+        assert_eq!(unpack(&fine, 128).map(|v| v.len()), Some(128));
     }
 
     #[test]
