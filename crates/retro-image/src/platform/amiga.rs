@@ -20,6 +20,7 @@
 mod abk;
 mod bitmap_font;
 mod cdxl;
+mod cfast;
 mod chunky;
 mod dctv;
 mod deep;
@@ -73,6 +74,7 @@ pub(super) static FORMATS: &[Format] = &[
     // Headerless: only the extension and a strict header check identify it.
     // A hunk file with no extension of its own (the files are named by size).
     Format::new("Amiga", "Bitmap font", &[], bitmap_font::decode).signature(),
+    Format::new("Amiga", "Disney Animation Studio", &["cft"], cfast::decode).signature(),
     Format::new("Amiga", "CDXL video", &["cdxl", "xl"], cdxl::decode),
     Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
