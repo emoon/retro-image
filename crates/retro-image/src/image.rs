@@ -50,6 +50,7 @@ pub(crate) fn over_fill(argb: u32) -> u32 {
 /// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
 /// repeating its high bits, so that the largest value becomes 255.
 pub(crate) fn widen_channel(value: u32, bits: u32) -> u32 {
+    debug_assert!((1..=8).contains(&bits), "a channel has 1 to 8 bits");
     let mut wide = value << (8 - bits);
     let mut have = bits;
     while have < 8 {
@@ -419,6 +420,21 @@ mod tests {
         assert_eq!(widen_channel(0b100, 3), 0b1001_0010);
         assert_eq!(widen_channel(0x3f, 6), 0xff);
         assert_eq!(widen_channel(0xa, 4), 0xaa);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "1 to 8 bits")]
+    fn widen_channel_refuses_a_zero_bit_channel() {
+        // Without the check this would loop forever.
+        widen_channel(0, 0);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "1 to 8 bits")]
+    fn widen_channel_refuses_more_than_eight_bits() {
+        widen_channel(0, 9);
     }
 
     #[test]
