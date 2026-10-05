@@ -135,65 +135,87 @@ fn parse_bitmap<'a>(data: &'a [u8], at: usize, marker: [u8; 2]) -> Result<Bitmap
     })
 }
 
-/// A single `IC`, `CI`, `PT` or `CP` record starting at `at`.
-fn decode_record(data: &[u8], at: usize) -> Result<Image, DecodeError> {
-    let (marker, colored) = match data.get(at..at + 2) {
-        Some(b"IC") => (*b"IC", false),
-        Some(b"PT") => (*b"PT", false),
-        Some(b"CI") => (*b"CI", true),
-        Some(b"CP") => (*b"CP", true),
-        _ => return Err(FAIL),
-    };
-    let mask = parse_bitmap(data, at, marker)?;
-    if mask.bits_per_pixel != 1 || mask.height % 2 != 0 {
-        return Err(FAIL);
-    }
-    let (width, height) = (mask.width, mask.height / 2);
-    let picture = if colored {
-        let picture = parse_bitmap(data, mask.end, marker)?;
-        if (picture.width, picture.height) != (width, height) {
-            return Err(FAIL);
-        }
-        Some(picture)
-    } else {
-        None
-    };
-    let color = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
-    Ok(Image::from_colors(
-        width as u32,
-        height as u32,
-        color.map(|(x, y)| {
-            // Rows are stored bottom-up; the AND mask is the upper half of
-            // the mask picture, so it comes last in the file.
-            let and = mask.value(x, 2 * height - 1 - y) != 0;
-            let xor = mask.value(x, height - 1 - y) != 0;
-            match (and, xor, &picture) {
-                (false, _, Some(picture)) => picture.color(x, height - 1 - y),
-                (false, xor, None) => [BLACK, WHITE][usize::from(xor)],
-                (true, false, _) => TRANSPARENT_FILL,
-                (true, true, _) => INVERTED_FILL,
-            }
-        }),
-    ))
+/// A parsed `IC`, `CI`, `PT` or `CP` record: the mask and, for the color
+/// kinds, the color bitmap. Nothing is drawn until [`Record::render`].
+struct Record<'a> {
+    mask: Bitmap<'a>,
+    picture: Option<Bitmap<'a>>,
 }
 
-pub(super) fn decode_os2_icon(data: &[u8]) -> Result<Image, DecodeError> {
-    if !data.starts_with(b"BA") {
-        return decode_record(data, 0);
+impl<'a> Record<'a> {
+    /// Parses the record starting at `at`.
+    fn parse(data: &'a [u8], at: usize) -> Result<Self, DecodeError> {
+        let (marker, colored) = match data.get(at..at + 2) {
+            Some(b"IC") => (*b"IC", false),
+            Some(b"PT") => (*b"PT", false),
+            Some(b"CI") => (*b"CI", true),
+            Some(b"CP") => (*b"CP", true),
+            _ => return Err(FAIL),
+        };
+        let mask = parse_bitmap(data, at, marker)?;
+        if mask.bits_per_pixel != 1 || mask.height % 2 != 0 {
+            return Err(FAIL);
+        }
+        let picture = if colored {
+            let picture = parse_bitmap(data, mask.end, marker)?;
+            if (picture.width, picture.height) != (mask.width, mask.height / 2) {
+                return Err(FAIL);
+            }
+            Some(picture)
+        } else {
+            None
+        };
+        Ok(Self { mask, picture })
     }
+
+    fn width(&self) -> usize {
+        self.mask.width
+    }
+
+    /// The mask holds the AND and the XOR half, one above the other.
+    fn height(&self) -> usize {
+        self.mask.height / 2
+    }
+
+    fn render(&self) -> Image {
+        let (mask, picture) = (&self.mask, &self.picture);
+        let (width, height) = (self.width(), self.height());
+        let color = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
+        Image::from_colors(
+            width as u32,
+            height as u32,
+            color.map(|(x, y)| {
+                // Rows are stored bottom-up; the AND mask is the upper half
+                // of the mask picture, so it comes last in the file.
+                let and = mask.value(x, 2 * height - 1 - y) != 0;
+                let xor = mask.value(x, height - 1 - y) != 0;
+                match (and, xor, picture) {
+                    (false, _, Some(picture)) => picture.color(x, height - 1 - y),
+                    (false, xor, None) => [BLACK, WHITE][usize::from(xor)],
+                    (true, false, _) => TRANSPARENT_FILL,
+                    (true, true, _) => INVERTED_FILL,
+                }
+            }),
+        )
+    }
+}
+
+/// The largest record of an array (the first of equal size). Only headers
+/// are read, so the entries that lose are never drawn.
+fn largest_in_array(data: &[u8]) -> Result<Record<'_>, DecodeError> {
     // A chain of array headers, each followed by one record; the offset of
     // the next header is absolute and zero in the last one.
-    let mut best: Option<Image> = None;
+    let mut best: Option<Record> = None;
     let mut at = 0;
     for _ in 0..MAX_ENTRIES {
         // A chain that runs off into something else ends the array.
         if !data.get(at..).is_some_and(|rest| rest.starts_with(b"BA")) {
             break;
         }
-        if let Ok(image) = decode_record(data, at + 14) {
-            let area = |i: &Image| i.width() * i.height();
-            if best.as_ref().is_none_or(|b| area(&image) > area(b)) {
-                best = Some(image);
+        if let Ok(record) = Record::parse(data, at + 14) {
+            let area = |r: &Record| r.width() * r.height();
+            if best.as_ref().is_none_or(|b| area(&record) > area(b)) {
+                best = Some(record);
             }
         }
         let next = le32(data, at + 6).ok_or(FAIL)? as usize;
@@ -203,6 +225,15 @@ pub(super) fn decode_os2_icon(data: &[u8]) -> Result<Image, DecodeError> {
         at = next;
     }
     best.ok_or(FAIL)
+}
+
+pub(super) fn decode_os2_icon(data: &[u8]) -> Result<Image, DecodeError> {
+    let record = if data.starts_with(b"BA") {
+        largest_in_array(data)?
+    } else {
+        Record::parse(data, 0)?
+    };
+    Ok(record.render())
 }
 
 #[cfg(test)]
@@ -251,6 +282,78 @@ mod tests {
         // A first record that is no icon leaves nothing to show.
         array[14] = b'X';
         assert!(decode_os2_icon(&array).is_err());
+    }
+
+    /// An `IC` record header of `width` x `height` pixels (a mask of twice
+    /// the height) whose mask rows start at the file offset `pixels_at`.
+    fn ic_header(width: u16, height: u16, pixels_at: usize) -> Vec<u8> {
+        let mut record = b"IC".to_vec();
+        record.extend_from_slice(&[0; 8]);
+        record.extend_from_slice(&(pixels_at as u32).to_le_bytes());
+        record.extend_from_slice(&12u32.to_le_bytes());
+        record.extend_from_slice(&width.to_le_bytes());
+        record.extend_from_slice(&(2 * height).to_le_bytes());
+        record.extend_from_slice(&[1, 0, 1, 0]);
+        record.extend_from_slice(&[0, 0, 0, 255, 255, 255]);
+        record
+    }
+
+    #[test]
+    fn an_array_of_many_entries_shows_the_first_largest() {
+        // 64 entries of 32x32, two of them 96x64 (the first of those wins),
+        // all sharing one mask area big enough for the largest.
+        let entry_len = 14 + 32;
+        let pixels_at = 64 * entry_len;
+        let mut array = Vec::new();
+        for i in 0..64usize {
+            let (width, height) = if i == 40 || i == 50 {
+                (96, 64)
+            } else {
+                (32, 32)
+            };
+            array.extend_from_slice(b"BA");
+            array.extend_from_slice(&40u32.to_le_bytes());
+            let next = if i == 63 { 0 } else { (i + 1) * entry_len };
+            array.extend_from_slice(&(next as u32).to_le_bytes());
+            array.extend_from_slice(&[0; 4]);
+            array.extend_from_slice(&ic_header(width, height, pixels_at));
+        }
+        array.resize(pixels_at + 12 * 2 * 64, 0);
+        let image = decode_os2_icon(&array).unwrap();
+        assert_eq!((image.width(), image.height()), (96, 64));
+    }
+
+    /// A 2x1 `CI` record: the mask, then a 4-bit color bitmap whose palette
+    /// entry `i` is gray `i`.
+    fn color_icon(xor: u8, and: u8, pixels: u8) -> Vec<u8> {
+        let mut file = b"CI".to_vec();
+        file.extend_from_slice(&[0; 8]);
+        file.extend_from_slice(&106u32.to_le_bytes()); // the mask rows
+        file.extend_from_slice(&12u32.to_le_bytes());
+        file.extend_from_slice(&[2, 0, 2, 0, 1, 0, 1, 0]);
+        file.extend_from_slice(&[0, 0, 0, 255, 255, 255]);
+        file.extend_from_slice(b"CI");
+        file.extend_from_slice(&[0; 8]);
+        file.extend_from_slice(&114u32.to_le_bytes()); // the color rows
+        file.extend_from_slice(&12u32.to_le_bytes());
+        file.extend_from_slice(&[2, 0, 1, 0, 1, 0, 4, 0]);
+        (0..16u8).for_each(|gray| file.extend_from_slice(&[gray; 3]));
+        file.extend_from_slice(&[xor, 0, 0, 0, and, 0, 0, 0]);
+        file.extend_from_slice(&[pixels, 0, 0, 0]);
+        file
+    }
+
+    #[test]
+    fn color_records_take_pixels_from_the_second_bitmap_where_and_is_clear() {
+        // Colors 2 and 1; the right pixel is transparent (AND set, XOR clear).
+        let image = decode_os2_icon(&color_icon(0, 0b0100_0000, 0x21)).unwrap();
+        assert_eq!((image.width(), image.height()), (2, 1));
+        assert_eq!(image.get(0, 0), 0x020202);
+        assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
+        // A bitmap of another size than the mask is no icon.
+        let mut wrong = color_icon(0, 0, 0x21);
+        wrong[32 + 14 + 4] = 3;
+        assert!(decode_os2_icon(&wrong).is_err());
     }
 
     #[test]
