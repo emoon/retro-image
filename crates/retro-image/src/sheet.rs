@@ -80,6 +80,19 @@ impl Sheet {
     }
 }
 
+/// All `pictures` on one sheet, for decoders that hold them all already.
+/// The cell is the largest picture. Fails if there are none or more than
+/// [`MAX_PICTURES`], or if the sheet would pass the size cap.
+pub(crate) fn sheet(pictures: &[Image]) -> Result<Image, DecodeError> {
+    let width = pictures.iter().map(|p| p.width() as usize).max();
+    let height = pictures.iter().map(|p| p.height() as usize).max();
+    let mut sheet = Sheet::new(pictures.len(), width.unwrap_or(0), height.unwrap_or(0))?;
+    for (index, picture) in pictures.iter().enumerate() {
+        sheet.put(index, picture);
+    }
+    Ok(sheet.into_image())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,6 +139,20 @@ mod tests {
         let image = sheet.into_image();
         assert_eq!(image.get(7, 7), 0);
         assert_eq!(image.get(8, 7), TRANSPARENT_FILL);
+    }
+
+    #[test]
+    fn sheet_puts_each_picture_in_a_cell_of_the_largest() {
+        // Cells of 8 x 3 have a pitch of 12 x 7: 2 columns and 1 row.
+        let pictures = [picture(8, 2), picture(2, 3)];
+        let image = sheet(&pictures).unwrap();
+        assert_eq!((image.width(), image.height()), (28, 11));
+        assert_eq!((image.get(4, 5), image.get(4, 6)), (0, TRANSPARENT_FILL));
+        assert_eq!((image.get(16, 6), image.get(18, 6)), (0, TRANSPARENT_FILL));
+        assert_eq!(sheet(&[]).err(), Some(DecodeError::Unrecognized));
+        let many = alloc::vec![picture(1, 1); MAX_PICTURES + 1];
+        assert!(sheet(&many).is_err());
+        assert!(sheet(&many[1..]).is_ok());
     }
 
     #[test]

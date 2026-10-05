@@ -18,13 +18,15 @@
 //!   colors, two entries of it a guess by its author. Deark is also the
 //!   oracle for the samples.
 //! - Checked on the 11 `apple2Icons` samples of the dexvert set: each icon
-//!   file ends exactly at its zero length word.
+//!   file ends exactly at its zero length word, and each icon cropped from
+//!   its cell of the sheet matches Deark's pixel for pixel.
 //!
-//! Choices of this crate: the sheet is `icon_sheet.rs`'s (big and small icon of
-//! each record in file order, transparent pixels on the shared fill); the
-//! `iconType` color flag is ignored, as in CiderPress II, because most icons
-//! are colored but say black and white. Files are recognized by their header
-//! alone, since the ProDOS file type is not part of the name.
+//! Choices of this crate: the sheet is `sheet.rs`'s grid (big and small icon
+//! of each record in file order, each in a cell as large as the largest icon,
+//! transparent pixels on the shared fill); the `iconType` color flag is
+//! ignored, as in CiderPress II, because most icons are colored but say black
+//! and white. Files are recognized by their header alone, since the ProDOS
+//! file type is not part of the name.
 
 // Parts of this file follow Deark's modules/misc2.c
 // (Deark, https://github.com/jsummers/deark):
@@ -52,8 +54,8 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::icon_sheet::{self, Icon};
 use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::sheet::{MAX_PICTURES, sheet};
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -63,7 +65,6 @@ const HEADER_LEN: usize = 26;
 const RECORD_LEN: usize = 86;
 /// An icon's type, size, height and width words.
 const ICON_HEADER_LEN: usize = 8;
-const MAX_RECORDS: usize = 1024;
 const MAX_SIDE: usize = 256;
 
 /// The standard 640-mode palette with each dithered pair blended, by index.
@@ -80,14 +81,11 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let mut icons = Vec::new();
     let mut at = HEADER_LEN;
-    for _ in 0..MAX_RECORDS {
+    loop {
         let length = usize::from(le16(data, at).ok_or(FAIL)?);
         if length == 0 {
             // The list ends with a zero length word.
-            return match icons.is_empty() {
-                true => Err(FAIL),
-                false => icon_sheet::sheet(&icons),
-            };
+            return sheet(&icons);
         }
         let record = data.get(at..at + length).ok_or(FAIL)?;
         let record = record.get(RECORD_LEN..).ok_or(FAIL)?;
@@ -98,13 +96,15 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             icons.push(read_icon(rest)?.0);
         }
         at += length;
+        // `sheet` rejects more icons than it holds; this stops reading early.
+        if icons.len() > MAX_PICTURES {
+            return Err(FAIL);
+        }
     }
-    // More records than a Finder icon file has.
-    Err(FAIL)
 }
 
 /// The icon at the start of `data` and what follows it.
-fn read_icon(data: &[u8]) -> Result<(Icon, &[u8]), DecodeError> {
+fn read_icon(data: &[u8]) -> Result<(Image, &[u8]), DecodeError> {
     let size = usize::from(le16(data, 2).ok_or(FAIL)?);
     let height = usize::from(le16(data, 4).ok_or(FAIL)?);
     let width = usize::from(le16(data, 6).ok_or(FAIL)?);
@@ -127,22 +127,16 @@ fn read_icon(data: &[u8]) -> Result<(Icon, &[u8]), DecodeError> {
             byte & 15
         }
     };
-    let pixels = (0..width * height)
-        .map(|i| {
-            let (x, y) = (i % width, i / width);
-            match nibble(mask, x, y) {
-                0 => TRANSPARENT_FILL,
-                _ => PALETTE[usize::from(nibble(image, x, y))],
-            }
-        })
-        .collect();
+    let pixels = (0..width * height).map(|i| {
+        let (x, y) = (i % width, i / width);
+        match nibble(mask, x, y) {
+            0 => TRANSPARENT_FILL,
+            _ => PALETTE[usize::from(nibble(image, x, y))],
+        }
+    });
     let rest = &data[ICON_HEADER_LEN + 2 * size..];
     Ok((
-        Icon {
-            width,
-            height,
-            pixels,
-        },
+        Image::from_colors(width as u32, height as u32, pixels),
         rest,
     ))
 }
@@ -183,13 +177,13 @@ mod tests {
     fn icons_use_the_high_nibble_first_and_a_zero_mask_nibble_is_transparent() {
         // Big icon: pixels 0x1 (opaque) and 0x4 (masked out); small: 0xf.
         let image = decode(&file(&[record(0x14, 0xf0, true)])).unwrap();
-        // The sheet is 512 wide: big icon at (4, 4), small icon at (10, 4).
+        // Two cells of 2 x 1 on one row: big icon at (4, 4), small at (10, 4).
+        assert_eq!((image.width(), image.height()), (16, 9));
         assert_eq!(
             (image.get(4, 4), image.get(5, 4)),
             (0x000080, TRANSPARENT_FILL)
         );
         assert_eq!(image.get(10, 4), 0xffffff);
-        assert_eq!(image.width(), 512);
     }
 
     #[test]
@@ -197,7 +191,7 @@ mod tests {
         let with = decode(&file(&[record(0x11, 0xff, true)])).unwrap();
         let without = decode(&file(&[record(0x11, 0xff, false)])).unwrap();
         assert_eq!(with.get(10, 4), 0xffffff);
-        assert_eq!(without.get(10, 4), TRANSPARENT_FILL);
+        assert_eq!((without.width(), without.height()), (10, 9));
     }
 
     #[test]

@@ -13,7 +13,7 @@
 //!   `fmtowns_icn` (<https://github.com/jsummers/deark>, MIT licence, notice
 //!   below). Signatures: Just Solve the Computer, ICN (FM Towns),
 //!   <http://justsolve.archiveteam.org/wiki/ICN_(FM_Towns)>.
-//! - The sheet is this crate's own choice, in `icon_sheet.rs`. No FM Towns
+//! - The sheet is this crate's own choice, in `sheet.rs`. No FM Towns
 //!   icon sample was available, so the layouts are checked only by unit tests
 //!   built from the documented structure.
 
@@ -43,7 +43,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, le16, le32};
-use crate::icon_sheet::{self, Icon};
+use crate::sheet::{MAX_PICTURES, sheet};
 use crate::{DecodeError, Image};
 
 const PALETTE: [u32; 16] = [
@@ -51,15 +51,14 @@ const PALETTE: [u32; 16] = [
     0x88bbee, 0xdd0000, 0x0000aa, 0x555555, 0x00ffff, 0xffdd00, 0xffffff,
 ];
 
-/// Most icons shown, and the widest or tallest one accepted.
-const MAX_ICONS: usize = 256;
 /// Icon headers visited across all tables, skipped ones included.
 const MAX_HEADERS: usize = 4096;
+/// The widest or tallest icon accepted.
 const MAX_SIDE: usize = 512;
 
 /// Pixels of a `width` x `height` icon at `at`: 1-bit (set is black) or
 /// 4-bit (low nibble first) rows, 4-bit rows padded to 32 bits.
-fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -> Option<Icon> {
+fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -> Option<Image> {
     if width == 0 || height == 0 || width > MAX_SIDE || height > MAX_SIDE {
         return None;
     }
@@ -69,10 +68,9 @@ fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -
         (width * 4).div_ceil(32) * 4
     };
     let bytes = data.get(at..at.checked_add(row_len * height)?)?;
-    let mut pixels = Vec::with_capacity(width * height);
-    for row in bytes.chunks_exact(row_len) {
-        for x in 0..width {
-            pixels.push(if bits == 1 {
+    let pixels = bytes.chunks_exact(row_len).flat_map(|row| {
+        (0..width).map(move |x| {
+            if bits == 1 {
                 if row[x / 8] & (0x80 >> (x % 8)) != 0 {
                     0x000000
                 } else {
@@ -81,18 +79,14 @@ fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -
             } else {
                 let byte = row[x / 2];
                 PALETTE[usize::from(if x % 2 == 0 { byte & 15 } else { byte >> 4 })]
-            });
-        }
-    }
-    Some(Icon {
-        width,
-        height,
-        pixels,
-    })
+            }
+        })
+    });
+    Some(Image::from_colors(width as u32, height as u32, pixels))
 }
 
 /// `CRI-FJ2 ` (little-endian) and `CRI-FUJI` (big-endian): 32x32 4-bit icons.
-fn fixed_icons(data: &[u8], little: bool) -> Option<Vec<Icon>> {
+fn fixed_icons(data: &[u8], little: bool) -> Option<Vec<Image>> {
     let word = |at| {
         if little {
             le16(data, at)
@@ -107,13 +101,13 @@ fn fixed_icons(data: &[u8], little: bool) -> Option<Vec<Icon>> {
     }
     (0..usize::from(count)
         .min((data.len() - 16) / size)
-        .min(MAX_ICONS))
+        .min(MAX_PICTURES))
         .map(|i| read_icon(data, 16 + i * size + 2, 32, 32, 4))
         .collect()
 }
 
 /// `ICNFILE`: tables of icons, each icon with its own size and depth.
-fn table_icons(data: &[u8]) -> Option<Vec<Icon>> {
+fn table_icons(data: &[u8]) -> Option<Vec<Image>> {
     let mut icons = Vec::new();
     let mut headers = 0;
     for table in 0..usize::from(le16(data, 12)?) {
@@ -124,7 +118,7 @@ fn table_icons(data: &[u8]) -> Option<Vec<Icon>> {
             return None;
         }
         for i in 0..count {
-            if icons.len() == MAX_ICONS || headers == MAX_HEADERS {
+            if icons.len() == MAX_PICTURES || headers == MAX_HEADERS {
                 return Some(icons);
             }
             headers += 1;
@@ -157,10 +151,7 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         None
     };
-    match icons {
-        Some(icons) if !icons.is_empty() => icon_sheet::sheet(&icons),
-        _ => Err(DecodeError::Unrecognized),
-    }
+    sheet(&icons.ok_or(DecodeError::Unrecognized)?)
 }
 
 #[cfg(test)]
