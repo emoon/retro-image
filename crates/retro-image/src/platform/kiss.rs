@@ -10,7 +10,8 @@
 //!   conventional cel (width, height, 4-bit rows, offsets 0); the palette
 //!   file (`KiSS`, mark `0x10`, 12 or 24 bits per color, colors per group,
 //!   group count; `rrrr bbbb` `0000 gggg` or `R G B`) and the headerless
-//!   conventional palette (10 groups of 16 12-bit colors).
+//!   conventional palette (10 groups of 16 12-bit colors; `litks13.kcf` of
+//!   the corpus has 16, so any whole number up to 16 is read).
 //! - Just Solve the File Format Problem, KiSS CEL
 //!   (<http://fileformats.archiveteam.org/wiki/KiSS_CEL>, CC0): Cherry KiSS
 //!   (CKiSS) cels use bits per pixel 32 with mark `0x20` or `0x21`, carry
@@ -26,8 +27,10 @@
 //! the palette is group 0 of the `.kcf` with the cel's stem, a gray ramp
 //! without one; palette colors past the end of a short palette are black;
 //! a 12-bit channel `v` becomes `v * 17`; transparent pixels (index 0, or
-//! alpha) are composited onto [`TRANSPARENT_FILL`]. A set's `.cnf` file is not
-//! read, so a cel whose palette has another name is shown in gray.
+//! alpha) are composited onto [`TRANSPARENT_FILL`]. A cel finds a palette file
+//! only by its own stem, so a doll's cels, whose palettes have other names, are
+//! gray alone; the set's `.cnf` file, read by `set.rs`, gives them their
+//! palettes and places them.
 
 use alloc::vec::Vec;
 
@@ -35,10 +38,14 @@ use crate::bytes::le16;
 use crate::image::{TRANSPARENT_FILL, check_size, over};
 use crate::{Companions, DecodeError, Format, Image};
 
+mod set;
+
 pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("KiSS", "Cel", &["cel"], decode_cel).signature(),
     // No header to check: only the exact size tells it from other `.cel` files.
     Format::with_companions("KiSS", "Conventional cel", &["cel"], decode_old_cel),
+    // A text file naming the cels and palettes it places; no signature.
+    Format::with_companions("KiSS", "Set", &["cnf"], set::decode_set),
 ];
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -46,15 +53,20 @@ const HEADER_LEN: usize = 32;
 const CEL_MARK: u8 = 0x20;
 const CKISS_MARK: u8 = 0x21;
 const PALETTE_MARK: u8 = 0x10;
-/// 10 groups of 16 colors of 2 bytes: the headerless palette file.
-const OLD_PALETTE_LEN: usize = 320;
-/// Palette groups a palette file can hold.
+/// A group of 16 colors of 2 bytes: the headerless palette file is a whole
+/// number of them, 10 by the specification, up to 16 in the wild.
+const OLD_GROUP_LEN: usize = 32;
+const MAX_OLD_GROUPS: usize = 16;
+/// Palette groups a headered palette file can hold.
 const MAX_GROUPS: usize = 10;
 
 /// A cel as read from its file, before a palette is applied.
 struct Cel {
     width: usize,
     height: usize,
+    /// Where the cel sits relative to its object's top left corner.
+    x: usize,
+    y: usize,
     pixels: Pixels,
 }
 
@@ -130,8 +142,15 @@ fn read_headered(data: &[u8]) -> Result<Cel, DecodeError> {
     Ok(Cel {
         width,
         height,
+        x: usize::from(le16(data, 12).ok_or(FAIL)?),
+        y: usize::from(le16(data, 14).ok_or(FAIL)?),
         pixels,
     })
+}
+
+/// The cel of a file with either layout.
+fn read_cel(data: &[u8]) -> Result<Cel, DecodeError> {
+    read_headered(data).or_else(|_| read_conventional(data))
 }
 
 /// The cel of a file with no header: width and height, then 4-bit rows to the
@@ -147,6 +166,8 @@ fn read_conventional(data: &[u8]) -> Result<Cel, DecodeError> {
     Ok(Cel {
         width,
         height,
+        x: 0,
+        y: 0,
         pixels: indexed(width, height, 4, body)?,
     })
 }
@@ -217,8 +238,10 @@ fn read_palette(kcf: &[u8], group: usize) -> Option<Vec<u32>> {
             return None;
         }
         (*kcf.get(5)?, colors, groups, HEADER_LEN)
-    } else if kcf.len() == OLD_PALETTE_LEN {
-        (12, 16, MAX_GROUPS, 0)
+    } else if kcf.len().is_multiple_of(OLD_GROUP_LEN)
+        && (1..=MAX_OLD_GROUPS).contains(&(kcf.len() / OLD_GROUP_LEN))
+    {
+        (12, 16, kcf.len() / OLD_GROUP_LEN, 0)
     } else {
         return None;
     };
@@ -321,6 +344,20 @@ mod tests {
         assert_eq!(image.get(0, 0), 0x302010);
         assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
         assert_eq!(image.get(2, 0), 0x606060);
+    }
+
+    #[test]
+    fn a_conventional_palette_is_a_whole_number_of_groups_and_missing_groups_use_the_first() {
+        // Two groups of 16 colors, `rrrr bbbb` and `0000 gggg` for each.
+        let mut kcf = alloc::vec![0u8; 64];
+        kcf[0] = 0xf0; // red 15, blue 0
+        kcf[32] = 0x0f; // group 1: red 0, blue 15
+        assert_eq!(read_palette(&kcf, 0).unwrap()[0], 0xff0000);
+        assert_eq!(read_palette(&kcf, 1).unwrap()[0], 0x0000ff);
+        // Group 5 does not exist: group 0.
+        assert_eq!(read_palette(&kcf, 5).unwrap()[0], 0xff0000);
+        assert!(read_palette(&kcf[..60], 0).is_none());
+        assert_eq!(read_palette(&kcf, 0).unwrap().len(), 16);
     }
 
     #[test]
