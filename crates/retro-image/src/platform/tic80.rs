@@ -24,9 +24,10 @@
 //!   2), 256 8 x 8 sprites each, 16 to a row, each part cut after its last
 //!   non-blank row and left out if it is missing or blank.
 //!
-//! A cartridge with neither is rejected. The cover is untested: no sample
-//! has a screen chunk, so its layout is taken from the wiki ("a 240 x 136 x
-//! 4bpp raw buffer") and from the sprite nibble order.
+//! A cartridge with neither, because the chunks are missing or blank, is
+//! rejected. The cover is untested: no sample has a screen chunk, so its
+//! layout is taken from the wiki ("a 240 x 136 x 4bpp raw buffer") and from
+//! the sprite nibble order.
 //!
 //! Palette: the palette chunk's first 48 bytes (16 RGB colors; the second
 //! palette, for the overlay, is ignored); the default chunk selects SWEETIE-16;
@@ -185,12 +186,10 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         return SCREEN.sheet(&pixels, 1, &palette);
     }
     let parts = [bank_0(&chunks, TILES), bank_0(&chunks, SPRITES)];
-    if parts.iter().all(Option::is_none) {
-        return Err(DecodeError::Unrecognized);
-    }
-    let mut sprites: Vec<u8> = parts.iter().flatten().flat_map(|p| used_rows(p)).collect();
+    let sprites: Vec<u8> = parts.iter().flatten().flat_map(|p| used_rows(p)).collect();
+    // Nothing but blank sprites and no cover is not a picture.
     if sprites.is_empty() {
-        sprites.resize(ROW_LEN, 0);
+        return Err(DecodeError::Unrecognized);
     }
     SPRITE.sheet(&sprites, SPRITES_PER_ROW, &palette)
 }
@@ -258,5 +257,18 @@ mod tests {
         // A reserved type, and a size past the end.
         assert!(chunks(&chunk(0, 7, &[1])).is_none());
         assert!(chunks(&[SPRITES, 9, 0, 0, 1]).is_none());
+    }
+
+    #[test]
+    fn carts_without_a_non_blank_sprite_or_cover_are_rejected() {
+        // A bare empty tile chunk, which a few random bytes can look like.
+        assert!(decode(&[TILES, 0, 0, 0]).is_err());
+        assert!(decode(&chunk(0, SPRITES, &[0; 64])).is_err());
+        let mut blank = chunk(0, TILES, &[0; 32]);
+        blank.extend(chunk(0, SCREEN_CHUNK, &[0; 16384]));
+        assert!(decode(&blank).is_err());
+        // One non-blank sprite is enough.
+        blank.extend(chunk(0, SPRITES, &[0, 0, 1]));
+        assert!(decode(&blank).is_ok());
     }
 }
