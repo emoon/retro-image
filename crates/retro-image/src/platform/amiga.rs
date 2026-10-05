@@ -87,11 +87,15 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga HAM-E", "HAM-E", &["iff"], decode_ham_e),
 ];
 
-/// AMOS sprite, icon or picture bank, possibly packed (one layer).
+/// AMOS sprite, icon or picture bank, possibly packed (one layer), or the
+/// picture packer's files without a bank header.
 fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = depack(data)?;
     let data = unpacked.as_deref().unwrap_or(data);
-    abk::decode(data).or_else(|_| pac_pic::decode(data))
+    abk::decode(data)
+        .or_else(|_| pac_pic::decode(data))
+        .or_else(|_| pac_pic::decode_screen(data))
+        .or_else(|_| pac_pic::decode_bare(data))
 }
 
 /// DCTV pictures: an ILBM with the DCTV signature in its first row.
