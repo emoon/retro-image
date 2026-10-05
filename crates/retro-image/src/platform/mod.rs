@@ -31,6 +31,7 @@ mod sinclair_ql;
 mod tandy1000;
 mod textmode;
 mod thomson;
+mod threedo;
 mod trs80;
 mod vector06c;
 mod zx_spectrum;
@@ -38,6 +39,9 @@ mod zx_spectrum;
 use crate::Format;
 
 pub(crate) static ALL: &[&[Format]] = &[
+    // Tag-checked formats claiming extensions that headerless formats share
+    // (`.cel`, `.img`) come first, so that those are only tried afterwards.
+    threedo::FORMATS,
     amiga::FORMATS,
     amstrad_cpc::FORMATS,
     apple::FORMATS,
