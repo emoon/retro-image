@@ -158,7 +158,8 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = header.width * header.height;
     let image_len = match storage {
         Pixels::Direct { bytes_per_pixel } => pixels * bytes_per_pixel,
-        Pixels::Indexed { bits } => pixels * bits / 8,
+        // Odd counts of 4-bit pixels end in half a byte.
+        Pixels::Indexed { bits } => (pixels * bits).div_ceil(8),
     };
     if image_len > header.image_size {
         return Err(fail);
@@ -214,6 +215,18 @@ mod tests {
 
     /// A one-picture file: 4 pixels wide, 1 high, with `image` and `clut`.
     fn file(image_type: u8, clut_type: u8, clut_colors: u16, image: &[u8], clut: &[u8]) -> Vec<u8> {
+        sized_file(4, image_type, clut_type, clut_colors, image, clut)
+    }
+
+    /// The same for a picture `width` pixels wide.
+    fn sized_file(
+        width: u16,
+        image_type: u8,
+        clut_type: u8,
+        clut_colors: u16,
+        image: &[u8],
+        clut: &[u8],
+    ) -> Vec<u8> {
         let mut data = b"TIM2\x04\x00\x01\x00\0\0\0\0\0\0\0\0".to_vec();
         let total = 48 + image.len() + clut.len();
         data.extend_from_slice(&(total as u32).to_le_bytes());
@@ -222,7 +235,7 @@ mod tests {
         data.extend_from_slice(&48u16.to_le_bytes());
         data.extend_from_slice(&clut_colors.to_le_bytes());
         data.extend_from_slice(&[0, 1, clut_type, image_type]);
-        data.extend_from_slice(&4u16.to_le_bytes());
+        data.extend_from_slice(&width.to_le_bytes());
         data.extend_from_slice(&1u16.to_le_bytes());
         data.resize(16 + 48, 0);
         data.extend_from_slice(image);
@@ -258,6 +271,21 @@ mod tests {
         let image = decode_tim2(&file(4, 0x81, 16, &[0x21, 0x00], &clut)).unwrap();
         assert_eq!(image.get(0, 0), 0x000000, "index 1 is opaque black");
         assert_eq!(image.get(1, 0), 0xff0000, "index 2 is opaque red");
+    }
+
+    #[test]
+    fn four_bit_pictures_with_an_odd_pixel_count_keep_their_last_pixel() {
+        // 3x1 pixels: three nibbles take two bytes, and the third pixel is the
+        // low nibble of the second byte.
+        let mut clut = alloc::vec![0u8; 16 * 2];
+        for (i, color) in [0x8000u16, 0x801f, 0x83e0, 0xfc00].iter().enumerate() {
+            clut[i * 2..i * 2 + 2].copy_from_slice(&color.to_le_bytes());
+        }
+        let picture = sized_file(3, 4, 0x01, 16, &[0x21, 0x03], &clut);
+        let image = decode_tim2(&picture).unwrap();
+        assert_eq!(image.get(0, 0), 0xff0000, "index 1: red");
+        assert_eq!(image.get(1, 0), 0x00ff00, "index 2: green");
+        assert_eq!(image.get(2, 0), 0x0000ff, "index 3: blue, not black");
     }
 
     #[test]
