@@ -32,7 +32,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{TRANSPARENT_FILL, check_size, over_fill};
 use crate::{Companions, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -110,14 +110,11 @@ fn indexed(
 /// A Cherry KiSS cel: 4-byte pixels, blue, green, red, alpha.
 fn blended(width: usize, height: usize, body: &[u8]) -> Result<Image, DecodeError> {
     let pixels = body.get(..width * height * 4).ok_or(FAIL)?;
-    let colors = pixels.as_chunks::<4>().0.iter().map(|&[b, g, r, alpha]| {
-        let fill = TRANSPARENT_FILL.to_be_bytes();
-        let over = |c: u8, under: u8| {
-            let (c, under, alpha) = (u32::from(c), u32::from(under), u32::from(alpha));
-            (c * alpha + under * (255 - alpha) + 127) / 255
-        };
-        over(r, fill[1]) << 16 | over(g, fill[2]) << 8 | over(b, fill[3])
-    });
+    let colors = pixels
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|&[b, g, r, alpha]| over_fill(u32::from_be_bytes([0, r, g, b]), alpha));
     Ok(Image::from_colors(width as u32, height as u32, colors))
 }
 
