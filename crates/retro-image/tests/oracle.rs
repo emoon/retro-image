@@ -251,9 +251,14 @@ fn fnv_step(hash: u64, byte: u8) -> u64 {
     (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
 }
 
-/// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`.
+/// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`:
+/// the RGB bytes, then the alpha plane if the image has one.
 fn fingerprint(image: &retro_image::Image) -> String {
-    let hash = image.rgb().iter().fold(FNV_OFFSET, |h, &b| fnv_step(h, b));
+    let mut hash = image.rgb().iter().fold(FNV_OFFSET, |h, &b| fnv_step(h, b));
+    if image.has_alpha() {
+        let rgba = image.rgba();
+        hash = (rgba.as_chunks::<4>().0.iter()).fold(hash, |h, pixel| fnv_step(h, pixel[3]));
+    }
     format!("{}x{} {hash:016x}", image.width(), image.height())
 }
 

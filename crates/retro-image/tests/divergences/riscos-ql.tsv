@@ -3,55 +3,55 @@
 # RGBA (Deark adds the mask as alpha): alpha equal and RGB equal where visible, after undoing our pixel-shape repetition.
 # QL: rendered and reviewed visually against the Developer's Guide / Dilwyn Jones layouts.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/2DWaves_2DWaves.ff9	320x45	a5c6b26f539fcc4d	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/BotMap_Sprites.ff9	16x16	efcdefe336173011	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/BotMap_Sprites.ff9	16x16	f82c4e0590d3ca01	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/DrawPlus_Tools.ff9	24x22	10c3873edc733df1	RISC OS sprite (mode 0); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/FastJPEG_Frank.ff9	135x219	9494594aecca14f0	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/FatPaint_JuzzBag.ff9	260x152	d828b7b3f468f39d	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_ExclSprites.ff9	34x34	75ac5a37d14189e5	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_ExclSprites23.ff9	16x22	5cc66a2cda8415c5	RISC OS sprite (mode 19); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Fresco_Sprites.ff9	30x32	d1fd6f2a27143191	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Microscope_Sprites.ff9	34x34	ea266bdd9fb262e7	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/MultiScrn_Sprites22.ff9	34x34	56f962153f542597	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Microscope_Sprites.ff9	34x34	9405abf067ea2992	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/MultiScrn_Sprites22.ff9	34x34	048b14dddbb962b7	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/NumberCr2_Pics.ff9	16x16	cdce9dbe5238d622	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/PalMakers_Lady.ff9	268x221	70f7a696c7f6a1c1	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Process_XSprites.ff9	142x110	a1c0588979b0f331	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/SESanim_FrontSpri.ff9	278x100	f92b49ba66b6fcec	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/SESanim_FrontSpri.ff9	278x100	b9b4803cb3692903	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Sascha_Maarten.ff9	134x196	d884f40abd78746b	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Sascha_Sprites.ff9	36x36	88e65ac45fbbaaf1	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Sascha_Sprites.ff9	36x36	211d45bd957a124d	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/ShowPic_Warning.ff9	252x161	435f4a06709d11f0	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Translatr_Sprites22.ff9	34x34	da08ad26c9cf5d35	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Translatr_Sprites22.ff9	34x34	1ac3d720ce8f3c51	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/Tyla2_Image.ff9	50x50	d7839d5228d65be2	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-AcornUserTheRISCOSGraphicsCD/VRML_Sprites.ff9	36x36	507ddef134ee8f0d	RISC OS sprite (mode 31); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-risc-os-3.11/PaintDemo.ff9	64x64	d6aebc7c2673bdd5	RISC OS sprite (mode 13); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-risc-os-3.11/Patience_Sprites23.ff9	31x42	2b625781c3a43269	RISC OS sprite (mode 18); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-risc-os-3.7/ARMovie_Default.ff9	320x256	b1a18c33e92045d5	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
-extra/riscos-ql/ia-risc-os-3.7/Blocks_Sprites.ff9	32x32	02d203a894e41d75	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
-extra/riscos-ql/ia-risc-os-3.7/Bookworm_Sprites.ff9	44x34	43493f406f5b1739	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
-extra/riscos-ql/ia-risc-os-3.7/Configure_2DTools.ff9	21x22	2a6ce62a87a75c6f	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-risc-os-3.7/Blocks_Sprites.ff9	32x32	22a61975f2c8c8a5	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-risc-os-3.7/Bookworm_Sprites.ff9	44x34	f9c950458f79f5f5	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-risc-os-3.7/Configure_2DTools.ff9	21x22	b298755ffca01a73	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-risc-os-3.7/Configure_Sprites.ff9	34x34	47b6d89321b62f11	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
 extra/riscos-ql/ia-risc-os-3.7/DrawTutor_Horse.ff9	400x560	3c6ce35ba7a1fd71	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-risc-os-3.7/DrawTutor_LakeView.ff9	542x398	e135f3787644c8d2	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-risc-os-3.7/Maestro_Sprites22.ff9	11x10	3feaf8428fa3708d	RISC OS sprite (mode 18); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/ia-risc-os-3.7/Maestro_Sprites22.ff9	11x10	7968298d8fe6353a	RISC OS sprite (mode 18); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/ia-risc-os-3.7/Meteors_Sprites.ff9	18x26	ed1d89d9ae7c7895	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
 extra/riscos-ql/ia-risc-os-3.7/PaintTutor_Flower.ff9	80x80	c1699e50fbbfd4e0	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/ia-risc-os-3.7/SparkPlug_4Sprites.ff9	34x34	a15b34ce74e133b5	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
+extra/riscos-ql/ia-risc-os-3.7/SparkPlug_4Sprites.ff9	34x34	fe3591e1504df311	RISC OS sprite (mode 15); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
 extra/riscos-ql/ia-risc-os-3.7/Textures_T3.ff9	272x238	8a803d92cead5708	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/ia-risc-os-3.7/Textures_T6.ff9	272x238	0c71ad2602cc21cf	RISC OS sprite (mode 20); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/riscosinfo/Anagramarama_Sprites22.ff9	36x36	f32ebf4396b5104b	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
-extra/riscos-ql/riscosinfo/Barrage_Sprites22.ff9	32x32	200950e815962276	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
+extra/riscos-ql/riscosinfo/Anagramarama_Sprites22.ff9	36x36	9e910e3b5efc41da	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/riscosinfo/Barrage_Sprites22.ff9	32x32	19d80082b55736f8	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/riscosinfo/Blackbox_Sprites.ff9	34x30	6627ee41c60b71e3	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/riscosinfo/Bugsquish_Sprites22.ff9	40x40	a1d62f1356702996	RISC OS sprite (mode word 0x301680b5 (type 6)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/riscosinfo/CircusLnx_Sprites.ff9	34x34	d6064bd07284937d	RISC OS sprite (mode 12); not in RECOIL; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
-extra/riscos-ql/riscosinfo/Decor_Sprites22.ff9	34x34	43fae61f7cf484cf	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/riscosinfo/Decor_Sprites22.ff9	34x34	6d4ee4fc6f1d4136	RISC OS sprite (mode 27); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/riscosinfo/IceBreaker_Sprites.ff9	32x32	c5e3eae16418daa0	RISC OS sprite (mode word 0x281680b5 (type 5)); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/riscosinfo/RS_Sprites.ff9	34x34	09ec8a31ccfa68cc	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/riscosinfo/Wargus_Sprites22.ff9	34x34	922f660ae6a47f66	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/riscosinfo/Wargus_Sprites22.ff9	34x34	1260b080357304a2	RISC OS sprite (mode 21); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/sembiance/136.ff9	128x128	45f5ea2686710dd2	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/BUS240.ff9	152x166	96e4f4b4d46dc9be	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/COM234.ff9	104x54	681ceb555d7e575a	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/CTN672.ff9	88x52	b8ed1a434870d71c	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/DRUMS.ff9	605x615	ea2f63d6a9570862	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/sembiance/Drives.ff9	49x22	9582ef934220c65b	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/sembiance/Drives.ff9	49x22	ca8e08309cb667f8	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/sembiance/EDU275.ff9	144x201	87b875bf1ad9f75a	RISC OS sprite (mode 25); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/FLG012.ff9	1031x901	82365bd5e399440a	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/sembiance/cinders.ff9	93x128	7ccb3caed6ac6933	RISC OS sprite (mode 28); not in RECOIL; matches Deark 1.7.3 pixel for pixel
@@ -110,7 +110,7 @@ extra/riscos-ql/synthetic/mode2.ff9	64x32	239a916212fe2725	RISC OS sprite (mode 
 extra/riscos-ql/synthetic/mode20.ff9	37x21	62dc377419fceb93	RISC OS sprite (mode 20); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/synthetic/mode21.ff9	33x40	cc9d5b4c7381295d	RISC OS sprite (mode 21); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/synthetic/mode27.ff9	64x48	1c2d9bb289e7c325	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
-extra/riscos-ql/synthetic/mode27mask.ff9	40x30	fb158e0e67a31110	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
+extra/riscos-ql/synthetic/mode27mask.ff9	40x30	db970d3045c8e650	RISC OS sprite (mode 27); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel. Alpha is the sprite mask, equal to Deark's alpha; rgb() is black where alpha is 0.
 extra/riscos-ql/synthetic/mode28.ff9	64x48	51274fd405733525	RISC OS sprite (mode 28); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/synthetic/mode28pal.ff9	64x64	2386811b9e309125	RISC OS sprite (mode 28); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel
 extra/riscos-ql/synthetic/mode8pal.ff9	40x40	3f810eff65093925	RISC OS sprite (mode 8); not in RECOIL; synthetic file from the PRM layout; matches Deark 1.7.3 pixel for pixel, pixels repeated 1x2 for the mode's pixel shape
