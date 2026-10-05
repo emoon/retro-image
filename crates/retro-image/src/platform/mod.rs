@@ -30,6 +30,7 @@ mod tandy1000;
 mod textmode;
 mod thomson;
 mod trs80;
+mod unix;
 mod vector06c;
 mod zx_spectrum;
 
@@ -62,6 +63,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     textmode::FORMATS,
     thomson::FORMATS,
     trs80::FORMATS,
+    unix::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
 ];
