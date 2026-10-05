@@ -92,7 +92,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
 
 /// Expands the RLE stream from `data` into exactly `len` bytes.
 /// Fails on truncated data; a final run reaching past `len` is cut off.
-fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
+pub(super) fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
     // A two-byte run yields at most 63 bytes.
     if len > data.len().saturating_mul(32) {
         return Err(DecodeError::Unrecognized);

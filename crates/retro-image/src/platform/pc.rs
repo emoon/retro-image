@@ -44,6 +44,7 @@ mod optiks;
 mod os2_icon;
 mod pcpaint;
 mod pcx;
+mod pcx2com;
 mod pixit;
 mod tga;
 
@@ -99,6 +100,13 @@ pub(super) static FORMATS: &[Format] = &[
         "OPTIKS self-displaying picture",
         &["com"],
         optiks::decode_optiks,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "PCX2COM self-displaying picture",
+        &["com"],
+        pcx2com::decode_pcx2com,
     )
     .signature(),
     Format::new(
