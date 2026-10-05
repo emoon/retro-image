@@ -6,6 +6,7 @@
 //!
 //! RECOIL decodes none of these formats, so there is no oracle run.
 
+mod banner;
 mod gvr;
 mod tpl;
 
@@ -16,4 +17,6 @@ pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("GameCube", "GVM texture archive", &["gvm"], gvr::decode_gvm)
         .signature(),
     Format::new("Wii", "TPL texture library", &["tpl"], tpl::decode_tpl).signature(),
+    Format::new("GameCube", "Disc banner", &["bnr"], banner::decode_bnr).signature(),
+    Format::new("GameCube", "Memory card save", &["gci"], banner::decode_gci).signature(),
 ];
