@@ -55,6 +55,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::gray_ramp;
 use crate::tiles::TileLayout;
 use crate::{BitOrder, Companions, DecodeError, Format, Image};
 
@@ -90,24 +91,10 @@ const MAX_C_ROM_LEN: usize = 32 << 20;
 /// Bytes of a sprite held by one C ROM.
 const HALF_SPRITE_LEN: usize = SPRITE.tile_len() / 2;
 
-/// Gray `n` of 16 as `0xRRGGBB`.
-const fn gray(n: usize) -> u32 {
-    n as u32 * 17 * 0x01_0101
-}
-
-/// 16 grays for color numbers 0 to 15.
-const GRAYS: [u32; 16] = {
-    let mut ramp = [0; 16];
-    let mut n = 0;
-    while n < 16 {
-        ramp[n] = gray(n);
-        n += 1;
-    }
-    ramp
-};
-
-/// Color numbers 0 to 3 of a sprite that has only planes 0 and 1.
-const FOUR_GRAYS: [u32; 4] = [gray(0), gray(5), gray(10), gray(15)];
+/// Color numbers of a 4-bit tile.
+const COLORS: usize = 16;
+/// Color numbers of a sprite that has only planes 0 and 1.
+const PLANE_0_1_COLORS: usize = 4;
 
 /// Tiles to a row of the sheet of `tiles`: [`PER_ROW`], or fewer if that is
 /// all there are.
@@ -130,12 +117,12 @@ fn decode_c1(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeEr
         tiles.extend_from_slice(word);
         tiles.extend_from_slice(c2.as_ref().map_or(&[0, 0], |c2| &c2[i * 2..][..2]));
     }
-    let palette = if c2.is_some() {
-        &GRAYS[..]
+    let palette = gray_ramp(if c2.is_some() {
+        COLORS
     } else {
-        &FOUR_GRAYS
-    };
-    SPRITE.sheet(&tiles, per_row(&SPRITE, &tiles), palette)
+        PLANE_0_1_COLORS
+    });
+    SPRITE.sheet(&tiles, per_row(&SPRITE, &tiles), &palette)
 }
 
 /// A CD sprite file: the C ROMs' words in one file, plane 1 before plane 0
@@ -152,7 +139,7 @@ fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .flat_map(|&[plane_1, plane_0]| [plane_0, plane_1])
         .collect();
-    SPRITE.sheet(&tiles, per_row(&SPRITE, &tiles), &GRAYS)
+    SPRITE.sheet(&tiles, per_row(&SPRITE, &tiles), &gray_ramp(COLORS))
 }
 
 /// A fix layer file, `.fix` on CD or `.s1` on cartridge.
@@ -163,7 +150,7 @@ fn decode_fix(data: &[u8]) -> Result<Image, DecodeError> {
     {
         return Err(DecodeError::Unrecognized);
     }
-    FIX.sheet(data, per_row(&FIX, data), &GRAYS)
+    FIX.sheet(data, per_row(&FIX, data), &gray_ramp(COLORS))
 }
 
 #[cfg(test)]
@@ -213,7 +200,7 @@ mod tests {
         let pair = decode_c1(&c1, &Pair(c2.to_vec())).unwrap();
         assert_eq!(pair, image);
         // Without the partner only planes 0 and 1 are known, four grays.
-        assert_eq!(decode_c1(&c1, &NoCompanions).unwrap().get(0, 3), gray(15));
+        assert_eq!(decode_c1(&c1, &NoCompanions).unwrap().get(0, 3), 0xff_ffff);
     }
 
     #[test]

@@ -34,7 +34,7 @@
 
 use alloc::vec::Vec;
 
-use crate::image::bgr555;
+use crate::image::{bgr555, gray_ramp};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, Companions, DecodeError, Format, Image};
 
@@ -71,12 +71,6 @@ fn palette_colors(file: &[u8], count: usize) -> Vec<u32> {
         .collect();
     colors.resize(count, 0);
     colors
-}
-
-fn gray_ramp(count: usize) -> Vec<u32> {
-    (0..count)
-        .map(|i| (i * 255 / (count - 1)) as u32 * 0x01_0101)
-        .collect()
 }
 
 #[cfg(test)]

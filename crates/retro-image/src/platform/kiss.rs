@@ -35,7 +35,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size, over, widen_channel};
+use crate::image::{TRANSPARENT_FILL, check_size, gray_ramp, over, widen_channel};
 use crate::{Companions, DecodeError, Format, Image};
 
 mod set;
@@ -228,7 +228,7 @@ fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError>
 /// The 256 colors an indexed cel looks up: `colors` if there are some, else a
 /// gray ramp, and black past the end of a short palette.
 fn full_palette(colors: Option<Vec<u32>>, bits: u8) -> Vec<u32> {
-    let mut palette = colors.unwrap_or_else(|| gray_ramp(bits));
+    let mut palette = colors.unwrap_or_else(|| gray_ramp(1 << bits));
     palette.resize(256, 0);
     palette
 }
@@ -274,12 +274,6 @@ fn read_palette(kcf: &[u8], group: usize) -> Option<Vec<u32>> {
             .map(|&[r, g, b]| u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b))
             .collect()
     })
-}
-
-/// Black to white in `2^bits` steps: what a cel looks like without its palette.
-fn gray_ramp(bits: u8) -> Vec<u32> {
-    let top = (1u32 << bits) - 1;
-    (0..=top).map(|i| i * 255 / top * 0x01_0101).collect()
 }
 
 #[cfg(test)]

@@ -37,7 +37,10 @@
 //! alone, and rejected unless the whole stream decodes to the declared number
 //! of tiles.
 
+use alloc::vec::Vec;
+
 use crate::bytes::be16;
+use crate::image::gray_ramp;
 use crate::tiles::TileLayout;
 use crate::{BitOrder, Companions, DecodeError, Format, Image};
 
@@ -59,16 +62,8 @@ const CRAM_LEN: usize = 4 * PALETTE_LEN;
 /// Levels of the DAC for the channel values 0, 2, 4, ..., 14, out of 255.
 const DAC: [u32; 8] = [0, 52, 87, 116, 144, 172, 206, 255];
 
-/// 16 grays for color numbers 0 to 15.
-const GRAYS: [u32; 16] = {
-    let mut ramp = [0; 16];
-    let mut n = 0;
-    while n < 16 {
-        ramp[n] = n as u32 * 17 * 0x01_0101;
-        n += 1;
-    }
-    ramp
-};
+/// Color numbers of a 4-bit tile.
+const COLORS: usize = 16;
 
 /// A color RAM word as `0xRRGGBB`.
 fn color(word: u16) -> u32 {
@@ -78,13 +73,15 @@ fn color(word: u16) -> u32 {
 
 /// The first palette of a `.pal` companion, if it is one or more whole
 /// palettes of color RAM.
-fn palette(file: &[u8]) -> Option<[u32; 16]> {
+fn palette(file: &[u8]) -> Option<Vec<u32>> {
     if file.is_empty() || !file.len().is_multiple_of(PALETTE_LEN) || file.len() > CRAM_LEN {
         return None;
     }
-    Some(core::array::from_fn(|i| {
-        color(be16(file, i * 2).unwrap_or(0))
-    }))
+    Some(
+        (0..COLORS)
+            .map(|i| color(be16(file, i * 2).unwrap_or(0)))
+            .collect(),
+    )
 }
 
 fn decode_nem(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
@@ -92,7 +89,7 @@ fn decode_nem(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeE
     let palette = companions
         .get("pal")
         .and_then(|file| palette(&file))
-        .unwrap_or(GRAYS);
+        .unwrap_or_else(|| gray_ramp(COLORS));
     TILE.sheet(
         &tiles,
         (tiles.len() / TILE.tile_len()).min(TILES_PER_ROW),
