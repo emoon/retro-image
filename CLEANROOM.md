@@ -22,6 +22,9 @@ derivative work, so every decoder must be written independently.
 - Reverse engineering of sample files.
 - Running the RECOIL binary (`recoil2png`) as a black box and comparing its output pixels.
   This is what the oracle test does.
+- Running other programs as black boxes and comparing their output, whatever their license:
+  Deark, ffmpeg, Pillow, libsixel, RGBDS and similar. Their output is data; reading their
+  source follows the rules above.
 
 ## Record provenance
 
