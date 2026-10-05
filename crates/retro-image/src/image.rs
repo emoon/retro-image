@@ -31,6 +31,11 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
     }
 }
 
+/// Colour shown where a picture is transparent. `Image` has no alpha channel,
+/// so every decoder whose format carries transparency composites onto this
+/// light grey, which stays visible against both white and black artwork.
+pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {

@@ -13,8 +13,8 @@
 //!   `fmtowns_icn` (<https://github.com/jsummers/deark>, MIT licence, notice
 //!   below). Signatures: Just Solve the Computer, ICN (FM Towns),
 //!   <http://justsolve.archiveteam.org/wiki/ICN_(FM_Towns)>.
-//! - The sheet (icons left to right, wrapped at 512 pixels, on grey) is this
-//!   crate's own choice. No FM Towns icon sample was available, so the layouts
+//! - The sheet (icons left to right, wrapped at 512 pixels, on the shared
+//!   transparent-fill grey) is this crate's own choice. No FM Towns icon sample was available, so the layouts
 //!   are checked only by unit tests built from the documented structure.
 
 // Parts of this file follow Deark's modules/misc2.c
@@ -44,7 +44,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, le16, le32};
-use crate::image::check_size;
+use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::{DecodeError, Image};
 
 const PALETTE: [u32; 16] = [
@@ -59,7 +59,6 @@ const MAX_HEADERS: usize = 4096;
 const MAX_SIDE: usize = 512;
 const SHEET_WIDTH: usize = 512;
 const GAP: usize = 4;
-const BACKGROUND: u32 = 0x808080;
 
 struct Icon {
     width: usize,
@@ -180,7 +179,7 @@ fn sheet(icons: &[Icon]) -> Result<Image, DecodeError> {
     let mut image = Image::new(sheet_width as u32, sheet_height as u32);
     for py in 0..sheet_height {
         for px in 0..sheet_width {
-            image.set(px as u32, py as u32, BACKGROUND);
+            image.set(px as u32, py as u32, TRANSPARENT_FILL);
         }
     }
     for (icon, &(x, y)) in icons.iter().zip(&places) {
