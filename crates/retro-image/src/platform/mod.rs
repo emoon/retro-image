@@ -22,6 +22,7 @@ mod msx;
 mod nec_pc;
 mod nes;
 mod oric;
+mod palm_os;
 mod pc;
 mod playstation;
 mod psion;
@@ -56,6 +57,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     nes::FORMATS,
     nec_pc::FORMATS,
     oric::FORMATS,
+    palm_os::FORMATS,
     pc::FORMATS,
     playstation::FORMATS,
     psion::FORMATS,
