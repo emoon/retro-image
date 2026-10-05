@@ -7,11 +7,10 @@ use crate::bytes::be32;
 
 /// Returns the FORM type and its contents, if `data` is an IFF FORM.
 ///
-/// The declared FORM length is clamped to the data actually present. When it
-/// is shorter than the data and cuts the last chunk off, some writer got the
-/// length wrong (two Deluxe Paint ACBM files are 68 bytes short), so the
-/// contents run to the end of the data instead. Bytes after a complete FORM
-/// are left out.
+/// The declared FORM length is clamped to the data present. If it ends inside
+/// the last chunk, the length is wrong (two Deluxe Paint ACBM files declare 68
+/// bytes too few) and the contents run to the end of the data. Bytes after a
+/// complete FORM are left out.
 pub(super) fn form(data: &[u8]) -> Option<([u8; 4], &[u8])> {
     if data.len() < 12 || &data[..4] != b"FORM" {
         return None;
@@ -93,7 +92,7 @@ mod tests {
         let data = b"FORM\0\0\0\x0cILBMAAAA\0\0\0\0trailing";
         let (_, contents) = form(data).unwrap();
         assert_eq!(contents, b"AAAA\0\0\0\0");
-        // A declared length that ends mid-header cuts no chunk either.
+        // A length that ends inside a chunk header does not count as a cut chunk.
         let data = b"FORM\0\0\0\x08ILBMAAA\0\0\0\0\0trailing";
         assert_eq!(form(data).unwrap().1, b"AAA\0");
     }

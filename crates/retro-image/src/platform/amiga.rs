@@ -7,12 +7,12 @@
 //!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,
 //!   and the IFF FORM and chunk registry,
 //!   <https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>.
-//! - ANIM shown as its first frame, the first complete ILBM `FORM` nested in
-//!   the ANIM (chunks such as `ANNO` may come before it): ANIM spec,
+//! - ANIM shown as its first frame: the first `FORM` nested in it, an ILBM,
+//!   which can follow chunks such as `ANNO`. ANIM spec,
 //!   <https://wiki.amigaos.net/wiki/ANIM_IFF_CEL_Animations>.
-//! - `FORM DPST` (DeluxePaint ST animation): a `DPAH` header chunk, a full
-//!   ILBM first frame, then `VDLT` delta frames. No public spec; the layout
-//!   is read from one sample, whose first frame matches `recoil2png`.
+//! - `FORM DPST` (DeluxePaint ST animation): a `DPAH` chunk, a full ILBM
+//!   first frame, then `VDLT` delta frames. No public spec; the layout comes
+//!   from one sample, and its first frame matches `recoil2png`.
 //! - PowerPacker (`PP20`) and Pack-Ice wrappers around an IFF file are
 //!   unpacked first (one layer): PowerPacker file format,
 //!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers
@@ -144,9 +144,9 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// The first frame of an animation FORM: the first nested FORM, a complete
-/// ILBM, after any header chunks (`ANNO` in Brilliance files, `DPAH` in
-/// DeluxePaint ST animations).
+/// First frame of an ANIM or DPST: the first nested FORM, which must be an
+/// ILBM. Brilliance files put an `ANNO` chunk before it, DeluxePaint ST
+/// files a `DPAH`.
 fn first_frame(contents: &[u8]) -> Result<Image, DecodeError> {
     match iff::chunks(contents).find(|(id, _)| id == b"FORM") {
         Some((_, body)) if body.len() >= 4 => {
@@ -205,7 +205,7 @@ mod tests {
         assert_eq!(decode_iff(&animation(b"ANIM", b"")).unwrap(), plain);
         assert_eq!(decode_iff(&animation(b"ANIM", anno)).unwrap(), plain);
         assert_eq!(decode_iff(&animation(b"DPST", dpah)).unwrap(), plain);
-        // Header chunks alone are no picture.
+        // Header chunks with no frame after them must fail.
         let mut headers_only = animation(b"ANIM", anno);
         headers_only.truncate(8 + 4 + anno.len());
         assert!(decode_iff(&headers_only).is_err());

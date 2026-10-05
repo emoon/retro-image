@@ -10,11 +10,11 @@
 //!   from samples).
 //! - Pixel doubling for interlaced low-res and non-interlaced high-res
 //!   screens: observed from `recoil2png` output.
-//! - Colour mode without a CAMG chunk (6 planes: 16 colours HAM6, 32 EHB,
-//!   otherwise indexed) and the HAM flag on 5 and 7 planes (HAM6 and HAM8
-//!   with the missing top plane read as 0): observed from `recoil2png`
-//!   output on real files with the chunk removed or set, and matching what
-//!   Deark and the Just Solve ILBM page describe,
+//! - Color mode without a CAMG chunk (6 planes: 16 colors is HAM6, 32 is
+//!   EHB, anything else indexed) and the HAM flag on 5 or 7 planes (HAM6 or
+//!   HAM8, missing top plane read as 0): measured against `recoil2png` on
+//!   real files with the chunk removed or the flag set. Deark and the Just
+//!   Solve ILBM page describe the same rules,
 //!   <http://justsolve.archiveteam.org/wiki/ILBM>.
 //! - Super-hires (`SUPERHIRES` 0x20 with `HIRES` 0x8000 in `graphics/view.h`)
 //!   is only 1/4-lores-wide pixels on the native PAL/NTSC/default monitors
@@ -315,12 +315,11 @@ impl Mode {
         let ham = camg_bits & CAMG_HAM != 0;
         Ok(match header.planes {
             _ if layout == Layout::Chunky => Self::Indexed,
-            // A HAM picture with one plane too few reads the missing top
-            // plane as 0, so its control bits are 0 or 1.
+            // A HAM picture one plane short reads the missing top plane as 0.
             5 | 6 if ham => Self::Ham6,
             7 | 8 if ham => Self::Ham8,
             6 if camg_bits & CAMG_EHB != 0 => Self::ExtraHalfBrite,
-            // Without CAMG, 6 planes are guessed from the palette size.
+            // No CAMG: 16 colors is HAM6, 32 is EHB, anything else indexed.
             6 if camg.is_none() && colors == 32 => Self::ExtraHalfBrite,
             6 if camg.is_none() && colors == 16 => Self::Ham6,
             1..=8 => Self::Indexed,
