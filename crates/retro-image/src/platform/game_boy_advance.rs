@@ -12,9 +12,7 @@
 //!   <https://github.com/pret/pokeemerald>) build tile data to `.4bpp` and
 //!   `.8bpp` and palettes to `.gbapal`; those names are read from the
 //!   repository's `.gitignore` (the repositories show no license, so nothing
-//!   else of them was read), and Tilemap Studio's help names `.4bpp` and
-//!   `.8bpp` tilesets too (<https://github.com/Rangi42/tilemap-studio>, its
-//!   `res/help.html`, prose only).
+//!   else of them was read).
 //! - Checked against SuperFamiconv v0.12 (MIT, <https://github.com/Optiroc/SuperFamiconv>)
 //!   in its `gba` and `gba_affine` modes, run as a black box: its native tile
 //!   and palette data (`tiles.bin`, `palette.bin`, renamed) and the tile image
