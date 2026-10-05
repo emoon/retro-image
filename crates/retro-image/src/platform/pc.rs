@@ -20,12 +20,15 @@
 //!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/flh.rs`, `pc/halo_pic.rs`.
 //! - Windows icons and cursors: see `pc/ico.rs`.
 //! - PFS: First Publisher clip art: see `pc/fp_art.rs`.
+//! - The Print Shop and The New Print Shop libraries: see `pc/printshop.rs`
+//!   (the sheet layout is in `pc/clipart.rs`).
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
 mod animator;
 mod animator_pro;
 mod bmp;
+mod clipart;
 mod colorix;
 mod flf;
 mod flh;
@@ -38,6 +41,7 @@ mod ico;
 mod image72;
 mod pcpaint;
 mod pcx;
+mod printshop;
 mod tga;
 
 use alloc::vec;
@@ -55,6 +59,9 @@ pub(super) static FORMATS: &[Format] = &[
     // Recognised by size alone; `.art` is also used by Atari and Commodore
     // formats, which come earlier in the registry.
     Format::new("PC", "PFS: First Publisher", &["art"], fp_art::decode_art),
+    // `.dat` is a size rule (whole 572-byte pictures); Atari ST comes first.
+    Format::new("PC", "The Print Shop", &["dat"], printshop::decode_dat),
+    Format::new("PC", "The New Print Shop", &["pog"], printshop::decode_pog),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
