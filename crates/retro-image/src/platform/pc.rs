@@ -33,8 +33,10 @@ mod flic;
 mod gif;
 mod halo;
 mod halo_pic;
+mod hp_icn;
 mod ico;
 mod image72;
+mod kips;
 mod pcpaint;
 mod pcx;
 mod tga;
@@ -54,6 +56,8 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "ZSoft DCX multi-page PCX", &["dcx"], dcx::decode_dcx).signature(),
+    Format::new("PC", "HP 100LX/200LX icon", &["icn"], hp_icn::decode_icn).signature(),
+    Format::new("PC", "IBM KIPS bitmap", &["kps"], kips::decode_kps),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
     Format::new(
         "PC",
