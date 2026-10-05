@@ -309,8 +309,8 @@ Read by the agents, by licence:
 
 | Licence | Read |
 |---|---|
-| MIT / BSD / Apache / CC0 / zlib / WTFPL, code read | Deark, libsixel, PuyoTools, NitroPaint (BSD-2), RGBDS, SameBoy (headers only), `flipnote.js`, KallistiOS (BSD-like, except `utils/pvrtex`), CiderPress II (Apache-2.0), Kaitai `ines.ksy`, TIC-80 format page (MIT) |
-| Permissive, licence checked but code not read | libilbm and libiff (MIT; libilbm README read), amigazen/ifftools (BSD-2), bitplane/datatypes, oxideav-iff, Ancient (BSD-2; file sizes only), sprpck (Apache-2.0), SuperFamiconv, PVSnesLib, `gvrtex` |
+| MIT / BSD / Apache / CC0 / zlib / WTFPL, code read | Deark, libsixel, PuyoTools, NitroPaint (BSD-2), RGBDS, SameBoy (headers only), `flipnote.js`, KallistiOS (BSD-like, except `utils/pvrtex`), CiderPress II (Apache-2.0), Ancient (BSD-2; decompressor layouts and tables, notices kept in the code), Kaitai `ines.ksy`, TIC-80 format page (MIT) |
+| Permissive, licence checked but code not read | libilbm and libiff (MIT; libilbm README read), amigazen/ifftools (BSD-2), bitplane/datatypes, oxideav-iff, sprpck (Apache-2.0), SuperFamiconv, PVSnesLib, `gvrtex` |
 | Prose only (no licence or restricted) | GBATEK, YAGCD, mkwiiki, nesdev and SNESdev wikis (CC0), Pan Docs (CC0), 3dbrew, Shonumi, psx-spx, Marcus Comstedt's Dreamcast pages, John Elliott's MicroDesign page, DEC VT340 manual, Ninerpedia (CC BY-NC-SA), Just Solve (CC0), AmigaOS wiki, Aminet docs, MultimediaWiki |
 
 Do not read (code): RECOIL in any form; dexvert (no licence; sample folders only); the KYG parser
