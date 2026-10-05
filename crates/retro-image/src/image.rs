@@ -41,8 +41,8 @@ pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
     let alpha = u32::from(alpha);
     let channel = |shift: u32| {
-        let (over, under) = (color >> shift & 0xff, base >> shift & 0xff);
-        (over * alpha + under * (255 - alpha) + 127) / 255
+        let (above, below) = (color >> shift & 0xff, base >> shift & 0xff);
+        (above * alpha + below * (255 - alpha) + 127) / 255
     };
     channel(16) << 16 | channel(8) << 8 | channel(0)
 }
@@ -406,7 +406,7 @@ mod tests {
     fn over_fill_blends_toward_the_transparent_fill() {
         assert_eq!(over_fill(0x123456, 255), 0x123456);
         assert_eq!(over_fill(0x123456, 0), TRANSPARENT_FILL);
-        // Black at 127/255 over 0xc0 is 96.9 rounded down to 0x60.
+        // Black at 127/255 over 0xc0 is 96.38, which rounds to 0x60.
         assert_eq!(over_fill(0x000000, 127), 0x606060);
     }
 

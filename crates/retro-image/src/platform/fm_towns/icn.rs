@@ -57,6 +57,7 @@ const MAX_ICONS: usize = 256;
 /// Icon headers visited across all tables, skipped ones included.
 const MAX_HEADERS: usize = 4096;
 const MAX_SIDE: usize = 512;
+
 /// Pixels of a `width` x `height` icon at `at`: 1-bit (set is black) or
 /// 4-bit (low nibble first) rows, 4-bit rows padded to 32 bits.
 fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -> Option<Icon> {
