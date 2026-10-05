@@ -25,6 +25,8 @@ copyright notice and licence text.
 | [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
+| [RGBDS](https://github.com/gbdev/rgbds) | MIT | Game Boy rgbgfx files (tile data, maps, palettes) |
+| [NitroPaint](https://github.com/Garhoogin/NitroPaint) | BSD-2-Clause | Nintendo DS NCLR, NCGR, NSCR and BTX0 files |
 
 ## Documentation
 
@@ -47,6 +49,8 @@ on almost every platform. Per platform, the most used were:
 - Sinclair QL: [Dilwyn Jones' QL pages](https://www.sinclairql.net).
 - Thomson: the [DCMOTO](http://dcmoto.free.fr) documentation.
 - PC text mode: the [SAUCE](https://www.acid.org/info/sauce/sauce.htm) specification.
+- Game Boy, GBA, DS and 3DS: [Pan Docs](https://gbdev.io/pandocs/) and
+  [GBATEK](https://problemkaputt.de/gbatek.htm).
 
 The other platforms rely on hardware manuals and old magazine articles.
 
