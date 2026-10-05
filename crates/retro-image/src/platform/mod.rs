@@ -16,10 +16,12 @@ mod cdi;
 mod commodore;
 mod ctr;
 mod dec_vt340;
+mod dreamcast;
 mod electronika;
 mod fm_towns;
 mod game_boy;
 mod game_boy_advance;
+mod gamecube;
 mod hp48;
 mod kiss;
 mod mega_drive;
@@ -35,8 +37,10 @@ mod palm_os;
 mod pc;
 mod pico8;
 mod playstation;
+mod playstation2;
 mod ps1_memory_card;
 mod psion;
+mod psp;
 mod risc_os;
 mod sam_coupe;
 mod sharp_x68000;
@@ -44,6 +48,7 @@ mod sinclair_ql;
 mod tandy1000;
 mod textmode;
 mod thomson;
+mod threedo;
 mod tic80;
 mod trs80;
 mod unix;
@@ -54,6 +59,9 @@ mod zx_spectrum;
 use crate::Format;
 
 pub(crate) static ALL: &[&[Format]] = &[
+    // Tag-checked formats claiming extensions that headerless formats share
+    // (`.cel`, `.img`) come first, so that those are only tried afterwards.
+    threedo::FORMATS,
     amateur_radio::FORMATS,
     amiga::FORMATS,
     amstrad_cpc::FORMATS,
@@ -69,6 +77,8 @@ pub(crate) static ALL: &[&[Format]] = &[
     fm_towns::FORMATS,
     game_boy::FORMATS,
     game_boy_advance::FORMATS,
+    dreamcast::FORMATS,
+    gamecube::FORMATS,
     hp48::FORMATS,
     kiss::FORMATS,
     mega_drive::FORMATS,
@@ -84,7 +94,9 @@ pub(crate) static ALL: &[&[Format]] = &[
     pico8::FORMATS,
     playstation::FORMATS,
     ps1_memory_card::FORMATS,
+    playstation2::FORMATS,
     psion::FORMATS,
+    psp::FORMATS,
     risc_os::FORMATS,
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,

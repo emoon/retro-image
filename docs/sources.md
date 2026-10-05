@@ -29,6 +29,7 @@ copyright notice and licence text.
 | [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on the decoded thumbnails |
 | [RGBDS](https://github.com/gbdev/rgbds) | MIT | Game Boy rgbgfx files (tile data, maps, palettes) |
 | [NitroPaint](https://github.com/Garhoogin/NitroPaint) | BSD-2-Clause | Nintendo DS NCLR, NCGR, NSCR and BTX0 files |
+| [PuyoTools](https://github.com/nickworonekin/puyotools) | MIT | GameCube texture formats (GVR, TPL, banners), Dreamcast PVR and PVM layouts, PSP GIM |
 
 ## Documentation
 
@@ -55,6 +56,8 @@ on almost every platform. Per platform, the most used were:
 - PC text mode: the [SAUCE](https://www.acid.org/info/sauce/sauce.htm) specification.
 - Game Boy, GBA, DS and 3DS: [Pan Docs](https://gbdev.io/pandocs/) and
   [GBATEK](https://problemkaputt.de/gbatek.htm).
+- Consoles: the web technology TIM2 specification (PlayStation 2), the 3DO Portfolio 2.5
+  documentation, and YAGCD and the Custom Mario Kart wiki for GameCube and Wii files.
 
 The other platforms rely on hardware manuals and old magazine articles.
 

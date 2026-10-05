@@ -5,6 +5,7 @@
 
 pub(crate) mod crunch_mania;
 pub(crate) mod flf;
+pub(crate) mod gx;
 pub(crate) mod imploder;
 pub(crate) mod inflate;
 mod lz;
