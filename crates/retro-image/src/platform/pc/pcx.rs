@@ -69,7 +69,10 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     if row_len < (width * bits).div_ceil(8) {
         return Err(fail);
     }
+    // The padded raster is what gets unpacked and, for EGA planes, expanded
+    // to a value per pixel, so it must fit the pixel budget too.
     check_size(width, height)?;
+    check_size(row_len * 8 / bits, height)?;
     Ok(Header {
         version: h[1],
         bits,
@@ -231,6 +234,19 @@ mod tests {
         h[65] = planes;
         h[66..68].copy_from_slice(&row_len.to_le_bytes());
         h
+    }
+
+    #[test]
+    fn rejects_huge_row_padding() {
+        // One pixel wide, but 65535-byte rows: the padded raster is far over
+        // the pixel budget, so it must not be unpacked or expanded. The body
+        // is big enough to pass the unpacker's input-size bound.
+        let mut data = header(1, 2, 1, 2048, u16::MAX);
+        data.resize(
+            HEADER_LEN + (u16::MAX as usize * 2 * 2048).div_ceil(32),
+            0xff,
+        );
+        assert!(decode_pcx(&data).is_err());
     }
 
     #[test]

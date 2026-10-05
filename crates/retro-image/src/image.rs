@@ -42,7 +42,10 @@ pub struct Image {
 impl Image {
     /// Creates a black image.
     pub(crate) fn new(width: u32, height: u32) -> Self {
-        let len = width as usize * height as usize * 3;
+        let len = (width as usize)
+            .checked_mul(height as usize)
+            .and_then(|pixels| pixels.checked_mul(3))
+            .expect("image size overflows; decoders must call check_size first");
         Self {
             width,
             height,
@@ -114,7 +117,8 @@ impl Image {
         palette: &[u32],
     ) -> Result<Self, DecodeError> {
         let outside = max_byte(indices).is_some_and(|max| usize::from(max) >= palette.len());
-        if indices.len() != width as usize * height as usize || outside {
+        let pixels = (width as usize).checked_mul(height as usize);
+        if pixels != Some(indices.len()) || outside {
             return Err(DecodeError::Unrecognized);
         }
         let mut table = [0; 256];
@@ -298,6 +302,17 @@ mod tests {
         image.set(1, 1, 0x123456);
         assert_eq!(image.get(1, 1), 0x123456);
         assert_eq!(image.get(0, 1), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "check_size")]
+    fn new_refuses_sizes_that_overflow() {
+        Image::new(u32::MAX, u32::MAX);
+    }
+
+    #[test]
+    fn from_indexed_size_overflow_is_an_error() {
+        assert!(Image::from_indexed(u32::MAX, u32::MAX, &[0], &[0]).is_err());
     }
 
     #[test]
