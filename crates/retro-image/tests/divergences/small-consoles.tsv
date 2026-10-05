@@ -1,0 +1,3 @@
+# Divergences for small-consoles; see README.md.
+# RECOIL supports none of these formats. No independent decoder (Deark and ffmpeg have none) renders them, so the evidence is the cited document plus review by eye, stated per row.
+extra/small-consoles/vmu/TETRIS.VMS	64x32	279d3b58653f7a65	VMU game file (header at 0x200, two 32x32 icon frames side by side); RECOIL does not support it. Layout per Comstedt and KallistiOS vmu_pkg; render reviewed by eye: two frames of falling Tetris pieces in green and blue on the transparent grey, matching the header text "Tiny Tetris"

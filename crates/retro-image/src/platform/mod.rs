@@ -31,6 +31,7 @@ mod textmode;
 mod thomson;
 mod trs80;
 mod vector06c;
+mod vmu;
 mod zx_spectrum;
 
 use crate::Format;
@@ -63,5 +64,6 @@ pub(crate) static ALL: &[&[Format]] = &[
     thomson::FORMATS,
     trs80::FORMATS,
     vector06c::FORMATS,
+    vmu::FORMATS,
     zx_spectrum::FORMATS,
 ];
