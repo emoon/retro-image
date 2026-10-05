@@ -132,6 +132,11 @@ pub(super) struct LsbBits {
 }
 
 impl LsbBits {
+    /// A reader that starts with the low `left` bits of `content` still unread.
+    pub(super) fn with(content: u32, left: u32) -> Self {
+        Self { content, left }
+    }
+
     /// `count` (at most 24) bits; `fetch` supplies a word and its width.
     pub(super) fn read(
         &mut self,
@@ -272,7 +277,8 @@ impl PrefixCode {
         Some(code)
     }
 
-    fn insert(&mut self, length: u32, bits: u32, value: u32) -> Option<()> {
+    /// Adds a code like those of [`PrefixCode::new`]; `None` on a conflict.
+    pub(super) fn insert(&mut self, length: u32, bits: u32, value: u32) -> Option<()> {
         let mut at = 0;
         for shift in (0..length).rev() {
             if self.nodes[at].value.is_some() {

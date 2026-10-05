@@ -36,7 +36,7 @@ mod sgx;
 mod vdat;
 mod yafa;
 
-use crate::codec::{imploder, pack_ice, powerpacker, rnc};
+use crate::codec::{crunch_mania, imploder, pack_ice, powerpacker, rnc};
 use crate::{DecodeError, Format, Image};
 use alloc::vec::Vec;
 
@@ -85,8 +85,10 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga HAM-E", "HAM-E", &["iff"], decode_ham_e),
 ];
 
-/// AMOS sprite, icon or picture bank.
+/// AMOS sprite, icon or picture bank, possibly packed (one layer).
 fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
+    let unpacked = depack(data)?;
+    let data = unpacked.as_deref().unwrap_or(data);
     abk::decode(data).or_else(|_| pac_pic::decode(data))
 }
 
@@ -106,7 +108,7 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// The contents of a PowerPacker, Pack-Ice, RNC or Imploder file; `None` if `data` is
+/// The contents of a PowerPacker, Pack-Ice, RNC, Imploder or Crunch-Mania file; `None` if `data` is
 /// neither, an error if it is one and damaged.
 fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     let unpacked = if powerpacker::is_packed(data) {
@@ -117,6 +119,8 @@ fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
         rnc::unpack(data)
     } else if imploder::is_packed(data) {
         imploder::unpack(data)
+    } else if crunch_mania::is_packed(data) {
+        crunch_mania::unpack(data)
     } else {
         return Ok(None);
     };

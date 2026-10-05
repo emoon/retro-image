@@ -3,6 +3,7 @@
 //! No external format knowledge: a module list; each codec cites its own
 //! sources.
 
+pub(crate) mod crunch_mania;
 pub(crate) mod flf;
 pub(crate) mod imploder;
 pub(crate) mod inflate;
