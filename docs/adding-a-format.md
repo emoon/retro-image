@@ -28,6 +28,13 @@
      `Image::from_bits` (1-bit bitmaps, `BitOrder`), `Image::scaled`, `Image::blend`,
      `codec::packbits`, and `tiles::TileLayout` (tiles stored as bit planes or packed
      pixels, and sheets of them; the module header says how to describe a new layout).
+   - Keep a format's transparency as straight alpha and never composite it onto gray or
+     any other background. `Image::from_argb` and `Image::set_argb` take `0xAARRGGBB`
+     pixels, `Image::from_indexed_argb` and `TileLayout::sheet_argb` take a palette of
+     them, `Image::draw` puts one pixel over another, and `Image::with_alpha` attaches a
+     plane the decoder built itself. Tests check alpha with `Image::get_argb` and `CLEAR`.
+     Before you trust a fourth byte or a mask, look at a real file: if it is zero for
+     every pixel of your samples it is probably padding.
    - Platform names (`Format::platform`) reuse a name from `docs/formats.md` where one
      fits, e.g. `"Atari ST"` or `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
 3. Start every file's `//!` doc comment with the documents its implementation is based on,

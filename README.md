@@ -38,6 +38,11 @@ let (width, height) = (image.width(), image.height());
 let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
 ```
 
+If a picture has transparency, `image.has_alpha()` is true. `rgb()` still returns only the color
+channels, and they are black wherever a pixel is fully transparent. `rgba()` copies the pixels
+with straight (not premultiplied) alpha, and `flatten([r, g, b])` draws the picture over a
+background color. For these pictures the command line writes a PNG with an alpha channel.
+
 The file name tells it which formats to try. Many formats also have a reliable signature,
 so those still decode if the extension is wrong. A few formats keep their colors in a
 second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass the
