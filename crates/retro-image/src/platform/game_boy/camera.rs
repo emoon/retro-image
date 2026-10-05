@@ -1,4 +1,5 @@
-//! Game Boy Camera cartridge save (`.sav`, 128 KiB of SRAM).
+//! Game Boy Camera cartridge save (`.sav`, or `.srm` as RetroArch-based
+//! emulators name it; 128 KiB of SRAM).
 //!
 //! Sources:
 //! - Photo slots, state vector and `Magic` marker: Raphael Boichot's notes in

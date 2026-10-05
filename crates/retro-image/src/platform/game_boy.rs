@@ -1,19 +1,22 @@
-//! Game Boy: Game Boy Camera saves and Game Boy Tile Designer / Map Builder
-//! files.
+//! Game Boy: Game Boy Camera saves, Game Boy Tile Designer / Map Builder
+//! files and Game Boy Printer packet captures.
 //!
 //! Sources (details per format in each submodule):
 //! - Hardware tile encoding and the 128x112 Game Boy Camera picture: Pan Docs,
 //!   <https://gbdev.io/pandocs/Gameboy_Camera.html> (CC0).
-//! - The platform survey is `docs/research/next-zx-misc.md`.
+//! - The platform surveys are `docs/research/next-zx-misc.md` and
+//!   `docs/research/gaps-nintendo.md`.
 //! - Palette: the four shades of a Game Boy colour number, lightest first,
 //!   as grey levels. The real LCD tints are greenish and differ per model, so
 //!   a neutral ramp is used (our choice, not taken from any program).
 //!
 //! RECOIL does not decode any of these formats, so there is no oracle run;
-//! the renders are recorded in `tests/divergences/gameboy-nes.tsv`.
+//! the renders are recorded in `tests/divergences/gameboy-nes.tsv` and
+//! `tests/divergences/nintendo-rom-icons.tsv`.
 
 mod camera;
 mod gbtd;
+mod printer;
 
 use crate::Format;
 use crate::tiles::TileLayout;
@@ -27,7 +30,12 @@ const SHADES: [u32; 4] = [0xff_ffff, 0xaa_aaaa, 0x55_5555, 0x00_0000];
 const TILE: TileLayout = TileLayout::planar(2, 2);
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::new("Game Boy", "Game Boy Camera save", &["sav"], camera::decode),
+    Format::new(
+        "Game Boy",
+        "Game Boy Camera save",
+        &["sav", "srm"],
+        camera::decode,
+    ),
     Format::new(
         "Game Boy",
         "Game Boy Tile Designer",
@@ -42,4 +50,5 @@ pub(super) static FORMATS: &[Format] = &[
         gbtd::decode_gbm,
     )
     .signature(),
+    Format::new("Game Boy", "Game Boy Printer capture", &[], printer::decode).signature(),
 ];

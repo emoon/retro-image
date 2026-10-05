@@ -7,7 +7,7 @@
 
 use alloc::vec::Vec;
 
-use super::{MASTER_PALETTE, PATTERN, PATTERN_TABLE_LEN};
+use super::{PATTERN, PATTERN_TABLE_LEN};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
@@ -25,6 +25,8 @@ pub(super) struct Nametable<'a> {
     /// Colour numbers `$00-$3F` of the four background palettes: the shared
     /// background colour, then three colours for each of the four.
     pub palette: &'a [u8],
+    /// The `0xRRGGBB` value of each color number `$00-$3F`.
+    pub master: &'a [u32; 64],
 }
 
 impl Nametable<'_> {
@@ -47,7 +49,7 @@ impl Nametable<'_> {
                     } else {
                         self.palette[subpalette * 4 + usize::from(value)]
                     };
-                    MASTER_PALETTE[usize::from(color & 0x3f)]
+                    self.master[usize::from(color & 0x3f)]
                 }));
             }
         }

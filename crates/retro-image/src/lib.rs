@@ -27,6 +27,7 @@ mod icon_sheet;
 mod image;
 mod json;
 mod macbinary;
+mod morton;
 mod platform;
 mod simd;
 mod tiles;
