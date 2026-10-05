@@ -16,6 +16,10 @@ format documentation, permissively licensed code, and reverse engineering of sam
 [docs/sources.md](https://github.com/emoon/retro-image/blob/main/docs/sources.md) lists the
 sources for each format.
 
+Most of the code was written by AI coding agents. The tests decode real sample files,
+compare the output with RECOIL where it supports the format, and feed truncated and corrupted
+files to every decoder.
+
 ## Library
 
 The crate is `no_std` (it needs `alloc`) and has no dependencies. You give it bytes and it
