@@ -7,8 +7,10 @@
 //! sample file was available, so this is unverified.
 //!
 //! The texture data comes first, for a width and height each rounded up to a
-//! power of two and at least 8. The picture is the upper left part of it
-//! that the real width and height ask for, which can be odd. The 0x28-byte
+//! power of two and at least 8. The picture is the upper left part of the
+//! padded texture, after it is turned upside down (see `texture.rs`), that the
+//! real width and height ask for, which can be odd; where the picture lies in
+//! the padded texture is a guess. The 0x28-byte
 //! footer at the end holds: `CLIM` (0), the byte order mark `0xFEFF` (4), the
 //! footer size 0x14 (6), a version (8), the file size (0xC), the number of
 //! blocks (0x10), `imag` (0x14), that chunk's size 0x10 (0x18), the width

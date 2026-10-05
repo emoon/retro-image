@@ -9,8 +9,9 @@
 //!
 //! No sample of these formats could be found (no free ones are published), so
 //! the decoders are unverified: they follow GBATEK and are tested only on
-//! files built from its layouts, one of which is a guess (the vertical
-//! orientation, see `texture.rs`). FLIM is not decoded, see `clim.rs`.
+//! files built from its layouts, two of which are guesses (the vertical
+//! orientation, and where an odd-size picture lies in its padded texture; see
+//! `texture.rs`). FLIM is not decoded, see `clim.rs`.
 //!
 //! Each file has a strong signature: the `CLIM` footer at the end of the file
 //! checked against the size, the version and the offsets, the `CTPK` header

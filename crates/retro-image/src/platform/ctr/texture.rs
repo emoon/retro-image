@@ -18,12 +18,18 @@
 //! drawn as gray and as black with alpha. `HILO8` (two normal-map channels)
 //! is red and green with no blue.
 //!
-//! The GPU's texture origin is its lower left corner, and textures are
-//! made for it, so the rows of a texture are stored bottom row first: this
-//! decoder turns them upside down. That is the one guess here that no source
-//! states for these files (the icons of SMDH files, which are not GPU
-//! textures, are stored top row first); it is based on how textures are
-//! used on the 3DS and is to be confirmed with a real file.
+//! Two things here are guesses that no source states for these files, and both
+//! are to be confirmed with a real file:
+//! - The GPU's texture origin is its lower left corner, and textures are
+//!   made for it, so the rows of a texture are stored bottom row first: this
+//!   decoder turns them upside down. (The icons of SMDH files, which are not
+//!   GPU textures, are stored top row first.) It is based on how textures are
+//!   used on the 3DS.
+//! - A CLIM whose size is not a power of two stores its picture in a larger,
+//!   padded texture, and GBATEK does not say where the picture lies in it.
+//!   [`Texture::image`] turns the whole padded texture upside down and then
+//!   keeps its upper left corner, so the picture is taken to be the last
+//!   rows of the stored data, with the padding in the first.
 
 use super::etc1;
 use crate::image::{check_size, over_fill};
