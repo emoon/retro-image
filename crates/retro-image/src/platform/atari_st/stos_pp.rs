@@ -4,8 +4,7 @@
 //! Sources:
 //! - Header layout, the three-stream compression (see
 //!   `codec::stos_pictbank`) and the per-variant pixel orders: Deark `mbk.c`
-//!   (<https://github.com/jsummers/deark>, MIT licence, Copyright (C) 2016
-//!   Jason Summers), whose notes say the Picture Packer variants were worked
+//!   (<https://github.com/jsummers/deark>, MIT license, notice below), whose notes say the Picture Packer variants were worked
 //!   out from sample files.
 //! - Background: <https://snisurset.net/code/abydos/picturepacker.html> and
 //!   <https://temlib.org/AtariForumWiki/index.php?title=Picture_Packer_file_format>
@@ -32,6 +31,30 @@
 //! Medium resolution lines are doubled, like the other ST decoders. A
 //! monochrome picture is black on white or white on black depending on
 //! whether palette entry 0 is black (Deark's rule).
+
+// Parts of this file follow Deark's mbk.c
+// (Deark, https://github.com/jsummers/deark):
+//
+// Copyright (C) 2016 Jason Summers
+// <jason1@pobox.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 use alloc::vec::Vec;
 
