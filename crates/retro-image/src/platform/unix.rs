@@ -1,6 +1,7 @@
 //! Unix and workstation raster formats.
 //!
-//! Each format cites its own sources in its submodule: `unix/pnm.rs`, `unix/sun.rs`.
+//! Each format cites its own sources in its submodule: `unix/pnm.rs`, `unix/sun.rs`,
+//! `unix/sgi.rs`.
 //! Survey: `docs/research/gaps-computers-extra.md` (candidate C4). These are
 //! general-purpose formats, like GIF and BMP on the PC, so no machine of the
 //! RECOIL list owns them; the platform is named `Unix`.
@@ -10,6 +11,7 @@
 //! which `Image` represents.
 
 mod pnm;
+mod sgi;
 mod sun;
 
 use crate::Format;
@@ -28,6 +30,13 @@ pub(super) static FORMATS: &[Format] = &[
         "Sun raster",
         &["ras", "sun", "im1", "im8", "im24", "im32"],
         sun::decode_sun,
+    )
+    .signature(),
+    Format::new(
+        "Unix",
+        "SGI image",
+        &["sgi", "rgb", "rgba", "bw"],
+        sgi::decode_sgi,
     )
     .signature(),
 ];
