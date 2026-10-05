@@ -32,11 +32,9 @@
 //! latter in the same channel order as 32-bit) and the HAM/EHB reading of
 //! 8-bit chunky data follow the spec but have no sample file.
 
-use alloc::borrow::Cow;
-
-use super::chunky::{Direct, Fourth, Pixels, Rows, render};
+use super::chunky::{Direct, Fourth, Packing, Pixels, Rows, bitmap_bytes, render};
 use crate::bytes::{be16, be32};
-use crate::codec::{inflate, powerpacker, xpk};
+use crate::codec::{powerpacker, xpk};
 use crate::{DecodeError, Image};
 
 const SIGNATURES: [&[u8]; 2] = [b"SGX Graphics File\0", b"SVG Graphics File\0"];
@@ -46,8 +44,6 @@ const VERSION_AT: usize = 18;
 const VERSION: u16 = 1;
 const COLORS_AT: usize = 54;
 const COLORS_LEN: usize = 256 * 3;
-const HAM_KEY: u32 = 0x800;
-const EXTRA_HALF_BRITE_KEY: u32 = 0x80;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
@@ -76,7 +72,8 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             *entry = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);
         }
     }
-    let body = bitmap_bytes(&data[data_offset..], rows.len()?)?;
+    let (packing, payload) = packing(&data[data_offset..]);
+    let body = bitmap_bytes(packing, payload, rows.len()?)?;
     render(pixels, rows, &body, &palette)
 }
 
@@ -85,12 +82,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 fn pixel_layout(bits: u8, planes: u8, depth: u32, view_mode: u32) -> Option<Pixels> {
     match (bits, planes) {
         (1, 1) => Some(Pixels::Mono),
-        (8, 1) if view_mode & HAM_KEY != 0 && depth == 6 => Some(Pixels::Ham6),
-        (8, 1) if view_mode & HAM_KEY != 0 && depth == 8 => Some(Pixels::Ham8),
-        (8, 1) if view_mode & EXTRA_HALF_BRITE_KEY != 0 && depth == 6 => {
-            Some(Pixels::ExtraHalfBrite)
-        }
-        (8, 1) => Some(Pixels::Indexed8),
+        (8, 1) => Some(Pixels::indexed(depth, view_mode)),
         (24, 1) => Some(direct(false, None)),
         (48, 1) => Some(direct(true, None)),
         // The fourth channel is alpha only if `ColorDepth` counts it.
@@ -111,28 +103,20 @@ fn direct(wide: bool, fourth: Option<bool>) -> Pixels {
     })
 }
 
-/// The `len` bytes of bitmap data in `payload`: stored as they are, as
-/// `LZ77` (the uncompressed size followed by a zlib stream), or, in the
-/// older SVG files, packed by XPK or PowerPacker.
-fn bitmap_bytes(payload: &[u8], len: usize) -> Result<Cow<'_, [u8]>, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let unpacked = if let Some(packed) = payload.strip_prefix(b"LZ77") {
-        let size = be32(packed, 0).ok_or(fail)? as usize;
-        if size != len {
-            return Err(fail);
-        }
-        inflate::zlib(&packed[4..], len)
+/// How the bitmap data at the end of the header is packed, told by its
+/// first bytes, and the bytes to unpack: `LZ77` files hold the uncompressed
+/// size and a zlib stream after the tag; the older SVG files may hold an XPK
+/// or PowerPacker stream.
+fn packing(payload: &[u8]) -> (Packing, &[u8]) {
+    if let Some(zlib) = payload.strip_prefix(b"LZ77") {
+        (Packing::Zlib, zlib)
     } else if xpk::is_packed(payload) {
-        xpk::unpack(payload, len)
+        (Packing::Xpk, payload)
     } else if powerpacker::is_packed(payload) {
-        powerpacker::unpack(payload)
+        (Packing::PowerPacker, payload)
     } else {
-        return payload.get(..len).map(Cow::Borrowed).ok_or(fail);
-    };
-    unpacked
-        .filter(|bytes| bytes.len() >= len)
-        .map(Cow::Owned)
-        .ok_or(fail)
+        (Packing::Stored, payload)
+    }
 }
 
 #[cfg(test)]

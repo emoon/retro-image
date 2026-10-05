@@ -10,9 +10,19 @@
 //! - HAM and EHB pixel values are the ILBM ones (see `ilbm.rs`): control
 //!   bits above the data bits, colors 32-63 at half brightness.
 
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
+
 use super::ilbm::{half_brite, ham};
+use crate::bytes::be32;
+use crate::codec::{inflate, powerpacker, xpk};
 use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::{DecodeError, Image};
+
+/// `ViewMode` bits (AmigaOS `graphics/modeid.h`) that say 6- and 8-bit
+/// indexed data is really HAM or extra-half-brite.
+const HAM_KEY: u32 = 0x800;
+const EXTRA_HALF_BRITE_KEY: u32 = 0x80;
 
 /// How one pixel is stored.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -50,6 +60,17 @@ pub(super) struct Fourth {
 }
 
 impl Pixels {
+    /// One byte per pixel holding a palette index of `depth` bits, read as
+    /// HAM or extra-half-brite if the screen mode `view_mode` says so.
+    pub fn indexed(depth: u32, view_mode: u32) -> Self {
+        match depth {
+            6 if view_mode & HAM_KEY != 0 => Self::Ham6,
+            8 if view_mode & HAM_KEY != 0 => Self::Ham8,
+            6 if view_mode & EXTRA_HALF_BRITE_KEY != 0 => Self::ExtraHalfBrite,
+            _ => Self::Indexed8,
+        }
+    }
+
     /// The fewest bytes a row of `width` pixels can take.
     fn min_row_len(self, width: usize) -> usize {
         match self {
@@ -81,6 +102,40 @@ impl Direct {
         let opacity = u32::from(bytes[if first { 0 } else { 3 * step }]);
         over_fill(color, opacity)
     }
+}
+
+/// How a bitmap's bytes are stored in the file.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum Packing {
+    Stored,
+    /// The uncompressed size as a big-endian long, then a zlib stream.
+    Zlib,
+    Xpk,
+    PowerPacker,
+}
+
+/// The `len` bytes of bitmap data held in `payload`.
+pub(super) fn bitmap_bytes(
+    packing: Packing,
+    payload: &[u8],
+    len: usize,
+) -> Result<Cow<'_, [u8]>, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    let unpacked: Option<Vec<u8>> = match packing {
+        Packing::Stored => return payload.get(..len).map(Cow::Borrowed).ok_or(fail),
+        Packing::Zlib => {
+            if be32(payload, 0).ok_or(fail)? as usize != len {
+                return Err(fail);
+            }
+            inflate::zlib(&payload[4..], len)
+        }
+        Packing::Xpk => xpk::unpack(payload, len),
+        Packing::PowerPacker => powerpacker::unpack(payload),
+    };
+    unpacked
+        .filter(|bytes| bytes.len() >= len)
+        .map(Cow::Owned)
+        .ok_or(fail)
 }
 
 /// `color` at `opacity` (0-255) over [`TRANSPARENT_FILL`].
