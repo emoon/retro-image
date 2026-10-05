@@ -28,6 +28,7 @@ mod bmp;
 mod cga;
 mod colorix;
 mod dcx;
+mod dgi;
 mod flf;
 mod flh;
 mod flic;
@@ -57,6 +58,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "ZSoft DCX multi-page PCX", &["dcx"], dcx::decode_dcx).signature(),
+    Format::new("PC", "Digi-Pic", &["dgi"], dgi::decode_dgi).signature(),
     Format::new("PC", "HP 100LX/200LX icon", &["icn"], hp_icn::decode_icn).signature(),
     Format::new("PC", "IBM KIPS bitmap", &["kps"], kips::decode_kps),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),

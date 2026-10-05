@@ -4,7 +4,8 @@
 //! - Wikipedia, "Color Graphics Adapter":
 //!   <https://en.wikipedia.org/wiki/Color_Graphics_Adapter> (in the 320x200
 //!   and 640x200 modes even scan lines live in the first bank of video
-//!   memory and odd lines in the second, which starts 8192 bytes later).
+//!   memory and odd lines in the second, which starts 8192 bytes later; the
+//!   320x200 mode has 2 bits per pixel, leftmost pixel in the high bits).
 //! - Deark `drhalo.c` (<https://github.com/jsummers/deark>, MIT license): the
 //!   same layout for Dr. Halo pictures, and the four-bank Hercules variant.
 
@@ -12,6 +13,15 @@ use alloc::vec::Vec;
 
 /// Distance between the banks of CGA video memory.
 pub(super) const BANK_STRIDE: usize = 8192;
+
+/// Four pixel values per byte, leftmost pixel in the high bits (the 320x200
+/// 4-colour mode, 2 bits per pixel).
+pub(super) fn unpack_2bit(bytes: &[u8]) -> Vec<u8> {
+    bytes
+        .iter()
+        .flat_map(|&b| [b >> 6, b >> 4 & 3, b >> 2 & 3, b & 3])
+        .collect()
+}
 
 /// Rows `0..rows` of `row_len` bytes, row `i` taken from bank `i % banks`
 /// (the banks are `bank_stride` bytes apart) at row `i / banks` of that bank.
@@ -45,5 +55,10 @@ mod tests {
         planes[80] = 3; // row 2
         let rows = deinterlace(&planes, 200, 80, 2, BANK_STRIDE);
         assert_eq!([rows[0], rows[80], rows[160]], [1, 2, 3]);
+    }
+
+    #[test]
+    fn two_bit_pixels_unpack_high_bits_first() {
+        assert_eq!(unpack_2bit(&[0b0001_1011]), [0, 1, 2, 3]);
     }
 }
