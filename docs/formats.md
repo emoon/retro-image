@@ -928,7 +928,7 @@ See [coverage.md](coverage.md) for a comparison with RECOIL's format list.
 
 | Format | Extensions | Detected | Companions |
 |---|---|:-:|:-:|
-| Cartridge | TIC | yes |  |
+| Cartridge | TIC |  |  |
 
 ## TRS-80
 

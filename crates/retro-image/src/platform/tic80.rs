@@ -34,9 +34,10 @@
 //! a cartridge with neither, or an all-zero palette, gets DB16, as TIC-80
 //! does for old cartridges.
 //!
-//! Detection: the chunk chain must use known types and end exactly at the end
-//! of the file, which is strict enough for `.signature()`. PNG cartridges
-//! (`.tic.png`) are not read.
+//! Detection: by the `.tic` extension only. The chunk chain must use known
+//! types and end exactly at the end of the file, but there is no magic number,
+//! and random bytes pass that test now and then. PNG cartridges (`.tic.png`)
+//! are not read.
 
 // The two palettes follow the TIC-80 wiki and its src/cart.c
 // (TIC-80, https://github.com/nesbox/TIC-80):
@@ -69,8 +70,7 @@ use crate::bytes::le16;
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] =
-    &[Format::new("TIC-80", "Cartridge", &["tic"], decode).signature()];
+pub(super) static FORMATS: &[Format] = &[Format::new("TIC-80", "Cartridge", &["tic"], decode)];
 
 /// A sprite: 8 x 8 pixels, two to a byte, the first in the low nibble.
 const SPRITE: TileLayout = TileLayout::packed(4, BitOrder::LsbFirst);
@@ -246,6 +246,13 @@ mod tests {
         let image = decode(&cart).unwrap();
         assert_eq!((image.width(), image.height()), (240, 136));
         assert_eq!(image.get(3, 0), DB16[3]);
+    }
+
+    #[test]
+    fn a_cartridge_is_found_by_its_extension_and_not_by_its_content() {
+        let cart = chunk(0, SPRITES, &[0x10; 32]);
+        assert!(crate::decode("game.tic", &cart).is_ok());
+        assert!(crate::decode("game", &cart).is_err());
     }
 
     #[test]
