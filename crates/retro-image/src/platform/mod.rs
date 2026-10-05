@@ -31,6 +31,7 @@ mod sinclair_ql;
 mod tandy1000;
 mod textmode;
 mod thomson;
+mod tic80;
 mod trs80;
 mod vector06c;
 mod vmu;
@@ -65,6 +66,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     tandy1000::FORMATS,
     textmode::FORMATS,
     thomson::FORMATS,
+    tic80::FORMATS,
     trs80::FORMATS,
     vector06c::FORMATS,
     vmu::FORMATS,
