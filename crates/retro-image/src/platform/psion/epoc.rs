@@ -66,6 +66,10 @@ const SKETCH_SECTION: u32 = 0x1000_007d;
 const SKETCH_HEADER_LEN: usize = 18;
 /// The paint data section header, and so where its pixels start.
 const BITMAP_HEADER_LEN: usize = 40;
+/// Most bytes the padded rows of a bitmap may take, as many as the pixels of
+/// the largest picture: a narrow bitmap pads each row to 4 bytes, and RLE
+/// can unpack that from a small file.
+const MAX_ROWS_LEN: usize = 1 << 26;
 
 /// A decoded grayscale bitmap: `levels` are 0 (black) to 255, row-major.
 struct Gray {
@@ -170,6 +174,9 @@ fn read_bitmap(data: &[u8], at: usize) -> Result<Gray, DecodeError> {
     check_size(width, height)?;
     let row_len = (width * bits).div_ceil(32) * 4;
     let size = row_len * height;
+    if size > MAX_ROWS_LEN {
+        return Err(FAIL);
+    }
     let pixels_at = at + BITMAP_HEADER_LEN;
     let rows: Cow<[u8]> = match compression {
         Some(0) => Cow::Borrowed(data.get(pixels_at..pixels_at + size).ok_or(FAIL)?),
@@ -285,6 +292,22 @@ mod tests {
         let image = decode_aif(&data).unwrap();
         assert_eq!(image.get(0, 0), 0xffffff);
         assert_eq!(image.get(1, 0), crate::image::TRANSPARENT_FILL);
+    }
+
+    #[test]
+    fn padded_rows_are_bounded_before_they_are_unpacked() {
+        // 1 x 16777217 at 8 bits: the 4-byte rows hold 64 MiB of padding, more
+        // than a picture of that many pixels may take; the RLE data would
+        // unpack to exactly that, 128 bytes per pair.
+        let height = (1u32 << 24) + 1;
+        let size = 4 * height as usize;
+        let packed: Vec<u8> = (0..size.div_ceil(128)).flat_map(|_| [0x7f, 0]).collect();
+        let section = bitmap(1, height, 8, 1, &packed);
+        let mut data = header(0x1000_0042, 0, 20 + section.len() as u32);
+        data.extend_from_slice(&section);
+        data.extend_from_slice(&1u32.to_le_bytes());
+        data.extend_from_slice(&20u32.to_le_bytes());
+        assert!(decode_mbm(&data).is_err());
     }
 
     #[test]
