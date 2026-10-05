@@ -2,7 +2,7 @@
 //!
 //! No external format knowledge: the sheet is this crate's own layout, icons
 //! left to right wrapped at 512 pixels, 4 pixels apart, on the shared
-//! transparent-fill grey.
+//! transparent-fill gray.
 
 use alloc::vec::Vec;
 

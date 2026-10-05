@@ -73,7 +73,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     trs80::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
-    // Last: its headerless `.cut`, `.grf` and `.spc` formats are recognised
+    // Last: its headerless `.cut`, `.grf` and `.spc` formats are recognized
     // by size, so every other claimant of those extensions goes first.
     amstrad_pcw::FORMATS,
 ];

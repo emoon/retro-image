@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - Deark's `modules/epocimage.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence, notice below): the file header (UIDs `$10000037`, then `$10000042`
+//!   license, notice below): the file header (UIDs `$10000037`, then `$10000042`
 //!   for an MBM, `$1000008a` for an exported MBM, `$1000006d` and `$1000007d`
 //!   for a Sketch, `$1000006a` or `$10003a38` for an AIF; a 4-byte checksum;
 //!   the offset of the bitmap table at 16), the MBM jump table (a count and

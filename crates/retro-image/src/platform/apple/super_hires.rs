@@ -356,7 +356,7 @@ mod tests {
     fn animation_shows_its_first_frame_and_needs_a_matching_length() {
         let mut data = alloc::vec![0u8; 0x8000 + 8 + 8];
         data[0x8000..0x8004].copy_from_slice(&8u32.to_le_bytes());
-        // Colour 0 of palette 0 is red.
+        // Color 0 of palette 0 is red.
         data[0x7e01] = 0x0f;
         let image = decode_animation(&data).unwrap();
         assert_eq!(image, decode_screen(&data[..0x8000]).unwrap());

@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - Deark's `modules/palmpdb.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence, notice below): the Palm database header (type and creator at
+//!   license, notice below): the Palm database header (type and creator at
 //!   60 and 64, a record count at 76, then 8-byte list entries of a 32-bit
 //!   offset, attributes and a 3-byte id; a record runs to the next offset),
 //!   the ImageViewer image record (id `$6F8000`: a 32-byte name, a version

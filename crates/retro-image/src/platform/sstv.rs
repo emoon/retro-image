@@ -10,7 +10,7 @@
 //!   normally exposed photograph; the red, green, blue order gives natural
 //!   colors (a wooden table is orange, not blue).
 //!
-//! Recognised by extension and size only. The 6-bit scale is chosen by eye,
+//! Recognized by extension and size only. The 6-bit scale is chosen by eye,
 //! not documented; no second decoder was available.
 
 use crate::{DecodeError, Format, Image};

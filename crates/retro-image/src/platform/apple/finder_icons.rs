@@ -13,7 +13,7 @@
 //!   give the row length as `1 + (width - 1) / 2` bytes, the first pixel in the
 //!   high nibble, and a mask nibble of 0 as transparent.
 //! - The colors: Deark's `modules/misc2.c`, `de_run_apple2icons`
-//!   (<https://github.com/jsummers/deark>, MIT licence, notice below), which
+//!   (<https://github.com/jsummers/deark>, MIT license, notice below), which
 //!   shows the icons through the standard 640-mode palette blended to solid
 //!   colors, two entries of it a guess by its author. Deark is also the
 //!   oracle for the samples.
@@ -23,7 +23,7 @@
 //! Choices of this crate: the sheet is `icon_sheet.rs`'s (big and small icon of
 //! each record in file order, transparent pixels on the shared fill); the
 //! `iconType` color flag is ignored, as in CiderPress II, because most icons
-//! are colored but say black and white. Files are recognised by their header
+//! are colored but say black and white. Files are recognized by their header
 //! alone, since the ProDOS file type is not part of the name.
 
 // Parts of this file follow Deark's modules/misc2.c

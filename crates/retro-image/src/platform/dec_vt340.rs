@@ -14,7 +14,7 @@
 //!   source of the 16 default registers below; hue 0 degrees is blue, 120 red
 //!   and 240 green: <https://vt100.net/docs/vt3xx-gp/chapter2.html>).
 //! - libsixel's `src/fromsixel.c` (<https://github.com/saitoha/libsixel>, MIT
-//!   licence, notice below) for what viewers do where the manual is silent:
+//!   license, notice below) for what viewers do where the manual is silent:
 //!   the current color before any `#` is register 15, a color number above
 //!   255 is clamped to 255, HLS results are cut to whole percent before they
 //!   become 8-bit, and the picture is as large as its drawn pixels and the
