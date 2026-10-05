@@ -74,10 +74,16 @@ fn chunks(data: &[u8]) -> impl Iterator<Item = Chunk<'_>> {
         pos = if &tag == b"3DO " {
             pos + 8
         } else {
-            pos.saturating_add(size.next_multiple_of(4))
+            pos.saturating_add(padded(size))
         };
         Some(chunk)
     })
+}
+
+/// A chunk size rounded up to the four bytes chunks are padded to, without
+/// overflowing on sizes near the top of the range.
+fn padded(size: usize) -> usize {
+    size.saturating_add(3) & !3
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
@@ -90,5 +96,31 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             cel::decode(data)
         }
         _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn padding_a_chunk_size_never_overflows() {
+        assert_eq!(padded(8), 8);
+        assert_eq!(padded(9), 12);
+        assert_eq!(padded(usize::MAX), usize::MAX & !3);
+        assert_eq!(padded(usize::MAX - 2), usize::MAX & !3);
+    }
+
+    #[test]
+    fn chunk_sizes_near_the_top_of_the_range_end_the_walk() {
+        // Sizes whose padding to four bytes would overflow a 32-bit usize.
+        for size in [0xffff_fffdu32, 0xffff_fffe, 0xffff_ffff] {
+            let mut data = b"PLUT".to_vec();
+            data.extend_from_slice(&size.to_be_bytes());
+            data.extend_from_slice(&[0; 8]);
+            assert_eq!(chunks(&data).count(), 1);
+            assert!(decode(&data).is_err());
+            assert!(crate::decode("a.cel", &data).is_err());
+        }
     }
 }
