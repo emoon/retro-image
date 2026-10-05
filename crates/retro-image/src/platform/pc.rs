@@ -25,6 +25,7 @@
 mod animator;
 mod animator_pro;
 mod bmp;
+mod bsave;
 mod cga;
 mod colorix;
 mod dcx;
@@ -47,6 +48,7 @@ mod pcpaint;
 mod pcx;
 mod pcx2com;
 mod pixit;
+mod raw_cga;
 mod tga;
 
 use alloc::vec;
@@ -160,6 +162,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
+    // Extension-gated and last: `FD` plus a plausible length is all there is.
+    Format::new(
+        "PC",
+        "BSAVE screen dump",
+        &["bsv", "scr", "pic", "scn", "raw", "dat", "img"],
+        bsave::decode_bsave,
+    ),
+    Format::new("PC", "Raw CGA screen", &["cga"], raw_cga::decode_raw_cga),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
