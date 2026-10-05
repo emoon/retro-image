@@ -5,11 +5,23 @@
 //! `.4c4`, `.6r7`, `.4dy`, `.6dy`, `.iff`; in `corpus/extra/small-consoles/cdi`),
 //! with Deark's `cdi_imag` module (<https://github.com/jsummers/deark>, MIT)
 //! run as a black box as the reference: the output of all 11 files is
-//! identical to Deark's, pixel for pixel. Philips' CD-i technical notes were
-//! not read. The 16 DYUV deltas come from the project's own survey notes
-//! (`gaps-consoles.md`, section 3.10) and are confirmed by that match. The
-//! layouts below are what the samples show; nothing else about the format is
-//! known here.
+//! identical to Deark's, pixel for pixel. Deark's source was not read.
+//!
+//! Provenance of two facts:
+//! - The DYUV delta table (0, 1, 4, 9, 16, 27, 44, 79, 128, and the negatives
+//!   of 79, 44, 27, 16, 9, 4 and 1 modulo 256) reached this project through
+//!   its survey note `gaps-consoles.md`, section 3.10. That note cites
+//!   Philips Technical Note 86 for it, a document with a "not to be
+//!   duplicated" banner that the maintainer did not approve reading. The
+//!   author of this decoder did not read that note. The table is confirmed
+//!   by the four DYUV samples, which decode identically to Deark and use all
+//!   16 entries as Y deltas.
+//! - The DYUV color constants (1.371 and 1.733, and the green formula) come
+//!   from fitting to Deark's output, not from any document or from Deark's
+//!   source: with these values every pixel of the four samples matches.
+//!
+//! The layouts below are what the samples show; nothing else about the format
+//! is known here.
 //!
 //! The file is `FORM`, a big-endian length, `IMAG`, then chunks of a 4-byte
 //! tag, a big-endian length and the data, padded to an even length:
