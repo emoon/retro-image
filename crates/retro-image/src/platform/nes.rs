@@ -23,6 +23,7 @@ mod chr;
 mod nam;
 mod nametable;
 mod nss;
+mod rom;
 
 use crate::Format;
 use crate::tiles::TileLayout;
@@ -51,4 +52,5 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("NES", "Pattern table", &["chr"], chr::decode),
     Format::with_companions("NES", "Nametable", &["nam"], nam::decode),
     Format::new("NES", "NES Screen Tool session", &["nss"], nss::decode).signature(),
+    Format::new("NES", "ROM CHR tiles", &["nes", "unf", "unif"], rom::decode).signature(),
 ];
