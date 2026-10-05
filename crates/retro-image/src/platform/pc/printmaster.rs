@@ -14,7 +14,7 @@
 //! - A file ends with its last record, or with zero fill or `1A` marks
 //!   (`MONEY.SHP`, a school library): the samples are padded to a multiple of
 //!   128 bytes. Records must run exactly up to that padding, which with the
-//!   leading `0B` is what makes this a signature. [`super::clipart`] lays the
+//!   leading `0B` is what makes this a signature. [`crate::sheet`] lays the
 //!   sheet out.
 //! - Checked on 31 files (Sembiance `printMasterShape` and the PrintMaster
 //!   disks on the textfiles CD, `swinnund/disk3/CLIPART/`). All pictures are
@@ -46,7 +46,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use super::clipart::{Sheet, black_on_white, is_padding};
+use super::clipart::{black_on_white, is_padding};
+use crate::sheet::Sheet;
 use crate::{DecodeError, Image};
 
 const RECORD_MARK: u8 = 0x0b;

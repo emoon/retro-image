@@ -21,7 +21,7 @@
 //! - Windows icons and cursors: see `pc/ico.rs`.
 //! - PFS: First Publisher clip art: see `pc/fp_art.rs`.
 //! - The Print Shop and The New Print Shop libraries: see `pc/printshop.rs`
-//!   (the sheet layout is in `pc/clipart.rs`) and PrintMaster in
+//!   (the sheet layout is in `sheet.rs`) and PrintMaster in
 //!   `pc/printmaster.rs`, PrintPartner in `pc/printpartner.rs`.
 //! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
 //! - IBM Storyboard pictures: see `pc/storyboard.rs`.

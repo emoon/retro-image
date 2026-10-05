@@ -30,7 +30,7 @@
 //!   Deark's notes; the picture is not stretched.
 //! - The header text makes this a signature, as do the records, which must
 //!   run exactly up to the end of the file or to zero fill and `1A` marks.
-//!   [`super::clipart`] lays the sheet out.
+//!   [`crate::sheet`] lays the sheet out.
 
 // Parts of this file follow Deark's modules/printptnr.c
 // (Deark, https://github.com/jsummers/deark):
@@ -58,8 +58,9 @@
 
 use alloc::vec::Vec;
 
-use super::clipart::{Sheet, black_on_white, is_padding};
+use super::clipart::{black_on_white, is_padding};
 use crate::bytes::le16;
+use crate::sheet::Sheet;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;

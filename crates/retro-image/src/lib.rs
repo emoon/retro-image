@@ -29,6 +29,7 @@ mod json;
 mod macbinary;
 mod morton;
 mod platform;
+mod sheet;
 mod simd;
 mod tiles;
 

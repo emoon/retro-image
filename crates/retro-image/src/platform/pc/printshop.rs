@@ -19,7 +19,7 @@
 //!   named `.DAT` (three in `corpus/hostile/atari-st/`), and `.DAT` is too
 //!   common an extension to claim them on the strength of a size.
 //! - A `.POG` file must be exactly `10 + 572 * count` bytes.
-//!   [`super::clipart`] lays the sheet out.
+//!   [`crate::sheet`] lays the sheet out.
 //! - Checked on 21 `.DAT` and 25 `.POG` files (Sembiance `printShopDAT` and
 //!   `pog`, and the Print Shop and New Print Shop disks on the textfiles CD,
 //!   `swinnund/disk3/CLIPART/`). Each picture matches Deark's output pixel
@@ -51,8 +51,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use super::clipart::{Sheet, black_on_white};
+use super::clipart::black_on_white;
 use crate::bytes::le16;
+use crate::sheet::Sheet;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -86,7 +87,7 @@ fn library(data: &[u8], count: usize) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform::pc::clipart::MAX_PICTURES;
+    use crate::sheet::MAX_PICTURES;
     use alloc::vec::Vec;
 
     fn pictures(count: usize) -> Vec<u8> {
