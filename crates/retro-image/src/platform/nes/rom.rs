@@ -205,7 +205,7 @@ mod tests {
     fn unif_joins_the_chr_chunks_in_number_order() {
         let mut file = UNIF_MAGIC.to_vec();
         file.resize(UNIF_HEADER_LEN, 0);
-        file.extend(chunk(b"MAPR", b"NROM "));
+        file.extend(chunk(b"MAPR", b"NROM\0"));
         file.extend(chunk(b"CHR1", &tile(0x40)));
         file.extend(chunk(b"PRG0", &[0; 32]));
         file.extend(chunk(b"CHR0", &tile(0x80)));
