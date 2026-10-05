@@ -4,9 +4,9 @@
 //! Sources:
 //! - Marcus Comstedt, "Dreamcast Programming": VMS File Header
 //!   (<https://mc.pp.se/dc/vms/fileheader.html>) and ICONDATA_VMS
-//!   (<https://mc.pp.se/dc/vms/icondata.html>), 2000, no licence stated,
+//!   (<https://mc.pp.se/dc/vms/icondata.html>), 2000, no license stated,
 //!   used as prose facts only.
-//! - KallistiOS `kernel/arch/dreamcast/util/vmu_pkg.c` (BSD-style licence,
+//! - KallistiOS `kernel/arch/dreamcast/util/vmu_pkg.c` (BSD-style license,
 //!   <https://github.com/KallistiOS/KallistiOS>): the header including its
 //!   icon palette is 0x80 bytes, and the CRC covers header, icons, eyecatch
 //!   and the data length given at 0x48, with the CRC field itself zeroed.

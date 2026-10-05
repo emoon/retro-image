@@ -7,8 +7,9 @@
 //! run as a black box as the reference: the output of all 11 files is
 //! identical to Deark's, pixel for pixel. Philips' CD-i technical notes were
 //! not read. The 16 DYUV deltas come from the project's own survey notes
-//! (`gaps-consoles.md`, section 3.10) and are confirmed by that match. The layouts below are what the samples show; nothing else about the
-//! format is known here.
+//! (`gaps-consoles.md`, section 3.10) and are confirmed by that match. The
+//! layouts below are what the samples show; nothing else about the format is
+//! known here.
 //!
 //! The file is `FORM`, a big-endian length, `IMAG`, then chunks of a 4-byte
 //! tag, a big-endian length and the data, padded to an even length:
