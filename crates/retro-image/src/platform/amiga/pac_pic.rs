@@ -17,10 +17,10 @@
 //!   (they could be HAM or half-bright; the screen header that would say so is
 //!   missing).
 
-use super::ilbm::{half_brite, ham, rgb12};
+use super::ilbm::{half_brite, ham};
 use crate::bytes::{be16, be32};
 use crate::codec::stos_pictbank;
-use crate::image::check_size;
+use crate::image::{check_size, rgb444};
 use crate::{DecodeError, Image};
 
 const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
@@ -48,7 +48,7 @@ pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
     let mode = be16(screen, 20).ok_or(fail)?;
     let mut palette = [0u32; 64];
     for (i, word) in screen[26..90].as_chunks::<2>().0.iter().enumerate() {
-        palette[i] = rgb12(u16::from_be_bytes([word[0], word[1]]));
+        palette[i] = rgb444(u16::from_be_bytes([word[0], word[1]]));
         palette[i + 32] = half_brite(palette[i]);
     }
     draw(data, SCREEN_HEADER_LEN, mode, Some(palette))

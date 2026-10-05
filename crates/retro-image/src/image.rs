@@ -47,6 +47,14 @@ pub(crate) fn xrgb1555(word: u16) -> u32 {
     channel(10) << 16 | channel(5) << 8 | channel(0)
 }
 
+/// A 12-bit `0RGB` color as `0xRRGGBB`, as the Amiga, the Atari TT and the
+/// Apple IIGS store a palette entry: red in bits 8-11, green in bits 4-7, blue
+/// in bits 0-3, bits 12-15 ignored.
+pub(crate) fn rgb444(word: u16) -> u32 {
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 15), 4);
+    channel(8) << 16 | channel(4) << 8 | channel(0)
+}
+
 /// A 16-bit color as `0xRRGGBB`: red in bits 11-15, green in bits 5-10, blue
 /// in bits 0-4.
 pub(crate) fn rgb565(word: u16) -> u32 {
@@ -378,6 +386,14 @@ mod tests {
         assert_eq!(bgr555(0x7c00), 0x00_00ff);
         // Channel 16 widens to 0x84, and bit 15 changes nothing.
         assert_eq!(bgr555(0x8010), 0x84_0000);
+    }
+
+    #[test]
+    fn rgb444_repeats_each_nibble_and_ignores_the_top_one() {
+        assert_eq!(rgb444(0x0f00), 0xff_0000);
+        assert_eq!(rgb444(0x00f0), 0x00_ff00);
+        assert_eq!(rgb444(0x000f), 0x00_00ff);
+        assert_eq!(rgb444(0xf123), 0x11_2233);
     }
 
     #[test]

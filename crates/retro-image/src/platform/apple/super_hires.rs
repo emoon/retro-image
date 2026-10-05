@@ -35,6 +35,7 @@ use alloc::vec::Vec;
 
 use super::pack_bytes;
 use crate::bytes::{le16, le32};
+use crate::image::rgb444;
 use crate::{DecodeError, Image};
 
 const LINE_LEN: usize = 160;
@@ -54,8 +55,7 @@ struct Line<'a> {
 fn read_palette(words: &[u8], reversed: bool) -> Palette {
     let mut palette = [0; 16];
     for (i, word) in words.as_chunks::<2>().0.iter().take(16).enumerate() {
-        let w = u32::from(u16::from_le_bytes([word[0], word[1]]));
-        let color = ((w & 0xf00) << 8 | (w & 0xf0) << 4 | (w & 0xf)) * 0x11;
+        let color = rgb444(u16::from_le_bytes([word[0], word[1]]));
         palette[if reversed { 15 - i } else { i }] = color;
     }
     palette

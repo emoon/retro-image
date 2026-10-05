@@ -38,7 +38,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{TRANSPARENT_FILL, check_size, rgb444};
 use crate::{DecodeError, Image};
 
 const HUNK_HEADER: u32 = 0x3f3;
@@ -148,7 +148,7 @@ impl Font {
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|word| super::ilbm::rgb12(u16::from_be_bytes(*word)))
+            .map(|word| rgb444(u16::from_be_bytes(*word)))
             .collect();
         Some(Self {
             color: Some(Colors {

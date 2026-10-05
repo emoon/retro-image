@@ -225,12 +225,6 @@ pub(super) fn half_brite(rgb: u32) -> u32 {
     (rgb >> 1) & 0x7f7f7f
 }
 
-/// Expands a 12-bit `0RGB` colour word.
-pub(super) fn rgb12(word: u16) -> u32 {
-    let word = u32::from(word);
-    ((word & 0xf00) << 8 | (word & 0xf0) << 4 | (word & 0xf)) * 0x11
-}
-
 /// Unpacks BODY into exactly `len` bytes.
 fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
     match header.compression {

@@ -39,9 +39,8 @@
 use alloc::vec::Vec;
 
 use super::chunky::{Pixels, Rows, render};
-use super::ilbm::rgb12;
 use crate::bytes::{be16, be32};
-use crate::image::planar_pixels;
+use crate::image::{planar_pixels, rgb444};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 32;
@@ -93,7 +92,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 
     let mut palette = [0u32; 256];
     for (entry, word) in palette.iter_mut().zip(words.as_chunks::<2>().0) {
-        *entry = rgb12(u16::from_be_bytes(*word));
+        *entry = rgb444(u16::from_be_bytes(*word));
     }
     let indices: Vec<u8> = planar_pixels(video, width, height, row_len, planes, |plane, y| {
         if interleaved {

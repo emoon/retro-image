@@ -11,17 +11,12 @@
 
 use super::common::{palette_words, planar_image};
 use crate::bytes::be16;
+use crate::image::rgb444;
 use crate::{DecodeError, Image};
 
 const BITMAP_LEN: usize = 153600;
 const TT_MEDIUM_LEN: usize = 34 + BITMAP_LEN;
 const ST_240_LEN: usize = 34 + 38400;
-
-/// TT palette word `....RRRR GGGGBBBB` to `0xRRGGBB`.
-pub(super) fn tt_rgb(word: u16) -> u32 {
-    let word = u32::from(word);
-    ((word >> 8 & 0xf) * 0x110000) | ((word >> 4 & 0xf) * 0x1100) | ((word & 0xf) * 0x11)
-}
 
 /// TT low: resolution word 7, 256 palette words, 320x480 in 8 planes.
 pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
@@ -31,7 +26,7 @@ pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
     let palette: alloc::vec::Vec<u32> = palette_words(data, 2, 256)
         .ok_or(DecodeError::Unrecognized)?
         .into_iter()
-        .map(tt_rgb)
+        .map(rgb444)
         .collect();
     let image = planar_image(&data[514..], 320, 480, 8, &palette, 1);
     let image = image.ok_or(DecodeError::Unrecognized)?;
@@ -65,7 +60,7 @@ pub(super) fn decode_pi5(data: &[u8]) -> Result<Image, DecodeError> {
     let palette: alloc::vec::Vec<u32> = if width == 320 {
         super::common::st_palette(&words)
     } else {
-        words.into_iter().map(tt_rgb).collect()
+        words.into_iter().map(rgb444).collect()
     };
     planar_image(&data[34..], width, height, 4, &palette, 1).ok_or(DecodeError::Unrecognized)
 }

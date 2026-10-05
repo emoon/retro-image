@@ -16,8 +16,9 @@
 use alloc::vec::Vec;
 
 use super::iff::find;
-use super::ilbm::{Palette, rgb12};
+use super::ilbm::Palette;
 use crate::bytes::{be16, be32};
+use crate::image::rgb444;
 
 pub(super) enum LinePalettes<'a> {
     /// Complete colour tables of `colors` `0RGB` words, each used for
@@ -67,7 +68,7 @@ impl<'a> LinePalettes<'a> {
                 let start = y / lines_per_table * colors * 2;
                 let table = &words[start..start + colors * 2];
                 for (i, word) in table.as_chunks::<2>().0.iter().enumerate() {
-                    palette.set(i, rgb12(u16::from_be_bytes([word[0], word[1]])));
+                    palette.set(i, rgb444(u16::from_be_bytes([word[0], word[1]])));
                 }
             }
             Self::Changes { start, lines } => {
@@ -111,7 +112,7 @@ fn parse_pchg(pchg: &[u8]) -> Option<LinePalettes<'static>> {
                     let word = be16(&data, pos)?;
                     pos += 2;
                     let bank = if i < low { 0 } else { 16 };
-                    changes.push((bank + usize::from(word >> 12), rgb12(word & 0xfff)));
+                    changes.push((bank + usize::from(word >> 12), rgb444(word & 0xfff)));
                 }
             } else if flags & PCHG_32BIT != 0 {
                 let count = usize::from(be16(&data, pos)?);
