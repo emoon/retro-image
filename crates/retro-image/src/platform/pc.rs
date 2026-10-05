@@ -19,6 +19,7 @@
 //! - PCPaint/PICtor, Animator PIC/CEL, FLI/FLC and Dr. Halo PIC: see
 //!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/flh.rs`, `pc/halo_pic.rs`.
 //! - Windows icons and cursors: see `pc/ico.rs`.
+//! - PFS: First Publisher clip art: see `pc/fp_art.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -29,6 +30,7 @@ mod colorix;
 mod flf;
 mod flh;
 mod flic;
+mod fp_art;
 mod gif;
 mod halo;
 mod halo_pic;
@@ -50,6 +52,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo version 2", &["epa"], decode_awbm).signature(),
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
+    // Recognised by size alone; `.art` is also used by Atari and Commodore
+    // formats, which come earlier in the registry.
+    Format::new("PC", "PFS: First Publisher", &["art"], fp_art::decode_art),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
