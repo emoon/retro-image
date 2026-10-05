@@ -403,13 +403,17 @@ fn compare(ours: &retro_image::Image, reference: &Reference) -> Result<(), Strin
             reference.height
         ));
     }
+    // RECOIL has no alpha, so the color under a transparent pixel is whatever
+    // it drew there; only pixels that show are compared.
+    let rgba = ours.rgba();
     let differing = ours
         .rgb()
         .as_chunks::<3>()
         .0
         .iter()
+        .zip(rgba.as_chunks::<4>().0)
         .zip(reference.rgb.as_chunks::<3>().0)
-        .filter(|(a, b)| a != b)
+        .filter(|((a, shown), b)| shown[3] != 0 && a != b)
         .count();
     match differing {
         0 => Ok(()),
