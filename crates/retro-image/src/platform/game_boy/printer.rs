@@ -41,7 +41,7 @@
 
 use alloc::vec::Vec;
 
-use super::TILE;
+use super::{SHADES, TILE};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
@@ -59,8 +59,6 @@ const TILES_PER_ROW: usize = 20;
 const WIDTH: usize = TILES_PER_ROW * 8;
 /// Most tile bytes one capture may hold in all: 4 million pixels.
 const MAX_TILE_BYTES: usize = 1 << 20;
-/// The shades of the printer's four levels, lightest first.
-const SHADES: [u32; 4] = [0xff_ffff, 0xaa_aaaa, 0x55_5555, 0x00_0000];
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;

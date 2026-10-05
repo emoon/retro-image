@@ -23,9 +23,11 @@
 //! Color 0 is transparent and is drawn as the shared transparent-fill gray.
 //! A DSi banner (version `0x0103`) with an animation is drawn as its first
 //! frame: the first token of the sequence picks a bitmap, a palette and
-//! flips. A first token of 0 means the static icon. No sample with an
-//! animation was available, so that path is checked by a unit test built from
-//! GBATEK's description only.
+//! flips. A first token of 0 means the static icon. The TWiLight Menu
+//! `BOOT.NDS` in the samples is a real animated banner, so the CRC check of the
+//! animation and a first token that picks bitmap 0 and palette 0 are sampled;
+//! picking another bitmap or palette and the flips are only tested by a unit
+//! test built from GBATEK's description.
 
 use crate::bytes::{le16, le32};
 use crate::image::TRANSPARENT_FILL;
