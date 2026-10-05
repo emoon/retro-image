@@ -9,5 +9,6 @@ mod lz;
 pub(crate) mod pack_ice;
 pub(crate) mod packbits;
 pub(crate) mod powerpacker;
+pub(crate) mod rnc;
 pub(crate) mod stos_pictbank;
 pub(crate) mod xpk;

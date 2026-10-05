@@ -42,7 +42,7 @@
 //! MASH, NUKE and FAST. Password-protected streams and the other
 //! sub-packers are not supported.
 
-use super::lz::{LsbBits, MsbBits, Ranges, Stream, copy_back, put};
+use super::lz::{ByteBits, LsbBits, MsbBits, Ranges, Stream, copy_back, put};
 use crate::bytes::{be16, be32};
 use alloc::vec::Vec;
 
@@ -194,33 +194,6 @@ fn fast(packed: &[u8], out: &mut [u8]) -> Option<()> {
     Some(())
 }
 
-/// A forward stream whose bit reads refill from single bytes, so bits and
-/// whole bytes share one cursor.
-struct ByteBits<'a> {
-    input: Stream<'a>,
-    bits: MsbBits,
-}
-
-impl ByteBits<'_> {
-    fn bits(&mut self, count: u32) -> Option<u32> {
-        let input = &mut self.input;
-        self.bits
-            .read(count, || Some((u32::from(input.byte()?), 8)))
-    }
-
-    /// Counts the ones that follow in a run ended by a zero, starting from
-    /// `count`; `limit` ones in all are an error.
-    fn ones(&mut self, mut count: u32, limit: u32) -> Option<u32> {
-        while self.bits(1)? == 1 {
-            count += 1;
-            if count >= limit {
-                return None;
-            }
-        }
-        Some(count)
-    }
-}
-
 /// LZRW-style: bytes are read from the front for both literals and bit
 /// refills; a unary code gives the literal run, then comes a match.
 fn mash(packed: &[u8], out: &mut [u8]) -> Option<()> {
@@ -234,10 +207,7 @@ fn mash(packed: &[u8], out: &mut [u8]) -> Option<()> {
         (13, false),
         (14, false),
     ]);
-    let mut stream = ByteBits {
-        input: Stream::new(packed),
-        bits: MsbBits::default(),
-    };
+    let mut stream = ByteBits::new(packed);
     let mut at = 0;
     while at < out.len() {
         // Literal run: 0 to 5 bytes by a unary code, or a longer run.
