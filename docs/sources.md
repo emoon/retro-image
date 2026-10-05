@@ -25,6 +25,7 @@ copyright notice and licence text.
 | [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
+| [libsixel](https://github.com/saitoha/libsixel) | MIT | Sixel: what viewers do where the DEC manual is silent (the color drawn before any selection, HLS rounding, picture size), read in `fromsixel.c`; its `sixel2png`, built from source and run as a black box, is the oracle for the sample files |
 
 ## Documentation
 
