@@ -36,15 +36,20 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
 /// light grey, which stays visible against both white and black artwork.
 pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 
-/// `color` (`0xRRGGBB`) drawn over [`TRANSPARENT_FILL`] with `alpha`, 0 for
-/// fully transparent and 255 for opaque, rounded to the nearest level.
-pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
+/// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
+/// transparent and 255 for opaque, rounded to the nearest level.
+pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
     let alpha = u32::from(alpha);
     let channel = |shift: u32| {
-        let (over, under) = (color >> shift & 0xff, TRANSPARENT_FILL >> shift & 0xff);
+        let (over, under) = (color >> shift & 0xff, base >> shift & 0xff);
         (over * alpha + under * (255 - alpha) + 127) / 255
     };
     channel(16) << 16 | channel(8) << 8 | channel(0)
+}
+
+/// `color` drawn over [`TRANSPARENT_FILL`] with `alpha`.
+pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
+    over(TRANSPARENT_FILL, color, alpha)
 }
 
 /// A decoded picture: 8-bit RGB, row-major, top row first.
@@ -387,6 +392,14 @@ mod tests {
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    #[test]
+    fn over_blends_channel_by_channel() {
+        assert_eq!(over(0x102030, 0xf0e0d0, 0), 0x102030);
+        assert_eq!(over(0x102030, 0xf0e0d0, 255), 0xf0e0d0);
+        // Halfway between 0x10 and 0xf0 is 0x80, and 0x20 and 0xe0 as well.
+        assert_eq!(over(0x102030, 0xf0e0d0, 128) >> 16, 0x80);
     }
 
     #[test]

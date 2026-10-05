@@ -32,7 +32,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size, over_fill};
+use crate::image::{TRANSPARENT_FILL, check_size, over};
 use crate::{Companions, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -48,8 +48,72 @@ const CKISS_MARK: u8 = 0x21;
 const PALETTE_MARK: u8 = 0x10;
 /// 10 groups of 16 colors of 2 bytes: the headerless palette file.
 const OLD_PALETTE_LEN: usize = 320;
+/// Palette groups a palette file can hold.
+const MAX_GROUPS: usize = 10;
 
-fn decode_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+/// A cel as read from its file, before a palette is applied.
+struct Cel {
+    width: usize,
+    height: usize,
+    pixels: Pixels,
+}
+
+enum Pixels {
+    /// One palette index per pixel, from 4-bit or 8-bit data. Index 0 is
+    /// transparent.
+    Indexed { bits: u8, indices: Vec<u8> },
+    /// Cherry KiSS pixels: blue, green, red, alpha.
+    Direct(Vec<[u8; 4]>),
+}
+
+impl Cel {
+    /// How many bits an index has, which sets the gray ramp used without a
+    /// palette file. `None` for pixels that carry their own colors.
+    fn index_bits(&self) -> Option<u8> {
+        match self.pixels {
+            Pixels::Indexed { bits, .. } => Some(bits),
+            Pixels::Direct(_) => None,
+        }
+    }
+
+    /// Draws the cel with its top left at (`x`, `y`) on `canvas`, clipped to
+    /// it. Transparent pixels leave the canvas as it is. `palette` has the 256
+    /// colors of an indexed cel.
+    fn draw(&self, canvas: &mut Image, x: i64, y: i64, palette: &[u32]) {
+        let (canvas_width, canvas_height) = (i64::from(canvas.width()), i64::from(canvas.height()));
+        for row in 0..self.height {
+            let target_y = y + row as i64;
+            if !(0..canvas_height).contains(&target_y) {
+                continue;
+            }
+            for column in 0..self.width {
+                let target_x = x + column as i64;
+                if !(0..canvas_width).contains(&target_x) {
+                    continue;
+                }
+                let (tx, ty) = (target_x as u32, target_y as u32);
+                match &self.pixels {
+                    Pixels::Indexed { indices, .. } => {
+                        let index = indices[row * self.width + column];
+                        if index != 0 {
+                            canvas.set(tx, ty, palette[usize::from(index)]);
+                        }
+                    }
+                    Pixels::Direct(pixels) => {
+                        let [b, g, r, alpha] = pixels[row * self.width + column];
+                        let color = u32::from_be_bytes([0, r, g, b]);
+                        if alpha != 0 {
+                            canvas.set(tx, ty, over(canvas.get(tx, ty), color, alpha));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The cel of a file with the 32-byte header.
+fn read_headered(data: &[u8]) -> Result<Cel, DecodeError> {
     if data.get(..4) != Some(b"KiSS") || !matches!(data.get(4), Some(&(CEL_MARK | CKISS_MARK))) {
         return Err(FAIL);
     }
@@ -58,15 +122,21 @@ fn decode_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeE
     let height = usize::from(le16(data, 10).ok_or(FAIL)?);
     check_size(width, height)?;
     let body = data.get(HEADER_LEN..).ok_or(FAIL)?;
-    match bits {
-        4 | 8 => indexed(width, height, bits, body, companions),
-        32 => blended(width, height, body),
-        _ => Err(FAIL),
-    }
+    let pixels = match bits {
+        4 | 8 => indexed(width, height, bits, body)?,
+        32 => direct(width, height, body)?,
+        _ => return Err(FAIL),
+    };
+    Ok(Cel {
+        width,
+        height,
+        pixels,
+    })
 }
 
-/// Width and height, then 4-bit rows to the end of the file.
-fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+/// The cel of a file with no header: width and height, then 4-bit rows to the
+/// end of the file.
+fn read_conventional(data: &[u8]) -> Result<Cel, DecodeError> {
     let width = usize::from(le16(data, 0).ok_or(FAIL)?);
     let height = usize::from(le16(data, 2).ok_or(FAIL)?);
     check_size(width, height)?;
@@ -74,17 +144,15 @@ fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     if body.len() != width.div_ceil(2) * height {
         return Err(FAIL);
     }
-    indexed(width, height, 4, body, companions)
+    Ok(Cel {
+        width,
+        height,
+        pixels: indexed(width, height, 4, body)?,
+    })
 }
 
-/// A 4 or 8-bit cel through the palette file next to it.
-fn indexed(
-    width: usize,
-    height: usize,
-    bits: u8,
-    body: &[u8],
-    companions: &dyn Companions,
-) -> Result<Image, DecodeError> {
+/// 4 or 8-bit rows as one index per pixel.
+fn indexed(width: usize, height: usize, bits: u8, body: &[u8]) -> Result<Pixels, DecodeError> {
     let row_len = if bits == 4 { width.div_ceil(2) } else { width };
     let rows = body.get(..row_len * height).ok_or(FAIL)?;
     let mut indices = Vec::with_capacity(width * height);
@@ -98,41 +166,59 @@ fn indexed(
             indices.extend_from_slice(row);
         }
     }
-    let mut palette = companions
-        .get("kcf")
-        .and_then(|kcf| read_palette(&kcf))
-        .unwrap_or_else(|| gray_ramp(bits));
-    palette.resize(256, 0);
-    palette[0] = TRANSPARENT_FILL;
-    Image::from_indexed(width as u32, height as u32, &indices, &palette)
+    Ok(Pixels::Indexed { bits, indices })
 }
 
-/// A Cherry KiSS cel: 4-byte pixels, blue, green, red, alpha.
-fn blended(width: usize, height: usize, body: &[u8]) -> Result<Image, DecodeError> {
+/// Cherry KiSS pixels, 4 bytes each.
+fn direct(width: usize, height: usize, body: &[u8]) -> Result<Pixels, DecodeError> {
     let pixels = body.get(..width * height * 4).ok_or(FAIL)?;
-    let colors = pixels
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|&[b, g, r, alpha]| over_fill(u32::from_be_bytes([0, r, g, b]), alpha));
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Ok(Pixels::Direct(pixels.as_chunks::<4>().0.to_vec()))
 }
 
-/// Colors of palette group 0 of a `.kcf` file, `None` if it is neither the
-/// headered nor the conventional layout.
-fn read_palette(kcf: &[u8]) -> Option<Vec<u32>> {
-    let (bits, colors, start) = if kcf.starts_with(b"KiSS") {
-        let groups = le16(kcf, 10)?;
+fn decode_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+    picture(&read_headered(data)?, companions)
+}
+
+fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
+    picture(&read_conventional(data)?, companions)
+}
+
+/// The cel alone on the transparent fill, through the palette file with its
+/// stem.
+fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError> {
+    let palette = full_palette(
+        companions.get("kcf").and_then(|kcf| read_palette(&kcf, 0)),
+        cel.index_bits(),
+    );
+    let fill = core::iter::repeat(TRANSPARENT_FILL);
+    let mut image = Image::from_colors(cel.width as u32, cel.height as u32, fill);
+    cel.draw(&mut image, 0, 0, &palette);
+    Ok(image)
+}
+
+/// The 256 colors an indexed cel looks up: `colors` if there are some, else a
+/// gray ramp, and black past the end of a short palette.
+fn full_palette(colors: Option<Vec<u32>>, bits: Option<u8>) -> Vec<u32> {
+    let mut palette = colors.unwrap_or_else(|| gray_ramp(bits.unwrap_or(8)));
+    palette.resize(256, 0);
+    palette
+}
+
+/// Colors of palette group `group` of a `.kcf` file (group 0 if the file has
+/// fewer), `None` if it is neither the headered nor the conventional layout.
+fn read_palette(kcf: &[u8], group: usize) -> Option<Vec<u32>> {
+    let (bits, colors, groups, start) = if kcf.starts_with(b"KiSS") {
+        let groups = usize::from(le16(kcf, 10)?);
         let colors = usize::from(le16(kcf, 8)?);
         if *kcf.get(4)? != PALETTE_MARK
-            || !(1..=10).contains(&groups)
+            || !(1..=MAX_GROUPS).contains(&groups)
             || !(1..=256).contains(&colors)
         {
             return None;
         }
-        (*kcf.get(5)?, colors, HEADER_LEN)
+        (*kcf.get(5)?, colors, groups, HEADER_LEN)
     } else if kcf.len() == OLD_PALETTE_LEN {
-        (12, 16, 0)
+        (12, 16, MAX_GROUPS, 0)
     } else {
         return None;
     };
@@ -141,16 +227,18 @@ fn read_palette(kcf: &[u8]) -> Option<Vec<u32>> {
         24 => 3,
         _ => return None,
     };
-    let group = kcf.get(start..start.checked_add(colors * bytes)?)?;
+    let group = if group < groups { group } else { 0 };
+    let from = start.checked_add(group * colors * bytes)?;
+    let data = kcf.get(from..from.checked_add(colors * bytes)?)?;
     let expand = |v: u8| u32::from(v) * 17;
     Some(if bits == 12 {
         // `rrrr bbbb`, `0000 gggg`.
-        let colors = group.as_chunks::<2>().0.iter();
+        let colors = data.as_chunks::<2>().0.iter();
         colors
             .map(|&[rb, g]| expand(rb >> 4) << 16 | expand(g & 15) << 8 | expand(rb & 15))
             .collect()
     } else {
-        let colors = group.as_chunks::<3>().0.iter();
+        let colors = data.as_chunks::<3>().0.iter();
         colors
             .map(|&[r, g, b]| u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b))
             .collect()
