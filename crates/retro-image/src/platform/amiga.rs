@@ -136,17 +136,22 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
         b"RGB8" => rgbn::decode(rgbn::Kind::Rgb8, contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),
-        // ANIM: the first frame is a complete ILBM.
-        b"ANIM" => match iff::chunks(contents).next() {
-            Some((id, body)) if &id == b"FORM" && body.len() >= 4 => {
-                let (kind, contents) = body.split_at(4);
-                match kind {
-                    b"ILBM" => ilbm::decode_ilbm(contents),
-                    _ => Err(DecodeError::Unrecognized),
-                }
+        b"ANIM" => first_frame(contents),
+        _ => Err(DecodeError::Unrecognized),
+    }
+}
+
+/// The first frame of an animation FORM: a complete ILBM FORM nested at its
+/// start.
+fn first_frame(contents: &[u8]) -> Result<Image, DecodeError> {
+    match iff::chunks(contents).next() {
+        Some((id, body)) if &id == b"FORM" && body.len() >= 4 => {
+            let (kind, frame) = body.split_at(4);
+            match kind {
+                b"ILBM" => ilbm::decode_ilbm(frame),
+                _ => Err(DecodeError::Unrecognized),
             }
-            _ => Err(DecodeError::Unrecognized),
-        },
+        }
         _ => Err(DecodeError::Unrecognized),
     }
 }
