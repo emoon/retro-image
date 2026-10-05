@@ -28,6 +28,7 @@ mod flf;
 mod ham_e;
 mod icon;
 mod iff;
+mod iff_group;
 mod ilbm;
 mod multi_palette;
 mod pac_pic;
@@ -147,6 +148,9 @@ fn decode_plain_iff(data: &[u8]) -> Result<Image, DecodeError> {
     if super::atari_st::is_neochrome_master(data) {
         return Err(DecodeError::Unrecognized);
     }
+    if let Some((kind, contents)) = iff_group::first_form(data) {
+        return decode_form(&kind, &contents);
+    }
     let (kind, contents) = iff::form(data).ok_or(DecodeError::Unrecognized)?;
     decode_form(&kind, contents)
 }
@@ -221,6 +225,29 @@ mod tests {
         // A packed file whose contents are not a picture is rejected.
         let junk = powerpacker::tests::literal_pp20(b"not an IFF file", [9, 9, 9, 9]);
         assert!(decode_iff(&junk).is_err());
+    }
+
+    #[test]
+    fn a_list_decodes_its_first_form_with_the_properties_of_its_prop() {
+        let plain = tiny_ilbm();
+        // BMHD and CMAP (28 + 14 bytes) move into a PROP; BODY stays in the FORM.
+        let (shared, body) = plain[12..].split_at(28 + 14);
+        let group = |id: &[u8; 4], kind: &[u8; 4], payload: &[u8]| {
+            let mut out = id.to_vec();
+            out.extend_from_slice(&(payload.len() as u32 + 4).to_be_bytes());
+            out.extend_from_slice(kind);
+            out.extend_from_slice(payload);
+            out
+        };
+        let prop = group(b"PROP", b"ILBM", shared);
+        let form = group(b"FORM", b"ILBM", body);
+        let list = group(b"LIST", b"ILBM", &[prop.clone(), form.clone()].concat());
+        assert_eq!(decode_iff(&list).unwrap(), decode_iff(&plain).unwrap());
+        // The same inside an ANBM brush.
+        let anbm = group(b"FORM", b"ANBM", &list[..]);
+        assert_eq!(decode_iff(&anbm).unwrap(), decode_iff(&plain).unwrap());
+        // A FORM without the shared properties is not a picture.
+        assert!(decode_iff(&group(b"LIST", b"ILBM", &form)).is_err());
     }
 
     #[test]
