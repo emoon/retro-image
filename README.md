@@ -39,7 +39,7 @@ let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
 ```
 
 The file name tells it which formats to try. Many formats also have a reliable signature,
-so those still decode if the extension is wrong. A few formats keep their colours in a
+so those still decode if the extension is wrong. A few formats keep their colors in a
 second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass the
 extra file in.
 

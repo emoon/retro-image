@@ -13,7 +13,7 @@ derivative work, so every decoder must be written independently.
   format198x, ...). The full list is in each platform file's "To avoid" section in
   [docs/research/](docs/research/README.md).
 - Code derived from RECOIL even if permissively licensed (e.g. stb_gemras).
-- Code with no licence, or an unverified one. Its prose documentation is fine.
+- Code with no license, or an unverified one. Its prose documentation is fine.
 
 ## Allowed
 

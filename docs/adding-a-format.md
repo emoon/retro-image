@@ -28,8 +28,8 @@
      `Image::from_bits` (1-bit bitmaps, `BitOrder`), `Image::scaled`, `Image::blend`,
      `codec::packbits`, and `tiles::TileLayout` (tiles stored as bit planes or packed
      pixels, and sheets of them; the module header says how to describe a new layout).
-   - Platform names (`Format::platform`) follow RECOIL's format list, e.g. `"Atari ST"`,
-     `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
+   - Platform names (`Format::platform`) reuse a name from `docs/formats.md` where one
+     fits, e.g. `"Atari ST"` or `"Commodore 64"`, so they match `$RETRO_IMAGE_PLATFORMS`.
 3. Start every file's `//!` doc comment with the documents its implementation is based on,
    with links (use a Wayback Machine URL when the live page is gone). Where knowledge
    came from reverse engineering, say so and name the samples or the `recoil2png`
