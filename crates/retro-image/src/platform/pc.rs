@@ -24,6 +24,7 @@
 //!   (the sheet layout is in `pc/clipart.rs`) and PrintMaster in
 //!   `pc/printmaster.rs`, PrintPartner in `pc/printpartner.rs`.
 //! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
+//! - IBM Storyboard pictures: see `pc/storyboard.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -47,6 +48,7 @@ mod pcx;
 mod printmaster;
 mod printpartner;
 mod printshop;
+mod storyboard;
 mod tga;
 
 use alloc::vec;
@@ -125,6 +127,22 @@ pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
+    // The `EP_CAP` text makes the first kind detectable by content. The later
+    // kind has only a header check and a strictly decoded stream, so it is
+    // claimed by extension, after the other `.pic` formats.
+    Format::new(
+        "PC",
+        "IBM Storyboard (EP_CAP)",
+        &["pic", "cap"],
+        storyboard::decode_old,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "IBM Storyboard",
+        &["pic", "cap", "tem"],
+        storyboard::decode_new,
+    ),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
