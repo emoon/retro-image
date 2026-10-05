@@ -6,10 +6,15 @@
 //!
 //! Each submodule (`pnm.rs`, `sun.rs`, `sgi.rs`, `xbm.rs`, `xpm.rs`, `xwd.rs`,
 //! `farbfeld.rs`, `utah_rle.rs`) cites its own sources; `c_source.rs` is the
-//! tokenizer that XBM and XPM share. All of them check a signature. The
-//! `.rgb` decoders of Atari and ZX Spectrum and the `.rle` decoder of the
-//! TRS-80 come earlier in the registry and accept only their own layout, so
-//! their files still reach them first.
+//! tokenizer that XBM and XPM share. All of them check a signature.
+//!
+//! Extensions shared with other platforms are tried in registry order. For
+//! `.rgb` that is Atari 8-bit ColorViewSquash (magic `RGB1`), Atari ST RGB
+//! Intermediate (any file of exactly 96102 bytes), SGI, then ZX Spectrum
+//! Tricolor (an exact size); for `.rle` the TRS-80 CompuServe RLE (magic
+//! `ESC G`) comes before Utah RLE. So an SGI file that is exactly 96102 bytes
+//! long, such as a 1-channel picture of 95590 pixels, is taken for an RGB
+//! Intermediate picture.
 //!
 //! The helpers below hold the two pieces of arithmetic every format of the
 //! family needs: sample widths above 8 bits and an alpha channel, neither of
