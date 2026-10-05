@@ -81,6 +81,12 @@ impl Sheet {
     }
 }
 
+/// Whether `tail`, the bytes after a library's last picture, is only the
+/// zero fill or the `1A` end-of-file marks that DOS tools left there.
+pub(super) fn is_padding(tail: &[u8]) -> bool {
+    tail.iter().all(|&b| b == 0 || b == 0x1a)
+}
+
 /// A picture of `width` x `height` pixels from 1-bit rows of whole bytes,
 /// most significant bit leftmost, a set bit black.
 pub(super) fn black_on_white(

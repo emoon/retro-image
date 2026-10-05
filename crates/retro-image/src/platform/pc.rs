@@ -21,7 +21,8 @@
 //! - Windows icons and cursors: see `pc/ico.rs`.
 //! - PFS: First Publisher clip art: see `pc/fp_art.rs`.
 //! - The Print Shop and The New Print Shop libraries: see `pc/printshop.rs`
-//!   (the sheet layout is in `pc/clipart.rs`).
+//!   (the sheet layout is in `pc/clipart.rs`) and PrintMaster in
+//!   `pc/printmaster.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -41,6 +42,7 @@ mod ico;
 mod image72;
 mod pcpaint;
 mod pcx;
+mod printmaster;
 mod printshop;
 mod tga;
 
@@ -62,6 +64,8 @@ pub(super) static FORMATS: &[Format] = &[
     // `.dat` is a size rule (whole 572-byte pictures); Atari ST comes first.
     Format::new("PC", "The Print Shop", &["dat"], printshop::decode_dat),
     Format::new("PC", "The New Print Shop", &["pog"], printshop::decode_pog),
+    // `.shp` is also Atari 8-bit and Commodore; the records must fill the file.
+    Format::new("PC", "PrintMaster", &["shp"], printmaster::decode_shp).signature(),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
