@@ -1,7 +1,7 @@
 //! Nintendo 3DS installable archive (`.cia`): the icon in its meta section.
 //!
 //! Sources: GBATEK, "3DS Files - Title Installation Archive (CIA)"
-//! (<https://problemkaputt.de/gbatek.htm>, no licence stated, so facts only),
+//! (<https://problemkaputt.de/gbatek.htm>, no license stated, so facts only),
 //! cross-checked with 3dbrew, "CIA" (<https://www.3dbrew.org/wiki/CIA>,
 //! facts only). The header is `u32` header size (0x2020), `u16` type and
 //! `u16` version (both 0), then `u32` sizes of the certificate chain, ticket,

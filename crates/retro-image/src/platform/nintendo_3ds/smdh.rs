@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - GBATEK, "3DS Files - Video Icons (SMDH)" and the texture swizzling page
-//!   (<https://problemkaputt.de/gbatek.htm>, no licence stated, so facts
+//!   (<https://problemkaputt.de/gbatek.htm>, no license stated, so facts
 //!   only), cross-checked with 3dbrew, "SMDH"
 //!   (<https://www.3dbrew.org/wiki/SMDH>, facts only): `SMDH` at 0, the block
 //!   is 0x36C0 bytes, a small 24x24 icon at 0x2040 and a large 48x48 icon at

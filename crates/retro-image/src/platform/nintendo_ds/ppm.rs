@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - GBATEK, "DSi SD/MMC Flipnote Files" (<https://problemkaputt.de/gbatek.htm>,
-//!   no licence stated, so facts only): `PARA` at 0, the thumbnail at 0xA0,
+//!   no license stated, so facts only): `PARA` at 0, the thumbnail at 0xA0,
 //!   0x600 bytes of 4-bit pixels in 8x6 tiles of 8x8 (the doc does not give the
 //!   nibble order or the tile order beyond that).
 //! - The 16-color thumbnail palette is taken from `jaames/flipnote.js`

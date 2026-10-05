@@ -3,7 +3,7 @@
 //!
 //! Sources: the nesdev wiki pages "INES" (<https://www.nesdev.org/wiki/INES>),
 //! "NES 2.0" (<https://www.nesdev.org/wiki/NES_2.0>) and "UNIF"
-//! (<https://www.nesdev.org/wiki/UNIF>), no licence shown, facts only; the
+//! (<https://www.nesdev.org/wiki/UNIF>), no license shown, facts only; the
 //! tile encoding is the one of [`super::chr`].
 //! - iNES: a 16-byte header, `NES` and `0x1A`, then the PRG-ROM size in 16 KiB
 //!   units at byte 4 and the CHR-ROM size in 8 KiB units at byte 5 (0 means

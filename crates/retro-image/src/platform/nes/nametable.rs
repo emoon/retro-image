@@ -25,7 +25,7 @@ pub(super) struct Nametable<'a> {
     /// Colour numbers `$00-$3F` of the four background palettes: the shared
     /// background colour, then three colours for each of the four.
     pub palette: &'a [u8],
-    /// The `0xRRGGBB` value of each colour number `$00-$3F`.
+    /// The `0xRRGGBB` value of each color number `$00-$3F`.
     pub master: &'a [u32; 64],
 }
 

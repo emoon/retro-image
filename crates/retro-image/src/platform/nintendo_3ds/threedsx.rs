@@ -2,7 +2,7 @@
 //! header.
 //!
 //! Sources: GBATEK, "3DS Files - Title Homebrew Executables (3DSX)"
-//! (<https://problemkaputt.de/gbatek.htm>, no licence stated, so facts only):
+//! (<https://problemkaputt.de/gbatek.htm>, no license stated, so facts only):
 //! `3DSX` at 0, a header size at 4 that is 0x20 or 0x2C, and when it is
 //! larger than 0x20 the extended header holds the offset (0x20) and size
 //! (0x24, 0x36C0) of an SMDH block. Reverse engineered from samples: the

@@ -38,7 +38,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     sheet(data)
 }
 
-/// The tiles of `chr` as a sheet of grey tiles: how every NES graphics dump
+/// The tiles of `chr` as a sheet of gray tiles: how every NES graphics dump
 /// is drawn.
 pub(super) fn sheet(chr: &[u8]) -> Result<Image, DecodeError> {
     PATTERN.sheet(chr, tiles_per_row(chr.len() / PATTERN.tile_len()), &GREYS)

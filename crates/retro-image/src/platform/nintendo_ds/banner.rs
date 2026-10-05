@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - GBATEK, "DS Cartridge Header" and "DS Cartridge Icon/Title"
-//!   (<https://problemkaputt.de/gbatek.htm>, no licence stated, so facts
+//!   (<https://problemkaputt.de/gbatek.htm>, no license stated, so facts
 //!   only): the banner offset at header `0x68`, the two header CRC-16 values
 //!   at `0x15C` and `0x15E`, the banner versions and their CRC-16 fields, the
 //!   icon bitmap (32x32, 4 bpp, 4x4 tiles of 8x8) and palette (16 colors of
@@ -20,7 +20,7 @@
 //! banner lies inside the file and its own CRC-16 matches. That is strict
 //! enough for content detection.
 //!
-//! Color 0 is transparent and is drawn as the shared transparent-fill grey.
+//! Color 0 is transparent and is drawn as the shared transparent-fill gray.
 //! A DSi banner (version `0x0103`) with an animation is drawn as its first
 //! frame: the first token of the sequence picks a bitmap, a palette and
 //! flips. A first token of 0 means the static icon. No sample with an
