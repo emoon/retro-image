@@ -27,7 +27,12 @@ const SHADES: [u32; 4] = [0xff_ffff, 0xaa_aaaa, 0x55_5555, 0x00_0000];
 const TILE: TileLayout = TileLayout::planar(2, 2);
 
 pub(super) static FORMATS: &[Format] = &[
-    Format::new("Game Boy", "Game Boy Camera save", &["sav"], camera::decode),
+    Format::new(
+        "Game Boy",
+        "Game Boy Camera save",
+        &["sav", "srm"],
+        camera::decode,
+    ),
     Format::new(
         "Game Boy",
         "Game Boy Tile Designer",
