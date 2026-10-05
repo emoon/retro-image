@@ -217,8 +217,7 @@ pub(super) struct Texture<'a> {
 
 impl Texture<'_> {
     /// The upper left `visible_width` x `visible_height` pixels of the
-    /// picture, which are not more than the texture holds. Pixels with alpha
-    /// are composited onto the shared transparent fill.
+    /// picture, which are not more than the texture holds. Alpha is kept.
     pub(super) fn image(
         &self,
         visible_width: usize,

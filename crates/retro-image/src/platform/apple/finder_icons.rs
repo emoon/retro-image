@@ -23,7 +23,7 @@
 //!
 //! Choices of this crate: the sheet is `sheet.rs`'s grid (big and small icon
 //! of each record in file order, each in a cell as large as the largest icon,
-//! transparent pixels on the shared fill); the `iconType` color flag is
+//! transparent pixels left clear); the `iconType` color flag is
 //! ignored, as in CiderPress II, because most icons are colored but say black
 //! and white. Files are recognized by their header alone, since the ProDOS
 //! file type is not part of the name.
@@ -54,7 +54,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{CLEAR, check_size};
 use crate::sheet::{MAX_PICTURES, sheet};
 use crate::{DecodeError, Image};
 
@@ -130,15 +130,12 @@ fn read_icon(data: &[u8]) -> Result<(Image, &[u8]), DecodeError> {
     let pixels = (0..width * height).map(|i| {
         let (x, y) = (i % width, i / width);
         match nibble(mask, x, y) {
-            0 => TRANSPARENT_FILL,
-            _ => PALETTE[usize::from(nibble(image, x, y))],
+            0 => CLEAR,
+            _ => 0xff00_0000 | PALETTE[usize::from(nibble(image, x, y))],
         }
     });
     let rest = &data[ICON_HEADER_LEN + 2 * size..];
-    Ok((
-        Image::from_colors(width as u32, height as u32, pixels),
-        rest,
-    ))
+    Ok((Image::from_argb(width as u32, height as u32, pixels), rest))
 }
 
 #[cfg(test)]
@@ -180,8 +177,8 @@ mod tests {
         // Two cells of 2 x 1 on one row: big icon at (4, 4), small at (10, 4).
         assert_eq!((image.width(), image.height()), (16, 9));
         assert_eq!(
-            (image.get(4, 4), image.get(5, 4)),
-            (0x000080, TRANSPARENT_FILL)
+            (image.get_argb(4, 4), image.get_argb(5, 4)),
+            (0xff00_0080, CLEAR)
         );
         assert_eq!(image.get(10, 4), 0xffffff);
     }

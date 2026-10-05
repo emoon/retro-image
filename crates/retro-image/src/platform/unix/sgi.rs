@@ -13,7 +13,7 @@
 //!   16-bit units.
 //!
 //! One channel is gray, two are gray and alpha, three RGB and four RGBA;
-//! alpha is composited onto the shared transparent-fill gray. 16-bit samples
+//! alpha is kept. 16-bit samples
 //! scale to 8 bits by rounding. Only color map id 0 (normal) is accepted, and
 //! the pixel minimum and maximum are ignored: samples are not stretched
 //! (`greytest.rgb` has a maximum of 146 and Pillow shows it unstretched too).

@@ -32,8 +32,8 @@
 //!   not in the samples and follow the documents only.
 //!
 //! A save with a banner shows it; a save without one shows its first icon (a
-//! later frame of an animation is not shown). Transparent pixels are
-//! composited onto the shared fill color.
+//! later frame of an animation is not shown). The alpha of each pixel
+//! is kept.
 
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};

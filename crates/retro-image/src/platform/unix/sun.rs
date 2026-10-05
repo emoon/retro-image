@@ -21,7 +21,7 @@
 //! is alpha when any pixel has it non-zero, and unused when all are 0. The
 //! `abydos.im32` sample (a converted RGBA picture) has real alpha there,
 //! while older files leave the pad byte 0; Deark makes the same choice.
-//! Alpha is composited onto the shared transparent-fill gray. A color map
+//! Alpha is kept. A color map
 //! on a 24 or 32-bit raster is skipped, and a raw color map on a 1 or 8-bit
 //! raster is ignored (8-bit pictures then show their values as grays).
 //! Palette entries missing from a short map are black.

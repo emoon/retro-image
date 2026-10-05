@@ -27,7 +27,7 @@
 //! `tf_LoChar` rounded down to a multiple of 16), like a code chart. Every
 //! cell is as wide as the widest glyph plus a pixel of margin on each side, and
 //! as high as the font plus the same margin. Monochrome glyphs are black on the
-//! shared transparent-fill gray; a color font's pixels use its color table,
+//! transparent background; a color font's pixels use its color table,
 //! value 0 staying transparent. The spacing and kerning tables are not used,
 //! since glyphs sit in a grid instead of a line of text. The default glyph
 //! after `tf_HiChar` is not shown. The `.font` file that lists a font's sizes
@@ -38,7 +38,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
-use crate::image::{TRANSPARENT_FILL, check_size, rgb444};
+use crate::image::{CLEAR, check_size, rgb444};
 use crate::{DecodeError, Image};
 
 const HUNK_HEADER: u32 = 0x3f3;
@@ -217,7 +217,7 @@ impl Font {
         let rows = self.high / COLUMNS - self.low / COLUMNS + 1;
         check_size(COLUMNS * cell_w, rows * cell_h)?;
         let (width, height) = ((COLUMNS * cell_w) as u32, (rows * cell_h) as u32);
-        let mut image = Image::from_colors(width, height, core::iter::repeat(TRANSPARENT_FILL));
+        let mut image = Image::from_argb(width, height, core::iter::repeat(CLEAR));
         for (i, &(offset, width)) in glyphs.iter().enumerate() {
             let code = self.low + i;
             let left = (code % COLUMNS) * cell_w + MARGIN;
@@ -308,7 +308,7 @@ mod tests {
     fn glyph(image: &Image, code: u32, w: u32, cell: u32) -> Vec<bool> {
         (0..2)
             .flat_map(|y| (0..w).map(move |x| (x, y)))
-            .map(|(x, y)| image.get((code % 16) * cell + 1 + x, 1 + y) != TRANSPARENT_FILL)
+            .map(|(x, y)| image.get_argb((code % 16) * cell + 1 + x, 1 + y) != CLEAR)
             .collect()
     }
 
@@ -326,7 +326,7 @@ mod tests {
             [true, false, true, false, true, false]
         );
         assert_eq!(image.get(7, 1), 0, "ink is black");
-        assert_eq!(image.get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), CLEAR);
     }
 
     #[test]
@@ -348,7 +348,7 @@ mod tests {
         // and the color is red wherever plane 0 is set.
         let flat = decode(&font_file(&[STRIKE, swapped], &colors, 1)).unwrap();
         assert_eq!(flat.get(6 + 1 + 1, 1), 0xff0000);
-        assert_eq!(flat.get(6 + 1 + 1, 2), TRANSPARENT_FILL);
+        assert_eq!(flat.get_argb(6 + 1 + 1, 2), CLEAR);
     }
 
     #[test]

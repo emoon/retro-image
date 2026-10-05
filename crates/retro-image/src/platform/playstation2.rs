@@ -25,8 +25,7 @@
 //! - Platform survey: `docs/research/gaps-consoles.md` section 3.2.
 //!
 //! Pictures with mipmaps show their largest level; a file with several
-//! pictures shows the first. Transparent pixels are composited onto the
-//! shared fill color.
+//! pictures shows the first. The alpha of each pixel is kept.
 
 use alloc::vec::Vec;
 

@@ -30,7 +30,7 @@
 //! describe. An animation or a file
 //! of several cels shows the first picture. A cel pixel whose 15-bit color
 //! is zero is transparent unless the CCB's `BGND` flag is set; transparent
-//! pixels are composited onto the shared fill color.
+//! pixels keep alpha 0.
 
 mod cel;
 mod imag;

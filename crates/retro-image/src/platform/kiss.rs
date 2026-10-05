@@ -27,7 +27,7 @@
 //! the palette is group 0 of the `.kcf` with the cel's stem, a gray ramp
 //! without one; palette colors past the end of a short palette are black;
 //! a 12-bit channel `v` becomes `v * 17`; transparent pixels (index 0, or
-//! alpha) are composited onto [`TRANSPARENT_FILL`]. A cel finds a palette file
+//! alpha) stay clear, and a pixel with alpha is drawn over what is below. A cel finds a palette file
 //! only by its own stem, so a doll's cels, whose palettes have other names, are
 //! gray alone; the set's `.cnf` file, read by `set.rs`, gives them their
 //! palettes and places them.
@@ -35,7 +35,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size, gray_ramp, over, widen_channel};
+use crate::image::{CLEAR, check_size, gray_ramp, widen_channel};
 use crate::{Companions, DecodeError, Format, Image};
 
 mod set;
@@ -120,10 +120,7 @@ impl Cel {
                     }
                     Pixels::Direct(pixels) => {
                         let [b, g, r, alpha] = pixels[row * self.width + column];
-                        let color = u32::from_be_bytes([0, r, g, b]);
-                        if alpha != 0 {
-                            canvas.set(tx, ty, over(canvas.get(tx, ty), color, alpha));
-                        }
+                        canvas.draw(tx, ty, u32::from_be_bytes([alpha, r, g, b]));
                     }
                 }
             }
@@ -211,16 +208,18 @@ fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     picture(&read_conventional(data)?, companions)
 }
 
-/// The cel alone on the transparent fill, through the palette file with its
-/// stem.
+/// The cel alone on a clear canvas, through the palette file with its stem.
 fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError> {
     // A cel with its own colors needs no palette file.
     let palette = cel.index_bits().map_or_else(Vec::new, |bits| {
         let colors = companions.get("kcf").and_then(|kcf| read_palette(&kcf, 0));
         full_palette(colors, bits)
     });
-    let fill = core::iter::repeat(TRANSPARENT_FILL);
-    let mut image = Image::from_colors(cel.width as u32, cel.height as u32, fill);
+    let mut image = Image::from_argb(
+        cel.width as u32,
+        cel.height as u32,
+        core::iter::repeat(CLEAR),
+    );
     cel.draw(&mut image, 0, 0, &palette);
     Ok(image)
 }
@@ -308,10 +307,10 @@ mod tests {
         cel.extend_from_slice(&[0x1f, 0x20, 0xf1, 0x00]);
         let image = decode_cel(&cel, &NoCompanions).unwrap();
         assert_eq!((image.width(), image.height()), (3, 2));
-        // Gray ramp: 1 = 0x11, 15 = white; index 0 is the transparent fill.
-        let row = |y| [0, 1, 2].map(|x| image.get(x, y));
-        assert_eq!(row(0), [0x111111, 0xffffff, 0x222222]);
-        assert_eq!(row(1), [0xffffff, 0x111111, TRANSPARENT_FILL]);
+        // Gray ramp: 1 = 0x11, 15 = white; index 0 is clear.
+        let row = |y| [0, 1, 2].map(|x| image.get_argb(x, y));
+        assert_eq!(row(0), [0xff11_1111, 0xffff_ffff, 0xff22_2222]);
+        assert_eq!(row(1), [0xffff_ffff, 0xff11_1111, CLEAR]);
     }
 
     #[test]
@@ -324,7 +323,7 @@ mod tests {
         let mut cel = header(CEL_MARK, 8, 3, 1);
         cel.extend_from_slice(&[0, 1, 9]);
         let image = decode_cel(&cel, &Palette(kcf)).unwrap();
-        assert_eq!(image.get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), CLEAR);
         assert_eq!(image.get(1, 0), 0xff8811);
         assert_eq!(image.get(2, 0), 0);
     }
@@ -339,13 +338,13 @@ mod tests {
     }
 
     #[test]
-    fn cherry_kiss_pixels_are_blue_first_and_blend_over_the_fill() {
+    fn cherry_kiss_pixels_are_blue_first_and_keep_their_alpha() {
         let mut cel = header(CKISS_MARK, 32, 3, 1);
         cel.extend_from_slice(&[0x10, 0x20, 0x30, 0xff, 0, 0, 0, 0, 0, 0, 0, 0x80]);
         let image = decode_cel(&cel, &NoCompanions).unwrap();
         assert_eq!(image.get(0, 0), 0x302010);
-        assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
-        assert_eq!(image.get(2, 0), 0x606060);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
+        assert_eq!(image.get_argb(2, 0), 0x8000_0000);
     }
 
     #[test]

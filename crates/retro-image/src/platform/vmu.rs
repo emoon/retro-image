@@ -28,8 +28,8 @@
 //! Dreamcast file manager shows) is not drawn.
 //!
 //! Palette decisions: each 4-bit channel is expanded with `v * 17` (0xf is
-//! 255), and the alpha channel (0 is transparent, 0xf opaque) is blended
-//! onto [`TRANSPARENT_FILL`], since an `Image` has no alpha.
+//! 255), and the alpha channel (0 is transparent, 0xf opaque) widens the same
+//! way.
 //!
 //! The frames of an animated icon are drawn side by side, in one row of
 //! 32-pixel cells. `ICONDATA_VMS` holds a monochrome icon (128 bytes, 1 is
@@ -51,7 +51,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, over_fill, widen_channel};
+use crate::image::{CLEAR, widen_channel};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
@@ -118,11 +118,11 @@ impl Header {
     fn sheet(&self, data: &[u8]) -> Result<Image, DecodeError> {
         let palette = palette(data, self.at + PALETTE_AT).ok_or(DecodeError::Unrecognized)?;
         let icons = &data[self.at + HEADER_LEN..][..self.icons * ICON.tile_len()];
-        ICON.sheet(icons, self.icons, &palette)
+        ICON.sheet_argb(icons, self.icons, &palette)
     }
 }
 
-/// Sixteen ARGB4444 colors at `at`, blended onto the transparent fill.
+/// Sixteen ARGB4444 colors at `at`, as `0xAARRGGBB`.
 fn palette(data: &[u8], at: usize) -> Option<Vec<u32>> {
     let words = data.get(at..at + 32)?;
     Some(
@@ -135,11 +135,10 @@ fn palette(data: &[u8], at: usize) -> Option<Vec<u32>> {
     )
 }
 
-/// A color word as `0xRRGGBB`, its alpha blended onto the transparent fill.
+/// A color word as `0xAARRGGBB`.
 fn argb4444(word: u16) -> u32 {
     let channel = |shift: u32| widen_channel(u32::from(word >> shift & 15), 4);
-    let color = channel(8) << 16 | channel(4) << 8 | channel(0);
-    over_fill(color, (channel(12)) as u8)
+    channel(12) << 24 | channel(8) << 16 | channel(4) << 8 | channel(0)
 }
 
 /// CRC-16/XMODEM of the concatenation of `parts`.
@@ -207,10 +206,10 @@ fn decode_icondata(data: &[u8]) -> Result<Image, DecodeError> {
     if color != 0 {
         let color_icon = icon(color, 32 + ICON.tile_len()).ok_or(fail)?;
         let palette = palette(color_icon, 0).ok_or(fail)?;
-        return ICON.sheet(&color_icon[32..], 1, &palette);
+        return ICON.sheet_argb(&color_icon[32..], 1, &palette);
     }
     let mono_icon = icon(mono, MONO_ICON.tile_len()).ok_or(fail)?;
-    MONO_ICON.sheet(mono_icon, 1, &[TRANSPARENT_FILL, 0x00_0000])
+    MONO_ICON.sheet_argb(mono_icon, 1, &[CLEAR, 0xff00_0000])
 }
 
 #[cfg(test)]
@@ -234,11 +233,11 @@ mod tests {
     }
 
     #[test]
-    fn alpha_is_blended_onto_the_fill_and_channels_use_v_times_17() {
-        assert_eq!(argb4444(0x0123), TRANSPARENT_FILL);
-        assert_eq!(argb4444(0xf08f), 0x00_88ff);
-        // Alpha 8 of 15 is 136 of 255: half-way, rounded.
-        assert_eq!(argb4444(0x8fff), 0xe2_e2e2);
+    fn channels_use_v_times_17_alpha_included() {
+        assert_eq!(argb4444(0x0123), 0x00_11_22_33);
+        assert_eq!(argb4444(0xf08f), 0xff_00_88_ff);
+        // Alpha 8 of 15 is 136 of 255.
+        assert_eq!(argb4444(0x8fff), 0x88_ff_ff_ff);
     }
 
     #[test]
@@ -250,8 +249,8 @@ mod tests {
         assert_eq!((image.width(), image.height()), (32, 32));
         // The high nibble is the left pixel: color 1 first, then color 0.
         assert_eq!(
-            (image.get(0, 0), image.get(1, 0)),
-            (0x00_88ff, TRANSPARENT_FILL)
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (0xff00_88ff, CLEAR)
         );
         // Padding after the data does not matter, but a changed byte does.
         file.extend_from_slice(&[0; 100]);
@@ -278,7 +277,10 @@ mod tests {
         mono[0] = 0x80;
         file.extend_from_slice(&mono);
         let image = decode_icondata(&file).unwrap();
-        assert_eq!((image.get(0, 0), image.get(1, 0)), (0, TRANSPARENT_FILL));
+        assert_eq!(
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (0xff00_0000, CLEAR)
+        );
         let color_at = file.len();
         file[0x14..0x18].copy_from_slice(&(color_at as u32).to_le_bytes());
         assert!(decode_icondata(&file).is_err(), "the color icon is cut off");

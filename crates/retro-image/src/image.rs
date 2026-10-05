@@ -63,13 +63,7 @@ pub(crate) fn rgb565(word: u16) -> u32 {
     channel(11, 5) << 16 | channel(5, 6) << 8 | channel(0, 5)
 }
 
-/// Color shown where a picture is transparent. `Image` has no alpha channel,
-/// so every decoder whose format carries transparency composites onto this
-/// light gray, which stays visible against both white and black artwork.
-pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
-
 /// A fully transparent pixel as [`Image::get_argb`] reports it.
-#[cfg(test)]
 pub(crate) const CLEAR: u32 = 0;
 
 /// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
@@ -81,11 +75,6 @@ pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
         (above * alpha + below * (255 - alpha) + 127) / 255
     };
     channel(16) << 16 | channel(8) << 8 | channel(0)
-}
-
-/// `color` drawn over [`TRANSPARENT_FILL`] with `alpha`.
-pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
-    over(TRANSPARENT_FILL, color, alpha)
 }
 
 /// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
@@ -287,6 +276,85 @@ impl Image {
         &mut self.rgb[y as usize * row_len..][..row_len]
     }
 
+    /// Row `y` of the alpha plane, which appears (opaque) on the first call.
+    /// Panics if `y` is outside the image.
+    pub(crate) fn alpha_row_mut(&mut self, y: u32) -> &mut [u8] {
+        let width = self.width as usize;
+        let pixels = self.rgb.len() / 3;
+        let alpha = self.alpha.get_or_insert_with(|| alloc::vec![255; pixels]);
+        &mut alpha[y as usize * width..][..width]
+    }
+
+    /// Draws straight `0xAARRGGBB` over the pixel at (`x`, `y`) (the "over"
+    /// operator), rounding to the nearest level.
+    pub(crate) fn draw(&mut self, x: u32, y: u32, argb: u32) {
+        let [a, ..] = argb.to_be_bytes();
+        let i = y as usize * self.width as usize + x as usize;
+        let below = self.alpha.as_ref().map_or(255, |alpha| u32::from(alpha[i]));
+        match (a, below) {
+            (0, _) => {}
+            (255, _) => self.set_argb(x, y, argb),
+            (_, 255) => {
+                let [_, r, g, b] = over(self.get(x, y), argb & 0xff_ffff, a).to_be_bytes();
+                self.rgb.as_chunks_mut::<3>().0[i] = [r, g, b];
+            }
+            _ => {
+                // Weights are scaled by 255 so that the division is exact.
+                let (above, below_weight) = (u32::from(a) * 255, below * (255 - u32::from(a)));
+                let total = above + below_weight;
+                let [r, g, b] = self.rgb.as_chunks::<3>().0[i];
+                let mix = |top: u32, bottom: u8| {
+                    (top * above + u32::from(bottom) * below_weight + total / 2) / total
+                };
+                let [_, tr, tg, tb] = argb.to_be_bytes();
+                self.rgb.as_chunks_mut::<3>().0[i] = [
+                    mix(u32::from(tr), r) as u8,
+                    mix(u32::from(tg), g) as u8,
+                    mix(u32::from(tb), b) as u8,
+                ];
+                self.alpha
+                    .get_or_insert_with(|| unreachable!("below < 255"))[i] =
+                    ((total + 127) / 255) as u8;
+            }
+        }
+    }
+
+    /// Copies `picture` with its top left at (`left`, `top`), keeping at most
+    /// `max_width` x `max_height` of its pixels. What falls outside `self` is
+    /// dropped.
+    pub(crate) fn paste(
+        &mut self,
+        picture: &Self,
+        left: usize,
+        top: usize,
+        max_width: usize,
+        max_height: usize,
+    ) {
+        let (width, height) = (self.width as usize, self.height as usize);
+        if left >= width {
+            return;
+        }
+        if picture.alpha.is_some() && self.alpha.is_none() {
+            self.alpha = Some(alloc::vec![255; width * height]);
+        }
+        let columns = (picture.width as usize).min(max_width).min(width - left);
+        let rows = (picture.height as usize).min(max_height);
+        for y in 0..rows.min(height.saturating_sub(top)) {
+            let from = y * picture.width as usize;
+            let to = (top + y) * width + left;
+            self.rgb[to * 3..][..columns * 3]
+                .copy_from_slice(&picture.rgb[from * 3..][..columns * 3]);
+            if let Some(alpha) = &mut self.alpha {
+                match &picture.alpha {
+                    Some(source) => {
+                        alpha[to..][..columns].copy_from_slice(&source[from..][..columns])
+                    }
+                    None => alpha[to..][..columns].fill(255),
+                }
+            }
+        }
+    }
+
     /// The pixel at (`x`, `y`) as `0xRRGGBB`.
     #[inline]
     pub(crate) fn get(&self, x: u32, y: u32) -> u32 {
@@ -297,7 +365,6 @@ impl Image {
 
     /// The pixel at (`x`, `y`) as straight `0xAARRGGBB`, with every fully
     /// transparent pixel as 0.
-    #[cfg(test)]
     pub(crate) fn get_argb(&self, x: u32, y: u32) -> u32 {
         let i = y as usize * self.width as usize + x as usize;
         let alpha = self.alpha.as_ref().map_or(255, |a| a[i]);
@@ -333,6 +400,25 @@ impl Image {
             rgb,
             alpha: None,
         })
+    }
+
+    /// [`Self::from_indexed`] for a palette of straight `0xAARRGGBB` colors.
+    pub(crate) fn from_indexed_argb(
+        width: u32,
+        height: u32,
+        indices: &[u8],
+        palette: &[u32],
+    ) -> Result<Self, DecodeError> {
+        let mut image = Self::from_indexed(width, height, indices, palette)?;
+        let mut alphas = [255u8; 256];
+        for (alpha, color) in alphas.iter_mut().zip(palette) {
+            *alpha = (color >> 24) as u8;
+        }
+        if alphas.iter().any(|&a| a != 255) {
+            let plane: Vec<u8> = indices.iter().map(|&i| alphas[usize::from(i)]).collect();
+            image.alpha = plane.iter().any(|&a| a != 255).then_some(plane);
+        }
+        Ok(image)
     }
 
     /// An image from a 1-bit bitmap of `row_len`-byte rows; a pixel whose
@@ -745,14 +831,6 @@ mod tests {
         assert_eq!(over(0x102030, 0xf0e0d0, 255), 0xf0e0d0);
         // Halfway between 0x10 and 0xf0 is 0x80, and 0x20 and 0xe0 as well.
         assert_eq!(over(0x102030, 0xf0e0d0, 128) >> 16, 0x80);
-    }
-
-    #[test]
-    fn over_fill_blends_toward_the_transparent_fill() {
-        assert_eq!(over_fill(0x123456, 255), 0x123456);
-        assert_eq!(over_fill(0x123456, 0), TRANSPARENT_FILL);
-        // Black at 127/255 over 0xc0 is 96.38, which rounds to 0x60.
-        assert_eq!(over_fill(0x000000, 127), 0x606060);
     }
 
     #[test]

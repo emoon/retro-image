@@ -26,8 +26,7 @@
 //!
 //! The formats are the ones Sega's GVR textures and Nintendo's TPL libraries
 //! share, and the numbers [`PixelFormat::from_code`] accepts are the codes both
-//! files store. Pixels come out as `0xAARRGGBB`; flattening the alpha is the
-//! caller's business (`image::over_fill`). Mipmaps are not read.
+//! files store. Pixels come out as straight `0xAARRGGBB`. Mipmaps are not read.
 
 // Parts of this file follow PuyoTools.Core/Textures/Gvr
 // (PuyoTools, https://github.com/nickworonekin/puyotools):

@@ -19,7 +19,7 @@
 //! from the documented layout, and the corpus holds synthetic files from a
 //! scratch encoder, so it is unverified against real game files.
 //!
-//! Transparent pixels are composited onto the shared fill color. An indexed
+//! The alpha of each pixel is kept. An indexed
 //! texture without a palette header shows a gray ramp.
 
 use alloc::vec::Vec;

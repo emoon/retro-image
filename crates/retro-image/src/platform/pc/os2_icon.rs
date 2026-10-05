@@ -23,13 +23,14 @@
 //! for `IC` and `PT`: XOR clear is black); with AND set, XOR clear leaves the
 //! screen alone (transparent) and XOR set inverts it.
 //!
-//! `Image` has no alpha: transparent pixels are drawn as `TRANSPARENT_FILL`
-//! and inverting ones as its inverse. A `BA` array shows its largest picture
+//! Transparent pixels keep alpha 0. An inverting pixel inverts what is
+//! behind it, so there is no color for it: it is drawn as the inverse of the
+//! gray `c0c0c0` that transparent pixels used to be composited onto. A `BA` array shows its largest picture
 //! (the first of equal size); an array entry that is a plain OS/2 bitmap
 //! (`BM`) is not read. Hotspots are ignored.
 //!
 //! Verification: no RECOIL oracle for this format; output matches Deark's PNG
-//! output (alpha composited onto the same fill) on the sample files.
+//! output (its alpha composited onto the gray `c0c0c0`) on the sample files.
 
 // Parts of this file follow Deark's modules/os2bmp.c
 // (Deark, https://github.com/jsummers/deark):
@@ -58,7 +59,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -67,7 +68,7 @@ const FILE_HEADER_LEN: usize = 14;
 const MAX_ENTRIES: usize = 64;
 const BLACK: u32 = 0x000000;
 const WHITE: u32 = 0xffffff;
-const INVERTED_FILL: u32 = TRANSPARENT_FILL ^ 0xff_ffff;
+const INVERTED_FILL: u32 = 0x3f_3f3f;
 
 /// One bitmap of a record: its geometry, palette and pixel rows.
 struct Bitmap<'a> {
@@ -205,7 +206,7 @@ impl<'a> Record<'a> {
         let (mask, picture) = (&self.mask, &self.picture);
         let (width, height) = (self.width(), self.height());
         let color = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
-        Image::from_colors(
+        Image::from_argb(
             width as u32,
             height as u32,
             color.map(|(x, y)| {
@@ -213,11 +214,12 @@ impl<'a> Record<'a> {
                 // of the mask picture, so it comes last in the file.
                 let and = mask.value(x, 2 * height - 1 - y) != 0;
                 let xor = mask.value(x, height - 1 - y) != 0;
+                let opaque = |color: u32| 0xff00_0000 | color;
                 match (and, xor, picture) {
-                    (false, _, Some(picture)) => picture.color(x, height - 1 - y),
-                    (false, xor, None) => [BLACK, WHITE][usize::from(xor)],
-                    (true, false, _) => TRANSPARENT_FILL,
-                    (true, true, _) => INVERTED_FILL,
+                    (false, _, Some(picture)) => opaque(picture.color(x, height - 1 - y)),
+                    (false, xor, None) => opaque([BLACK, WHITE][usize::from(xor)]),
+                    (true, false, _) => CLEAR,
+                    (true, true, _) => opaque(INVERTED_FILL),
                 }
             }),
         )
@@ -282,8 +284,8 @@ mod tests {
         let image = decode_os2_icon(&icon(0b1000_0000, 0b0100_0000)).unwrap();
         assert_eq!((image.width(), image.height()), (2, 1));
         assert_eq!(
-            [image.get(0, 0), image.get(1, 0)],
-            [WHITE, TRANSPARENT_FILL]
+            [image.get_argb(0, 0), image.get_argb(1, 0)],
+            [0xff00_0000 | WHITE, CLEAR]
         );
         let inverted = decode_os2_icon(&icon(0b0100_0000, 0b0100_0000)).unwrap();
         assert_eq!(inverted.get(1, 0), INVERTED_FILL);
@@ -373,7 +375,7 @@ mod tests {
         let image = decode_os2_icon(&color_icon(0, 0b0100_0000, 0x21)).unwrap();
         assert_eq!((image.width(), image.height()), (2, 1));
         assert_eq!(image.get(0, 0), 0x020202);
-        assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
         // A bitmap of another size than the mask is no icon.
         let mut wrong = color_icon(0, 0, 0x21);
         wrong[32 + 14 + 4] = 3;

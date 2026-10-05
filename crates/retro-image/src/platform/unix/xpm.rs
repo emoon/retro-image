@@ -18,7 +18,7 @@
 //!   The numbered variants of other colors (`red3`, `snow2`) are not included.
 //!
 //! The `c` color is used, or else `g`, `g4` or `m`. `None` is transparent and
-//! becomes the shared transparent-fill gray. A `#` color has one to four hex
+//! is left clear. A `#` color has one to four hex
 //! digits per channel. They are the top bits of a 16-bit value, so `#fff` is
 //! 0xf0f0f0 and `#3a7` is the same as `#3000a0007000`; the high byte is the
 //! 8-bit value (X(7), <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>,
@@ -87,7 +87,7 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
 use super::c_source::Tokens;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -348,7 +348,7 @@ fn decode_lines(lines: &[Cow<[u8]>]) -> Result<Image, DecodeError> {
             let at = table
                 .binary_search_by_key(&key, |&(k, _)| k)
                 .map_err(|_| FAIL)?;
-            image.set(x as u32, y as u32, table[at].1);
+            image.set_argb(x as u32, y as u32, table[at].1);
         }
     }
     Ok(image)
@@ -371,7 +371,12 @@ fn color_entry(line: &[u8], per_pixel: usize) -> Result<(u64, u32), DecodeError>
         .iter()
         .find_map(|wanted| value_of(&words, wanted))
         .ok_or(FAIL)?;
-    Ok((key, color(value)?))
+    let argb = if is_none(value) {
+        CLEAR
+    } else {
+        0xff00_0000 | color(value)?
+    };
+    Ok((key, argb))
 }
 
 /// The words after `key` up to the next key, so names may hold spaces.
@@ -382,16 +387,21 @@ fn value_of<'a>(words: &'a [&'a [u8]], key: &[u8]) -> Option<&'a [&'a [u8]]> {
     Some(&words[start..start + len.unwrap_or(words.len() - start)])
 }
 
-/// A color given as words: `None`, a name or `#` and hex digits.
+/// Whether the color words say `None`, which is clear.
+fn is_none(words: &[&[u8]]) -> bool {
+    let letters = words.iter().flat_map(|w| w.iter());
+    letters
+        .map(u8::to_ascii_lowercase)
+        .eq(b"none".iter().copied())
+}
+
+/// A color given as words: a name or `#` and hex digits.
 fn color(words: &[&[u8]]) -> Result<u32, DecodeError> {
     let name: Vec<u8> = words
         .iter()
         .flat_map(|w| w.iter())
         .map(u8::to_ascii_lowercase)
         .collect();
-    if name == b"none" {
-        return Ok(TRANSPARENT_FILL);
-    }
     if let Some(digits) = name.strip_prefix(b"#") {
         let per_channel = digits.len() / 3;
         if digits.len() % 3 != 0 || !(1..=4).contains(&per_channel) {
@@ -448,7 +458,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (3, 2));
         let row0 = [0, 1, 2].map(|x| image.get(x, 0));
         assert_eq!(row0, [0xff0000, 0x2e8b57, 0xffffff]);
-        assert_eq!(image.get(0, 1), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 1), CLEAR);
         assert_eq!(image.get(1, 1), 0xff0000);
     }
 

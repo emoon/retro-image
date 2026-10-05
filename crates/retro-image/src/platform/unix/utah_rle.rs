@@ -24,8 +24,8 @@
 //!
 //! Decoded: 8-bit pictures of one channel (gray, or an index through a
 //! one- or three-channel color map) or three channels (RGB, through a color
-//! map of one or three channels if present). The alpha channel is composited
-//! onto the shared transparent-fill gray; pixels no operation writes are
+//! map of one or three channels if present). The alpha channel is kept as the
+//! image's alpha; pixels no operation writes are
 //! background colored, with alpha 0 when the file has alpha. The image is
 //! `xsize` by `ysize`; the offsets are not used. Comments are ignored.
 //!
@@ -38,7 +38,6 @@ use alloc::vec::Vec;
 
 use crate::bytes::le16;
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -177,20 +176,12 @@ pub(super) fn decode_utah_rle(data: &[u8]) -> Result<Image, DecodeError> {
         mut image, alpha, ..
     } = canvas;
     for y in 0..height {
-        for (x, pixel) in image
-            .row_mut(y as u32)
-            .as_chunks_mut::<3>()
-            .0
-            .iter_mut()
-            .enumerate()
-        {
-            let rgb = pixel_color(pixel, colors, map.as_ref());
-            let mut color = u32::from(rgb[0]) << 16 | u32::from(rgb[1]) << 8 | u32::from(rgb[2]);
-            if let Some(alpha) = &alpha {
-                color = over_fill(color, alpha[y * width + x]);
-            }
-            let [_, r, g, b] = color.to_be_bytes();
-            *pixel = [r, g, b];
+        for x in 0..width {
+            // The canvas holds raw channel values until now.
+            let raw = image.get(x as u32, y as u32).to_be_bytes();
+            let [r, g, b] = pixel_color(&raw[1..], colors, map.as_ref());
+            let a = alpha.as_ref().map_or(255, |alpha| alpha[y * width + x]);
+            image.set_argb(x as u32, y as u32, u32::from_be_bytes([a, r, g, b]));
         }
     }
     Ok(image)
@@ -263,7 +254,7 @@ fn run_operations(ops: &[u8], canvas: &mut Canvas) -> Result<(), DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
 
     /// A header for a `width` x `height` picture of `colors` channels with
     /// the given flags, a black background and no color map or comments.
@@ -312,9 +303,9 @@ mod tests {
         file.extend_from_slice(&[SET_COLOR, 0, SKIP_PIXELS, 1, RUN, 1, 20, 0]);
         file.extend_from_slice(&[SET_COLOR, ALPHA_CHANNEL, SKIP_PIXELS, 1, RUN, 1, 255, 0]);
         let image = decode_utah_rle(&file).unwrap();
-        assert_eq!(image.get(0, 0), TRANSPARENT_FILL);
-        assert_eq!(image.get(1, 0), 0x141414);
-        assert_eq!(image.get(3, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), CLEAR);
+        assert_eq!(image.get_argb(1, 0), 0xff14_1414);
+        assert_eq!(image.get_argb(3, 0), CLEAR);
     }
 
     #[test]
