@@ -13,9 +13,9 @@
 //!   `HUNK_DATA` 0x3ea, `HUNK_RELOC32`, `HUNK_END`): AmigaDOS technical
 //!   reference, "Amiga Hunk" format, as summarized at
 //!   <https://wiki.amigaos.net/wiki/Amiga_Hunk_File_Format>.
-//! - Checked on the Sembiance's `font/amigaBitmapFont` and
-//!   `amigaBitmapFontContent` samples (23 size files, 13 of them with their
-//!   `.font` files, 5 color fonts): the font data is one hunk whose first
+//! - Checked on Sembiance's `font/amigaBitmapFont` and
+//!   `amigaBitmapFontContent` samples (29 size files, 19 of them in the 13
+//!   font directories next to their `.font` files; 5 color fonts): the font data is one hunk whose first
 //!   longword is the `moveq #0,d0; rts` return code, followed by the
 //!   `DiskFontHeader` (so the `TextFont` is at hunk offset 58). The pointers
 //!   in it are offsets from the start of the hunk data, which is what the

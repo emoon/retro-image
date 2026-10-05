@@ -10,12 +10,25 @@
 //! - ANIM shown as its first frame, a complete ILBM `FORM` nested at the
 //!   start of the ANIM: ANIM spec,
 //!   <https://wiki.amigaos.net/wiki/ANIM_IFF_CEL_Animations>.
-//! - PowerPacker (`PP20`) and Pack-Ice wrappers around an IFF file are
-//!   unpacked first (one layer): PowerPacker file format,
-//!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers
-//!   are in `codec/`.
-//! - AMOS banks tried as sprite/icon banks, then as a packed picture: the
-//!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
+//! - `FORM RGFX`, `FORM YAFA` (first frame) and `FORM YUVN`, and deep ILBMs of 12, 32, 48 and 64
+//!   planes: Kleinert's IFF-RGFX (<https://aminet.net/dev/misc/IFF-RGFX.zip>) and ILBM64
+//!   (<https://aminet.net/docs/misc/ILBM64.readme>) texts, the YAFA document
+//!   (<https://aminet.net/docs/misc/YAFA-doc.lha>) and MacroSystem's YUVN text
+//!   (<https://wiki.amigaos.net/wiki/YUVN_IFF_YUV_Image_Data>).
+//! - A top-level `LIST` or `CAT`, and `FORM ANBM`, shown as their first `FORM` with the `PROP`
+//!   chunks of its type behind it: EA IFF 85 and the ANBM page,
+//!   <https://wiki.amigaos.net/wiki/ANBM_IFF_Animated_Bitmap>.
+//! - PowerPacker (`PP20`), Pack-Ice, Rob Northen (RNC), Imploder and Crunch-Mania wrappers around
+//!   an IFF file or an AMOS bank are unpacked first (one layer): PowerPacker file format,
+//!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers are in `codec/`, each
+//!   citing Ancient (<https://github.com/temisu/ancient>, BSD-2).
+//! - AMOS banks tried as sprite/icon banks, then as a packed picture, then as the picture
+//!   packer's files without a bank header: the AMOS file formats page,
+//!   <http://alvyn.sourceforge.net/amos_file_formats.html>.
+//!
+//! Not IFF, each in its own module with its sources: SuperView Graphics (`sgx.rs`, with XPK
+//! bodies from `codec/xpk.rs`), CDXL video (`cdxl.rs`), Disney Animation Studio (`cfast.rs`) and
+//! bitmap fonts (`bitmap_font.rs`).
 
 mod abk;
 mod bitmap_font;
@@ -71,10 +84,10 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "IFF-RGFX", &["rgfx", "rgx"], decode_iff),
     Format::new("Amiga", "YAFA animation", &["yafa"], decode_iff),
-    // Headerless: only the extension and a strict header check identify it.
     // A hunk file with no extension of its own (the files are named by size).
     Format::new("Amiga", "Bitmap font", &[], bitmap_font::decode).signature(),
     Format::new("Amiga", "Disney Animation Studio", &["cft"], cfast::decode).signature(),
+    // Headerless: only the extension and a strict header check identify it.
     Format::new("Amiga", "CDXL video", &["cdxl", "xl"], cdxl::decode),
     Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
@@ -117,8 +130,8 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// The contents of a PowerPacker, Pack-Ice, RNC, Imploder or Crunch-Mania file; `None` if `data` is
-/// neither, an error if it is one and damaged.
+/// The contents of a PowerPacker, Pack-Ice, RNC, Imploder or Crunch-Mania file; `None` if `data`
+/// is none of them, an error if it is one and damaged.
 fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     let unpacked = if powerpacker::is_packed(data) {
         powerpacker::unpack(data)
