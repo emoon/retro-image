@@ -11,11 +11,12 @@
 //!
 //! A MacBinary wrapper (`crate::macbinary`) is removed first.
 //!
-//! Only the first image is decoded. A transparency index is ignored (the
-//! palette colour is drawn), as `Image` has no alpha. When the first image is
-//! smaller than the logical screen it is placed on a screen filled with the
-//! background colour, and cut off where it leaves the screen; without a
-//! usable screen the frame is shown alone.
+//! Only the first image is decoded. Its transparent color index (from a
+//! graphic control extension before the image) is clear. When the first image
+//! is smaller than the logical screen it is placed on a screen filled with the
+//! background color (clear if the background index is the transparent one),
+//! and cut off where it leaves the screen; without a usable screen the frame
+//! is shown alone.
 //! Missing trailers and truncated LZW data are tolerated: the pixels decoded
 //! so far are kept.
 //!
@@ -49,7 +50,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::check_size;
+use crate::image::{CLEAR, check_size};
 use crate::macbinary::data_fork_or_self;
 use crate::{DecodeError, Image};
 
@@ -74,10 +75,20 @@ pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
         None
     };
 
-    // Skip extensions up to the first image descriptor.
+    // Skip extensions up to the first image descriptor, noting the
+    // transparent color of a graphic control extension (`21 F9 04`, flags,
+    // delay, color index): bit 0 of the flags says the index is used.
+    let mut transparent = None;
     loop {
         match *data.get(at).ok_or(FAIL)? {
-            0x21 => at = skip_sub_blocks(data, at + 2)?,
+            0x21 => {
+                if data.get(at + 1..at + 3) == Some(&[0xf9, 4])
+                    && data.get(at + 3).is_some_and(|f| f & 1 != 0)
+                {
+                    transparent = data.get(at + 6).copied().map(usize::from);
+                }
+                at = skip_sub_blocks(data, at + 2)?;
+            }
             0x2c => break,
             _ => return Err(FAIL),
         }
@@ -108,7 +119,11 @@ pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
         indices = deinterlace(&indices, width, height);
     }
 
-    let frame = Image::from_indexed(width as u32, height as u32, &indices, &pad(&palette))?;
+    let mut colors: Vec<u32> = pad(&palette).iter().map(|c| 0xff00_0000 | c).collect();
+    if let Some(clear) = transparent {
+        colors[clear] = CLEAR;
+    }
+    let frame = Image::from_indexed_argb(width as u32, height as u32, &indices, &colors)?;
     let screen_ok = screen_w != 0 && screen_h != 0 && check_size(screen_w, screen_h).is_ok();
     // The frame must overlap the screen; the part outside it is cut off.
     if !screen_ok
@@ -119,22 +134,14 @@ pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
         return Ok(frame);
     }
     // The background index is only meaningful with a global table.
-    let fill = global
-        .as_ref()
-        .and_then(|table| table.get(background))
-        .copied()
-        .unwrap_or(0);
-    let mut canvas = Image::from_colors(
-        screen_w as u32,
-        screen_h as u32,
-        core::iter::repeat_n(fill, screen_w * screen_h),
-    );
-    let visible = width.min(screen_w - left);
-    for y in 0..height.min(screen_h - top) {
-        let from = y * width * 3;
-        let row = canvas.row_mut((top + y) as u32);
-        row[left * 3..(left + visible) * 3].copy_from_slice(&frame.rgb()[from..from + visible * 3]);
-    }
+    let fill = match global.as_ref().and_then(|table| table.get(background)) {
+        _ if transparent == Some(background) => CLEAR,
+        Some(color) => 0xff00_0000 | color,
+        None => 0xff00_0000,
+    };
+    let pixels = core::iter::repeat_n(fill, screen_w * screen_h);
+    let mut canvas = Image::from_argb(screen_w as u32, screen_h as u32, pixels);
+    canvas.paste(&frame, left, top, width, height);
     Ok(canvas)
 }
 
@@ -349,10 +356,13 @@ mod tests {
     }
 
     #[test]
-    fn decodes_literals_and_ignores_transparency() {
+    fn decodes_literals_and_the_transparent_index_is_clear() {
         let image = decode_gif(&gif(&literals(), 0)).unwrap();
         assert_eq!((image.width(), image.height()), (2, 2));
         assert_eq!(image.rgb(), &[255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0]);
+        // Index 0 is the transparent one, so only the last pixel is clear.
+        assert_eq!(image.get_argb(0, 0), 0xffff_0000);
+        assert_eq!(image.get_argb(1, 1), CLEAR);
     }
 
     #[test]

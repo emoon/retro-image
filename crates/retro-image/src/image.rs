@@ -171,6 +171,15 @@ impl Image {
         self.height
     }
 
+    /// The image with `alpha` as its alpha plane, one byte per pixel in the
+    /// same order as the pixels. Panics if its length is not the pixel count
+    /// (a decoder bug).
+    pub(crate) fn with_alpha(mut self, alpha: Vec<u8>) -> Self {
+        assert_eq!(alpha.len() * 3, self.rgb.len(), "one alpha value per pixel");
+        self.alpha = Some(alpha);
+        self
+    }
+
     /// The color channels, 3 bytes (R, G, B) per pixel, ignoring alpha.
     /// Use [`flatten`](Self::flatten) first for the picture as seen over a
     /// background, or [`rgba`](Self::rgba) to keep the transparency.

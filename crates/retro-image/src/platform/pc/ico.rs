@@ -15,9 +15,9 @@
 //!   development machine (see the divergence file `pc-ico.tsv`).
 //!
 //! Only the largest DIB image is decoded (ties go to the higher bit depth).
-//! `Image` has no alpha: the mask and the alpha channel of 32-bit images are
-//! ignored, so the pixels of a cursor outline or a transparent area show
-//! their stored colour. Images stored as PNG (Vista-style 256x256) are not
+//! Transparency is the alpha channel of a 32-bit image if it has any visible
+//! pixel, else the AND mask: a set bit makes the pixel clear (a cursor pixel
+//! that inverts the screen, AND and XOR set, is clear too). Images stored as PNG (Vista-style 256x256) are not
 //! supported; a file with only PNG images is rejected.
 
 use alloc::vec::Vec;
@@ -80,4 +80,53 @@ fn entries(data: &[u8]) -> Result<Vec<Entry<'_>>, DecodeError> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::image::CLEAR;
+
+    /// A 2 x 1 icon whose DIB has `bpp` bits per pixel; `pixels` is the one
+    /// padded row and `mask` the first byte of the AND mask's row.
+    fn icon(bpp: u16, pixels: &[u8], mask: u8) -> Vec<u8> {
+        let mut dib = INFO_HEADER_LEN.to_le_bytes().to_vec();
+        dib.extend_from_slice(&2i32.to_le_bytes());
+        dib.extend_from_slice(&2i32.to_le_bytes()); // the color rows and the mask's
+        dib.extend_from_slice(&1u16.to_le_bytes());
+        dib.extend_from_slice(&bpp.to_le_bytes());
+        dib.extend_from_slice(&[0; 24]);
+        dib.extend_from_slice(pixels);
+        dib.extend_from_slice(&[mask, 0, 0, 0]);
+        let mut file = alloc::vec![0, 0, 1, 0, 1, 0, 2, 1, 0, 0, 1, 0];
+        file.extend_from_slice(&bpp.to_le_bytes());
+        file.extend_from_slice(&(dib.len() as u32).to_le_bytes());
+        file.extend_from_slice(&22u32.to_le_bytes());
+        file.extend_from_slice(&dib);
+        file
+    }
+
+    #[test]
+    fn the_and_mask_clears_pixels_of_24_bit_icons() {
+        let file = icon(24, &[3, 2, 1, 6, 5, 4, 0, 0], 0b0100_0000);
+        let image = decode_ico(&file).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xff01_0203);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
+    }
+
+    #[test]
+    fn alpha_of_a_32_bit_icon_wins_over_the_mask() {
+        let file = icon(32, &[3, 2, 1, 255, 6, 5, 4, 0x40], 0b1000_0000);
+        let image = decode_ico(&file).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xff01_0203);
+        assert_eq!(image.get_argb(1, 0), 0x4004_0506);
+    }
+
+    #[test]
+    fn a_32_bit_icon_without_visible_alpha_uses_the_mask() {
+        let file = icon(32, &[3, 2, 1, 0, 6, 5, 4, 0], 0b0100_0000);
+        let image = decode_ico(&file).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xff01_0203);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
+    }
 }
