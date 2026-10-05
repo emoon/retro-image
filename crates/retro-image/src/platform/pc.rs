@@ -39,6 +39,7 @@ mod hp_icn;
 mod ico;
 mod image72;
 mod kips;
+mod os2_icon;
 mod pcpaint;
 mod pcx;
 mod tga;
@@ -62,6 +63,13 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "HP 100LX/200LX icon", &["icn"], hp_icn::decode_icn).signature(),
     Format::new("PC", "IBM KIPS bitmap", &["kps"], kips::decode_kps),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
+    Format::new(
+        "PC",
+        "OS/2 icon and pointer",
+        &["ico", "ptr"],
+        os2_icon::decode_os2_icon,
+    )
+    .signature(),
     Format::new(
         "PC",
         "Windows DIB without file header",
