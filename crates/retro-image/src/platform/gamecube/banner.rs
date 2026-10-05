@@ -35,8 +35,6 @@
 //! later frame of an animation is not shown). Transparent pixels are
 //! composited onto the shared fill color.
 
-use alloc::vec::Vec;
-
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};
 use crate::image::over_fill;
@@ -172,6 +170,7 @@ fn picture(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     /// A save with `blocks` blocks of which the first bytes after the comment
     /// are `image`; the banner and icon formats are given.
