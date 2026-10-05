@@ -26,7 +26,7 @@ copyright notice and licence text.
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
 | [libsixel](https://github.com/saitoha/libsixel) | MIT | Sixel: what viewers do where the DEC manual is silent (the color drawn before any selection, HLS rounding, picture size), read in `fromsixel.c`; its `sixel2png`, built from source and run as a black box, is the oracle for the sample files |
-| [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on our thumbnails |
+| [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on the decoded thumbnails |
 | [RGBDS](https://github.com/gbdev/rgbds) | MIT | Game Boy rgbgfx files (tile data, maps, palettes) |
 | [NitroPaint](https://github.com/Garhoogin/NitroPaint) | BSD-2-Clause | Nintendo DS NCLR, NCGR, NSCR and BTX0 files |
 
