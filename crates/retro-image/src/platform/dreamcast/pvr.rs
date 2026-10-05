@@ -301,7 +301,19 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             .ok_or(fail)?;
     }
 
-    let mut argb = Vec::with_capacity(width * height);
+    // The base level takes this much of the data; a header that claims more
+    // gets no buffer.
+    let texels = width * height;
+    let base_len = match storage {
+        Storage::Raster | Storage::Twiddled { .. } => texels * texel_len,
+        Storage::Vq { .. } => texels / 4,
+        Storage::Indexed { bits, .. } => (texels * bits).div_ceil(8),
+    };
+    if body.len() < base_len {
+        return Err(fail);
+    }
+
+    let mut argb = Vec::with_capacity(texels);
     match storage {
         Storage::Raster => {
             for y in 0..height {
@@ -488,6 +500,22 @@ mod tests {
         let with = decode_pvr(&texture, &Pvp).unwrap();
         // Index 15 is RGB565 red 15, which stretches to 0x7b.
         assert_eq!(with.get(0, 1), 0x7b0000);
+    }
+
+    #[test]
+    fn declared_sizes_need_their_data_before_anything_is_allocated() {
+        // Headers for 8192x8192 textures, 64 megatexels, with no data at all:
+        // refused without reserving a buffer for them.
+        let storages: [(u8, u8); 5] = [(1, 0x09), (1, 0x01), (2, 0x05), (1, 0x07), (6, 0x0d)];
+        for (pixel_format, data_format) in storages {
+            let file = pvr(pixel_format, data_format, 8192, 8192, &[]);
+            assert!(
+                decode_pvr(&file, &NoCompanions).is_err(),
+                "{data_format:#x}"
+            );
+        }
+        let vq = pvr(1, 0x03, 8192, 8192, &alloc::vec![0; 2048]);
+        assert!(decode_pvr(&vq, &NoCompanions).is_err());
     }
 
     #[test]
