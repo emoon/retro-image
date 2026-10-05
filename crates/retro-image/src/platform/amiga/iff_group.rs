@@ -37,17 +37,24 @@ pub(super) fn first_form(data: &[u8]) -> Option<([u8; 4], Vec<u8>)> {
     };
     let len = (be32(data, 4)? as usize).saturating_add(8).min(data.len());
     group
-        .then(|| walk(data.get(12..len.max(12))?, &[], 0))
+        .then(|| walk(data.get(12..len.max(12))?, &mut Vec::new(), 0))
         .flatten()
 }
 
-/// The first `FORM` among `children`, with `props` (type and chunks of each
-/// `PROP` seen, oldest first) and those of this group.
-fn walk(children: &[u8], props: &[([u8; 4], &[u8])], depth: usize) -> Option<([u8; 4], Vec<u8>)> {
+/// The first `FORM` among `children`. `props` holds the type and chunks of
+/// each `PROP` seen so far, oldest first; this group's own are added while it
+/// is searched and taken off again before returning, so nested groups share
+/// one list.
+fn walk<'a>(
+    children: &'a [u8],
+    props: &mut Vec<([u8; 4], &'a [u8])>,
+    depth: usize,
+) -> Option<([u8; 4], Vec<u8>)> {
     if depth > MAX_DEPTH {
         return None;
     }
-    let mut props = props.to_vec();
+    let outer = props.len();
+    let mut found = None;
     for (id, body) in chunks(children) {
         if !matches!(&id, b"PROP" | b"FORM" | b"LIST" | b"CAT ") {
             continue;
@@ -62,16 +69,16 @@ fn walk(children: &[u8], props: &[([u8; 4], &[u8])], depth: usize) -> Option<([u
                 for (_, chunks) in props.iter().rev().filter(|(k, _)| k == kind) {
                     contents.extend_from_slice(chunks);
                 }
-                return Some((*kind, contents));
+                found = Some((*kind, contents));
             }
-            _ => {
-                if let Some(found) = walk(rest, &props, depth + 1) {
-                    return Some(found);
-                }
-            }
+            _ => found = walk(rest, props, depth + 1),
+        }
+        if found.is_some() {
+            break;
         }
     }
-    None
+    props.truncate(outer);
+    found
 }
 
 #[cfg(test)]
@@ -128,6 +135,38 @@ mod tests {
             &[group(b"FORM", b"ILBM", &[chunk(b"BODY", b"x")])],
         );
         assert!(first_form(&cat).is_some());
+    }
+
+    #[test]
+    fn many_properties_and_many_nested_groups_stay_linear() {
+        // 20000 PROPs, then 20000 empty LISTs: copying the property list for
+        // each nested group took time growing with the square of the count.
+        let prop = group(b"PROP", b"ILBM", &[chunk(b"CMAP", b"pal")]);
+        let empty = group(b"LIST", b"ILBM", &[]);
+        let mut children = alloc::vec![prop; 20_000];
+        children.extend(core::iter::repeat_n(empty, 20_000));
+        children.push(group(b"FORM", b"ILBM", &[chunk(b"BODY", b"x")]));
+        let list = group(b"LIST", b"ILBM", &children);
+        let (_, contents) = first_form(&list).unwrap();
+        // The form's own BODY, then the 20000 CMAPs.
+        assert_eq!(chunks(&contents).count(), 1 + 20_000);
+    }
+
+    #[test]
+    fn properties_of_a_nested_group_do_not_leak_to_its_siblings() {
+        let inner = group(
+            b"LIST",
+            b"ILBM",
+            &[group(b"PROP", b"ILBM", &[chunk(b"CMAP", b"in")])],
+        );
+        let form = group(b"FORM", b"ILBM", &[chunk(b"BODY", b"x")]);
+        let outer = group(b"LIST", b"ILBM", &[inner, form]);
+        let (_, contents) = first_form(&outer).unwrap();
+        assert_eq!(
+            chunks(&contents).count(),
+            1,
+            "the inner PROP is out of scope"
+        );
     }
 
     #[test]
