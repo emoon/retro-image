@@ -20,8 +20,7 @@
 // Parts of this file follow Deark's modules/misc2.c
 // (Deark, https://github.com/jsummers/deark):
 //
-// Copyright (C) 2016-2026 Jason Summers
-// <jason1@pobox.com>
+// Copyright (C) 2016-2021 Jason Summers
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
