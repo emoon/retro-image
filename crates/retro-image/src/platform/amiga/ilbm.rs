@@ -10,6 +10,12 @@
 //!   from samples).
 //! - Pixel doubling for interlaced low-res and non-interlaced high-res
 //!   screens: observed from `recoil2png` output.
+//! - Color mode without a CAMG chunk (6 planes: 16 colors is HAM6, 32 is
+//!   EHB, anything else indexed) and the HAM flag on 5 or 7 planes (HAM6 or
+//!   HAM8, missing top plane read as 0): measured against `recoil2png` on
+//!   real files with the chunk removed or the flag set. Deark and the Just
+//!   Solve ILBM page describe the same rules,
+//!   <http://justsolve.archiveteam.org/wiki/ILBM>.
 //! - Super-hires (`SUPERHIRES` 0x20 with `HIRES` 0x8000 in `graphics/view.h`)
 //!   is only 1/4-lores-wide pixels on the native PAL/NTSC/default monitors
 //!   (`graphics/modeid.h`: `SUPER_KEY` 0x8020 under monitor 0, 0x11000, 0x21000).
@@ -306,14 +312,16 @@ impl Mode {
         layout: Layout,
     ) -> Result<Self, DecodeError> {
         let camg_bits = camg.unwrap_or(0);
+        let ham = camg_bits & CAMG_HAM != 0;
         Ok(match header.planes {
             _ if layout == Layout::Chunky => Self::Indexed,
-            6 if camg_bits & CAMG_HAM != 0 => Self::Ham6,
-            8 if camg_bits & CAMG_HAM != 0 => Self::Ham8,
-            6 if camg_bits & CAMG_EHB != 0 || (camg.is_none() && colors <= 32) => {
-                Self::ExtraHalfBrite
-            }
-            6 if camg.is_none() => Self::Ham6,
+            // A HAM picture one plane short reads the missing top plane as 0.
+            5 | 6 if ham => Self::Ham6,
+            7 | 8 if ham => Self::Ham8,
+            6 if camg_bits & CAMG_EHB != 0 => Self::ExtraHalfBrite,
+            // No CAMG: 16 colors is HAM6, 32 is EHB, anything else indexed.
+            6 if camg.is_none() && colors == 32 => Self::ExtraHalfBrite,
+            6 if camg.is_none() && colors == 16 => Self::Ham6,
             1..=8 => Self::Indexed,
             24 => Self::TrueColor,
             _ => return Err(DecodeError::Unrecognized),
@@ -389,6 +397,37 @@ mod tests {
         chunk[10..12].copy_from_slice(&height.to_be_bytes());
         chunk[16] = 1;
         chunk
+    }
+
+    fn mode(planes: usize, camg: Option<u32>, colors: usize) -> Mode {
+        let header = Header {
+            width: 1,
+            height: 1,
+            planes,
+            masking: 0,
+            compression: 0,
+        };
+        Mode::detect(&header, camg, colors, Layout::Interleaved).unwrap()
+    }
+
+    #[test]
+    fn six_planes_without_camg_are_guessed_from_the_palette_size() {
+        assert!(matches!(mode(6, None, 16), Mode::Ham6));
+        assert!(matches!(mode(6, None, 32), Mode::ExtraHalfBrite));
+        for colors in [0, 17, 24, 33, 64] {
+            assert!(matches!(mode(6, None, colors), Mode::Indexed));
+        }
+        // With a CAMG chunk, its flags decide.
+        assert!(matches!(mode(6, Some(CAMG_EHB), 64), Mode::ExtraHalfBrite));
+        assert!(matches!(mode(6, Some(0), 32), Mode::Indexed));
+    }
+
+    #[test]
+    fn ham_flag_also_applies_to_five_and_seven_planes() {
+        assert!(matches!(mode(5, Some(CAMG_HAM), 32), Mode::Ham6));
+        assert!(matches!(mode(7, Some(CAMG_HAM), 128), Mode::Ham8));
+        assert!(matches!(mode(5, None, 32), Mode::Indexed));
+        assert!(matches!(mode(4, Some(CAMG_HAM), 16), Mode::Indexed));
     }
 
     #[test]
