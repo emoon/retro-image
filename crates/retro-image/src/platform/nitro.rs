@@ -83,7 +83,7 @@ mod texture;
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{bgr555, check_size};
+use crate::image::{bgr555, check_size, widen_channel};
 use crate::{Companions, DecodeError, Format, Image};
 use character::Character;
 use screen::Screen;
@@ -182,14 +182,8 @@ fn pixel_color(palette: Option<&Palette>, bits: usize, number: usize, index: u8)
             let at = number << bits | usize::from(index);
             palette.colors.get(at).copied().unwrap_or(0)
         }
-        None => {
-            let gray = if bits == 4 {
-                u32::from(index) * 17
-            } else {
-                u32::from(index)
-            };
-            gray * 0x01_0101
-        }
+        // Pixel values of 4 or 8 bits, so the gray repeats the value's bits.
+        None => widen_channel(u32::from(index), bits as u32) * 0x01_0101,
     }
 }
 

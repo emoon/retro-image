@@ -35,7 +35,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size, over};
+use crate::image::{TRANSPARENT_FILL, check_size, over, widen_channel};
 use crate::{Companions, DecodeError, Format, Image};
 
 mod set;
@@ -261,7 +261,7 @@ fn read_palette(kcf: &[u8], group: usize) -> Option<Vec<u32>> {
     let group = if group < groups { group } else { 0 };
     let from = start.checked_add(group * colors * bytes)?;
     let data = kcf.get(from..from.checked_add(colors * bytes)?)?;
-    let expand = |v: u8| u32::from(v) * 17;
+    let expand = |v: u8| widen_channel(u32::from(v), 4);
     Some(if bits == 12 {
         // `rrrr bbbb`, `0000 gggg`.
         let colors = data.as_chunks::<2>().0.iter();

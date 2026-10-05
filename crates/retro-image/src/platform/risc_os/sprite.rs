@@ -37,7 +37,8 @@
 //!   module (`modules/rosprite.c`, MIT licence, notice below), which is also
 //!   the black-box reference for this decoder.
 //! - 16-bit pixels scaled to 8 bits by rounding `v * 255 / 31`, as Deark
-//!   does (`de_bgr555_to_888` in `src/deark-data.c`, same licence).
+//!   does (`de_bgr555_to_888` in `src/deark-data.c`, same licence). Bit
+//!   replication (`image::bgr555`) differs from it for 4 of the 32 values.
 //!
 //! Portions derived from Deark (<https://entropymine.com/deark/>),
 //! `modules/rosprite.c` and `src/deark-data.c`:

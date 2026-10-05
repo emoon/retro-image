@@ -32,7 +32,7 @@
 //!   rows of the stored data, with the padding in the first.
 
 use super::etc1;
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, over_fill, widen_channel};
 use crate::morton::morton_index;
 use crate::{DecodeError, Image};
 
@@ -109,9 +109,7 @@ impl Format {
     fn pixel(self, data: &[u8], index: usize) -> [u8; 4] {
         let byte = |i: usize| data[i];
         let word = |i: usize| u16::from_le_bytes([data[i * 2], data[i * 2 + 1]]);
-        let widen4 = |v: u16| (v * 17) as u8;
-        let widen5 = |v: u16| (v << 3 | v >> 2) as u8;
-        let widen6 = |v: u16| (v << 2 | v >> 4) as u8;
+        let widen = |v: u16, bits: u32| widen_channel(u32::from(v), bits) as u8;
         let nibble = |i: usize| u16::from(data[i / 2] >> (i % 2 * 4) & 15);
         match self {
             Self::Rgba8 => {
@@ -125,23 +123,28 @@ impl Format {
             Self::Rgba5551 => {
                 let w = word(index);
                 [
-                    widen5(w >> 11),
-                    widen5(w >> 6 & 31),
-                    widen5(w >> 1 & 31),
+                    widen(w >> 11, 5),
+                    widen(w >> 6 & 31, 5),
+                    widen(w >> 1 & 31, 5),
                     if w & 1 != 0 { 255 } else { 0 },
                 ]
             }
             Self::Rgb565 => {
                 let w = word(index);
-                [widen5(w >> 11), widen6(w >> 5 & 63), widen5(w & 31), 255]
+                [
+                    widen(w >> 11, 5),
+                    widen(w >> 5 & 63, 6),
+                    widen(w & 31, 5),
+                    255,
+                ]
             }
             Self::Rgba4 => {
                 let w = word(index);
                 [
-                    widen4(w >> 12),
-                    widen4(w >> 8 & 15),
-                    widen4(w >> 4 & 15),
-                    widen4(w & 15),
+                    widen(w >> 12, 4),
+                    widen(w >> 8 & 15, 4),
+                    widen(w >> 4 & 15, 4),
+                    widen(w & 15, 4),
                 ]
             }
             Self::La8 => {
@@ -160,14 +163,14 @@ impl Format {
             Self::A8 => [0, 0, 0, byte(index)],
             Self::La4 => {
                 let b = u16::from(byte(index));
-                let l = widen4(b >> 4);
-                [l, l, l, widen4(b & 15)]
+                let l = widen(b >> 4, 4);
+                [l, l, l, widen(b & 15, 4)]
             }
             Self::L4 => {
-                let l = widen4(nibble(index));
+                let l = widen(nibble(index), 4);
                 [l, l, l, 255]
             }
-            Self::A4 => [0, 0, 0, widen4(nibble(index))],
+            Self::A4 => [0, 0, 0, widen(nibble(index), 4)],
             Self::Etc1 | Self::Etc1A4 => unreachable!("compressed blocks decode in `tile`"),
         }
     }

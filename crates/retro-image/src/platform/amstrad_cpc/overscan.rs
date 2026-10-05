@@ -35,6 +35,7 @@ use alloc::vec::Vec;
 
 use super::amsdos::{amsdos_body, amsdos_extension};
 use super::hardware::{Mode, firmware_color, hardware_color, render};
+use crate::image::widen_channel;
 use crate::{DecodeError, Image};
 
 const LINE_BYTES: usize = 96;
@@ -80,7 +81,7 @@ impl Memory<'_> {
 
 /// Colour of a CPC Plus palette word: 4 bits per channel.
 fn plus_color(low: u8, high: u8) -> u32 {
-    let scale = |n: u8| u32::from(n & 15) * 0x11;
+    let scale = |n: u8| widen_channel(u32::from(n & 15), 4);
     scale(low >> 4) << 16 | scale(high) << 8 | scale(low)
 }
 

@@ -20,7 +20,7 @@
 use super::ilbm::{half_brite, ham};
 use crate::bytes::{be16, be32};
 use crate::codec::stos_pictbank;
-use crate::image::{check_size, rgb444};
+use crate::image::{check_size, rgb444, widen_channel};
 use crate::{DecodeError, Image};
 
 const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
@@ -106,7 +106,7 @@ fn draw(
                 ham(
                     held,
                     (value >> 4) as u32,
-                    (value & 15) as u32 * 0x11,
+                    widen_channel((value & 15) as u32, 4),
                     palette[value & 15],
                 )
             } else {

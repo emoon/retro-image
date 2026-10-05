@@ -92,8 +92,9 @@ pub(crate) fn over_fill_argb(argb: u32) -> u32 {
 
 /// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
 /// repeating its high bits, so that the largest value becomes 255.
-pub(crate) fn widen_channel(value: u32, bits: u32) -> u32 {
-    debug_assert!((1..=8).contains(&bits), "a channel has 1 to 8 bits");
+#[inline]
+pub(crate) const fn widen_channel(value: u32, bits: u32) -> u32 {
+    debug_assert!(matches!(bits, 1..=8), "a channel has 1 to 8 bits");
     let mut wide = value << (8 - bits);
     let mut have = bits;
     while have < 8 {

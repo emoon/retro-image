@@ -248,7 +248,7 @@ fn decode_block(
     match format {
         PixelFormat::I4 => {
             for (i, pixel) in tile.iter_mut().enumerate() {
-                *pixel = gray(nibble(block, i) * 17);
+                *pixel = gray(widen(nibble(block, i), 4));
             }
         }
         PixelFormat::C4 => {
@@ -264,7 +264,8 @@ fn decode_block(
         PixelFormat::IA4 => {
             for (pixel, &v) in tile.iter_mut().zip(block) {
                 let v = u32::from(v);
-                *pixel = argb((v >> 4) * 17, (v & 15) * 17, (v & 15) * 17, (v & 15) * 17);
+                let intensity = widen(v & 15, 4);
+                *pixel = argb(widen(v >> 4, 4), intensity, intensity, intensity);
             }
         }
         PixelFormat::C8 => {

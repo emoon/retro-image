@@ -22,6 +22,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::image::widen_channel;
+
 /// 64 KiB of VRAM plus how many bytes, from address 0, were actually loaded.
 pub(super) struct Vram {
     data: Vec<u8>,
@@ -90,14 +92,12 @@ pub(in crate::platform) type Palette = [u32; 16];
 
 /// Scales a 3-bit level to 8 bits.
 pub(super) const fn level3(v: u8) -> u32 {
-    let v = (v & 7) as u32;
-    (v << 5 | v << 2 | v >> 1) & 0xff
+    widen_channel((v & 7) as u32, 3)
 }
 
 /// Scales a 5-bit level to 8 bits.
 pub(in crate::platform) const fn level5(v: u8) -> u32 {
-    let v = (v & 31) as u32;
-    v << 3 | v >> 2
+    widen_channel((v & 31) as u32, 5)
 }
 
 pub(super) const fn rgb3(r: u8, g: u8, b: u8) -> u32 {

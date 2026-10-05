@@ -72,7 +72,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels, widen_channel};
 use crate::{BitOrder, DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -407,7 +407,7 @@ pub(super) fn ega_64(index: u8) -> u32 {
 /// `0xRRGGBB`, each value scaled `v * 4 + v / 16`. Also used by the
 /// text-mode art formats.
 pub(super) fn vga_rgb(rgb: [u8; 3]) -> u32 {
-    let scale = |v: u8| u32::from((v & 63) << 2 | (v & 63) >> 4);
+    let scale = |v: u8| widen_channel(u32::from(v & 63), 6);
     scale(rgb[0]) << 16 | scale(rgb[1]) << 8 | scale(rgb[2])
 }
 

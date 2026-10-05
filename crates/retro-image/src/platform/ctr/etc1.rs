@@ -30,6 +30,8 @@
 //! the small negative and 11 the large negative one. ETC1A4 puts 64 bits of
 //! 4-bit alpha (pixel 0 in bits 0-3) before the ETC1 block.
 
+use crate::image::widen_channel;
+
 /// The (small, large) modifier of each table.
 const MODIFIERS: [(i16, i16); 8] = [
     (2, 8),
@@ -51,10 +53,7 @@ pub(super) fn decode_block(block: u64, alpha: Option<u64>) -> [[u8; 4]; 16] {
     let differential = field(33, 1) != 0;
     let (first, second) = if differential {
         let signed = |v: i16| if v >= 4 { v - 8 } else { v };
-        let widen = |v: i16| {
-            let v = v.clamp(0, 31);
-            (v << 3 | v >> 2) as u8
-        };
+        let widen = |v: i16| widen_channel(v.clamp(0, 31) as u32, 5) as u8;
         let channel = |shift: u32| {
             let base = field(shift + 3, 5);
             [widen(base), widen(base + signed(field(shift, 3)))]
@@ -62,7 +61,7 @@ pub(super) fn decode_block(block: u64, alpha: Option<u64>) -> [[u8; 4]; 16] {
         let (red, green, blue) = (channel(56), channel(48), channel(40));
         ([red[0], green[0], blue[0]], [red[1], green[1], blue[1]])
     } else {
-        let widen = |v: i16| (v * 17) as u8;
+        let widen = |v: i16| widen_channel(v as u32, 4) as u8;
         let channel = |shift: u32| [widen(field(shift + 4, 4)), widen(field(shift, 4))];
         let (red, green, blue) = (channel(56), channel(48), channel(40));
         ([red[0], green[0], blue[0]], [red[1], green[1], blue[1]])
@@ -83,7 +82,9 @@ pub(super) fn decode_block(block: u64, alpha: Option<u64>) -> [[u8; 4]; 16] {
             _ => -large,
         };
         let [r, g, b] = bases[half].map(|c| (i16::from(c) + modifier).clamp(0, 255) as u8);
-        let a = alpha.map_or(255, |alpha| ((alpha >> (4 * k) & 15) * 17) as u8);
+        let a = alpha.map_or(255, |alpha| {
+            widen_channel((alpha >> (4 * k) & 15) as u32, 4) as u8
+        });
         *pixel = [r, g, b, a];
     }
     pixels

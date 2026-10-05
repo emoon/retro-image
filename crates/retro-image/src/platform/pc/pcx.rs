@@ -29,7 +29,7 @@ use alloc::vec::Vec;
 
 use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
-use crate::image::{check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 128;
@@ -118,10 +118,12 @@ pub(super) fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), Decode
 fn scale_levels(rgb: &mut [u8]) {
     if rgb.iter().all(|&v| v & 0x3f == 0) {
         for v in rgb.iter_mut() {
-            *v = (u32::from(*v >> 6) * 85) as u8;
+            *v = widen_channel(u32::from(*v >> 6), 2) as u8;
         }
     } else if rgb.iter().all(|&v| v < 64) {
         for v in rgb.iter_mut() {
+            // Not `widen_channel`: this differs from bit replication for 30
+            // of the 64 values.
             *v = (u32::from(*v) * 255 / 63) as u8;
         }
     }

@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use super::ilbm::ham;
 use crate::bytes::be32;
 use crate::codec::{inflate, powerpacker, xpk};
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, over_fill, widen_channel};
 use crate::{DecodeError, Image};
 
 /// `ViewMode` bits that say 6- and 8-bit indexed data is really HAM or
@@ -152,14 +152,14 @@ fn draw_row(pixels: Pixels, row: &[u8], palette: &[u32; 256], out: &mut [[u8; 3]
                 ham(
                     held,
                     v >> 4 & 3,
-                    (v & 15) * 0x11,
+                    widen_channel(v & 15, 4),
                     palette[(v & 15) as usize],
                 )
             }
             Pixels::Ham8 => {
                 let v = u32::from(row[x]);
                 let data = v & 63;
-                ham(held, v >> 6, data << 2 | data >> 4, palette[data as usize])
+                ham(held, v >> 6, widen_channel(data, 6), palette[data as usize])
             }
             Pixels::Rgb24 => rgb(&row[x * 3..]),
             Pixels::Rgba32 => over_fill(rgb(&row[x * 4..]), row[x * 4 + 3]),

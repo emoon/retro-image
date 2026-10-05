@@ -51,7 +51,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, over_fill};
+use crate::image::{TRANSPARENT_FILL, over_fill, widen_channel};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
@@ -137,7 +137,7 @@ fn palette(data: &[u8], at: usize) -> Option<Vec<u32>> {
 
 /// A color word as `0xRRGGBB`, its alpha blended onto the transparent fill.
 fn argb4444(word: u16) -> u32 {
-    let channel = |shift: u32| u32::from(word >> shift & 15) * 17;
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 15), 4);
     let color = channel(8) << 16 | channel(4) << 8 | channel(0);
     over_fill(color, (channel(12)) as u8)
 }

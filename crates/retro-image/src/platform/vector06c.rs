@@ -17,6 +17,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::image::widen_channel;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[Format::new(
@@ -80,12 +81,13 @@ fn unpack_backwards(stream: &[u8]) -> Result<Vec<u8>, DecodeError> {
     Ok(screen)
 }
 
-/// A `BBGGGRRR` palette byte as RGB. Red spreads its 8 levels evenly over
-/// 0-255 (rounded), green steps by 36 and blue by 85.
+/// A `BBGGGRRR` palette byte as RGB. Red and blue repeat their bits, so red
+/// spreads its 8 levels evenly over 0-255 and blue steps by 85; green steps
+/// by 36, which makes its top level 252.
 fn color(v: u8) -> u32 {
-    let r = (u32::from(v & 7) * 255 + 3) / 7;
+    let r = widen_channel(u32::from(v & 7), 3);
     let g = u32::from(v >> 3 & 7) * 36;
-    let b = u32::from(v >> 6) * 85;
+    let b = widen_channel(u32::from(v >> 6), 2);
     r << 16 | g << 8 | b
 }
 

@@ -16,6 +16,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::widen_channel;
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] = &[
@@ -220,7 +221,7 @@ fn color(value: u8) -> u32 {
     let bright = (value >> 3) & 1;
     let channel = |low: u8, high: u8| {
         let level = ((value >> high) & 1) << 2 | ((value >> low) & 1) << 1 | bright;
-        u32::from(level << 5 | level << 2 | level >> 1)
+        widen_channel(u32::from(level), 3)
     };
     channel(1, 5) << 16 | channel(2, 6) << 8 | channel(0, 4)
 }

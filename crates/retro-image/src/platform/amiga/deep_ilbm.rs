@@ -30,7 +30,7 @@ use super::iff::find;
 use super::ilbm::scale_factors;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::{check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 const MASK_HAS_MASK: u8 = 1;
@@ -49,7 +49,7 @@ fn channels(planes: usize) -> Option<usize> {
 /// Scales a `bits`-wide channel value to 8 bits.
 fn to_byte(value: u32, bits: usize) -> u32 {
     match bits {
-        4 => value * 17,
+        4 => widen_channel(value, 4),
         8 => value,
         _ => value >> (bits - 8),
     }

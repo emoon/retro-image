@@ -16,12 +16,12 @@
 use alloc::vec::Vec;
 
 use crate::bytes::be16;
+use crate::image::widen_channel;
 use crate::{BitOrder, Image, simd};
 
 /// Replicates a 3-bit value to 8 bits.
 pub(super) fn scale3(v: u16) -> u32 {
-    let v = u32::from(v & 7);
-    (v << 5) | (v << 2) | (v >> 1)
+    widen_channel(u32::from(v & 7), 3)
 }
 
 /// One component of an ST/STE palette word, already shifted down to its
@@ -29,7 +29,7 @@ pub(super) fn scale3(v: u16) -> u32 {
 fn component(nibble: u16, ste: bool) -> u32 {
     if ste {
         let v = ((nibble & 7) << 1) | ((nibble >> 3) & 1);
-        u32::from(v) * 0x11
+        widen_channel(u32::from(v), 4)
     } else {
         scale3(nibble)
     }

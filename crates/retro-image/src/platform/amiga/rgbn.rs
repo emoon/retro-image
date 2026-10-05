@@ -18,7 +18,7 @@
 use super::iff::find;
 use super::ilbm::{Header, scale_factors};
 use crate::bytes::{be16, be32};
-use crate::image::check_size;
+use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 /// Which of the two entry layouts a FORM uses.
@@ -85,7 +85,7 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
 /// The colour, repeat count and byte length of the RGBN entry at `pos`.
 fn rgbn_entry(body: &[u8], pos: usize) -> Option<(u32, usize, usize)> {
     let word = be16(body, pos)?;
-    let expand = |n: u16| u32::from(n & 15) * 17;
+    let expand = |n: u16| widen_channel(u32::from(n & 15), 4);
     let color = expand(word >> 12) << 16 | expand(word >> 8) << 8 | expand(word >> 4);
     match word & 7 {
         0 => match *body.get(pos + 2)? {
