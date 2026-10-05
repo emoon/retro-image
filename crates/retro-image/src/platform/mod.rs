@@ -24,6 +24,7 @@ mod oric;
 mod pc;
 mod pico8;
 mod playstation;
+mod ps1_memory_card;
 mod psion;
 mod risc_os;
 mod sam_coupe;
@@ -60,6 +61,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     pc::FORMATS,
     pico8::FORMATS,
     playstation::FORMATS,
+    ps1_memory_card::FORMATS,
     psion::FORMATS,
     risc_os::FORMATS,
     sam_coupe::FORMATS,
