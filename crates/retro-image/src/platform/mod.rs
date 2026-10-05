@@ -30,6 +30,7 @@ mod risc_os;
 mod sam_coupe;
 mod sharp_x68000;
 mod sinclair_ql;
+mod sstv;
 mod tandy1000;
 mod textmode;
 mod thomson;
@@ -65,6 +66,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,
     sinclair_ql::FORMATS,
+    sstv::FORMATS,
     tandy1000::FORMATS,
     textmode::FORMATS,
     thomson::FORMATS,
