@@ -23,6 +23,7 @@ mod bytes;
 mod codec;
 mod error;
 mod format;
+mod icon_sheet;
 mod image;
 mod json;
 mod macbinary;

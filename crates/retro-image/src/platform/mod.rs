@@ -4,21 +4,26 @@
 //! No external format knowledge: the list of platform modules. Each module
 //! cites its own sources; the platform surveys are in `docs/research/`.
 
+mod amateur_radio;
 mod amiga;
 mod amstrad_cpc;
+mod amstrad_pcw;
 mod apple;
 mod atari8;
 mod atari_st;
 mod bbc_micro;
 mod commodore;
+mod dec_vt340;
 mod electronika;
 mod fm_towns;
 mod game_boy;
 mod hp48;
+mod kiss;
 mod msx;
 mod nec_pc;
 mod nes;
 mod oric;
+mod palm_os;
 mod pc;
 mod playstation;
 mod psion;
@@ -37,6 +42,7 @@ mod zx_spectrum;
 use crate::Format;
 
 pub(crate) static ALL: &[&[Format]] = &[
+    amateur_radio::FORMATS,
     amiga::FORMATS,
     amstrad_cpc::FORMATS,
     apple::FORMATS,
@@ -44,14 +50,17 @@ pub(crate) static ALL: &[&[Format]] = &[
     atari_st::FORMATS,
     bbc_micro::FORMATS,
     commodore::FORMATS,
+    dec_vt340::FORMATS,
     electronika::FORMATS,
     fm_towns::FORMATS,
     game_boy::FORMATS,
     hp48::FORMATS,
+    kiss::FORMATS,
     msx::FORMATS,
     nes::FORMATS,
     nec_pc::FORMATS,
     oric::FORMATS,
+    palm_os::FORMATS,
     pc::FORMATS,
     playstation::FORMATS,
     psion::FORMATS,
@@ -66,4 +75,9 @@ pub(crate) static ALL: &[&[Format]] = &[
     unix::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
+    // Last: formats recognized by size alone (PCW `.cut`, `.grf` and `.spc`,
+    // the KiSS conventional `.cel`), so every other claimant of those
+    // extensions goes first.
+    amstrad_pcw::FORMATS,
+    kiss::BY_SIZE,
 ];

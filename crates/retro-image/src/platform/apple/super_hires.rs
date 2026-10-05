@@ -21,6 +21,12 @@
 //!   the 32 KB screen dump passed through PackBytes.
 //! - Paintworks: File Type Note $C0/0000
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0000>).
+//! - Paintworks animation (`ANI`): CiderPress II's file format notes
+//!   (<https://github.com/fadden/CiderPress2>, `FileConv/Gfx/PaintworksAnim-notes.md`,
+//!   from Antoine Vignau's reverse engineering): a 32 KB screen dump, a
+//!   length field equal to the file length minus `$8008`, then the frames.
+//!   Only the first frame is shown. No sample file was found, so this is
+//!   unverified apart from a unit test.
 //! - Output size (640-mode pictures at 640 pixels with doubled lines,
 //!   320-mode lines doubled horizontally next to them): observed from
 //!   `recoil2png` output.
@@ -28,7 +34,7 @@
 use alloc::vec::Vec;
 
 use super::pack_bytes;
-use crate::bytes::le16;
+use crate::bytes::{le16, le32};
 use crate::{DecodeError, Image};
 
 const LINE_LEN: usize = 160;
@@ -222,6 +228,23 @@ pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
     render(&lines, 320)
 }
 
+/// Paintworks animation (ProDOS `ANI`): the first frame is a $C1/0000 screen
+/// dump, followed by a length (the rest of the file after 8 header bytes), a
+/// frame delay, a flags word and the changes that make up the other frames.
+/// Only the length ties the file to the format, so it must match exactly.
+pub(super) fn decode_animation(data: &[u8]) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    let after = data
+        .len()
+        .checked_sub(0x8008)
+        .filter(|&n| n > 0)
+        .ok_or(fail)?;
+    if le32(data, 0x8000).map(|length| length as usize) != Some(after) {
+        return Err(fail);
+    }
+    decode_screen(&data[..0x8000])
+}
+
 /// $C0/0002 (Apple Preferred Format): a list of named blocks.
 pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
@@ -327,6 +350,21 @@ mod tests {
         let mut longer = packed.clone();
         longer.extend_from_slice(&[0x40, 0]);
         assert!(decode_packed_screen(&longer).is_err());
+    }
+
+    #[test]
+    fn animation_shows_its_first_frame_and_needs_a_matching_length() {
+        let mut data = alloc::vec![0u8; 0x8000 + 8 + 8];
+        data[0x8000..0x8004].copy_from_slice(&8u32.to_le_bytes());
+        // Color 0 of palette 0 is red.
+        data[0x7e01] = 0x0f;
+        let image = decode_animation(&data).unwrap();
+        assert_eq!(image, decode_screen(&data[..0x8000]).unwrap());
+        assert_eq!(image.get(0, 0), 0xff0000);
+        data[0x8000] = 9;
+        assert!(decode_animation(&data).is_err());
+        // A plain screen dump has no trailer.
+        assert!(decode_animation(&data[..0x8000]).is_err());
     }
 
     #[test]

@@ -14,6 +14,7 @@
 //! `super_hires.rs`.
 
 mod dreamgrafix;
+mod finder_icons;
 mod hires;
 mod macpaint;
 mod pack_bytes;
@@ -71,6 +72,22 @@ pub(super) static FORMATS: &[Format] = &[
         "DreamGrafix",
         &["256", "3200"],
         dreamgrafix::decode,
+    )
+    .signature(),
+    // The length field after the first frame ties the file to the format.
+    Format::new(
+        "Apple IIGS",
+        "Paintworks animation",
+        &["ani"],
+        super_hires::decode_animation,
+    )
+    .signature(),
+    // The icon file header (zero, ID 1, zero) is strict enough to tell it by content.
+    Format::new(
+        "Apple IIGS",
+        "Finder icons",
+        &["icon", "icons"],
+        finder_icons::decode,
     )
     .signature(),
     Format::new(
