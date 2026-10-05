@@ -50,6 +50,16 @@ pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, 
     if data.len() != NAMES_LEN && data.len() != WITH_ATTRIBUTES_LEN {
         return Err(DecodeError::Unrecognized);
     }
+    draw_screen(data, companions)
+}
+
+/// Draws a screen of 960 tile numbers, followed by 64 attribute bytes or
+/// not, with the `.chr` and `.pal` that sit beside the file `companions`
+/// belongs to.
+pub(super) fn draw_screen(
+    screen: &[u8],
+    companions: &dyn Companions,
+) -> Result<Image, DecodeError> {
     let pattern = companions.get("chr").ok_or(DecodeError::Unrecognized)?;
     if pattern.len() != PATTERN_TABLE_LEN && pattern.len() != 2 * PATTERN_TABLE_LEN {
         return Err(DecodeError::Unrecognized);
@@ -70,7 +80,7 @@ pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, 
             _ => {}
         }
     }
-    let (names, attributes) = data.split_at(NAMES_LEN);
+    let (names, attributes) = screen.split_at(NAMES_LEN);
     let pattern = background_table(&pattern, names);
     Nametable {
         width: WIDTH,
