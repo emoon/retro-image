@@ -25,6 +25,7 @@
 mod animator;
 mod animator_pro;
 mod bmp;
+mod cga;
 mod colorix;
 mod dcx;
 mod flf;
