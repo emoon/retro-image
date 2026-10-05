@@ -25,7 +25,7 @@ copyright notice and licence text.
 | [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
-| [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on our thumbnails |
+| [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on the decoded thumbnails |
 
 ## Documentation
 

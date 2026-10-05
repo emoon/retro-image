@@ -13,8 +13,10 @@
 //! - Reverse engineered from samples: the low nibble is the left pixel and the
 //!   tiles go in raster order. Checked against the 49 distinct files of
 //!   `corpus/extra/nintendo-rom-icons/flipnote`, whose preview frame
-//!   flipnote.js renders (run as a black box); each thumbnail matches that frame
-//!   scaled down.
+//!   flipnote.js renders (run as a black box). 46 thumbnails match that frame
+//!   scaled down closely; two are of black-paper notes, which the thumbnail
+//!   draws dark gray where flipnote.js draws black, and one (`fdd.ppm`) holds a
+//!   thumbnail of a different picture than its preview frame.
 //!
 //! Only the thumbnail is drawn, not the 256x192 frames. The magic alone is a
 //! weak signature, so a file is accepted only if the `u16` at 0x0E is 0x24 (as
