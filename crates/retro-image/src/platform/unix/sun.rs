@@ -16,15 +16,14 @@
 //!   PBM samples of the same picture); found by comparing the `input.im1` and
 //!   `input_p1.pbm` samples, not stated by the page.
 //!
-//! Types 4 (TIFF), 5 (IFF) and the experimental type are not accepted, nor
-//! are depths other than 1, 8, 24 and 32. The first byte of a 32-bit pixel
-//! is alpha when any pixel has it non-zero, and unused when all are 0. The
-//! `abydos.im32` sample (a converted RGBA picture) has real alpha there,
-//! while older files leave the pad byte 0; Deark makes the same choice.
-//! Alpha is composited onto the shared transparent-fill gray. A color map
-//! on a 24 or 32-bit raster is skipped, and a raw color map on a 1 or 8-bit
-//! raster is ignored (8-bit pictures then show their values as grays).
-//! Palette entries missing from a short map are black.
+//! Types 4 (TIFF), 5 (IFF) and the experimental type are not accepted, nor are
+//! depths other than 1, 8, 24 and 32. The first byte of a 32-bit pixel is alpha
+//! when any pixel has it non-zero, and unused when all are 0. The `abydos.im32`
+//! sample (a converted RGBA picture) has real alpha there, while older files
+//! leave the pad byte 0; Deark makes the same choice. Alpha is kept. A color
+//! map on a 24 or 32-bit raster is skipped, and a raw color map on a 1 or 8-bit
+//! raster is ignored (8-bit pictures then show their values as grays). Palette
+//! entries missing from a short map are black.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's Sun reader pixel
 //! for pixel on the ten samples without alpha and Deark's on all twelve (the
@@ -36,7 +35,6 @@ use alloc::vec::Vec;
 
 use crate::bytes::be32;
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{BitOrder, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -113,13 +111,10 @@ pub(super) fn decode_sun(data: &[u8]) -> Result<Image, DecodeError> {
                 let [a, b, c] = [pixel[bytes - 3], pixel[bytes - 2], pixel[bytes - 1]];
                 let (r, g, b) = if rgb_order { (a, b, c) } else { (c, b, a) };
                 let color = u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b);
-                if has_alpha {
-                    over_fill(color, pixel[0])
-                } else {
-                    color
-                }
+                let alpha = if has_alpha { pixel[0] } else { 255 };
+                u32::from(alpha) << 24 | color
             });
-            Ok(Image::from_colors(w, h, colors))
+            Ok(Image::from_argb(w, h, colors))
         }
     }
 }

@@ -32,12 +32,10 @@
 //!   not in the samples and follow the documents only.
 //!
 //! A save with a banner shows it; a save without one shows its first icon (a
-//! later frame of an animation is not shown). Transparent pixels are
-//! composited onto the shared fill color.
+//! later frame of an animation is not shown). Alpha is kept.
 
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};
-use crate::image::over_fill_argb;
 use crate::{DecodeError, Image};
 
 const BANNER_WIDTH: usize = 96;
@@ -160,10 +158,10 @@ fn picture(
             gx::decode(PixelFormat::C8, width, height, pixels, &colors)?
         }
     };
-    Some(Image::from_colors(
+    Some(Image::from_argb(
         width as u32,
         height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 

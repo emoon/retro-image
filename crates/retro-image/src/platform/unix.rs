@@ -17,8 +17,8 @@
 //! Intermediate picture.
 //!
 //! `to_byte` below scales samples of any maximum, such as the 16-bit ones of
-//! farbfeld and PNM, to the 8 bits `Image` holds. Alpha is blended onto the
-//! shared fill by `crate::image::over_fill`.
+//! farbfeld and PNM, to the 8 bits `Image` holds. Alpha stays straight alpha,
+//! as `Image::set_argb` and `Image::from_argb` take it.
 
 mod c_source;
 mod farbfeld;

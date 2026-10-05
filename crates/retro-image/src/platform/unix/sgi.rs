@@ -12,13 +12,12 @@
 //!   bit 7, ended by a zero count; 16-bit rows use the same packets on
 //!   16-bit units.
 //!
-//! One channel is gray, two are gray and alpha, three RGB and four RGBA;
-//! alpha is composited onto the shared transparent-fill gray. 16-bit samples
-//! scale to 8 bits by rounding. Only color map id 0 (normal) is accepted, and
-//! the pixel minimum and maximum are ignored: samples are not stretched
-//! (`greytest.rgb` has a maximum of 146 and Pillow shows it unstretched too).
-//! The length table is not used, since each row ends with a zero count or at
-//! the picture width.
+//! One channel is gray, two are gray and alpha, three RGB and four RGBA; alpha
+//! is kept. 16-bit samples scale to 8 bits by rounding. Only color map id 0
+//! (normal) is accepted, and the pixel minimum and maximum are ignored: samples
+//! are not stretched (`greytest.rgb` has a maximum of 146 and Pillow shows it
+//! unstretched too). The length table is not used, since each row ends with a
+//! zero count or at the picture width.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's SGI reader and
 //! Deark's pixel for pixel on the 15 samples with 8-bit channels. On the
@@ -30,7 +29,6 @@
 use super::to_byte;
 use crate::bytes::{be16, be32};
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -113,12 +111,12 @@ pub(super) fn decode_sgi(data: &[u8]) -> Result<Image, DecodeError> {
                 1 | 2 => at(0, x) * 0x01_0101,
                 _ => at(0, x) << 16 | at(1, x) << 8 | at(2, x),
             };
-            let color = match channels {
-                2 => over_fill(color, at(1, x) as u8),
-                4 => over_fill(color, at(3, x) as u8),
-                _ => color,
+            let alpha = match channels {
+                2 => at(1, x),
+                4 => at(3, x),
+                _ => 255,
             };
-            image.set(x as u32, y as u32, color);
+            image.set_argb(x as u32, y as u32, alpha << 24 | color);
         }
     }
     Ok(image)
@@ -175,7 +173,7 @@ fn read_row(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
     use alloc::vec::Vec;
 
     fn header(storage: u8, bpc: u8, dimension: u16, size: [u16; 3]) -> Vec<u8> {
@@ -220,11 +218,11 @@ mod tests {
     }
 
     #[test]
-    fn sixteen_bit_alpha_scales_and_composites() {
+    fn sixteen_bit_alpha_scales_and_is_kept() {
         // 1x1 gray and alpha at 16 bits: white, fully transparent.
         let mut file = header(0, 2, 3, [1, 1, 2]);
         file.extend_from_slice(&[0xff, 0xff, 0, 0]);
-        assert_eq!(decode_sgi(&file).unwrap().get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(decode_sgi(&file).unwrap().get_argb(0, 0), CLEAR);
         let mut opaque = header(0, 2, 3, [1, 1, 2]);
         opaque.extend_from_slice(&[0x80, 0, 0xff, 0xff]);
         assert_eq!(decode_sgi(&opaque).unwrap().get(0, 0), 0x808080);

@@ -15,6 +15,12 @@
 //!   pixels, DPI 180/90/45/22 as eigen factors 0-3, palettes for up to
 //!   8 bpp from RISC OS 3.6: PRM volume 5a, "Video",
 //!   <http://www.riscos.com/support/developers/prm/video.html>.
+//! - Masks (PRM, "Sprites", "Masks"): the sprite's mask offset is the image
+//!   offset when there is no mask. In a sprite with a mode number the mask
+//!   has the image's layout (width in words, bits per pixel, left-hand
+//!   wastage); in a RISC OS 3.5 sprite it has 1 bit per pixel, rows padded to
+//!   whole words. A pixel is opaque when its mask bits are not all zero.
+//!   A mask that does not fit in the file is ignored.
 //! - Mode numbers 0-46 (pixel resolution, OS-unit resolution, colours):
 //!   PRM volume 4, "Table B: Modes",
 //!   <http://www.riscos.com/support/developers/prm/modes.html>; the eigen
@@ -142,6 +148,18 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
     check_size(width * sx as usize, height * sy as usize)?;
     let palette = &sprite[HEADER_LEN..image_at];
 
+    // The mask has the image's layout for a mode number, else 1 bit per pixel.
+    let mask_at = word(36)? as usize;
+    let (mask_bpp, mask_stride) = if format.is_mode_number {
+        (bpp, stride)
+    } else {
+        (1, width.div_ceil(32) * 4)
+    };
+    let mask = (mask_at != image_at)
+        .then(|| mask_stride.checked_mul(height)?.checked_add(mask_at))
+        .flatten()
+        .filter(|_| mask_at >= HEADER_LEN)
+        .and_then(|end| sprite.get(mask_at..end));
     let mut image = Image::new(width as u32, height as u32);
     match format.kind {
         Kind::Indexed => {
@@ -170,6 +188,15 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
                 }
             }
         }
+    }
+    if let Some(mask) = mask {
+        let opaque =
+            |row: &[u8], x: usize| indexed_pixel(row, first_bit + x * mask_bpp, mask_bpp) != 0;
+        let alpha = mask
+            .chunks_exact(mask_stride)
+            .flat_map(|row| (0..width).map(move |x| if opaque(row, x) { 255 } else { 0 }))
+            .collect();
+        image = image.with_alpha(alpha);
     }
     image.scaled(sx, sy)
 }
@@ -587,6 +614,24 @@ mod tests {
             (image.get(0, 0), image.get(1, 0), image.get(2, 0)),
             (0x222222, 0x333333, 0x444444)
         );
+    }
+
+    #[test]
+    fn a_mode_number_mask_has_the_image_layout() {
+        // The sprite of the test above with a 4 bpp mask after the image:
+        // opaque, transparent, opaque. The mask offset is at byte 48 of the file.
+        let palette: Vec<u32> = (0..16).map(|i| i * 0x111111).collect();
+        let mut file = sprite_file(27, 1, 1, (4, 15), &palette, &[0x21, 0x43, 0, 0]);
+        let mask_at = (HEADER_LEN + palette.len() * 8 + 4) as u32;
+        file[48..52].copy_from_slice(&mask_at.to_le_bytes());
+        file.extend_from_slice(&[0xf0, 0xf0, 0, 0]);
+        let image = decode(&file).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xff22_2222);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
+        assert_eq!(image.get_argb(2, 0), 0xff44_4444);
+        // A mask offset past the end of the file is ignored.
+        file[48..52].copy_from_slice(&0x10000u32.to_le_bytes());
+        assert!(!decode(&file).unwrap().has_alpha());
     }
 
     #[test]

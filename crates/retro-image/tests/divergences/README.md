@@ -22,3 +22,5 @@ oracle's failure message prints `ours: WxH HASH` for copying.
 Columns (tab-separated), `#` starts a comment line:
 
     corpus id <TAB> WxH <TAB> fnv1a64 <TAB> evidence
+
+The hash covers the RGB bytes and, for an image with alpha, the alpha plane after them.

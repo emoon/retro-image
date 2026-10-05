@@ -20,7 +20,7 @@
 //! banner lies inside the file and its own CRC-16 matches. That is strict
 //! enough for content detection.
 //!
-//! Color 0 is transparent and is drawn as the shared transparent-fill gray.
+//! Color 0 is transparent.
 //! A DSi banner (version `0x0103`) with an animation is drawn as its first
 //! frame: the first token of the sequence picks a bitmap, a palette and
 //! flips. A first token of 0 means the static icon. The TWiLight Menu
@@ -30,7 +30,7 @@
 //! test built from GBATEK's description.
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, bgr555};
+use crate::image::{CLEAR, bgr555};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Image};
 
@@ -105,11 +105,11 @@ fn first_frame(banner: &[u8]) -> Result<Image, DecodeError> {
     let palette = banner
         .get(palette_at..palette_at + PALETTE_LEN)
         .ok_or(fail)?;
-    let mut colors = [TRANSPARENT_FILL; 16];
+    let mut colors = [CLEAR; 16];
     for (color, &word) in colors.iter_mut().zip(palette.as_chunks::<2>().0).skip(1) {
-        *color = bgr555(u16::from_le_bytes(word));
+        *color = 0xff00_0000 | bgr555(u16::from_le_bytes(word));
     }
-    let icon = TILE.sheet(bitmap, TILES_PER_ROW, &colors)?;
+    let icon = TILE.sheet_argb(bitmap, TILES_PER_ROW, &colors)?;
     Ok(flipped(&icon, flips & 1 != 0, flips & 2 != 0))
 }
 
@@ -119,9 +119,9 @@ fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Image {
     let source = |x: u32, y: u32| {
         let x = if horizontal { width - 1 - x } else { x };
         let y = if vertical { height - 1 - y } else { y };
-        icon.get(x, y)
+        icon.get_argb(x, y)
     };
-    Image::from_colors(
+    Image::from_argb(
         width,
         height,
         (0..height).flat_map(|y| (0..width).map(move |x| source(x, y))),
@@ -193,9 +193,9 @@ mod tests {
         assert_eq!((icon.width(), icon.height()), (32, 32));
         assert_eq!(icon.get(0, 0), 0xff0000);
         assert_eq!(icon.get(1, 0), 0x0000ff);
-        assert_eq!(icon.get(2, 0), TRANSPARENT_FILL);
+        assert_eq!(icon.get_argb(2, 0), CLEAR);
         assert_eq!(icon.get(8, 0), 0x00ff00);
-        assert_eq!(icon.get(9, 0), TRANSPARENT_FILL);
+        assert_eq!(icon.get_argb(9, 0), CLEAR);
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod tests {
         let icon = decode(&rom(&banner)).unwrap();
         // Flipped both ways, the top left pixel lands bottom right.
         assert_eq!(icon.get(31, 31), 0xff0000);
-        assert_eq!(icon.get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(icon.get_argb(0, 0), CLEAR);
         // A first token of 0 is the static icon.
         banner[SEQUENCE_AT] = 0;
         banner[SEQUENCE_AT + 1] = 0;

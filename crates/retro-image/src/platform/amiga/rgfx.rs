@@ -28,7 +28,6 @@
 use super::chunky::{Packing, Pixels, Rows, bitmap_bytes, render};
 use super::iff::find;
 use crate::bytes::be32;
-use crate::image::TRANSPARENT_FILL;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 13 * 4;
@@ -65,30 +64,31 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     }
     .ok_or(fail)?;
 
-    let palette = if pixels == Pixels::Indexed8 {
+    let (palette, clear) = if pixels == Pixels::Indexed8 {
         palette(contents).ok_or(fail)?
     } else {
-        [0; 256]
+        ([0; 256], None)
     };
     let body = find(contents, b"RBOD").ok_or(fail)?;
     let bytes = bitmap_bytes(packing, body, rows.len(pixels)?)?;
-    render(pixels, rows, &bytes, &palette)
+    render(pixels, rows, &bytes, &palette, clear)
 }
 
-/// The `RCOL` colors, with the transparent color (if the chunk says there is
-/// one) shown as the transparent fill.
-fn palette(contents: &[u8]) -> Option<[u32; 256]> {
+/// The `RCOL` colors, and the index of the transparent color if the chunk
+/// says there is one.
+fn palette(contents: &[u8]) -> Option<([u32; 256], Option<u8>)> {
     let rcol = find(contents, b"RCOL")?;
     let colors = rcol.get(8..8 + 256 * 3)?;
     let mut palette = [0u32; 256];
     for (entry, rgb) in palette.iter_mut().zip(colors.as_chunks::<3>().0) {
         *entry = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);
     }
-    if be32(rcol, 0)? == 1 {
-        let index = be32(rcol, 4)? as usize;
-        *palette.get_mut(index)? = TRANSPARENT_FILL;
-    }
-    Some(palette)
+    let clear = if be32(rcol, 0)? == 1 {
+        Some(u8::try_from(be32(rcol, 4)?).ok()?)
+    } else {
+        None
+    };
+    Some((palette, clear))
 }
 
 #[cfg(test)]
@@ -161,17 +161,17 @@ mod tests {
     }
 
     #[test]
-    fn the_transparent_color_shows_the_fill() {
-        let fill = TRANSPARENT_FILL.to_be_bytes();
+    fn the_transparent_color_is_clear() {
         let contents = [
             rghd(CHUNKY8, 8, 2, 0),
             rcol(Some(2)),
             chunk(b"RBOD", &[1, 2]),
         ]
         .concat();
+        let image = decode(&contents).unwrap();
         assert_eq!(
-            decode(&contents).unwrap().rgb(),
-            &[255, 0, 0, fill[1], fill[2], fill[3]]
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (0xffff_0000, crate::image::CLEAR)
         );
     }
 

@@ -7,9 +7,8 @@
 //!   per pixel in row-major order; the colors are sRGB and not
 //!   alpha-premultiplied.
 //!
-//! Samples scale to 8 bits by rounding and alpha is composited onto the
-//! shared transparent-fill gray. The magic is the signature. Data after the
-//! last pixel is ignored.
+//! Samples scale to 8 bits by rounding, and alpha is kept. The magic is the
+//! signature. Data after the last pixel is ignored.
 //!
 //! Verification: no RECOIL oracle. Output compared pixel for pixel with
 //! Deark's `farbfeld` module (see the divergence file `unix-rasters.tsv`).
@@ -17,7 +16,6 @@
 use super::to_byte;
 use crate::bytes::{be16, be32};
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -38,15 +36,15 @@ pub(super) fn decode_farbfeld(data: &[u8]) -> Result<Image, DecodeError> {
     let colors = pixels.iter().map(|pixel| {
         let [r, g, b, a] =
             [0, 2, 4, 6].map(|at| to_byte(be16(pixel, at).unwrap_or(0).into(), 0xffff));
-        over_fill(u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b), a)
+        u32::from_be_bytes([a, r, g, b])
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Ok(Image::from_argb(width as u32, height as u32, colors))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
 
     fn file(width: u32, height: u32, pixels: &[[u16; 4]]) -> alloc::vec::Vec<u8> {
         let mut bytes = MAGIC.to_vec();
@@ -59,12 +57,12 @@ mod tests {
     }
 
     #[test]
-    fn samples_scale_and_alpha_composites() {
+    fn samples_scale_and_alpha_is_kept() {
         let bytes = file(2, 1, &[[0xffff, 0x8000, 0, 0xffff], [0xffff, 0, 0, 0]]);
         let image = decode_farbfeld(&bytes).unwrap();
         assert_eq!(
-            (image.get(0, 0), image.get(1, 0)),
-            (0xff8000, TRANSPARENT_FILL)
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (0xffff_8000, CLEAR)
         );
     }
 

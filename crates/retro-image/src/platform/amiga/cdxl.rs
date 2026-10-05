@@ -104,7 +104,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     .into_iter()
     .map(|v| v as u8)
     .collect();
-    render(mode, rows, &indices, &palette)
+    render(mode, rows, &indices, &palette, None)
 }
 
 #[cfg(test)]

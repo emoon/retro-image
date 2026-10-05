@@ -6,7 +6,13 @@
 //!   <http://www.paulbourke.net/dataformats/tga/>: 18-byte header, image ID,
 //!   colour map, pixel data (types 1, 2, 3 raw; 9, 10, 11 run-length coded),
 //!   16-bit pixels as 1:5:5:5, bit 5 of the descriptor = top-to-bottom, bit 4
-//!   = right-to-left. The alpha channel of 16 and 32-bit pixels is ignored.
+//!   = right-to-left; the low 4 bits of the descriptor count the alpha
+//!   (attribute) bits per pixel.
+//!
+//! Alpha is read from a 32-bit pixel (or color-map entry) whose descriptor
+//! says 8 attribute bits, and from bit 15 of a 16-bit one whose descriptor
+//! says 1. An alpha that is 0 for every pixel is treated as unused, since many
+//! writers leave that byte or bit at 0.
 //!
 //! Version 1 files have no footer, so the format is chosen by extension only
 //! and the header is validated tightly (type, depth and colour-map
@@ -24,6 +30,16 @@ use crate::image::{check_size, xrgb1555};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 18;
+
+/// The alpha of a color-map entry or pixel of `pixel.len()` bytes, given the
+/// descriptor's attribute bit count: 255 where the layout has none.
+fn alpha_of(pixel: &[u8], attribute_bits: u8) -> u8 {
+    match (pixel, attribute_bits) {
+        ([.., a], 8) if pixel.len() == 4 => *a,
+        ([_, hi], 1) => 255 * (hi >> 7),
+        _ => 255,
+    }
+}
 
 /// One colour-map entry or pixel of 2 to 4 bytes as 0xRRGGBB.
 fn rgb_of(pixel: &[u8]) -> u32 {
@@ -70,10 +86,14 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
     let map_start = HEADER_LEN + id_len;
     let map_end = map_start + map_len * map_entry;
     let map_bytes = data.get(map_start..map_end).ok_or(fail)?;
-    let palette: Vec<u32> = if mapped {
-        map_bytes.chunks_exact(map_entry).map(rgb_of).collect()
+    let attribute_bits = descriptor & 0xf;
+    let (palette, palette_alpha): (Vec<u32>, Vec<u8>) = if mapped {
+        let entries = map_bytes.chunks_exact(map_entry);
+        entries
+            .map(|entry| (rgb_of(entry), alpha_of(entry, attribute_bits)))
+            .unzip()
     } else {
-        Vec::new()
+        (Vec::new(), Vec::new())
     };
     let bpp = depth.div_ceil(8);
     let count = width * height;
@@ -88,22 +108,38 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
 
     let top_down = descriptor & 0x20 != 0;
     let right_to_left = descriptor & 0x10 != 0;
+    // Mapped pixels get the alpha of their entry, so look at the entry size.
+    let has_alpha = match (mapped, kind & 7) {
+        (true, _) => {
+            (map_entry == 4 && attribute_bits == 8) || (map_entry == 2 && attribute_bits == 1)
+        }
+        (false, 2) => (bpp == 4 && attribute_bits == 8) || (bpp == 2 && attribute_bits == 1),
+        _ => false,
+    };
+    let mut alpha = has_alpha.then(|| alloc::vec![255u8; count]);
     let mut image = Image::new(width as u32, height as u32);
     for (i, pixel) in raw.chunks_exact(bpp).enumerate() {
-        let color = if mapped {
+        let (color, a) = if mapped {
             let index = usize::from(pixel[0]).checked_sub(map_first).ok_or(fail)?;
-            *palette.get(index).ok_or(fail)?
+            (*palette.get(index).ok_or(fail)?, palette_alpha[index])
         } else if kind & 7 == 3 {
-            u32::from(pixel[0]) * 0x01_01_01
+            (u32::from(pixel[0]) * 0x01_01_01, 255)
         } else {
-            rgb_of(pixel)
+            (rgb_of(pixel), alpha_of(pixel, attribute_bits))
         };
         let (row, col) = (i / width, i % width);
         let y = if top_down { row } else { height - 1 - row };
         let x = if right_to_left { width - 1 - col } else { col };
         image.set(x as u32, y as u32, color);
+        if let Some(plane) = &mut alpha {
+            plane[y * width + x] = a;
+        }
     }
-    Ok(image)
+    // An alpha that is 0 for every pixel is not used.
+    match alpha.filter(|plane| plane.iter().any(|&a| a != 0)) {
+        Some(plane) => Ok(image.with_alpha(plane)),
+        None => Ok(image),
+    }
 }
 
 /// Expands run-length packets into `count` pixels of `bpp` bytes.
@@ -166,6 +202,33 @@ mod tests {
         data.extend_from_slice(&[0x81, 0xff, 0x7f]);
         let image = decode_tga(&data).unwrap();
         assert_eq!(image.rgb(), &[255; 6]);
+    }
+
+    #[test]
+    fn eight_attribute_bits_make_a_32_bit_alpha() {
+        // 2x1, top-down, 8 attribute bits; BGRA.
+        let mut data = header(2, 32, 2, 1, 0x28);
+        data.extend_from_slice(&[3, 2, 1, 255, 6, 5, 4, 0x40]);
+        let image = decode_tga(&data).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xff01_0203);
+        assert_eq!(image.get_argb(1, 0), 0x4004_0506);
+        // With no attribute bits the fourth byte is padding.
+        let mut padded = header(2, 32, 2, 1, 0x20);
+        padded.extend_from_slice(&[3, 2, 1, 0, 6, 5, 4, 0]);
+        assert!(!decode_tga(&padded).unwrap().has_alpha());
+        // An alpha that is 0 everywhere is unused too.
+        let mut unused = header(2, 32, 2, 1, 0x28);
+        unused.extend_from_slice(&[3, 2, 1, 0, 6, 5, 4, 0]);
+        assert!(!decode_tga(&unused).unwrap().has_alpha());
+    }
+
+    #[test]
+    fn bit_15_is_the_alpha_of_a_16_bit_pixel_with_one_attribute_bit() {
+        let mut data = header(2, 16, 2, 1, 0x21);
+        data.extend_from_slice(&[0xff, 0xff, 0xff, 0x7f]);
+        let image = decode_tga(&data).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xffff_ffff);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
     }
 
     #[test]

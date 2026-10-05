@@ -22,8 +22,7 @@
 //! The picture has a row for every save in directory order, 3 icon frames
 //! wide (a save with fewer frames leaves the rest in its color 0), each save
 //! drawn with its own palette. A card without a valid save is rejected. The
-//! color `0000` is transparent and is blended onto the shared fill; `8000`
-//! is solid black.
+//! color `0000` is transparent; `8000` is solid black.
 //!
 //! Detection: size, `MC` and the header checksum are strict enough for
 //! `.signature()`. Single-save wrappers (`.mcs`, `.psv`, `.mcb`, `.psx`) and
@@ -33,7 +32,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{TRANSPARENT_FILL, bgr555};
+use crate::image::{CLEAR, bgr555};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
@@ -58,12 +57,12 @@ fn frame_is_checked(frame: &[u8]) -> bool {
     frame[..FRAME_LEN - 1].iter().fold(0, |sum, b| sum ^ b) == frame[FRAME_LEN - 1]
 }
 
-/// A palette entry as a color: `0000` is transparent.
+/// A palette entry as `0xAARRGGBB`: `0000` is transparent.
 fn color(word: u16) -> u32 {
     if word == 0 {
-        TRANSPARENT_FILL
+        CLEAR
     } else {
-        bgr555(word)
+        0xff00_0000 | bgr555(word)
     }
 }
 
@@ -81,7 +80,7 @@ fn icon_row(card: &[u8], block: usize) -> Option<Image> {
     let mut icons = alloc::vec![0; MAX_FRAMES * ICON.tile_len()];
     let shown = &card[block * BLOCK_LEN + FRAME_LEN..][..frames * ICON.tile_len()];
     icons[..shown.len()].copy_from_slice(shown);
-    ICON.sheet(&icons, MAX_FRAMES, &palette).ok()
+    ICON.sheet_argb(&icons, MAX_FRAMES, &palette).ok()
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
@@ -96,13 +95,9 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let width = rows.first().ok_or(fail)?.width();
     let height = ICON.height as u32 * rows.len() as u32;
     let pixels = rows.iter().flat_map(|row| {
-        row.rgb()
-            .as_chunks::<3>()
-            .0
-            .iter()
-            .map(|&[r, g, b]| u32::from_be_bytes([0, r, g, b]))
+        (0..row.height()).flat_map(move |y| (0..row.width()).map(move |x| row.get_argb(x, y)))
     });
-    Ok(Image::from_colors(width, height, pixels))
+    Ok(Image::from_argb(width, height, pixels))
 }
 
 #[cfg(test)]
@@ -132,7 +127,7 @@ mod tests {
         // Color 1, red 31 of 31; the low nibble is the left pixel, and color 0
         // is transparent.
         assert_eq!(image.get(0, 0), 0xff_0000);
-        assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
     }
 
     #[test]

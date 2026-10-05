@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use super::ilbm::ham;
 use crate::bytes::be32;
 use crate::codec::{inflate, powerpacker, xpk};
-use crate::image::{check_size, over_fill, widen_channel};
+use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 /// `ViewMode` bit that says indexed data is really HAM, at any depth. This
@@ -124,12 +124,14 @@ impl Rows {
     }
 }
 
-/// Draws `data` as a picture. `palette` is read for the indexed kinds.
+/// Draws `data` as a picture. `palette` is read for the indexed kinds, and
+/// `clear` is the palette index that is transparent, if the picture has one.
 pub(super) fn render(
     pixels: Pixels,
     rows: Rows,
     data: &[u8],
     palette: &[u32; 256],
+    clear: Option<u8>,
 ) -> Result<Image, DecodeError> {
     let len = rows.len(pixels)?;
     if data.len() < len {
@@ -139,6 +141,21 @@ pub(super) fn render(
     for (y, row) in data[..len].chunks_exact(rows.bytes_per_line).enumerate() {
         let out = image.row_mut(y as u32).as_chunks_mut::<3>().0;
         draw_row(pixels, row, palette, out);
+        match (pixels, clear) {
+            (Pixels::Rgba32, _) => {
+                let alpha = image.alpha_row_mut(y as u32);
+                for (slot, pixel) in alpha.iter_mut().zip(row.as_chunks::<4>().0) {
+                    *slot = pixel[3];
+                }
+            }
+            (Pixels::Indexed8, Some(clear)) => {
+                let alpha = image.alpha_row_mut(y as u32);
+                for (slot, &index) in alpha.iter_mut().zip(row) {
+                    *slot = if index == clear { 0 } else { 255 };
+                }
+            }
+            _ => {}
+        }
     }
     Ok(image)
 }
@@ -163,7 +180,7 @@ fn draw_row(pixels: Pixels, row: &[u8], palette: &[u32; 256], out: &mut [[u8; 3]
                 ham(held, v >> 6, widen_channel(data, 6), palette[data as usize])
             }
             Pixels::Rgb24 => rgb(&row[x * 3..]),
-            Pixels::Rgba32 => over_fill(rgb(&row[x * 4..]), row[x * 4 + 3]),
+            Pixels::Rgba32 => rgb(&row[x * 4..]),
         };
         held = color;
         let [_, r, g, b] = color.to_be_bytes();
@@ -179,7 +196,7 @@ fn rgb(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
 
     fn grays() -> [u32; 256] {
         core::array::from_fn(|i| u32::from(i as u8) * 0x01_0101)
@@ -194,7 +211,7 @@ mod tests {
             height: 2,
             bytes_per_line: 4,
         };
-        let image = render(Pixels::Indexed8, rows, &data, &grays()).unwrap();
+        let image = render(Pixels::Indexed8, rows, &data, &grays(), None).unwrap();
         assert_eq!(image.rgb(), &[1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
     }
 
@@ -207,7 +224,7 @@ mod tests {
             bytes_per_line: 0x4000_0000,
         };
         assert!(rows.len(Pixels::Indexed8).is_err());
-        assert!(render(Pixels::Indexed8, rows, &[0], &grays()).is_err());
+        assert!(render(Pixels::Indexed8, rows, &[0], &grays(), None).is_err());
         // Some padding is fine: up to twice the pixel bytes plus 64.
         let padded = Rows {
             bytes_per_line: 64 + 2,
@@ -230,11 +247,10 @@ mod tests {
         };
         // Red at alpha 255, 0 and 128.
         let data = [255, 0, 0, 255, 255, 0, 0, 0, 255, 0, 0, 128];
-        let image = render(Pixels::Rgba32, rows, &data, &grays()).unwrap();
-        let fill = TRANSPARENT_FILL.to_be_bytes();
-        assert_eq!(&image.rgb()[..3], &[255, 0, 0]);
-        assert_eq!(&image.rgb()[3..6], &fill[1..]);
-        assert_eq!(&image.rgb()[6..], &[224, 96, 96]);
+        let image = render(Pixels::Rgba32, rows, &data, &grays(), None).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xffff_0000);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
+        assert_eq!(image.get_argb(2, 0), 0x80ff_0000);
     }
 
     #[test]
@@ -244,13 +260,13 @@ mod tests {
             height: 2,
             bytes_per_line: 5,
         };
-        assert!(render(Pixels::Rgb24, rows, &[0; 10], &grays()).is_err());
-        assert!(render(Pixels::Rgb24, rows, &[0; 9], &grays()).is_err());
+        assert!(render(Pixels::Rgb24, rows, &[0; 10], &grays(), None).is_err());
+        assert!(render(Pixels::Rgb24, rows, &[0; 9], &grays(), None).is_err());
         let rows = Rows {
             bytes_per_line: 6,
             ..rows
         };
-        assert!(render(Pixels::Rgb24, rows, &[0; 12], &grays()).is_ok());
+        assert!(render(Pixels::Rgb24, rows, &[0; 12], &grays(), None).is_ok());
     }
 
     #[test]
@@ -276,7 +292,7 @@ mod tests {
         let mut palette = grays();
         palette[1] = 0x102030;
         // Palette color 1, then red set to 0xf, then blue set to 0x5.
-        let image = render(Pixels::Ham6, rows, &[0x01, 0x2f, 0x15], &palette).unwrap();
+        let image = render(Pixels::Ham6, rows, &[0x01, 0x2f, 0x15], &palette, None).unwrap();
         assert_eq!(
             image.rgb(),
             &[0x10, 0x20, 0x30, 0xff, 0x20, 0x30, 0xff, 0x20, 0x55]

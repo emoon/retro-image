@@ -2,7 +2,11 @@
 //!
 //! Sources:
 //! - ILBM: <https://wiki.amigaos.net/wiki/ILBM_IFF_Interleaved_Bitmap>
-//!   (BMHD, CMAP, CAMG, BODY, masking, ByteRun1, HAM and EHB).
+//!   (BMHD, CMAP, CAMG, BODY, masking, ByteRun1, HAM and EHB). Masking 1 is a
+//!   mask plane after the bitplanes of every row, where a set bit is opaque;
+//!   masking 2 makes the pixels of one palette index (BMHD `transparentColor`)
+//!   transparent, which is only read for plain and extra-half-brite pictures,
+//!   whose values are palette indices. Masking 3 (lasso) is not read.
 //! - ACBM: <https://wiki.amigaos.net/wiki/ACBM_IFF_Amiga_Continuous_Bitmap>
 //!   (ABIT holds whole planes one after another).
 //! - HAM8 control bits: <https://en.wikipedia.org/wiki/Hold-And-Modify>.
@@ -47,6 +51,8 @@ pub(super) struct Header {
     pub planes: usize,
     masking: u8,
     pub compression: u8,
+    /// The palette index that masking 2 makes transparent.
+    transparent: u16,
 }
 
 impl Header {
@@ -63,6 +69,7 @@ impl Header {
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
+            transparent: be16(bmhd, 12)?,
         };
         (header.width > 0 && header.height > 0).then_some(header)
     }
@@ -105,6 +112,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         header,
         camg,
         indices,
+        mask,
     } = bitmap;
     let mut palette = find(contents, b"CMAP")
         .map(Palette::from_cmap)
@@ -118,6 +126,19 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         }
         mode.render_row(row, &palette, image.row_mut(y as u32));
     }
+    let indexed = matches!(mode, Mode::Indexed | Mode::ExtraHalfBrite);
+    let alpha = mask.or_else(|| {
+        (header.masking == 2 && indexed).then(|| {
+            let clear = u32::from(header.transparent);
+            indices
+                .iter()
+                .map(|&v| if v == clear { 0 } else { 255 })
+                .collect()
+        })
+    });
+    if let Some(alpha) = alpha {
+        image = image.with_alpha(alpha);
+    }
     scale(image, camg.unwrap_or(0))
 }
 
@@ -127,6 +148,8 @@ pub(super) struct Bitmap {
     pub header: Header,
     pub camg: Option<u32>,
     pub indices: Vec<u32>,
+    /// Alpha from the mask plane (255 where it is set), if there is one.
+    mask: Option<Vec<u8>>,
 }
 
 /// Reads the ILBM at `contents` without interpreting its pixel values.
@@ -138,14 +161,15 @@ fn read_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Bit
     let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
     let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
     let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
-    let indices = match layout {
-        Layout::Chunky => read_chunky(&header, body)?,
+    let (indices, mask) = match layout {
+        Layout::Chunky => (read_chunky(&header, body)?, None),
         _ => read_planar(&header, body, layout)?,
     };
     Ok(Bitmap {
         header,
         camg,
         indices,
+        mask,
     })
 }
 
@@ -239,8 +263,13 @@ fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, Deco
     }
 }
 
-/// Pixel values (palette indices or packed RGB) of a planar body, row-major.
-fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>, DecodeError> {
+/// Pixel values (palette indices or packed RGB) of a planar body, row-major,
+/// and the alpha of its mask plane if an interleaved body has one.
+fn read_planar(
+    header: &Header,
+    body: &[u8],
+    layout: Layout,
+) -> Result<(Vec<u32>, Option<Vec<u8>>), DecodeError> {
     if header.planes == 0 || header.planes > 32 {
         return Err(DecodeError::Unrecognized);
     }
@@ -260,7 +289,7 @@ fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>,
             .ok_or(DecodeError::Unrecognized)?,
         _ => unpack_body(header, body, len)?,
     };
-    Ok(planar_pixels(
+    let values = planar_pixels(
         &data,
         header.width,
         header.height,
@@ -270,7 +299,17 @@ fn read_planar(header: &Header, body: &[u8], layout: Layout) -> Result<Vec<u32>,
             Layout::Contiguous => (plane * header.height + y) * row_len,
             _ => (y * stored_planes + plane) * row_len,
         },
-    ))
+    );
+    let mask = (header.masking == 1 && layout == Layout::Interleaved).then(|| {
+        // The mask plane follows the bitplanes of each row.
+        let bits = planar_pixels(&data, header.width, header.height, row_len, 1, |_, y| {
+            (y * stored_planes + header.planes) * row_len
+        });
+        bits.iter()
+            .map(|&bit| if bit != 0 { 255 } else { 0 })
+            .collect()
+    });
+    Ok((values, mask))
 }
 
 fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {
@@ -400,6 +439,7 @@ mod tests {
             planes,
             masking: 0,
             compression: 0,
+            transparent: 0,
         };
         Mode::detect(&header, camg, colors, Layout::Interleaved).unwrap()
     }
@@ -428,6 +468,50 @@ mod tests {
     fn header_rejects_pictures_over_the_pixel_cap() {
         assert!(Header::parse(&bmhd(100, 100)).is_some());
         assert!(Header::parse(&bmhd(65535, 65535)).is_none());
+    }
+
+    /// A 3 x 1 picture of one plane (black and white palette), uncompressed.
+    fn one_plane(masking: u8, transparent: u16, body: &[u8]) -> Vec<u8> {
+        let mut bmhd = alloc::vec![0u8; 20];
+        bmhd[..2].copy_from_slice(&3u16.to_be_bytes());
+        bmhd[2..4].copy_from_slice(&1u16.to_be_bytes());
+        bmhd[8] = 1;
+        bmhd[9] = masking;
+        bmhd[12..14].copy_from_slice(&transparent.to_be_bytes());
+        let mut contents = Vec::new();
+        for (id, data) in [
+            (b"BMHD", bmhd),
+            (b"CMAP", alloc::vec![0, 0, 0, 255, 255, 255]),
+            (b"BODY", body.to_vec()),
+        ] {
+            contents.extend_from_slice(id);
+            contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
+            contents.extend_from_slice(&data);
+        }
+        contents
+    }
+
+    #[test]
+    fn a_mask_plane_makes_unset_pixels_clear() {
+        // Pixels 1, 0, 1; the mask row follows the plane row: set, set, unset.
+        let image = decode_ilbm(&one_plane(1, 0, &[0b1010_0000, 0, 0b1100_0000, 0])).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xffff_ffff);
+        assert_eq!(image.get_argb(1, 0), 0xff00_0000);
+        assert_eq!(image.get_argb(2, 0), crate::image::CLEAR);
+    }
+
+    #[test]
+    fn the_transparent_color_index_makes_its_pixels_clear() {
+        let image = decode_ilbm(&one_plane(2, 0, &[0b1010_0000, 0])).unwrap();
+        assert_eq!(image.get_argb(0, 0), 0xffff_ffff);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
+        assert_eq!(image.get_argb(2, 0), 0xffff_ffff);
+        // Without masking 2 the index is an ordinary color.
+        assert!(
+            !decode_ilbm(&one_plane(0, 0, &[0b1010_0000, 0]))
+                .unwrap()
+                .has_alpha()
+        );
     }
 
     #[test]

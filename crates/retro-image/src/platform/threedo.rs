@@ -21,16 +21,15 @@
 //!   rows interleaved pixel by pixel.
 //! - Platform survey: `docs/research/gaps-consoles.md` section 3.3.
 //!
-//! Supported: 16-bit `IMAG` pictures; 16-bit uncoded cels and coded cels of
-//! 1, 2, 4, 6 and 8 bits, packed or unpacked (only 4, 6 and 8 bits and 16-bit
+//! Supported: 16-bit `IMAG` pictures; 16-bit uncoded cels and coded cels of 1,
+//! 2, 4, 6 and 8 bits, packed or unpacked (only 4, 6 and 8 bits and 16-bit
 //! packed and unpacked cels were seen in samples). Not read: 8 and 24-bit
 //! `IMAG` pictures, compressed `IMAG` data, the left/right memory format of
-//! cels, 8-bit uncoded cels, pictures with a `VDL ` chunk and the 32-bit
-//! "z24" images of the SDK slide show, which the documentation does not
-//! describe. An animation or a file
-//! of several cels shows the first picture. A cel pixel whose 15-bit color
-//! is zero is transparent unless the CCB's `BGND` flag is set; transparent
-//! pixels are composited onto the shared fill color.
+//! cels, 8-bit uncoded cels, pictures with a `VDL ` chunk and the 32-bit "z24"
+//! images of the SDK slide show, which the documentation does not describe. An
+//! animation or a file of several cels shows the first picture. A cel pixel
+//! whose 15-bit color is zero is transparent unless the CCB's `BGND` flag is
+//! set; transparent pixels keep alpha 0.
 
 mod cel;
 mod imag;

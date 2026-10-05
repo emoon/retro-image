@@ -13,9 +13,13 @@
 //!   (<https://github.com/jsummers/deark>, MIT licence), also used as the
 //!   oracle for the sample files.
 //!
-//! The alpha channel of 32-bit pixels and of V4/V5 masks is ignored, as for
-//! Targa. JPEG and PNG payloads (compression 4 and 5) are rejected. A
-//! MacBinary wrapper (`crate::macbinary`) is removed first. A headerless DIB starts at the info header and is chosen by extension only.
+//! A bit-field alpha mask (BI_ALPHABITFIELDS, or the alpha mask of a V3 to V5
+//! header with BI_BITFIELDS) gives the alpha of 16 and 32-bit pixels. If it is
+//! 0 for every pixel it is treated as unused, because the fourth byte of an
+//! ordinary 32-bit pixel is usually padding. The 32-bit pixels of an icon do
+//! use that byte; see `ico.rs`. JPEG and PNG payloads (compression 4 and 5)
+//! are rejected. A MacBinary wrapper (`crate::macbinary`) is removed first. A
+//! headerless DIB starts at the info header and is chosen by extension only.
 //!
 //! Verification: no RECOIL oracle for this format; output was compared pixel
 //! for pixel with Deark's PNG output on the sample files.
@@ -159,25 +163,53 @@ pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
         &data[FILE_HEADER_LEN..],
         &info,
         Some(offset - FILE_HEADER_LEN),
+        false,
     )
+    .map(|(image, _)| image)
 }
 
 /// The bitmap of an icon or cursor entry: a headerless DIB whose height
-/// counts the colour bitmap plus a 1-bit mask of the same size, so only the
-/// first half of the rows is decoded.
+/// counts the colour bitmap plus a 1-bit AND mask of the same size.
+///
+/// Alpha comes from the 32-bit pixels if any of them is visible, as Windows
+/// does; otherwise a set bit in the mask makes the pixel transparent.
 pub(super) fn decode_icon_dib(data: &[u8]) -> Result<Image, DecodeError> {
     let mut info = parse_info(data)?;
     info.height /= 2;
     if info.height == 0 {
         return Err(DecodeError::Unrecognized);
     }
-    decode_pixels(data, &info, None)
+    let (image, rows_end) = decode_pixels(data, &info, None, true)?;
+    if image.has_alpha() {
+        return Ok(image);
+    }
+    let (width, height) = (info.width, info.height);
+    let stride = width.div_ceil(32) * 4;
+    let mut alpha = vec![255u8; width * height];
+    for stored in 0..height {
+        let y = if info.top_down {
+            stored
+        } else {
+            height - 1 - stored
+        };
+        let row = rows_end
+            .checked_add(stored * stride)
+            .and_then(|start| data.get(start..start.checked_add(stride)?));
+        // A mask cut short leaves the rest of the picture opaque.
+        let Some(row) = row else { break };
+        for (x, slot) in alpha[y * width..][..width].iter_mut().enumerate() {
+            if row[x / 8] >> (7 - x % 8) & 1 != 0 {
+                *slot = 0;
+            }
+        }
+    }
+    Ok(image.with_alpha(alpha))
 }
 
 /// A headerless DIB: the info header, palette and pixels, no file header.
 pub(super) fn decode_dib(data: &[u8]) -> Result<Image, DecodeError> {
     let info = parse_info(data)?;
-    decode_pixels(data, &info, None)
+    decode_pixels(data, &info, None, false).map(|(image, _)| image)
 }
 
 /// A channel mask: where its bits sit and the largest value they hold.
@@ -211,8 +243,15 @@ impl Mask {
 }
 
 /// `dib` starts at the info header; `pixels` is the offset of the pixel data
-/// in it, or `None` when it follows the palette directly.
-fn decode_pixels(dib: &[u8], info: &Info, pixels: Option<usize>) -> Result<Image, DecodeError> {
+/// in it, or `None` when it follows the palette directly. `icon` says that
+/// the fourth byte of a 32-bit pixel without bit fields is alpha. Returns the
+/// image and the offset in `dib` where its pixel rows end.
+fn decode_pixels(
+    dib: &[u8],
+    info: &Info,
+    pixels: Option<usize>,
+    icon: bool,
+) -> Result<(Image, usize), DecodeError> {
     let fail = DecodeError::Unrecognized;
     let Info {
         header_len,
@@ -288,7 +327,10 @@ fn decode_pixels(dib: &[u8], info: &Info, pixels: Option<usize>) -> Result<Image
     match info.compression {
         Compression::Rle8 | Compression::Rle4 => {
             let rows = unpack_rle(body, width, height, info.compression == Compression::Rle4)?;
-            Image::from_indexed(w, h, &top_first(rows, width), &palette)
+            Ok((
+                Image::from_indexed(w, h, &top_first(rows, width), &palette)?,
+                dib.len(),
+            ))
         }
         _ if bpp <= 8 => {
             let raw = whole_rows(body, stride, height)?;
@@ -299,18 +341,36 @@ fn decode_pixels(dib: &[u8], info: &Info, pixels: Option<usize>) -> Result<Image
                     (row[bit / 8] >> (8 - bpp - (bit & 7))) & ((1u16 << bpp) - 1) as u8
                 }));
             }
-            Image::from_indexed(w, h, &top_first(indices, width), &palette)
+            let image = Image::from_indexed(w, h, &top_first(indices, width), &palette)?;
+            Ok((image, start + stride * height))
         }
         _ => {
             let raw = whole_rows(body, stride, height)?;
             let [r, g, b] = masks.map(Mask::new);
+            // The alpha mask follows the three color masks, in a V3 or later
+            // header or with BI_ALPHABITFIELDS. An icon's 32-bit pixels
+            // without masks keep alpha in the fourth byte.
+            let alpha_mask = if info.compression == Compression::Bitfields
+                && (header_len >= 56 || info.alpha_mask)
+            {
+                le32(dib, MASKS_AT + 12).ok_or(fail)?
+            } else if icon && bpp == 32 {
+                0xff00_0000
+            } else {
+                0
+            };
+            let alpha_channel = Mask::new(alpha_mask);
+            let mut alpha = (alpha_mask != 0 && bpp >= 16).then(|| vec![255u8; width * height]);
             let mut image = Image::new(w, h);
             for (row, y) in raw.chunks_exact(stride).zip(0..h) {
                 let y = if info.top_down { y } else { h - 1 - y };
                 for x in 0..width {
-                    let color = if bpp == 24 {
+                    let (color, a) = if bpp == 24 {
                         let p = &row[x * 3..x * 3 + 3];
-                        u32::from(p[2]) << 16 | u32::from(p[1]) << 8 | u32::from(p[0])
+                        (
+                            u32::from(p[2]) << 16 | u32::from(p[1]) << 8 | u32::from(p[0]),
+                            255,
+                        )
                     } else {
                         let p = &row[x * bpp / 8..][..bpp / 8];
                         let v = if bpp == 16 {
@@ -318,12 +378,21 @@ fn decode_pixels(dib: &[u8], info: &Info, pixels: Option<usize>) -> Result<Image
                         } else {
                             u32::from_le_bytes([p[0], p[1], p[2], p[3]])
                         };
-                        r.extract(v) << 16 | g.extract(v) << 8 | b.extract(v)
+                        let color = r.extract(v) << 16 | g.extract(v) << 8 | b.extract(v);
+                        (color, alpha_channel.extract(v) as u8)
                     };
                     image.set(x as u32, y, color);
+                    if let Some(plane) = &mut alpha {
+                        plane[y as usize * width + x] = a;
+                    }
                 }
             }
-            Ok(image)
+            // An alpha that is 0 for every pixel is not used.
+            let image = match alpha.filter(|plane| plane.iter().any(|&a| a != 0)) {
+                Some(plane) => image.with_alpha(plane),
+                None => image,
+            };
+            Ok((image, start + stride * height))
         }
     }
 }

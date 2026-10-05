@@ -24,8 +24,8 @@
 //!
 //! Choices of this crate: pixels keep their register number and take the
 //! final color of that register, as on the terminal's color map; registers
-//! 16 to 255 start black; pixels nothing drew show register 0, or the shared
-//! transparent fill when P2 is 1; the pixel aspect (P1 and `Pan`:`Pad`) is not
+//! 16 to 255 start black; pixels nothing drew show register 0, or stay
+//! transparent when P2 is 1; the pixel aspect (P1 and `Pan`:`Pad`) is not
 //! applied, because the common files say `"1;2` for plain square-pixel
 //! pictures; only the first control string is read, and it must start with
 //! `ESC P` (the 8-bit introducer `0x90` is not read: no sample uses it and a
@@ -67,7 +67,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -194,15 +194,15 @@ fn decode_sixel(data: &[u8]) -> Result<Image, DecodeError> {
         Ok(())
     })?;
     let unset = if p2 == 1 {
-        TRANSPARENT_FILL
+        CLEAR
     } else {
-        registers[0]
+        0xff00_0000 | registers[0]
     };
     let colors = pixels.iter().map(|&register| match register {
         UNSET => unset,
-        register => registers[usize::from(register)],
+        register => 0xff00_0000 | registers[usize::from(register)],
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Ok(Image::from_argb(width as u32, height as u32, colors))
 }
 
 /// The data of a file made of VMS variable-length records (a 16-bit length,
@@ -415,8 +415,8 @@ mod tests {
         let image = decode_sixel(&data).unwrap();
         assert_eq!((image.width(), image.height()), (4, 7));
         assert_eq!(image.get(0, 0), 0xffffff);
-        assert_eq!(image.get(1, 0), TRANSPARENT_FILL);
-        assert_eq!(image.get(0, 6), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(1, 0), CLEAR);
+        assert_eq!(image.get_argb(0, 6), CLEAR);
         // P2 = 0: the background is register 0, redefined here.
         let data = sixel("0", "\"1;1;2;1#0;2;0;0;100#1;2;100;0;0#1~");
         assert_eq!(decode_sixel(&data).unwrap().get(1, 0), 0x0000ff);

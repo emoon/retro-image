@@ -304,6 +304,27 @@ impl TileLayout {
         per_row: usize,
         palette: &[u32],
     ) -> Result<Image, DecodeError> {
+        let (width, height, indices) = self.sheet_indices(tiles, per_row)?;
+        Image::from_indexed(width, height, &indices, palette)
+    }
+
+    /// [`Self::sheet`] for a palette of straight `0xAARRGGBB` colors.
+    pub(crate) fn sheet_argb(
+        &self,
+        tiles: &[u8],
+        per_row: usize,
+        palette: &[u32],
+    ) -> Result<Image, DecodeError> {
+        let (width, height, indices) = self.sheet_indices(tiles, per_row)?;
+        Image::from_indexed_argb(width, height, &indices, palette)
+    }
+
+    /// The color numbers of the sheet of `tiles`, with its width and height.
+    fn sheet_indices(
+        &self,
+        tiles: &[u8],
+        per_row: usize,
+    ) -> Result<(u32, u32, Vec<u8>), DecodeError> {
         if per_row == 0 || !tiles.len().is_multiple_of(self.tile_len()) {
             return Err(DecodeError::Unrecognized);
         }
@@ -320,7 +341,7 @@ impl TileLayout {
                     .copy_from_slice(unpacked.row(tile, y));
             }
         }
-        Image::from_indexed(width as u32, height as u32, &indices, palette)
+        Ok((width as u32, height as u32, indices))
     }
 }
 

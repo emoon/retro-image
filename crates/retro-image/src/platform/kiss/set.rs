@@ -29,8 +29,8 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use super::{TRANSPARENT_FILL, full_palette, read_cel, read_palette};
-use crate::image::check_size;
+use super::{full_palette, read_cel, read_palette};
+use crate::image::{CLEAR, check_size};
 use crate::{Companions, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -78,9 +78,9 @@ pub(super) fn decode_set(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let background = palettes
         .first()
         .and_then(Option::as_ref)
-        .map_or(TRANSPARENT_FILL, |palette| palette[0]);
+        .map_or(CLEAR, |palette| 0xff00_0000 | palette[0]);
     let fill = core::iter::repeat(background);
-    let mut canvas = Image::from_colors(set.width as u32, set.height as u32, fill);
+    let mut canvas = Image::from_argb(set.width as u32, set.height as u32, fill);
     let (mut drawn, mut pixels) = (0, 0usize);
     // Earlier entries are in front, so the last one goes down first.
     for entry in set.cels.iter().rev().filter(|entry| entry.in_first_set) {

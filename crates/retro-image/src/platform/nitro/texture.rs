@@ -26,14 +26,13 @@
 //!
 //! The formats are 1 A3I5, 2 four colors, 3 sixteen colors, 4 256 colors, 5
 //! compressed 4 x 4, 6 A5I3 and 7 direct 15-bit color with an alpha bit, from
-//! GBATEK. Pixels are row by row, the low bits of a byte first. A texture
-//! that is partly transparent is composited onto the shared fill. In the
-//! compressed format each 4 x 4 block has 32 bits of 2-bit pixels (the
-//! first row in the low byte) and 16 bits of attributes (the palette offset
-//! in bits 0-13, in 4-byte steps, and the mode in 14-15); the mode says
-//! whether the fourth pixel is transparent and whether the third and fourth
-//! are mixed from the first two. Mixed colors are computed on the 5-bit
-//! channels, which may differ slightly from the console's.
+//! GBATEK. Pixels are row by row, the low bits of a byte first. Alpha is kept.
+//! In the compressed format each 4 x 4 block has 32 bits of 2-bit pixels (the
+//! first row in the low byte) and 16 bits of attributes (the palette offset in
+//! bits 0-13, in 4-byte steps, and the mode in 14-15); the mode says whether
+//! the fourth pixel is transparent and whether the third and fourth are mixed
+//! from the first two. Mixed colors are computed on the 5-bit channels, which
+//! may differ slightly from the console's.
 //!
 //! Palettes are named separately and the file does not say which belongs to
 //! which texture. The match is a guess in this order: the palette with the
@@ -77,7 +76,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{bgr555, check_size, over_fill};
+use crate::image::{bgr555, check_size};
 use crate::{DecodeError, Image};
 
 const BYTE_ORDER_MARK: u16 = 0xfeff;
@@ -379,16 +378,14 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let sheet_height = y + row_height;
     check_size(sheet_width, sheet_height)?;
-    let mut colors = alloc::vec![SHEET_BACKGROUND; sheet_width * sheet_height];
+    let mut colors = alloc::vec![0xff00_0000 | SHEET_BACKGROUND; sheet_width * sheet_height];
     for (left, top, width, pixels) in &placed {
         for (n, &pixel) in pixels.iter().enumerate() {
-            colors[(top + n / width) * sheet_width + left + n % width] = over_fill(
-                u32::from_be_bytes([0, pixel[0], pixel[1], pixel[2]]),
-                pixel[3],
-            );
+            colors[(top + n / width) * sheet_width + left + n % width] =
+                u32::from_be_bytes([pixel[3], pixel[0], pixel[1], pixel[2]]);
         }
     }
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         sheet_width as u32,
         sheet_height as u32,
         colors.into_iter(),
@@ -399,7 +396,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 mod tests {
     use super::super::testing::{Tex, btx0};
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
 
     /// `TEXIMAGE_PARAM` of a texture of `8 << s` by `8 << t` pixels.
     fn param(format: u32, s: u32, t: u32, color0_transparent: bool) -> u32 {
@@ -441,13 +438,13 @@ mod tests {
         let image = decode(&file).unwrap();
         assert_eq!((image.width(), image.height()), (20, 8));
         // Color 0 of the first texture is transparent, color 1 is white.
-        assert_eq!(image.get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), CLEAR);
         assert_eq!(image.get(1, 0), 0xff_ffff);
         assert_eq!(image.get(2, 0), 0xff_0000);
         // Four pixels of gap, then the direct texture.
         assert_eq!(image.get(9, 4), SHEET_BACKGROUND);
         assert_eq!(image.get(12, 0), 0x00_ff00);
-        assert_eq!(image.get(13, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(13, 0), CLEAR);
     }
 
     #[test]
@@ -478,12 +475,11 @@ mod tests {
             &[("a", &white), ("b", &white)],
         );
         let image = decode(&file).unwrap();
-        assert_eq!(image.get(0, 0), 0xff_ffff);
-        // Alpha 33 of 255 over the gray 0xc0 gives (255 * 33 + 192 * 222 + 127) / 255.
-        let low = |alpha: u32| (255 * alpha + 192 * (255 - alpha) + 127) / 255;
-        assert_eq!(image.get(1, 0), low(33) * 0x01_0101);
+        assert_eq!(image.get_argb(0, 0), 0xffff_ffff);
+        // The 3-bit and 5-bit alpha values widen to 8 bits.
+        assert_eq!(image.get_argb(1, 0), 33 << 24 | 0xff_ffff);
         assert_eq!(image.get(12, 0), 0xff_ffff);
-        assert_eq!(image.get(13, 0), low(8) * 0x01_0101);
+        assert_eq!(image.get_argb(13, 0), 8 << 24 | 0xff_ffff);
     }
 
     #[test]
@@ -514,7 +510,7 @@ mod tests {
         assert_eq!(image.get(0, 0), 0);
         assert_eq!(image.get(1, 0), 0xff_ffff);
         assert_eq!(image.get(2, 0), 128 * 0x01_0101);
-        assert_eq!(image.get(3, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(3, 0), CLEAR);
         // Mode 3: three eighths and five eighths of the way to white.
         assert_eq!(image.get(6, 0), 96 * 0x01_0101);
         assert_eq!(image.get(7, 0), 159 * 0x01_0101);

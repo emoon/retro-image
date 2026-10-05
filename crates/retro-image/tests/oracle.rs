@@ -251,9 +251,14 @@ fn fnv_step(hash: u64, byte: u8) -> u64 {
     (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
 }
 
-/// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`.
+/// Size and FNV-1a hash of the pixels, as written in `divergences/*.tsv`:
+/// the RGB bytes, then the alpha plane if the image has one.
 fn fingerprint(image: &retro_image::Image) -> String {
-    let hash = image.rgb().iter().fold(FNV_OFFSET, |h, &b| fnv_step(h, b));
+    let mut hash = image.rgb().iter().fold(FNV_OFFSET, |h, &b| fnv_step(h, b));
+    if image.has_alpha() {
+        let rgba = image.rgba();
+        hash = (rgba.as_chunks::<4>().0.iter()).fold(hash, |h, pixel| fnv_step(h, pixel[3]));
+    }
     format!("{}x{} {hash:016x}", image.width(), image.height())
 }
 
@@ -403,13 +408,17 @@ fn compare(ours: &retro_image::Image, reference: &Reference) -> Result<(), Strin
             reference.height
         ));
     }
+    // RECOIL has no alpha, so the color under a transparent pixel is whatever
+    // it drew there; only pixels that show are compared.
+    let rgba = ours.rgba();
     let differing = ours
         .rgb()
         .as_chunks::<3>()
         .0
         .iter()
+        .zip(rgba.as_chunks::<4>().0)
         .zip(reference.rgb.as_chunks::<3>().0)
-        .filter(|(a, b)| a != b)
+        .filter(|((a, shown), b)| shown[3] != 0 && a != b)
         .count();
     match differing {
         0 => Ok(()),

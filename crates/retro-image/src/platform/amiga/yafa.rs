@@ -183,7 +183,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         (true, 8) => Pixels::Ham8,
         _ => Pixels::Indexed8,
     };
-    render(mode, rows, &indices, &palette)
+    render(mode, rows, &indices, &palette, None)
 }
 
 /// Whether the first frame is delta coded: the file has the delta flag and

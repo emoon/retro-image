@@ -63,10 +63,8 @@ pub(crate) fn rgb565(word: u16) -> u32 {
     channel(11, 5) << 16 | channel(5, 6) << 8 | channel(0, 5)
 }
 
-/// Color shown where a picture is transparent. `Image` has no alpha channel,
-/// so every decoder whose format carries transparency composites onto this
-/// light gray, which stays visible against both white and black artwork.
-pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
+/// A fully transparent pixel as [`Image::get_argb`] reports it.
+pub(crate) const CLEAR: u32 = 0;
 
 /// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
 /// transparent and 255 for opaque, rounded to the nearest level.
@@ -77,17 +75,6 @@ pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
         (above * alpha + below * (255 - alpha) + 127) / 255
     };
     channel(16) << 16 | channel(8) << 8 | channel(0)
-}
-
-/// `color` drawn over [`TRANSPARENT_FILL`] with `alpha`.
-pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
-    over(TRANSPARENT_FILL, color, alpha)
-}
-
-/// `0xAARRGGBB` over [`TRANSPARENT_FILL`] as `0xRRGGBB`: the form the texture
-/// formats decode to.
-pub(crate) fn over_fill_argb(argb: u32) -> u32 {
-    over_fill(argb & 0xff_ffff, (argb >> 24) as u8)
 }
 
 /// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
@@ -157,6 +144,23 @@ impl Image {
         image
     }
 
+    /// An image from straight `0xAARRGGBB` pixels in row-major order; pixels
+    /// the iterator doesn't reach stay opaque black.
+    pub(crate) fn from_argb(width: u32, height: u32, pixels: impl Iterator<Item = u32>) -> Self {
+        let mut image = Self::new(width, height);
+        let mut alpha = alloc::vec![255; image.rgb.len() / 3];
+        let mut opaque = true;
+        let targets = image.rgb.as_chunks_mut::<3>().0.iter_mut().zip(&mut alpha);
+        for ((color, slot), argb) in targets.zip(pixels) {
+            let [a, r, g, b] = argb.to_be_bytes();
+            *color = [r, g, b];
+            *slot = a;
+            opaque &= a == 255;
+        }
+        image.alpha = (!opaque).then_some(alpha);
+        image
+    }
+
     /// Width in pixels.
     pub fn width(&self) -> u32 {
         self.width
@@ -165,6 +169,15 @@ impl Image {
     /// Height in pixels.
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    /// The image with `alpha` as its alpha plane, one byte per pixel in the
+    /// same order as the pixels. Panics if its length is not the pixel count
+    /// (a decoder bug).
+    pub(crate) fn with_alpha(mut self, alpha: Vec<u8>) -> Self {
+        assert_eq!(alpha.len() * 3, self.rgb.len(), "one alpha value per pixel");
+        self.alpha = Some(alpha);
+        self
     }
 
     /// The color channels, 3 bytes (R, G, B) per pixel, ignoring alpha.
@@ -272,12 +285,102 @@ impl Image {
         &mut self.rgb[y as usize * row_len..][..row_len]
     }
 
+    /// Row `y` of the alpha plane, which appears (opaque) on the first call.
+    /// Panics if `y` is outside the image.
+    pub(crate) fn alpha_row_mut(&mut self, y: u32) -> &mut [u8] {
+        let width = self.width as usize;
+        let pixels = self.rgb.len() / 3;
+        let alpha = self.alpha.get_or_insert_with(|| alloc::vec![255; pixels]);
+        &mut alpha[y as usize * width..][..width]
+    }
+
+    /// Draws straight `0xAARRGGBB` over the pixel at (`x`, `y`) (the "over"
+    /// operator), rounding to the nearest level.
+    pub(crate) fn draw(&mut self, x: u32, y: u32, argb: u32) {
+        let [a, ..] = argb.to_be_bytes();
+        let i = y as usize * self.width as usize + x as usize;
+        let below = self.alpha.as_ref().map_or(255, |alpha| u32::from(alpha[i]));
+        match (a, below) {
+            (0, _) => {}
+            (255, _) => self.set_argb(x, y, argb),
+            (_, 255) => {
+                let [_, r, g, b] = over(self.get(x, y), argb & 0xff_ffff, a).to_be_bytes();
+                self.rgb.as_chunks_mut::<3>().0[i] = [r, g, b];
+            }
+            _ => {
+                // Weights are scaled by 255 so that the division is exact.
+                let (above, below_weight) = (u32::from(a) * 255, below * (255 - u32::from(a)));
+                let total = above + below_weight;
+                let [r, g, b] = self.rgb.as_chunks::<3>().0[i];
+                let mix = |top: u32, bottom: u8| {
+                    (top * above + u32::from(bottom) * below_weight + total / 2) / total
+                };
+                let [_, tr, tg, tb] = argb.to_be_bytes();
+                self.rgb.as_chunks_mut::<3>().0[i] = [
+                    mix(u32::from(tr), r) as u8,
+                    mix(u32::from(tg), g) as u8,
+                    mix(u32::from(tb), b) as u8,
+                ];
+                self.alpha
+                    .get_or_insert_with(|| unreachable!("below < 255"))[i] =
+                    ((total + 127) / 255) as u8;
+            }
+        }
+    }
+
+    /// Copies `picture` with its top left at (`left`, `top`), keeping at most
+    /// `max_width` x `max_height` of its pixels. What falls outside `self` is
+    /// dropped.
+    pub(crate) fn paste(
+        &mut self,
+        picture: &Self,
+        left: usize,
+        top: usize,
+        max_width: usize,
+        max_height: usize,
+    ) {
+        let (width, height) = (self.width as usize, self.height as usize);
+        if left >= width {
+            return;
+        }
+        if picture.alpha.is_some() && self.alpha.is_none() {
+            self.alpha = Some(alloc::vec![255; width * height]);
+        }
+        let columns = (picture.width as usize).min(max_width).min(width - left);
+        let rows = (picture.height as usize).min(max_height);
+        for y in 0..rows.min(height.saturating_sub(top)) {
+            let from = y * picture.width as usize;
+            let to = (top + y) * width + left;
+            self.rgb[to * 3..][..columns * 3]
+                .copy_from_slice(&picture.rgb[from * 3..][..columns * 3]);
+            if let Some(alpha) = &mut self.alpha {
+                match &picture.alpha {
+                    Some(source) => {
+                        alpha[to..][..columns].copy_from_slice(&source[from..][..columns])
+                    }
+                    None => alpha[to..][..columns].fill(255),
+                }
+            }
+        }
+    }
+
     /// The pixel at (`x`, `y`) as `0xRRGGBB`.
     #[inline]
     pub(crate) fn get(&self, x: u32, y: u32) -> u32 {
         let i = y as usize * self.width as usize + x as usize;
         let [r, g, b] = self.rgb.as_chunks::<3>().0[i];
         u32::from_be_bytes([0, r, g, b])
+    }
+
+    /// The pixel at (`x`, `y`) as straight `0xAARRGGBB`, with every fully
+    /// transparent pixel as 0.
+    pub(crate) fn get_argb(&self, x: u32, y: u32) -> u32 {
+        let i = y as usize * self.width as usize + x as usize;
+        let alpha = self.alpha.as_ref().map_or(255, |a| a[i]);
+        match alpha {
+            0 => CLEAR,
+            _ => (u32::from(alpha) << 24) | self.get(x, y),
+        }
     }
 
     /// An image from one palette index per pixel, row-major.
@@ -306,6 +409,25 @@ impl Image {
             rgb,
             alpha: None,
         })
+    }
+
+    /// [`Self::from_indexed`] for a palette of straight `0xAARRGGBB` colors.
+    pub(crate) fn from_indexed_argb(
+        width: u32,
+        height: u32,
+        indices: &[u8],
+        palette: &[u32],
+    ) -> Result<Self, DecodeError> {
+        let mut image = Self::from_indexed(width, height, indices, palette)?;
+        let mut alphas = [255u8; 256];
+        for (alpha, color) in alphas.iter_mut().zip(palette) {
+            *alpha = (color >> 24) as u8;
+        }
+        if alphas.iter().any(|&a| a != 255) {
+            let plane: Vec<u8> = indices.iter().map(|&i| alphas[usize::from(i)]).collect();
+            image.alpha = plane.iter().any(|&a| a != 255).then_some(plane);
+        }
+        Ok(image)
     }
 
     /// An image from a 1-bit bitmap of `row_len`-byte rows; a pixel whose
@@ -713,19 +835,74 @@ mod tests {
     }
 
     #[test]
+    fn draw_is_the_over_operator_on_straight_alpha() {
+        let mut image = Image::from_indexed(1, 1, &[0], &[0x0000ff]).unwrap();
+        image.draw(0, 0, 0x00ff_0000);
+        assert_eq!(image.get_argb(0, 0), 0xff00_00ff, "clear changes nothing");
+        // Half red over opaque blue is `over`, and stays opaque.
+        image.draw(0, 0, 0x80ff_0000);
+        assert_eq!(image.get_argb(0, 0), 0xff80_007f);
+        image.draw(0, 0, 0xff00_ff00);
+        assert_eq!(image.get_argb(0, 0), 0xff00_ff00, "opaque replaces");
+        // Over a transparent pixel the source shows through unchanged.
+        let mut clear = Image::from_argb(1, 1, core::iter::once(CLEAR));
+        clear.draw(0, 0, 0x80ff_0000);
+        assert_eq!(clear.get_argb(0, 0), 0x80ff_0000);
+        // Half red over half blue: alpha 192, red two thirds of the color.
+        let mut half = Image::from_argb(1, 1, core::iter::once(0x8000_00ff));
+        half.draw(0, 0, 0x80ff_0000);
+        assert_eq!(half.get_argb(0, 0), 0xc0aa_0055);
+    }
+
+    #[test]
+    fn from_indexed_argb_takes_alpha_from_the_palette() {
+        let palette = [0x00ff_0000, 0xff00_ff00];
+        let image = Image::from_indexed_argb(2, 1, &[0, 1], &palette).unwrap();
+        assert_eq!(
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (CLEAR, 0xff00_ff00)
+        );
+        // A transparent entry that no pixel uses leaves no alpha plane.
+        let unused = Image::from_indexed_argb(2, 1, &[1, 1], &palette).unwrap();
+        assert!(!unused.has_alpha());
+    }
+
+    #[test]
+    fn paste_clips_and_carries_alpha() {
+        let mut canvas = Image::from_indexed(3, 1, &[0, 0, 0], &[0x112233]).unwrap();
+        let picture = red_green([0, 200]);
+        canvas.paste(&picture, 2, 0, 5, 5);
+        // Only the first picture column fits; the plane appears opaque
+        // elsewhere.
+        assert_eq!(
+            canvas.rgba(),
+            [0x11, 0x22, 0x33, 255, 0x11, 0x22, 0x33, 255, 255, 0, 0, 0]
+        );
+        canvas.paste(&picture, 0, 0, 1, 1);
+        assert_eq!(canvas.get_argb(0, 0), CLEAR);
+        assert_eq!(
+            canvas.get_argb(1, 0),
+            0xff11_2233,
+            "max_width stops the copy"
+        );
+    }
+
+    #[test]
+    fn alpha_row_mut_starts_opaque() {
+        let mut image = Image::new(2, 2);
+        image.alpha_row_mut(1)[0] = 7;
+        assert_eq!(
+            image.rgba()[3..],
+            [255, 0, 0, 0, 255, 0, 0, 0, 7, 0, 0, 0, 255]
+        );
+    }
+
+    #[test]
     fn over_blends_channel_by_channel() {
         assert_eq!(over(0x102030, 0xf0e0d0, 0), 0x102030);
         assert_eq!(over(0x102030, 0xf0e0d0, 255), 0xf0e0d0);
         // Halfway between 0x10 and 0xf0 is 0x80, and 0x20 and 0xe0 as well.
         assert_eq!(over(0x102030, 0xf0e0d0, 128) >> 16, 0x80);
-    }
-
-    #[test]
-    fn over_fill_blends_toward_the_transparent_fill() {
-        assert_eq!(over_fill(0x123456, 255), 0x123456);
-        assert_eq!(over_fill(0x123456, 0), TRANSPARENT_FILL);
-        // Black at 127/255 over 0xc0 is 96.38, which rounds to 0x60.
-        assert_eq!(over_fill(0x000000, 127), 0x606060);
     }
 
     #[test]
@@ -757,14 +934,6 @@ mod tests {
         assert_eq!(gray_ramp(2), [0xff00_0000, 0xffff_ffff]);
         assert_eq!(gray_ramp(16)[1], 0xff11_1111);
         assert_eq!(gray_ramp(1), [0xff00_0000]);
-    }
-
-    #[test]
-    fn over_fill_argb_flattens_alpha_over_the_fill() {
-        assert_eq!(over_fill_argb(0xff12_3456), 0x123456);
-        assert_eq!(over_fill_argb(0x0012_3456), TRANSPARENT_FILL);
-        // Half of white over 0xc0 is 0xdf.5, rounded up.
-        assert_eq!(over_fill_argb(0x80ff_ffff), 0xe0e0e0);
     }
 
     #[test]

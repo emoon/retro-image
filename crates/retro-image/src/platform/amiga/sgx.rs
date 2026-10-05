@@ -21,8 +21,8 @@
 //!   the spec describes it and has no sample.
 //! - The 32-bit layout is red, green, blue, alpha, read off `abydos.rlen.svg`
 //!   (800x600, `ColorDepth` 32): bytes 0-2 are the rainbow and byte 3 is 0 or
-//!   255 with a few partial values at the edges. Transparent parts show
-//!   `TRANSPARENT_FILL`.
+//!   255 with a few partial values at the edges. Transparent parts keep their
+//!   alpha.
 //!
 //! Only what a sample or a tool confirmed is drawn: 8-bit chunky data with a
 //! palette, 24-bit RGB (the spec's layout, no sample) and the 32-bit RGBA
@@ -71,7 +71,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (packing, payload) = packing(&data[data_offset..]);
     let body = bitmap_bytes(packing, payload, rows.len(pixels)?)?;
-    render(pixels, rows, &body, &palette)
+    render(pixels, rows, &body, &palette, None)
 }
 
 /// The pixel layout for `PixelBits`, `PixelPlanes`, `ColorDepth` and

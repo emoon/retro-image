@@ -27,7 +27,7 @@
 //!   `rgbgfx -m`). The tile data and attribute map are found as companions.
 //! - The palette set is 2-byte little-endian RGB555 colors, 4 per palette
 //!   (2 with 1 bpp). The transparent color is the word `0x8000` (and an
-//!   empty slot `0xFFFF`), which is drawn as the shared transparent fill; no
+//!   empty slot `0xFFFF`), which is drawn transparent; no
 //!   other word has bit 15 set. A `.pal` that is not a palette set is ignored
 //!   and the image is drawn in gray. That is a size that is not a multiple
 //!   of a palette, a text (JASC-PAL, GIMP, `RGB 31, 31, 31`: all printable
@@ -77,7 +77,7 @@ use alloc::vec::Vec;
 
 use super::{SHADES, TILE};
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, bgr555, check_size};
+use crate::image::{CLEAR, bgr555, check_size};
 use crate::tiles::TileLayout;
 use crate::{Companions, DecodeError, Image};
 
@@ -87,21 +87,33 @@ use crate::{Companions, DecodeError, Image};
 struct Depth {
     layout: TileLayout,
     extension: &'static str,
-    /// Colors of palette 0, and the colors a palette in a `.pal` has.
+    /// Colors of palette 0, and the colors a palette in a `.pal` has, as
+    /// `0xAARRGGBB`.
     shades: [u32; 4],
 }
 
 const TWO_BPP: Depth = Depth {
     layout: TILE,
     extension: "2bpp",
-    shades: SHADES,
+    shades: opaque(SHADES),
 };
 
 const ONE_BPP: Depth = Depth {
     layout: TileLayout::planar(1, 1),
     extension: "1bpp",
-    shades: [0xff_ffff, 0x00_0000, 0x00_0000, 0x00_0000],
+    shades: opaque([0xff_ffff, 0x00_0000, 0x00_0000, 0x00_0000]),
 };
+
+/// `colors` (`0xRRGGBB`) as opaque `0xAARRGGBB`.
+const fn opaque(colors: [u32; 4]) -> [u32; 4] {
+    let mut out = colors;
+    let mut i = 0;
+    while i < out.len() {
+        out[i] |= 0xff00_0000;
+        i += 1;
+    }
+    out
+}
 
 impl Depth {
     fn colors(&self) -> usize {
@@ -250,12 +262,13 @@ fn parse_palettes(file: &[u8], depth: Depth) -> Option<Vec<Palette>> {
     Some(palettes.collect())
 }
 
-/// A Game Boy Color color, with bit 15 set for a transparent one.
+/// A Game Boy Color color as `0xAARRGGBB`, with bit 15 set for a transparent
+/// one.
 fn rgb555(color: u16) -> u32 {
     if color & TRANSPARENT != 0 {
-        return TRANSPARENT_FILL;
+        return CLEAR;
     }
-    bgr555(color)
+    0xff00_0000 | bgr555(color)
 }
 
 impl Parts<'_> {
@@ -272,7 +285,7 @@ impl Parts<'_> {
         let palette = self.first_palette();
         self.depth
             .layout
-            .sheet(self.tiles, SHEET_TILES_PER_ROW, &palette)
+            .sheet_argb(self.tiles, SHEET_TILES_PER_ROW, &palette)
     }
 
     /// The screen the tile map arranges the tiles in. Fails without a tile
@@ -321,7 +334,7 @@ impl Parts<'_> {
 
         let tile_count = self.tiles.len() / layout.tile_len();
         let unpacked = layout.unpack(self.tiles);
-        let mut colors = alloc::vec![0; pixel_width * pixel_height];
+        let mut colors = alloc::vec![0xff00_0000; pixel_width * pixel_height];
         for (cell, &id) in names.iter().enumerate() {
             let attr = attribute(cell);
             let palette = self.palette(attr & PALETTE_MASK)?;
@@ -350,7 +363,7 @@ impl Parts<'_> {
                 }
             }
         }
-        Ok(Image::from_colors(
+        Ok(Image::from_argb(
             pixel_width as u32,
             pixel_height as u32,
             colors.into_iter(),
@@ -464,7 +477,7 @@ mod tests {
         // The top row of tile 1 is on the bottom row, left and right swapped.
         assert_eq!(pixel(&image, 0, 7, 7), 0xff0000);
         assert_eq!(pixel(&image, 0, 0, 7), 0x00ff00);
-        assert_eq!(pixel(&image, 0, 0, 0), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), CLEAR);
         assert_eq!(pixel(&image, 1, 0, 0), 0x0000ff);
         // Bank 1 tile 0 is the solid tile: color 3 of palette 0.
         assert_eq!(pixel(&image, 2, 5, 5), 0x00ff00);

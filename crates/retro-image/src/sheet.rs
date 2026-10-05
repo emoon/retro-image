@@ -5,7 +5,7 @@
 //! on a fixed grid, left to right, top to bottom, each in a cell as large as
 //! the largest picture, with a gutter between cells. The grid is as close to
 //! square as the whole columns allow, so a thumbnail of the sheet stays
-//! readable. Empty space is the shared transparent-fill gray.
+//! readable. Empty space is transparent.
 //!
 //! A set of more than [`MAX_PICTURES`] pictures is rejected, not cut short.
 //! For the headerless Print Shop `.DAT`, which only its size identifies, the
@@ -13,7 +13,7 @@
 
 use crate::DecodeError;
 use crate::Image;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{CLEAR, check_size};
 
 /// Most pictures on one sheet.
 pub(crate) const MAX_PICTURES: usize = 256;
@@ -48,9 +48,9 @@ impl Sheet {
         let rows = count.div_ceil(columns);
         let (width, height) = (columns * pitch_x + GUTTER, rows * pitch_y + GUTTER);
         check_size(width, height)?;
-        let background = core::iter::repeat(TRANSPARENT_FILL);
+        let background = core::iter::repeat(CLEAR);
         Ok(Self {
-            image: Image::from_colors(width as u32, height as u32, background),
+            image: Image::from_argb(width as u32, height as u32, background),
             columns,
             cell_width,
             cell_height,
@@ -62,17 +62,8 @@ impl Sheet {
     pub(crate) fn put(&mut self, index: usize, picture: &Image) {
         let left = GUTTER + index % self.columns * (self.cell_width + GUTTER);
         let top = GUTTER + index / self.columns * (self.cell_height + GUTTER);
-        let width = picture.width() as usize;
-        let rows = picture.rgb().chunks_exact(width * 3).take(self.cell_height);
-        for (y, row) in (top..).zip(rows) {
-            if y >= self.image.height() as usize {
-                return;
-            }
-            // `left` is inside the sheet: the column is below `columns`.
-            let target = &mut self.image.row_mut(y as u32)[left * 3..];
-            let len = target.len().min(row.len()).min(self.cell_width * 3);
-            target[..len].copy_from_slice(&row[..len]);
-        }
+        self.image
+            .paste(picture, left, top, self.cell_width, self.cell_height);
     }
 
     pub(crate) fn into_image(self) -> Image {
@@ -97,6 +88,8 @@ pub(crate) fn sheet(pictures: &[Image]) -> Result<Image, DecodeError> {
 mod tests {
     use super::*;
 
+    const OPAQUE_BLACK: u32 = 0xff00_0000;
+
     /// A black picture of `width` x `height` pixels.
     fn picture(width: usize, height: usize) -> Image {
         Image::from_colors(width as u32, height as u32, core::iter::repeat(0x000000))
@@ -113,12 +106,12 @@ mod tests {
         let image = sheet.into_image();
         assert_eq!((image.width(), image.height()), (40, 40));
         // First cell is black, its gutter is the fill, the second cell starts at 16.
-        assert_eq!(image.get(4, 4), 0);
-        assert_eq!(image.get(3, 4), TRANSPARENT_FILL);
-        assert_eq!(image.get(12, 4), TRANSPARENT_FILL);
-        assert_eq!(image.get(16, 4), 0);
+        assert_eq!(image.get_argb(4, 4), OPAQUE_BLACK);
+        assert_eq!(image.get_argb(3, 4), CLEAR);
+        assert_eq!(image.get_argb(12, 4), CLEAR);
+        assert_eq!(image.get_argb(16, 4), OPAQUE_BLACK);
         // The ninth cell does not exist; the last cell of row 3 is empty.
-        assert_eq!(image.get(28, 28), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(28, 28), CLEAR);
     }
 
     #[test]
@@ -126,9 +119,9 @@ mod tests {
         let mut sheet = Sheet::new(1, 8, 8).unwrap();
         sheet.put(0, &picture(2, 3));
         let image = sheet.into_image();
-        assert_eq!(image.get(5, 6), 0);
-        assert_eq!(image.get(6, 6), TRANSPARENT_FILL);
-        assert_eq!(image.get(4, 8), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(5, 6), OPAQUE_BLACK);
+        assert_eq!(image.get_argb(6, 6), CLEAR);
+        assert_eq!(image.get_argb(4, 8), CLEAR);
     }
 
     #[test]
@@ -137,8 +130,8 @@ mod tests {
         sheet.put(0, &picture(16, 16));
         sheet.put(5, &picture(4, 4));
         let image = sheet.into_image();
-        assert_eq!(image.get(7, 7), 0);
-        assert_eq!(image.get(8, 7), TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(7, 7), OPAQUE_BLACK);
+        assert_eq!(image.get_argb(8, 7), CLEAR);
     }
 
     #[test]
@@ -147,8 +140,14 @@ mod tests {
         let pictures = [picture(8, 2), picture(2, 3)];
         let image = sheet(&pictures).unwrap();
         assert_eq!((image.width(), image.height()), (28, 11));
-        assert_eq!((image.get(4, 5), image.get(4, 6)), (0, TRANSPARENT_FILL));
-        assert_eq!((image.get(16, 6), image.get(18, 6)), (0, TRANSPARENT_FILL));
+        assert_eq!(
+            (image.get_argb(4, 5), image.get_argb(4, 6)),
+            (OPAQUE_BLACK, CLEAR)
+        );
+        assert_eq!(
+            (image.get_argb(16, 6), image.get_argb(18, 6)),
+            (OPAQUE_BLACK, CLEAR)
+        );
         assert_eq!(sheet(&[]).err(), Some(DecodeError::Unrecognized));
         let many = alloc::vec![picture(1, 1); MAX_PICTURES + 1];
         assert!(sheet(&many).is_err());

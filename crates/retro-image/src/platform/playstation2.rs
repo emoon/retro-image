@@ -25,13 +25,12 @@
 //! - Platform survey: `docs/research/gaps-consoles.md` section 3.2.
 //!
 //! Pictures with mipmaps show their largest level; a file with several
-//! pictures shows the first. Transparent pixels are composited onto the
-//! shared fill color.
+//! pictures shows the first. Alpha is kept.
 
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{bgr555, check_size, over_fill_argb};
+use crate::image::{bgr555, check_size};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -201,10 +200,10 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
             image.iter().map(|&i| colors[usize::from(i)]).collect()
         }
     };
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         header.width as u32,
         header.height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 
@@ -247,7 +246,7 @@ mod tests {
         let image = [0x10, 0x20, 0x30, 0x80, 0x10, 0x20, 0x30, 0x00];
         let image = decode_tim2(&file(3, 0, 0, &[image, image].concat(), &[])).unwrap();
         assert_eq!(image.get(0, 0), 0x102030);
-        assert_eq!(image.get(1, 0), crate::image::TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
     }
 
     #[test]

@@ -138,7 +138,7 @@ mod tests {
         assert_eq!(sheet.get(4 + 13, 4), 0);
         assert_eq!(sheet.get(4 + 13, 8), 0xffffff);
         // The first picture is only 2 rows tall.
-        assert_eq!(sheet.get(4, 6), 0xc0c0c0);
+        assert_eq!(sheet.get_argb(4, 6), crate::image::CLEAR);
     }
 
     #[test]
