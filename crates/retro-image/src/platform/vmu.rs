@@ -40,7 +40,11 @@
 //! the one format here with `.signature()`. A game file is accepted only by
 //! extension, after a structural check (counts, zeroed reserved bytes,
 //! printable description), and `ICONDATA_VMS` by its offsets, which must
-//! point into the file. `.dci` files (Nexus dumps: the same data with each
+//! point into the file. A file named exactly `ICONDATA_VMS`, as on a VMU,
+//! has no extension, and a format is chosen by the text after the last dot,
+//! so it is never tried by name: only a copy named `ICONDATA.VMS` (the name
+//! the NeoDC tool writes) reaches this decoder, and the decoder has no
+//! signature to find the file by content. `.dci` files (Nexus dumps: the same data with each
 //! 4-byte group byte-reversed, plus a directory entry) are not decoded; that
 //! byte order is not confirmed by any document or sample.
 
