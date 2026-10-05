@@ -83,7 +83,7 @@ mod texture;
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::check_size;
+use crate::image::{bgr555, check_size};
 use crate::{Companions, DecodeError, Format, Image};
 use character::Character;
 use screen::Screen;
@@ -169,12 +169,6 @@ impl Palette {
             .collect();
         (!colors.is_empty()).then_some(Self { colors })
     }
-}
-
-/// A DS color: red in bits 0-4, green in 5-9, blue in 10-14.
-fn bgr555(word: u16) -> u32 {
-    let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
-    widen(word & 31) << 16 | widen(word >> 5 & 31) << 8 | widen(word >> 10 & 31)
 }
 
 /// The color of pixel value `index` in palette number `number` of a character

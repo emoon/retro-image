@@ -77,7 +77,7 @@ use alloc::vec::Vec;
 
 use super::{SHADES, TILE};
 use crate::bytes::le16;
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{TRANSPARENT_FILL, bgr555, check_size};
 use crate::tiles::TileLayout;
 use crate::{Companions, DecodeError, Image};
 
@@ -255,9 +255,7 @@ fn rgb555(color: u16) -> u32 {
     if color & TRANSPARENT != 0 {
         return TRANSPARENT_FILL;
     }
-    let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
-    let (r, g, b) = (color & 31, color >> 5 & 31, color >> 10 & 31);
-    widen(r) << 16 | widen(g) << 8 | widen(b)
+    bgr555(color)
 }
 
 impl Parts<'_> {

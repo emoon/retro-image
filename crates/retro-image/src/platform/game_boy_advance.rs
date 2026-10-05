@@ -34,6 +34,7 @@
 
 use alloc::vec::Vec;
 
+use crate::image::bgr555;
 use crate::tiles::TileLayout;
 use crate::{BitOrder, Companions, DecodeError, Format, Image};
 
@@ -76,13 +77,6 @@ fn gray_ramp(count: usize) -> Vec<u32> {
     (0..count)
         .map(|i| (i * 255 / (count - 1)) as u32 * 0x01_0101)
         .collect()
-}
-
-/// A GBA color: red in bits 0-4, green 5-9, blue 10-14, each widened to 8 bits
-/// as `v << 3 | v >> 2`.
-fn bgr555(word: u16) -> u32 {
-    let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
-    widen(word & 31) << 16 | widen(word >> 5 & 31) << 8 | widen(word >> 10 & 31)
 }
 
 #[cfg(test)]

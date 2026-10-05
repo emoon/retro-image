@@ -77,9 +77,8 @@
 
 use alloc::vec::Vec;
 
-use super::bgr555;
 use crate::bytes::{le16, le32};
-use crate::image::{check_size, over_fill};
+use crate::image::{bgr555, check_size, over_fill};
 use crate::{DecodeError, Image};
 
 const BYTE_ORDER_MARK: u16 = 0xfeff;
