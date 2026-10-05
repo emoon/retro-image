@@ -26,6 +26,7 @@ mod animator;
 mod animator_pro;
 mod bmp;
 mod colorix;
+mod dcx;
 mod flf;
 mod flh;
 mod flic;
@@ -52,6 +53,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
+    Format::new("PC", "ZSoft DCX multi-page PCX", &["dcx"], dcx::decode_dcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
     Format::new(
         "PC",
