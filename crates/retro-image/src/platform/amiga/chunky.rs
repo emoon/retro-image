@@ -11,7 +11,7 @@
 //!   bits above the data bits, colors 32-63 at half brightness.
 
 use super::ilbm::{half_brite, ham};
-use crate::image::check_size;
+use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::{DecodeError, Image};
 
 /// How one pixel is stored.
@@ -27,10 +27,26 @@ pub(super) enum Pixels {
     Ham6,
     /// 8-bit hold-and-modify values.
     Ham8,
-    /// Red, green, blue bytes.
-    Rgb24,
-    /// Red, green, blue as big-endian 16-bit words; the high bytes are shown.
-    Rgb48,
+    /// Red, green, blue channels, possibly with a fourth.
+    Direct(Direct),
+}
+
+/// Red, green and blue channels one after another per pixel.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) struct Direct {
+    /// Channels are big-endian 16-bit words, of which the high byte is shown.
+    pub wide: bool,
+    /// A channel before or after the three colors, if any.
+    pub fourth: Option<Fourth>,
+}
+
+/// The extra channel of a pixel: padding, or transparency.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) struct Fourth {
+    /// Stored before red instead of after blue.
+    pub first: bool,
+    /// Transparency (0 is transparent, the maximum opaque) instead of padding.
+    pub alpha: bool,
 }
 
 impl Pixels {
@@ -39,10 +55,41 @@ impl Pixels {
         match self {
             Self::Mono => width.div_ceil(8),
             Self::Indexed8 | Self::ExtraHalfBrite | Self::Ham6 | Self::Ham8 => width,
-            Self::Rgb24 => width * 3,
-            Self::Rgb48 => width * 6,
+            Self::Direct(direct) => width * direct.pixel_len(),
         }
     }
+}
+
+impl Direct {
+    fn channel_len(self) -> usize {
+        if self.wide { 2 } else { 1 }
+    }
+
+    fn pixel_len(self) -> usize {
+        self.channel_len() * (3 + usize::from(self.fourth.is_some()))
+    }
+
+    /// Reads one pixel; transparent parts show [`TRANSPARENT_FILL`].
+    fn pixel(self, bytes: &[u8]) -> u32 {
+        let step = self.channel_len();
+        let colors = usize::from(self.fourth.is_some_and(|f| f.first)) * step;
+        let [r, g, b] = [0, 1, 2].map(|i| u32::from(bytes[colors + i * step]));
+        let color = r << 16 | g << 8 | b;
+        let Some(Fourth { first, alpha: true }) = self.fourth else {
+            return color;
+        };
+        let opacity = u32::from(bytes[if first { 0 } else { 3 * step }]);
+        over_fill(color, opacity)
+    }
+}
+
+/// `color` at `opacity` (0-255) over [`TRANSPARENT_FILL`].
+fn over_fill(color: u32, opacity: u32) -> u32 {
+    let mix = |shift: u32| {
+        let (c, f) = (color >> shift & 0xff, TRANSPARENT_FILL >> shift & 0xff);
+        (c * opacity + f * (255 - opacity) + 127) / 255
+    };
+    mix(16) << 16 | mix(8) << 8 | mix(0)
 }
 
 /// Where the rows are and how big they are.
@@ -109,17 +156,12 @@ fn draw_row(pixels: Pixels, row: &[u8], palette: &[u32; 256], out: &mut [[u8; 3]
                 let data = v & 63;
                 ham(held, v >> 6, data << 2 | data >> 4, palette[data as usize])
             }
-            Pixels::Rgb24 => rgb(row[x * 3], row[x * 3 + 1], row[x * 3 + 2]),
-            Pixels::Rgb48 => rgb(row[x * 6], row[x * 6 + 2], row[x * 6 + 4]),
+            Pixels::Direct(direct) => direct.pixel(&row[x * direct.pixel_len()..]),
         };
         held = color;
         let [_, r, g, b] = color.to_be_bytes();
         *out = [r, g, b];
     }
-}
-
-fn rgb(r: u8, g: u8, b: u8) -> u32 {
-    u32::from_be_bytes([0, r, g, b])
 }
 
 #[cfg(test)]
@@ -128,6 +170,18 @@ mod tests {
 
     fn grays() -> [u32; 256] {
         core::array::from_fn(|i| u32::from(i as u8) * 0x01_0101)
+    }
+
+    const RGB24: Pixels = Pixels::Direct(Direct {
+        wide: false,
+        fourth: None,
+    });
+
+    fn rgba(first: bool, wide: bool) -> Pixels {
+        Pixels::Direct(Direct {
+            wide,
+            fourth: Some(Fourth { first, alpha: true }),
+        })
     }
 
     #[test]
@@ -164,8 +218,52 @@ mod tests {
             bytes_per_line: 6,
         };
         let data = [0x12, 0xff, 0x34, 0x00, 0x56, 0x80];
-        let image = render(Pixels::Rgb48, rows, &data, &grays()).unwrap();
+        let wide = Pixels::Direct(Direct {
+            wide: true,
+            fourth: None,
+        });
+        let image = render(wide, rows, &data, &grays()).unwrap();
         assert_eq!(image.rgb(), &[0x12, 0x34, 0x56]);
+    }
+
+    #[test]
+    fn alpha_blends_over_the_transparent_fill() {
+        let rows = Rows {
+            width: 4,
+            height: 1,
+            bytes_per_line: 16,
+        };
+        // Red at alpha 255, 0, 128, and a padding byte that must not show.
+        let data = [
+            255, 0, 0, 255, 255, 0, 0, 0, 255, 0, 0, 128, //
+            0, 0, 255, 0,
+        ];
+        let image = render(rgba(false, false), rows, &data, &grays()).unwrap();
+        let fill = TRANSPARENT_FILL.to_be_bytes();
+        assert_eq!(&image.rgb()[..3], &[255, 0, 0]);
+        assert_eq!(&image.rgb()[3..6], &fill[1..]);
+        assert_eq!(&image.rgb()[6..9], &[224, 96, 96]);
+        assert_eq!(&image.rgb()[9..], &fill[1..]);
+    }
+
+    #[test]
+    fn alpha_may_come_first_and_channels_may_be_wide() {
+        let rows = Rows {
+            width: 1,
+            height: 1,
+            bytes_per_line: 4,
+        };
+        let data = [255, 10, 20, 30];
+        let image = render(rgba(true, false), rows, &data, &grays()).unwrap();
+        assert_eq!(image.rgb(), &[10, 20, 30]);
+        // Sixteen-bit channels, alpha last: the high bytes count.
+        let rows = Rows {
+            bytes_per_line: 8,
+            ..rows
+        };
+        let data = [10, 0, 20, 0, 30, 0, 255, 255];
+        let image = render(rgba(false, true), rows, &data, &grays()).unwrap();
+        assert_eq!(image.rgb(), &[10, 20, 30]);
     }
 
     #[test]
@@ -175,13 +273,13 @@ mod tests {
             height: 2,
             bytes_per_line: 5,
         };
-        assert!(render(Pixels::Rgb24, rows, &[0; 10], &grays()).is_err());
-        assert!(render(Pixels::Rgb24, rows, &[0; 9], &grays()).is_err());
+        assert!(render(RGB24, rows, &[0; 10], &grays()).is_err());
+        assert!(render(RGB24, rows, &[0; 9], &grays()).is_err());
         let rows = Rows {
             bytes_per_line: 6,
             ..rows
         };
-        assert!(render(Pixels::Rgb24, rows, &[0; 12], &grays()).is_ok());
+        assert!(render(RGB24, rows, &[0; 12], &grays()).is_ok());
     }
 
     #[test]

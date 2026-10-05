@@ -16,16 +16,27 @@
 //!   identical pixels, and the zlib stream of the second inflates to exactly
 //!   the raw data of the first.
 //!
+//! - SVG files (the older name, "SVG Graphics File") may hold an XPK or
+//!   PowerPacker stream where SGX has `LZ77`; the XPK ones were seen with
+//!   RLEN and NUKE packers (`codec/xpk.rs`). The PowerPacker form is read as
+//!   the spec describes it and has no sample.
+//!
+//! - The 32-bit layout is red, green, blue, alpha, read off `abydos.rlen.svg`
+//!   (800x600, `ColorDepth` 32): bytes 0-2 are the rainbow and byte 3 is 0 or
+//!   255 with a few partial values at the edges. Transparent parts show
+//!   `TRANSPARENT_FILL`.
+//!
 //! Not decoded: planar bitmaps with 2 to 8 planes (the spec does not say
 //! whether the planes follow one another or interleave) and the pixel
-//! layouts it only recommends. Mono bitmaps and the HAM/EHB reading of
+//! layouts it only recommends. Mono bitmaps, 48- and 64-bit pixels (the
+//! latter in the same channel order as 32-bit) and the HAM/EHB reading of
 //! 8-bit chunky data follow the spec but have no sample file.
 
 use alloc::borrow::Cow;
 
-use super::chunky::{Pixels, Rows, render};
+use super::chunky::{Direct, Fourth, Pixels, Rows, render};
 use crate::bytes::{be16, be32};
-use crate::codec::inflate;
+use crate::codec::{inflate, powerpacker, xpk};
 use crate::{DecodeError, Image};
 
 const SIGNATURES: [&[u8]; 2] = [b"SGX Graphics File\0", b"SVG Graphics File\0"];
@@ -80,25 +91,48 @@ fn pixel_layout(bits: u8, planes: u8, depth: u32, view_mode: u32) -> Option<Pixe
             Some(Pixels::ExtraHalfBrite)
         }
         (8, 1) => Some(Pixels::Indexed8),
-        (24, 1) => Some(Pixels::Rgb24),
-        (48, 1) => Some(Pixels::Rgb48),
+        (24, 1) => Some(direct(false, None)),
+        (48, 1) => Some(direct(true, None)),
+        // The fourth channel is alpha only if `ColorDepth` counts it.
+        (32, 1) => Some(direct(false, Some(depth == 32))),
+        (64, 1) => Some(direct(true, Some(depth == 64))),
         _ => None,
     }
 }
 
-/// The `len` bytes of bitmap data in `payload`: stored as they are, or as
-/// `LZ77`, the uncompressed size followed by a zlib stream.
+/// Red, green, blue, and for `Some(has_alpha)` a fourth channel after them.
+fn direct(wide: bool, fourth: Option<bool>) -> Pixels {
+    Pixels::Direct(Direct {
+        wide,
+        fourth: fourth.map(|has_alpha| Fourth {
+            first: false,
+            alpha: has_alpha,
+        }),
+    })
+}
+
+/// The `len` bytes of bitmap data in `payload`: stored as they are, as
+/// `LZ77` (the uncompressed size followed by a zlib stream), or, in the
+/// older SVG files, packed by XPK or PowerPacker.
 fn bitmap_bytes(payload: &[u8], len: usize) -> Result<Cow<'_, [u8]>, DecodeError> {
     let fail = DecodeError::Unrecognized;
-    if let Some(packed) = payload.strip_prefix(b"LZ77") {
+    let unpacked = if let Some(packed) = payload.strip_prefix(b"LZ77") {
         let size = be32(packed, 0).ok_or(fail)? as usize;
         if size != len {
             return Err(fail);
         }
-        let inflated = inflate::zlib(&packed[4..], len).ok_or(fail)?;
-        return Ok(Cow::Owned(inflated));
-    }
-    payload.get(..len).map(Cow::Borrowed).ok_or(fail)
+        inflate::zlib(&packed[4..], len)
+    } else if xpk::is_packed(payload) {
+        xpk::unpack(payload, len)
+    } else if powerpacker::is_packed(payload) {
+        powerpacker::unpack(payload)
+    } else {
+        return payload.get(..len).map(Cow::Borrowed).ok_or(fail);
+    };
+    unpacked
+        .filter(|bytes| bytes.len() >= len)
+        .map(Cow::Owned)
+        .ok_or(fail)
 }
 
 #[cfg(test)]
@@ -149,6 +183,21 @@ mod tests {
         let image = decode(&raw).unwrap();
         assert_eq!(image.rgb(), &[1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
         assert_eq!(decode(&packed).unwrap(), image);
+    }
+
+    #[test]
+    fn svg_bodies_may_be_packed_by_xpk_or_powerpacker() {
+        let plain = decode(&sgx(&[1, 2, 3, 4])).unwrap();
+        // RLEN: four literals, one chunk of the stream.
+        let xpk = xpk::tests::stream(b"RLEN", 4, &[(1, &[4, 1, 2, 3, 4], 4)]);
+        let mut svg = sgx(&xpk);
+        svg[..18].copy_from_slice(b"SVG Graphics File\0");
+        assert_eq!(decode(&svg).unwrap(), plain);
+        let packed = powerpacker::tests::literal_pp20(&[1, 2, 3, 4], [9, 9, 9, 9]);
+        assert_eq!(decode(&sgx(&packed)).unwrap(), plain);
+        // A stream that unpacks to fewer bytes than the picture needs.
+        let short = xpk::tests::stream(b"RLEN", 3, &[(1, &[2, 1, 2, 255, 3], 3)]);
+        assert!(decode(&sgx(&short)).is_err());
     }
 
     #[test]
