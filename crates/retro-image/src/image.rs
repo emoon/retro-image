@@ -826,6 +826,69 @@ mod tests {
     }
 
     #[test]
+    fn draw_is_the_over_operator_on_straight_alpha() {
+        let mut image = Image::from_indexed(1, 1, &[0], &[0x0000ff]).unwrap();
+        image.draw(0, 0, 0x00ff_0000);
+        assert_eq!(image.get_argb(0, 0), 0xff00_00ff, "clear changes nothing");
+        // Half red over opaque blue is `over`, and stays opaque.
+        image.draw(0, 0, 0x80ff_0000);
+        assert_eq!(image.get_argb(0, 0), 0xff80_007f);
+        image.draw(0, 0, 0xff00_ff00);
+        assert_eq!(image.get_argb(0, 0), 0xff00_ff00, "opaque replaces");
+        // Over a clear pixel the source shows through unchanged.
+        let mut clear = Image::from_argb(1, 1, core::iter::once(CLEAR));
+        clear.draw(0, 0, 0x80ff_0000);
+        assert_eq!(clear.get_argb(0, 0), 0x80ff_0000);
+        // Half red over half blue: alpha 192, red two thirds of the color.
+        let mut half = Image::from_argb(1, 1, core::iter::once(0x8000_00ff));
+        half.draw(0, 0, 0x80ff_0000);
+        assert_eq!(half.get_argb(0, 0), 0xc0aa_0055);
+    }
+
+    #[test]
+    fn from_indexed_argb_takes_alpha_from_the_palette() {
+        let palette = [0x00ff_0000, 0xff00_ff00];
+        let image = Image::from_indexed_argb(2, 1, &[0, 1], &palette).unwrap();
+        assert_eq!(
+            (image.get_argb(0, 0), image.get_argb(1, 0)),
+            (CLEAR, 0xff00_ff00)
+        );
+        // A transparent entry that no pixel uses leaves no alpha plane.
+        let unused = Image::from_indexed_argb(2, 1, &[1, 1], &palette).unwrap();
+        assert!(!unused.has_alpha());
+    }
+
+    #[test]
+    fn paste_clips_and_carries_alpha() {
+        let mut canvas = Image::from_indexed(3, 1, &[0, 0, 0], &[0x112233]).unwrap();
+        let picture = red_green([0, 200]);
+        canvas.paste(&picture, 2, 0, 5, 5);
+        // Only the first picture column fits; the plane appears opaque
+        // elsewhere.
+        assert_eq!(
+            canvas.rgba(),
+            [0x11, 0x22, 0x33, 255, 0x11, 0x22, 0x33, 255, 255, 0, 0, 0]
+        );
+        canvas.paste(&picture, 0, 0, 1, 1);
+        assert_eq!(canvas.get_argb(0, 0), CLEAR);
+        assert_eq!(
+            canvas.get_argb(1, 0),
+            0xff11_2233,
+            "max_width stops the copy"
+        );
+    }
+
+    #[test]
+    fn alpha_row_mut_starts_opaque() {
+        let mut image = Image::new(2, 2);
+        image.alpha_row_mut(1)[0] = 7;
+        assert_eq!(
+            image.rgba()[3..],
+            [255, 0, 0, 0, 255, 0, 0, 0, 7, 0, 0, 0, 255]
+        );
+    }
+
+    #[test]
     fn over_blends_channel_by_channel() {
         assert_eq!(over(0x102030, 0xf0e0d0, 0), 0x102030);
         assert_eq!(over(0x102030, 0xf0e0d0, 255), 0xf0e0d0);
