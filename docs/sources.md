@@ -19,7 +19,7 @@ copyright notice and licence text.
 |---|---|---|
 | [Deark](https://github.com/jsummers/deark) | MIT | Amiga icons (classic, NewIcons, GlowIcons), RISC OS sprites, PC text-mode fonts and many smaller details |
 | [GoDot](https://github.com/godot64/GoDot) | MIT | C64 loaders and GoDot's own 4-bit format |
-| [Ancient](https://github.com/temisu/ancient) | BSD-2-Clause | Pack-Ice depacker (Atari ST) |
+| [Ancient](https://github.com/temisu/ancient) | BSD-2-Clause | Depackers: Pack-Ice, PowerPacker, XPK (RLEN, FAST, MASH, NUKE), RNC, Imploder, Crunch-Mania |
 | [MAME](https://github.com/mamedev/mame) (Thomson driver) | BSD-3-Clause | Thomson palette and screen modes |
 | [pynuvie](https://github.com/anarkiwi/pynuvie) | Apache-2.0 | C64 NUFLI tables |
 | [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
@@ -39,7 +39,8 @@ on almost every platform. Per platform, the most used were:
 - Commodore: [Codebase64](http://codebase.c64.org), Peter Schepers' C64 format notes and
   the [GoDot](https://www.godot64.de) loader pages.
 - Amiga: the IFF specifications on the [AmigaOS wiki](https://wiki.amigaos.net) and the
-  ROM Kernel Reference Manuals.
+  ROM Kernel Reference Manuals, plus the SGX, IFF-RGFX, ILBM64 and YAFA texts on
+  [Aminet](https://aminet.net).
 - Apple: Apple's technical notes and the Apple IIGS Hardware Reference.
 - MSX: the [MSX2 Technical Handbook](https://konamiman.github.io/MSX2-Technical-Handbook/)
   and the [MSX Assembly Page](https://map.grauw.nl).

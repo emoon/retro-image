@@ -13,27 +13,50 @@
 //! - `FORM DPST` (DeluxePaint ST animation): a `DPAH` chunk, a full ILBM
 //!   first frame, then `VDLT` delta frames. No public spec; the layout comes
 //!   from one sample, and its first frame matches `recoil2png`.
-//! - PowerPacker (`PP20`) and Pack-Ice wrappers around an IFF file are
-//!   unpacked first (one layer): PowerPacker file format,
-//!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers
-//!   are in `codec/`.
-//! - AMOS banks tried as sprite/icon banks, then as a packed picture: the
-//!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
+//! - `FORM RGFX`, `FORM YAFA` (first frame) and `FORM YUVN`, and deep ILBMs of 12, 32, 48 and 64
+//!   planes: Kleinert's IFF-RGFX (<https://aminet.net/dev/misc/IFF-RGFX.zip>) and ILBM64
+//!   (<https://aminet.net/docs/misc/ILBM64.readme>) texts, the YAFA document
+//!   (<https://aminet.net/docs/misc/YAFA-doc.lha>) and MacroSystem's YUVN text
+//!   (<https://wiki.amigaos.net/wiki/YUVN_IFF_YUV_Image_Data>).
+//! - A top-level `LIST` or `CAT`, and `FORM ANBM`, shown as their first `FORM` with the `PROP`
+//!   chunks of its type behind it: EA IFF 85 and the ANBM page,
+//!   <https://wiki.amigaos.net/wiki/ANBM_IFF_Animated_Bitmap>.
+//! - PowerPacker (`PP20`), Pack-Ice, Rob Northen (RNC), Imploder and Crunch-Mania wrappers around
+//!   an IFF file or an AMOS bank are unpacked first (one layer): PowerPacker file format,
+//!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers are in `codec/`, each
+//!   citing Ancient (<https://github.com/temisu/ancient>, BSD-2).
+//! - AMOS banks tried as sprite/icon banks, then as a packed picture, then as the picture
+//!   packer's files without a bank header: the AMOS file formats page,
+//!   <http://alvyn.sourceforge.net/amos_file_formats.html>.
+//!
+//! Not IFF, each in its own module with its sources: SuperView Graphics (`sgx.rs`, with XPK
+//! bodies from `codec/xpk.rs`), CDXL video (`cdxl.rs`), Disney Animation Studio (`cfast.rs`) and
+//! bitmap fonts (`bitmap_font.rs`).
 
 mod abk;
+mod bitmap_font;
+mod cdxl;
+mod cfast;
+mod chunky;
 mod dctv;
 mod deep;
+mod deep_ilbm;
 mod flf;
 mod ham_e;
 mod icon;
 mod iff;
+mod iff_group;
 mod ilbm;
 mod multi_palette;
 mod pac_pic;
 mod rgbn;
+mod rgfx;
+mod sgx;
 mod vdat;
+mod yafa;
+mod yuvn;
 
-use crate::codec::{pack_ice, powerpacker};
+use crate::codec::{crunch_mania, imploder, pack_ice, powerpacker, rnc};
 use crate::{DecodeError, Format, Image};
 use alloc::vec::Vec;
 
@@ -62,6 +85,16 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "RGB8", &["rgb8"], decode_iff),
     Format::new("Amiga", "AMOS", &["abk"], decode_abk).signature(),
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
+    Format::new("Amiga", "IFF-RGFX", &["rgfx", "rgx"], decode_iff),
+    Format::new("Amiga", "YAFA animation", &["yafa"], decode_iff),
+    // A hunk file with no extension of its own (the files are named by size).
+    Format::new("Amiga", "Bitmap font", &[], bitmap_font::decode).signature(),
+    Format::new("Amiga", "Disney Animation Studio", &["cft"], cfast::decode).signature(),
+    // Headerless: only the extension and a strict header check identify it.
+    Format::new("Amiga", "CDXL video", &["cdxl", "xl"], cdxl::decode),
+    // SuperView's older `.svg` files are found by their signature; claiming the
+    // extension would also catch the vector kind.
+    Format::new("Amiga", "SuperView Graphics", &["sgx"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
     Format::new(
@@ -75,9 +108,15 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga HAM-E", "HAM-E", &["iff"], decode_ham_e),
 ];
 
-/// AMOS sprite, icon or picture bank.
+/// AMOS sprite, icon or picture bank, possibly packed (one layer), or the
+/// picture packer's files without a bank header.
 fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
-    abk::decode(data).or_else(|_| pac_pic::decode(data))
+    let unpacked = depack(data)?;
+    let data = unpacked.as_deref().unwrap_or(data);
+    abk::decode(data)
+        .or_else(|_| pac_pic::decode(data))
+        .or_else(|_| pac_pic::decode_screen(data))
+        .or_else(|_| pac_pic::decode_bare(data))
 }
 
 /// DCTV pictures: an ILBM with the DCTV signature in its first row.
@@ -96,13 +135,19 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// The contents of a PowerPacker or Pack-Ice file; `None` if `data` is
-/// neither, an error if it is one and damaged.
+/// The contents of a PowerPacker, Pack-Ice, RNC, Imploder or Crunch-Mania file; `None` if `data`
+/// is none of them, an error if it is one and damaged.
 fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     let unpacked = if powerpacker::is_packed(data) {
         powerpacker::unpack(data)
     } else if pack_ice::is_packed(data) {
         pack_ice::unpack(data)
+    } else if rnc::is_packed(data) {
+        rnc::unpack(data)
+    } else if imploder::is_packed(data) {
+        imploder::unpack(data)
+    } else if crunch_mania::is_packed(data) {
+        crunch_mania::unpack(data)
     } else {
         return Ok(None);
     };
@@ -123,6 +168,9 @@ fn decode_plain_iff(data: &[u8]) -> Result<Image, DecodeError> {
     if super::atari_st::is_neochrome_master(data) {
         return Err(DecodeError::Unrecognized);
     }
+    if let Some((kind, contents)) = iff_group::first_form(data) {
+        return decode_form(&kind, &contents);
+    }
     let (kind, contents) = iff::form(data).ok_or(DecodeError::Unrecognized)?;
     decode_form(&kind, contents)
 }
@@ -133,12 +181,16 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"BBM " => ilbm::decode_ilbm(contents),
         b"ILBM" => ilbm::decode_ilbm(contents)
             .or_else(|_| dctv::decode(contents))
-            .or_else(|_| ham_e::decode(contents)),
+            .or_else(|_| ham_e::decode(contents))
+            .or_else(|_| deep_ilbm::decode(contents)),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
         b"RGB8" => rgbn::decode(rgbn::Kind::Rgb8, contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),
+        b"RGFX" => rgfx::decode(contents),
+        b"YAFA" => yafa::decode(contents),
+        b"YUVN" => yuvn::decode(contents),
         b"ANIM" | b"DPST" => first_frame(contents),
         _ => Err(DecodeError::Unrecognized),
     }
@@ -222,6 +274,29 @@ mod tests {
         // A packed file whose contents are not a picture is rejected.
         let junk = powerpacker::tests::literal_pp20(b"not an IFF file", [9, 9, 9, 9]);
         assert!(decode_iff(&junk).is_err());
+    }
+
+    #[test]
+    fn a_list_decodes_its_first_form_with_the_properties_of_its_prop() {
+        let plain = tiny_ilbm();
+        // BMHD and CMAP (28 + 14 bytes) move into a PROP; BODY stays in the FORM.
+        let (shared, body) = plain[12..].split_at(28 + 14);
+        let group = |id: &[u8; 4], kind: &[u8; 4], payload: &[u8]| {
+            let mut out = id.to_vec();
+            out.extend_from_slice(&(payload.len() as u32 + 4).to_be_bytes());
+            out.extend_from_slice(kind);
+            out.extend_from_slice(payload);
+            out
+        };
+        let prop = group(b"PROP", b"ILBM", shared);
+        let form = group(b"FORM", b"ILBM", body);
+        let list = group(b"LIST", b"ILBM", &[prop.clone(), form.clone()].concat());
+        assert_eq!(decode_iff(&list).unwrap(), decode_iff(&plain).unwrap());
+        // The same inside an ANBM brush.
+        let anbm = group(b"FORM", b"ANBM", &list[..]);
+        assert_eq!(decode_iff(&anbm).unwrap(), decode_iff(&plain).unwrap());
+        // A FORM without the shared properties is not a picture.
+        assert!(decode_iff(&group(b"LIST", b"ILBM", &form)).is_err());
     }
 
     #[test]

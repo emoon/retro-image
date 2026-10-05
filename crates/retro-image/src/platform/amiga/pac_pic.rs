@@ -8,6 +8,14 @@
 //!   (<https://github.com/jsummers/deark>, MIT licence,
 //!   Copyright (C) 2016-2026 Jason Summers).
 //! - The AmBk bank header: <http://alvyn.sourceforge.net/amos_file_formats.html>.
+//! - Files without the bank header, as the AMOS picture packer saves them
+//!   (Sembiance's `image/amosPicturePacker`, 11 files): five start with the
+//!   screen header (`$12031990`) and are the bank's contents (verified by
+//!   wrapping them in a bank header and checking the result against
+//!   `recoil2png`); six start with the picture block (`$06071963`) and have
+//!   no palette anywhere in the file, so they are drawn in grays, a guess
+//!   (they could be HAM or half-bright; the screen header that would say so is
+//!   missing).
 
 use super::ilbm::{half_brite, ham, rgb12};
 use crate::bytes::{be16, be32};
@@ -19,12 +27,21 @@ const SCREEN_IDS: [u32; 3] = [0x1203_1990, 0x0003_1990, 0x1203_0090];
 const PICTURE_ID: u32 = 0x0607_1963;
 const SCREEN_HEADER_LEN: usize = 90;
 
+/// A `Pac.Pic.` bank: the AmBk header, a screen header with the palette,
+/// then the picture.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     if data.get(..4) != Some(b"AmBk") || data.get(12..20) != Some(b"Pac.Pic.") {
         return Err(fail);
     }
-    let screen = data.get(20..20 + SCREEN_HEADER_LEN).ok_or(fail)?;
+    decode_screen(data.get(20..).ok_or(fail)?)
+}
+
+/// A screen header and picture without the bank header (the files the AMOS
+/// picture packer saves). Both ids must match.
+pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
+    let screen = data.get(..SCREEN_HEADER_LEN).ok_or(fail)?;
     if !SCREEN_IDS.contains(&be32(screen, 0).ok_or(fail)?) {
         return Err(fail);
     }
@@ -34,8 +51,24 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         palette[i] = rgb12(u16::from_be_bytes([word[0], word[1]]));
         palette[i + 32] = half_brite(palette[i]);
     }
+    draw(data, SCREEN_HEADER_LEN, mode, Some(palette))
+}
 
-    let start = 20 + SCREEN_HEADER_LEN;
+/// A picture block alone, as some of the packer's files hold it. It has no
+/// palette, so the colors are a gray ramp over the plane count: a guess that
+/// keeps the picture legible.
+pub(super) fn decode_bare(data: &[u8]) -> Result<Image, DecodeError> {
+    draw(data, 0, 0, None)
+}
+
+/// The picture at `start` in `data`, in `palette` (`None` for grays).
+fn draw(
+    data: &[u8],
+    start: usize,
+    mode: u16,
+    palette: Option<[u32; 64]>,
+) -> Result<Image, DecodeError> {
+    let fail = DecodeError::Unrecognized;
     let picture = data.get(start..start + 24).ok_or(fail)?;
     if be32(picture, 0).ok_or(fail)? != PICTURE_ID {
         return Err(fail);
@@ -54,6 +87,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let plane_len = row_len * height;
     let unpacked = stos_pictbank::unpack(data, start + 24, rle_pos, points_pos, plane_len * planes)
         .ok_or(fail)?;
+    let palette = palette.unwrap_or_else(|| gray_ramp(planes));
 
     let is_ham = mode & 0x800 != 0 && planes == 6;
     let mut image = Image::new(width as u32, height as u32);
@@ -85,9 +119,29 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
+/// `2^planes` grays from black to white (the rest of the table black).
+fn gray_ramp(planes: usize) -> [u32; 64] {
+    let last = (1u32 << planes) - 1;
+    core::array::from_fn(|i| {
+        let level = if i as u32 > last {
+            0
+        } else {
+            i as u32 * 255 / last
+        };
+        level * 0x01_0101
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bare_pictures_are_drawn_in_a_gray_ramp() {
+        let ramp = gray_ramp(2);
+        assert_eq!(ramp[..5], [0, 0x555555, 0xaaaaaa, 0xffffff, 0]);
+        assert_eq!(gray_ramp(1)[..3], [0, 0xffffff, 0]);
+    }
 
     #[test]
     fn picture_over_the_pixel_cap_is_rejected() {
