@@ -152,7 +152,6 @@ fn unpack_tile(coded: &[u8], planes: usize, rows: usize, row_len: usize) -> Opti
     let mut out = Vec::with_capacity(planes * rows * row_len);
     let mut rest = coded;
     for _ in 0..planes {
-        let first = out.len();
         for row in 0..rows {
             if row == 0 {
                 let (bytes, tail) = rest.split_at_checked(row_len)?;
@@ -173,7 +172,6 @@ fn unpack_tile(coded: &[u8], planes: usize, rows: usize, row_len: usize) -> Opti
             }
             rest = tail;
         }
-        debug_assert_eq!(out.len() - first, rows * row_len);
     }
     Some(out)
 }
@@ -231,8 +229,10 @@ pub(super) fn decode_pix(data: &[u8]) -> Result<Image, DecodeError> {
             number % strips_across * tile_columns,
             number / strips_across * tile_rows,
         );
-        // Rows past the bottom are not stored.
-        if top >= height {
+        // A tile wholly past the bottom or the right edge shows nothing:
+        // the rows below the picture are not stored, and a tile of columns
+        // past the right edge is padding.
+        if top >= height || left >= width {
             continue;
         }
         let rows = tile_rows.min(height - top);
@@ -245,7 +245,7 @@ pub(super) fn decode_pix(data: &[u8]) -> Result<Image, DecodeError> {
             planes,
             |plane, y| (plane * rows + y) * row_len,
         );
-        let visible = tile_columns.min(width.saturating_sub(left));
+        let visible = tile_columns.min(width - left);
         for (y, row) in values.chunks_exact(tile_columns).enumerate() {
             let start = (top + y) * width + left;
             for (pixel, &value) in indices[start..start + visible].iter_mut().zip(row) {
@@ -297,25 +297,28 @@ mod tests {
         assert_eq!(level(200, 64), 255);
     }
 
-    /// A 12 x 2 picture in one tile of 2 rows x 16 columns, 1 plane.
-    fn file(coded: &[u8], palette: &[u8]) -> Vec<u8> {
+    /// A picture `width` pixels wide and 2 rows tall, 1 plane, with the
+    /// given tile information (rows, columns, strips down, strips across)
+    /// and one item per tile.
+    fn file_of(width: u8, tile_info: [u16; 4], tiles: &[&[u8]], palette: &[u8]) -> Vec<u8> {
         let mut info = alloc::vec![0u8; IMAGE_INFO_LEN];
         info[1] = 1;
-        info[18] = 12;
+        info[18] = width;
         info[20] = 2;
         info[22] = 1;
         info[25..29].copy_from_slice(&[0, 64, 64, 64]);
-        let tile_info = [2, 0, 16, 0, 1, 0, 1, 0];
-        let sections: [(u16, &[u8]); 4] = [
+        let tile_info: Vec<u8> = tile_info.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let mut sections: Vec<(u16, &[u8])> = alloc::vec![
             (ID_IMAGE, &info),
             (ID_PALETTE, palette),
             (ID_TILE_INFO, &tile_info),
-            (FIRST_TILE, coded),
         ];
-        let mut data = Vec::new();
-        data.extend_from_slice(&[3, 0, 4, 0]);
-        let mut at = INDEX_AT + 4 * ITEM_LEN;
-        for (id, bytes) in sections {
+        for (number, tile) in tiles.iter().enumerate() {
+            sections.push((FIRST_TILE + number as u16, tile));
+        }
+        let mut data = alloc::vec![3, 0, sections.len() as u8, 0];
+        let mut at = INDEX_AT + sections.len() * ITEM_LEN;
+        for &(id, bytes) in &sections {
             data.extend_from_slice(&id.to_le_bytes());
             data.extend_from_slice(&(bytes.len() as u16).to_le_bytes());
             data.extend_from_slice(&(at as u32).to_le_bytes());
@@ -325,6 +328,11 @@ mod tests {
             data.extend_from_slice(bytes);
         }
         data
+    }
+
+    /// A 12 x 2 picture in one tile of 2 rows x 16 columns.
+    fn file(coded: &[u8], palette: &[u8]) -> Vec<u8> {
+        file_of(12, [2, 16, 1, 1], &[coded], palette)
     }
 
     #[test]
@@ -339,6 +347,32 @@ mod tests {
         assert_eq!(image.get(1, 0), 0);
         assert_eq!(image.get(11, 0), 0xff0000);
         assert_eq!((image.get(0, 1), image.get(8, 1)), (0xff0000, 0));
+    }
+
+    #[test]
+    fn tiles_side_by_side_fill_the_picture_and_tiles_past_its_edge_are_skipped() {
+        let palette = [0, 0, 0, 0, 0, 63, 0, 0];
+        // Two tiles of 2 rows x 16 columns across a 20 pixel picture: the
+        // first all set, the second set in its first 4 pixels (row 1 repeats
+        // row 0, as its mask byte is 0).
+        let tiles: [&[u8]; 2] = [&[0xff, 0xff, 0x00], &[0xf0, 0x00, 0x00]];
+        let data = file_of(20, [2, 16, 1, 2], &tiles, &palette);
+        let image = decode_pix(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (20, 2));
+        assert_eq!(
+            [image.get(15, 0), image.get(16, 1), image.get(19, 0)],
+            [0xff0000; 3]
+        );
+        // The same tiles for a picture 12 pixels wide: the second tile lies
+        // wholly past the right edge and is not drawn.
+        let data = file_of(12, [2, 16, 1, 2], &tiles, &palette);
+        let image = decode_pix(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (12, 2));
+        assert_eq!(image.get(11, 1), 0xff0000);
+        // Nor is a tile row past the bottom.
+        let row: &[u8] = &[0xff, 0xff];
+        let data = file_of(12, [1, 16, 4, 1], &[row; 4], &palette);
+        assert_eq!(decode_pix(&data).unwrap().height(), 2);
     }
 
     #[test]
