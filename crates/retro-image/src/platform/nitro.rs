@@ -32,10 +32,11 @@
 //! header, and its data. That header is strict enough for content
 //! detection, so the three formats have signatures.
 //!
-//! Files that this does not cover are rejected: the older G2D layout whose
-//! section sizes leave out the section headers, palettes with a `PCMP`
-//! compression table (read as if uncompressed they would put colors in the
-//! wrong palettes), and files wrapped in BIOS compression.
+//! Not decoded: the older G2D layout whose section sizes leave out the section
+//! headers (its sizes do not add up, so it fails the checks), palettes with a
+//! `PCMP` compression table (read as if uncompressed they would put colors in
+//! the wrong palettes, so they are rejected), and files wrapped in BIOS
+//! compression.
 //!
 //! Colors are BGR555 (`v << 3 | v >> 2` widens a channel, as elsewhere in
 //! this crate; NitroPaint uses a rounding table that differs by one level).
@@ -154,7 +155,7 @@ impl Palette {
     /// the body at 0xC, then the 16-bit colors.
     fn parse(data: &[u8]) -> Option<Self> {
         let body = section(data, b"RLCN", b"TTLP")?;
-        if !matches!(le32(body, 0)?, 3 | 4) {
+        if !matches!(le32(body, 0)?, 3 | 4) || section(data, b"RLCN", b"PMCP").is_some() {
             return None;
         }
         let size = le32(body, 8)? as usize;
@@ -295,6 +296,13 @@ mod tests {
         bad[0x14] = 0xff;
         assert!(decode_palette(&bad).is_err());
         assert!(decode_palette(&nclr(5, &[0; 16])).is_err());
+        // A palette compression table (`PCMP`) follows the colors.
+        let mut compressed = nclr(3, &[0; 16]);
+        compressed.extend_from_slice(b"PMCP\x08\0\0\0");
+        compressed[8] += 8;
+        compressed[0xe] = 2;
+        assert!(decode_palette(&nclr(3, &[0; 16])).is_ok());
+        assert!(decode_palette(&compressed).is_err());
         assert!(decode_palette(&good[..0x20]).is_err());
         // Trailing data after the file size is ignored.
         let mut padded = good;
