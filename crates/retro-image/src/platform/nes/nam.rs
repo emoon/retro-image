@@ -19,7 +19,7 @@
 //! `background_table` guesses (see there). A 4 KiB `.chr` is used as is.
 
 use super::nametable::Nametable;
-use super::{PATTERN, PATTERN_TABLE_LEN};
+use super::{MASTER_PALETTE, PATTERN, PATTERN_TABLE_LEN};
 use crate::{Companions, DecodeError, Image};
 
 const WIDTH: usize = 32;
@@ -49,6 +49,7 @@ pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, 
         names: &data[..NAMES_LEN],
         attributes: &[0; 64],
         palette: &palette,
+        master: &MASTER_PALETTE,
     }
     .draw()
 }
