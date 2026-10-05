@@ -31,6 +31,14 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
     }
 }
 
+/// A 15-bit color as the Game Boy Color, the Game Boy Advance and the DS store
+/// it, as `0xRRGGBB`: red in bits 0-4, green in bits 5-9, blue in bits 10-14,
+/// bit 15 ignored, each channel widened to 8 bits as `v << 3 | v >> 2`.
+pub(crate) fn bgr555(word: u16) -> u32 {
+    let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
+    widen(word & 31) << 16 | widen(word >> 5 & 31) << 8 | widen(word >> 10 & 31)
+}
+
 /// Colour shown where a picture is transparent. `Image` has no alpha channel,
 /// so every decoder whose format carries transparency composites onto this
 /// light grey, which stays visible against both white and black artwork.
@@ -316,6 +324,23 @@ fn crop_rows<T: Copy>(values: &mut Vec<T>, stride: usize, width: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bgr555_puts_red_lowest_and_ignores_bit_15() {
+        assert_eq!(bgr555(0x001f), 0xff_0000);
+        assert_eq!(bgr555(0x03e0), 0x00_ff00);
+        assert_eq!(bgr555(0x7c00), 0x00_00ff);
+        // Channel 16 widens to 0x84, and bit 15 changes nothing.
+        assert_eq!(bgr555(0x8010), 0x84_0000);
+    }
+
+    #[test]
+    fn over_fill_mixes_by_alpha() {
+        assert_eq!(over_fill([1, 2, 3, 255]), 0x01_0203);
+        assert_eq!(over_fill([1, 2, 3, 0]), TRANSPARENT_FILL);
+        // Half transparent white over the gray 0xc0: (255 * 128 + 192 * 127) / 255 rounds to 0xe0.
+        assert_eq!(over_fill([255, 255, 255, 128]), 0xe0_e0e0);
+    }
 
     #[test]
     fn get_returns_what_set_stored() {

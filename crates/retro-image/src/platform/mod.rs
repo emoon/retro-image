@@ -14,10 +14,12 @@ mod atari_st;
 mod bbc_micro;
 mod cdi;
 mod commodore;
+mod ctr;
 mod dec_vt340;
 mod electronika;
 mod fm_towns;
 mod game_boy;
+mod game_boy_advance;
 mod hp48;
 mod kiss;
 mod mega_drive;
@@ -27,6 +29,7 @@ mod neo_geo;
 mod nes;
 mod nintendo_3ds;
 mod nintendo_ds;
+mod nitro;
 mod oric;
 mod palm_os;
 mod pc;
@@ -61,9 +64,11 @@ pub(crate) static ALL: &[&[Format]] = &[
     cdi::FORMATS,
     commodore::FORMATS,
     dec_vt340::FORMATS,
+    ctr::FORMATS,
     electronika::FORMATS,
     fm_towns::FORMATS,
     game_boy::FORMATS,
+    game_boy_advance::FORMATS,
     hp48::FORMATS,
     kiss::FORMATS,
     mega_drive::FORMATS,
@@ -71,6 +76,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     nes::FORMATS,
     nintendo_3ds::FORMATS,
     nintendo_ds::FORMATS,
+    nitro::FORMATS,
     nec_pc::FORMATS,
     oric::FORMATS,
     palm_os::FORMATS,
