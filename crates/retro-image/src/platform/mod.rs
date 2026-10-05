@@ -11,6 +11,7 @@ mod atari8;
 mod atari_st;
 mod bbc_micro;
 mod commodore;
+mod ctr;
 mod electronika;
 mod fm_towns;
 mod game_boy;
@@ -44,6 +45,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     atari_st::FORMATS,
     bbc_micro::FORMATS,
     commodore::FORMATS,
+    ctr::FORMATS,
     electronika::FORMATS,
     fm_towns::FORMATS,
     game_boy::FORMATS,
