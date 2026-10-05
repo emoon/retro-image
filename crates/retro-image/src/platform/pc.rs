@@ -26,6 +26,7 @@
 //! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
 //! - IBM Storyboard pictures: see `pc/storyboard.rs`.
 //! - Inset PIX pictures: see `pc/inset_pix.rs`.
+//! - WordPerfect Graphics bitmaps: see `pc/wpg.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -52,6 +53,7 @@ mod printpartner;
 mod printshop;
 mod storyboard;
 mod tga;
+mod wpg;
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -132,6 +134,7 @@ pub(super) static FORMATS: &[Format] = &[
     // Item index, mandatory items and every tile are checked, but there is no
     // magic number: claimed by extension only (`.pix` is also Atari and TRS-80).
     Format::new("PC", "Inset PIX", &["pix"], inset_pix::decode_pix),
+    Format::new("PC", "WordPerfect Graphics", &["wpg"], wpg::decode_wpg).signature(),
     // The `EP_CAP` text makes the first kind detectable by content. The later
     // kind has only a header check and a strictly decoded stream, so it is
     // claimed by extension, after the other `.pic` formats.
