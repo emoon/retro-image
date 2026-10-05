@@ -1,6 +1,8 @@
 //! Amstrad PCW (Joyce) pictures: MicroDesign areas and pages, Stop Press
 //! and MicroDesign CUT, The Desktop Publisher GRF, Stop Press canvas SPC.
-//! All are 1-bit, set bit = white (the lit pixel of the PCW screen).
+//! All are 1-bit. A set bit is white in MicroDesign areas and pages (the format
+//! sheet says so) and assumed white in SPC (the lit pixel of the PCW screen);
+//! it is black in CUT and assumed black in GRF, see below.
 //!
 //! Sources:
 //! - MicroDesign 3 page (`.MDP`) and area (`.MDA`) file specifications,
@@ -26,10 +28,17 @@
 //!   data, up to the padding noted below), `DIAGRAM.CUT` from John Elliott's
 //!   `mdaspec.com` and `joyce.spc` from the Joyce emulator's Z80 utilities.
 //!   The MicroDesign 3 coding, MDP pages and GRF have no real sample here and
-//!   are decoded from the format sheet only; the polarity of CUT, GRF and SPC
-//!   is assumed to be that of MDA.
+//!   are decoded from the format sheet only.
 //!
 //! Choices of this crate:
+//! - Polarity. The page does not give it for CUT, GRF or SPC. `DIAGRAM.CUT` is
+//!   the sheet's own figure of the MicroDesign 2 coding: it draws the bytes
+//!   `0F`, `CC`, `F0` ... as cells whose zero bits (black in the sheet's text)
+//!   are solid blocks and whose one bits (white) are hollow boxes, on a page
+//!   whose margin is zero bits. That reads as black ink on white paper only if
+//!   a set bit is black, so CUT is decoded that way (one sample, so this is
+//!   evidence, not a specification). GRF is "substantially similar" to CUT
+//!   and assumed the same, unconfirmed; SPC assumed white, unconfirmed.
 //! - Files copied from CP/M disks are padded to a multiple of 128 bytes
 //!   (every sample is), so the headerless CUT and GRF accept a length that is
 //!   the data size rounded up to 128.
@@ -70,7 +79,10 @@ const SCREEN_WIDTH: usize = 720;
 const SCREEN_HEIGHT: usize = 256;
 /// CP/M file records: copied files are padded to a whole number of them.
 const RECORD_LEN: usize = 128;
-const COLORS: [u32; 2] = [0x000000, 0xffffff];
+/// Colors of a clear and a set bit: a set bit is white.
+const SET_IS_WHITE: [u32; 2] = [0x000000, 0xffffff];
+/// A set bit is black, as on paper.
+const SET_IS_BLACK: [u32; 2] = [0xffffff, 0x000000];
 
 fn decode_microdesign(data: &[u8]) -> Result<Image, DecodeError> {
     // `.MDA` or `.MDP`, the program name, `v1.` and the minor digit that
@@ -91,7 +103,7 @@ fn decode_microdesign(data: &[u8]) -> Result<Image, DecodeError> {
         b'3' => unpack_lines(packed, row_len, height)?,
         _ => return Err(FAIL),
     };
-    bits(row_len * 8, height, &bitmap, row_len)
+    bits(row_len * 8, height, &bitmap, row_len, SET_IS_WHITE)
 }
 
 /// MicroDesign 2: bytes `00` and `FF` are followed by a repeat count (0 is
@@ -191,7 +203,7 @@ fn headerless(
     if data.len() != end && data.len() != padded {
         return Err(FAIL);
     }
-    bits(width, height, &data[HEADER_LEN..end], row_len)
+    bits(width, height, &data[HEADER_LEN..end], row_len, SET_IS_BLACK)
 }
 
 /// A 720x256 screen dump, shown with the lines doubled.
@@ -207,17 +219,23 @@ fn decode_spc(data: &[u8]) -> Result<Image, DecodeError> {
             bitmap.extend(block.iter().skip(line).step_by(8));
         }
     }
-    bits(SCREEN_WIDTH, SCREEN_HEIGHT, &bitmap, row_len)?.scaled(1, 2)
+    bits(SCREEN_WIDTH, SCREEN_HEIGHT, &bitmap, row_len, SET_IS_WHITE)?.scaled(1, 2)
 }
 
-fn bits(width: usize, height: usize, bitmap: &[u8], row_len: usize) -> Result<Image, DecodeError> {
+fn bits(
+    width: usize,
+    height: usize,
+    bitmap: &[u8],
+    row_len: usize,
+    colors: [u32; 2],
+) -> Result<Image, DecodeError> {
     Image::from_bits(
         width as u32,
         height as u32,
         bitmap,
         row_len,
         BitOrder::MsbFirst,
-        COLORS,
+        colors,
     )
 }
 
@@ -294,13 +312,26 @@ mod tests {
         data.extend_from_slice(&[0x80, 0x00, 0x01, 0xff, 0x00, 0x00]);
         let image = decode_cut(&data).unwrap();
         assert_eq!((image.width(), image.height()), (8, 3));
-        assert_eq!(image.get(0, 0), 0xffffff);
-        assert_eq!(image.get(7, 1), 0xffffff);
-        assert_eq!(image.get(0, 2), 0);
+        // A set bit is black on white paper.
+        assert_eq!(image.get(0, 0), 0);
+        assert_eq!(image.get(7, 1), 0);
+        assert_eq!(image.get(0, 2), 0xffffff);
         data.resize(RECORD_LEN, 0);
         assert!(decode_cut(&data).is_ok());
         data.push(0);
         assert!(decode_cut(&data).is_err());
+    }
+
+    #[test]
+    fn grf_rows_have_whole_bytes_and_a_set_bit_is_black_like_cut() {
+        // 9 x 2: rows of 2 bytes.
+        let mut data = alloc::vec![9, 0, 2, 0, 0x80, 0x80, 0x00, 0x00];
+        let image = decode_grf(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (9, 2));
+        assert_eq!((image.get(0, 0), image.get(8, 0)), (0, 0));
+        assert_eq!(image.get(1, 1), 0xffffff);
+        data.push(0);
+        assert!(decode_grf(&data).is_err());
     }
 
     #[test]
