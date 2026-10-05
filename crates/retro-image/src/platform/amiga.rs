@@ -32,6 +32,7 @@ mod rgbn;
 mod rgfx;
 mod sgx;
 mod vdat;
+mod yafa;
 
 use crate::codec::{pack_ice, powerpacker};
 use crate::{DecodeError, Format, Image};
@@ -63,6 +64,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "AMOS", &["abk"], decode_abk).signature(),
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "IFF-RGFX", &["rgfx", "rgx"], decode_iff),
+    Format::new("Amiga", "YAFA animation", &["yafa"], decode_iff),
     Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
@@ -142,6 +144,7 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"RGB8" => rgbn::decode(rgbn::Kind::Rgb8, contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),
         b"RGFX" => rgfx::decode(contents),
+        b"YAFA" => yafa::decode(contents),
         // ANIM: the first frame is a complete ILBM.
         b"ANIM" => match iff::chunks(contents).next() {
             Some((id, body)) if &id == b"FORM" && body.len() >= 4 => {
