@@ -21,6 +21,7 @@ mod nes;
 mod oric;
 mod pc;
 mod playstation;
+mod playstation2;
 mod psion;
 mod risc_os;
 mod sam_coupe;
@@ -53,6 +54,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     oric::FORMATS,
     pc::FORMATS,
     playstation::FORMATS,
+    playstation2::FORMATS,
     psion::FORMATS,
     risc_os::FORMATS,
     sam_coupe::FORMATS,

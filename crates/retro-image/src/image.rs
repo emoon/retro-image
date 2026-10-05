@@ -36,6 +36,17 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
 /// light grey, which stays visible against both white and black artwork.
 pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 
+/// `0xAARRGGBB` laid over [`TRANSPARENT_FILL`] as `0xRRGGBB` (alpha 255 is
+/// opaque), rounding to the nearest value. The one place where partial
+/// transparency is flattened.
+pub(crate) fn over_fill(argb: u32) -> u32 {
+    let [a, r, g, b] = argb.to_be_bytes();
+    let [_, fr, fg, fb] = TRANSPARENT_FILL.to_be_bytes();
+    let a = u32::from(a);
+    let mix = |top: u8, under: u8| (u32::from(top) * a + u32::from(under) * (255 - a) + 127) / 255;
+    mix(r, fr) << 16 | mix(g, fg) << 8 | mix(b, fb)
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -376,6 +387,14 @@ mod tests {
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    #[test]
+    fn over_fill_blends_towards_the_fill_color() {
+        assert_eq!(over_fill(0xff12_3456), 0x123456);
+        assert_eq!(over_fill(0x0012_3456), TRANSPARENT_FILL);
+        // Half of white over 0xc0 is 0xdf.5, rounded up.
+        assert_eq!(over_fill(0x80ff_ffff), 0xe0e0e0);
     }
 
     #[test]
