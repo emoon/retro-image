@@ -38,7 +38,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
-use crate::codec::gx::{self, Format as Texels, PaletteFormat};
+use crate::codec::gx::{self, PaletteFormat, PixelFormat};
 use crate::image::over_fill;
 use crate::{DecodeError, Image};
 
@@ -156,17 +156,16 @@ fn picture(
     palette: &[u8],
 ) -> Option<Image> {
     let argb = match kind {
-        Pixels::Direct => gx::decode(Texels::Rgb5A3, width, height, pixels, &[])?,
+        Pixels::Direct => gx::decode(PixelFormat::Rgb5A3, width, height, pixels, &[])?,
         Pixels::Indexed => {
             let colors = gx::decode_palette(PaletteFormat::Rgb5A3, palette, PALETTE_COLORS)?;
-            gx::decode(Texels::C8, width, height, pixels, &colors)?
+            gx::decode(PixelFormat::C8, width, height, pixels, &colors)?
         }
     };
-    let colors: Vec<u32> = argb.into_iter().map(over_fill).collect();
     Some(Image::from_colors(
         width as u32,
         height as u32,
-        colors.into_iter(),
+        argb.into_iter().map(over_fill),
     ))
 }
 

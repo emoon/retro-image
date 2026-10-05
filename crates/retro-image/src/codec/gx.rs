@@ -9,12 +9,23 @@
 //!   textures (<https://wiki.tockdom.com/wiki/Image_Formats>, facts only) and
 //!   YAGCD chapter 15 (<https://hitmen.c02.at/files/yagcd/yagcd/chap15.html>,
 //!   facts only).
+//! - CMPR blending: the weights of two thirds and one third between the two
+//!   endpoints (and, when the first endpoint is not the larger, their average
+//!   plus transparent black) are those of PuyoTools' `CompressedPixelCodec.cs`
+//!   and of Venomalia's DolphinTextureExtraction-tool
+//!   (<https://github.com/Venomalia/DolphinTextureExtraction-tool>,
+//!   `lib/AuroraLip/Texture/BlockFormats/CMPRBlock.cs`, MIT license checked;
+//!   read only to compare the weights), and they equal the standard DXT1
+//!   ones: the decoder matches Pillow's DXT1 decoder pixel for pixel on random
+//!   blocks. Whether GameCube hardware blends with other weights (5/8 and 3/8
+//!   have been suggested) is unverified: both MIT decoders use thirds, and
+//!   no real GVR or TPL file was available to check.
 //! - Expanding 3, 4, 5 and 6-bit channels by repeating the high bits (so
 //!   `0x1f` becomes `0xff`) matches the 5-to-8-bit scaling `playstation.rs`
 //!   observed from `recoil2png`; the GX documents leave the rounding open.
 //!
 //! The formats are the ones Sega's GVR textures and Nintendo's TPL libraries
-//! share, and the numbers [`Format::from_code`] accepts are the codes both
+//! share, and the numbers [`PixelFormat::from_code`] accepts are the codes both
 //! files store. Pixels come out as `0xAARRGGBB`; flattening the alpha is the
 //! caller's business (`image::over_fill`). Mipmaps are not read.
 
@@ -50,7 +61,7 @@ use crate::image::widen_channel as widen;
 
 /// How a texture's pixels are stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Format {
+pub(crate) enum PixelFormat {
     /// 4-bit gray, 8x8 blocks.
     I4,
     /// 8-bit gray, 8x4 blocks.
@@ -75,7 +86,7 @@ pub(crate) enum Format {
     Cmpr,
 }
 
-impl Format {
+impl PixelFormat {
     /// The format a TPL or GVR file names by `code`.
     pub(crate) fn from_code(code: u32) -> Option<Self> {
         Some(match code {
@@ -203,7 +214,7 @@ fn gray(value: u32) -> u32 {
 /// `palette` is read by the indexed formats and must hold every index the
 /// data uses. `None` if `data` is too short or an index is outside `palette`.
 pub(crate) fn decode(
-    format: Format,
+    format: PixelFormat,
     width: usize,
     height: usize,
     data: &[u8],
@@ -227,51 +238,56 @@ pub(crate) fn decode(
 }
 
 /// One block's pixels, row-major in `tile`.
-fn decode_block(format: Format, block: &[u8], palette: &[u32], tile: &mut [u32; 64]) -> Option<()> {
+fn decode_block(
+    format: PixelFormat,
+    block: &[u8],
+    palette: &[u32],
+    tile: &mut [u32; 64],
+) -> Option<()> {
     let look_up = |index: usize| palette.get(index).copied();
     match format {
-        Format::I4 => {
+        PixelFormat::I4 => {
             for (i, pixel) in tile.iter_mut().enumerate() {
                 *pixel = gray(nibble(block, i) * 17);
             }
         }
-        Format::C4 => {
+        PixelFormat::C4 => {
             for (i, pixel) in tile.iter_mut().enumerate() {
                 *pixel = look_up(nibble(block, i) as usize)?;
             }
         }
-        Format::I8 => {
+        PixelFormat::I8 => {
             for (pixel, &v) in tile.iter_mut().zip(block) {
                 *pixel = gray(u32::from(v));
             }
         }
-        Format::IA4 => {
+        PixelFormat::IA4 => {
             for (pixel, &v) in tile.iter_mut().zip(block) {
                 let v = u32::from(v);
                 *pixel = argb((v >> 4) * 17, (v & 15) * 17, (v & 15) * 17, (v & 15) * 17);
             }
         }
-        Format::C8 => {
+        PixelFormat::C8 => {
             for (pixel, &v) in tile.iter_mut().zip(block) {
                 *pixel = look_up(usize::from(v))?;
             }
         }
-        Format::IA8 => decode_words(PaletteFormat::IA8, block, tile),
-        Format::Rgb565 => decode_words(PaletteFormat::Rgb565, block, tile),
-        Format::Rgb5A3 => decode_words(PaletteFormat::Rgb5A3, block, tile),
-        Format::C14X2 => {
+        PixelFormat::IA8 => decode_words(PaletteFormat::IA8, block, tile),
+        PixelFormat::Rgb565 => decode_words(PaletteFormat::Rgb565, block, tile),
+        PixelFormat::Rgb5A3 => decode_words(PaletteFormat::Rgb5A3, block, tile),
+        PixelFormat::C14X2 => {
             for (pixel, word) in tile.iter_mut().zip(block.as_chunks::<2>().0) {
                 *pixel = look_up(usize::from(u16::from_be_bytes(*word) & 0x3fff))?;
             }
         }
-        Format::Rgba32 => {
+        PixelFormat::Rgba32 => {
             // Sixteen alpha and red bytes, then sixteen green and blue bytes.
             let (ar, gb) = block.split_at(32);
             for ((pixel, ar), gb) in tile.iter_mut().zip(ar.chunks(2)).zip(gb.chunks(2)) {
                 *pixel = argb(ar[0].into(), ar[1].into(), gb[0].into(), gb[1].into());
             }
         }
-        Format::Cmpr => {
+        PixelFormat::Cmpr => {
             // Four 4x4 sub-blocks (left to right, top to bottom) in an 8x8 block.
             for (sub, bytes) in block.chunks(8).enumerate() {
                 let colors = cmpr_colors(bytes);
@@ -343,7 +359,7 @@ mod tests {
         block[32..34].copy_from_slice(&[0x22, 0x33]); // pixel 0: green, blue
         block[2..4].copy_from_slice(&[0xff, 0x44]); // pixel 1
         block[34..36].copy_from_slice(&[0x55, 0x66]);
-        let pixels = decode(Format::Rgba32, 4, 4, &block, &[]).unwrap();
+        let pixels = decode(PixelFormat::Rgba32, 4, 4, &block, &[]).unwrap();
         assert_eq!(pixels[0], 0x8011_2233);
         assert_eq!(pixels[1], 0xff44_5566);
     }
@@ -356,22 +372,22 @@ mod tests {
         data[32] = 2; // block 1 (right), pixel (8, 0)
         data[64 + 7] = 3; // block 2 (below the left one), pixel (7, 4)
         data[96 + 8] = 4; // block 3, pixel (0, 1) of the right block: (8, 5), cropped
-        let pixels = decode(Format::I8, 10, 5, &data, &[]).unwrap();
+        let pixels = decode(PixelFormat::I8, 10, 5, &data, &[]).unwrap();
         assert_eq!(pixels.len(), 50);
         assert_eq!(pixels[0] & 0xff, 1);
         assert_eq!(pixels[8] & 0xff, 2);
         assert_eq!(pixels[4 * 10 + 7] & 0xff, 3);
-        assert_eq!(decode(Format::I8, 10, 5, &data[..127], &[]), None);
+        assert_eq!(decode(PixelFormat::I8, 10, 5, &data[..127], &[]), None);
     }
 
     #[test]
     fn four_bit_formats_put_the_left_pixel_in_the_high_nibble() {
         let mut data = [0u8; 32];
         data[0] = 0x1f;
-        let pixels = decode(Format::I4, 8, 8, &data, &[]).unwrap();
+        let pixels = decode(PixelFormat::I4, 8, 8, &data, &[]).unwrap();
         assert_eq!((pixels[0] & 0xff, pixels[1] & 0xff), (0x11, 0xff));
         let palette = crate::image::gray_ramp(16);
-        let pixels = decode(Format::C4, 8, 8, &data, &palette).unwrap();
+        let pixels = decode(PixelFormat::C4, 8, 8, &data, &palette).unwrap();
         assert_eq!((pixels[0] & 0xff, pixels[1] & 0xff), (17, 255));
     }
 
@@ -380,12 +396,12 @@ mod tests {
         let mut data = [0u8; 32];
         data[0] = 0x8f;
         assert_eq!(
-            decode(Format::IA4, 8, 4, &data, &[]).unwrap()[0],
+            decode(PixelFormat::IA4, 8, 4, &data, &[]).unwrap()[0],
             0x88ff_ffff
         );
         data[1] = 3;
-        assert!(decode(Format::C8, 8, 4, &data, &[0, 0]).is_none());
-        assert!(decode(Format::C8, 8, 4, &data, &crate::image::gray_ramp(256)).is_some());
+        assert!(decode(PixelFormat::C8, 8, 4, &data, &[0, 0]).is_none());
+        assert!(decode(PixelFormat::C8, 8, 4, &data, &crate::image::gray_ramp(256)).is_some());
     }
 
     #[test]
@@ -393,7 +409,10 @@ mod tests {
         let mut data = [0u8; 32];
         data[0..2].copy_from_slice(&0xc002u16.to_be_bytes());
         let palette = [1, 2, 3];
-        assert_eq!(decode(Format::C14X2, 4, 4, &data, &palette).unwrap()[0], 3);
+        assert_eq!(
+            decode(PixelFormat::C14X2, 4, 4, &data, &palette).unwrap()[0],
+            3
+        );
     }
 
     #[test]
@@ -407,7 +426,15 @@ mod tests {
         // transparent. Index 3 on its first row's last pixel.
         data[8..12].copy_from_slice(&[0x00, 0x00, 0xff, 0xff]);
         data[12] = 0b10_10_10_11;
-        let pixels = decode(Format::Cmpr, 8, 8, &data, &[]).unwrap();
+        // Sub-block 2 (lower left): red and blue, four colors. Its first row
+        // (y = 4) runs through all four.
+        data[16..20].copy_from_slice(&[0xf8, 0x00, 0x00, 0x1f]);
+        data[20] = 0b00_01_10_11;
+        // Sub-block 3 (lower right): two equal greens, so three colors and
+        // transparent. Row y = 6 reads indices 1, 0, 2, 3.
+        data[24..28].copy_from_slice(&[0x07, 0xe0, 0x07, 0xe0]);
+        data[30] = 0b01_00_10_11;
+        let pixels = decode(PixelFormat::Cmpr, 8, 8, &data, &[]).unwrap();
         assert_eq!(
             &pixels[0..4],
             &[0xffff_ffff, 0xff00_0000, 0xffaa_aaaa, 0xff55_5555]
@@ -419,5 +446,17 @@ mod tests {
             pixels[7], 0,
             "index 3 is transparent in the three-color mode"
         );
+        // Sub-block 2 blends red and blue by thirds.
+        assert_eq!(
+            &pixels[32..36],
+            &[0xffff_0000, 0xff00_00ff, 0xffaa_0055, 0xff55_00aa]
+        );
+        let green = 0xff00_ff00;
+        assert_eq!(
+            &pixels[32 + 4..32 + 8],
+            &[green; 4],
+            "index 0 is the first color"
+        );
+        assert_eq!(&pixels[48 + 4..48 + 8], &[green, green, green, 0]);
     }
 }

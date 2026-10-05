@@ -56,7 +56,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, le32};
-use crate::codec::gx::{self, Format as Texels, PaletteFormat};
+use crate::codec::gx::{self, PaletteFormat, PixelFormat};
 use crate::image::{check_size, gray_ramp, over_fill};
 use crate::{Companions, DecodeError, Image};
 
@@ -93,8 +93,8 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     }
     let flags = *chunk.get(10).ok_or(fail)?;
     let code = *chunk.get(11).ok_or(fail)?;
-    let format = Texels::from_code(u32::from(code))
-        .filter(|&f| f != Texels::C14X2)
+    let format = PixelFormat::from_code(u32::from(code))
+        .filter(|&f| f != PixelFormat::C14X2)
         .ok_or(fail)?;
     let width = usize::from(be16(chunk, 12).ok_or(fail)?);
     let height = usize::from(be16(chunk, 14).ok_or(fail)?);

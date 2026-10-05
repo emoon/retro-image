@@ -25,7 +25,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
-use crate::codec::gx::{self, Format as Texels, PaletteFormat};
+use crate::codec::gx::{self, PaletteFormat, PixelFormat};
 use crate::image::{check_size, gray_ramp, over_fill};
 use crate::{DecodeError, Image};
 
@@ -45,7 +45,7 @@ pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
 
     let height = usize::from(half(image_header, 0).ok_or(fail)?);
     let width = usize::from(half(image_header, 2).ok_or(fail)?);
-    let format = Texels::from_code(word(image_header, 4).ok_or(fail)?).ok_or(fail)?;
+    let format = PixelFormat::from_code(word(image_header, 4).ok_or(fail)?).ok_or(fail)?;
     let pixels_at = word(image_header, 8).ok_or(fail)? as usize;
     check_size(width, height)?;
 

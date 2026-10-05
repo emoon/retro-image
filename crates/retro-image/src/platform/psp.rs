@@ -219,7 +219,7 @@ fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(Image::from_colors(
         width as u32,
         height as u32,
-        argb.map(over_fill).collect::<Vec<_>>().into_iter(),
+        argb.map(over_fill),
     ))
 }
 
