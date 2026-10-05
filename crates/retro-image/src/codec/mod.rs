@@ -4,6 +4,7 @@
 //! sources.
 
 pub(crate) mod flf;
+pub(crate) mod imploder;
 pub(crate) mod inflate;
 mod lz;
 pub(crate) mod pack_ice;

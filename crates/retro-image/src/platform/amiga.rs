@@ -36,7 +36,7 @@ mod sgx;
 mod vdat;
 mod yafa;
 
-use crate::codec::{pack_ice, powerpacker, rnc};
+use crate::codec::{imploder, pack_ice, powerpacker, rnc};
 use crate::{DecodeError, Format, Image};
 use alloc::vec::Vec;
 
@@ -106,7 +106,7 @@ fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// The contents of a PowerPacker, Pack-Ice or RNC file; `None` if `data` is
+/// The contents of a PowerPacker, Pack-Ice, RNC or Imploder file; `None` if `data` is
 /// neither, an error if it is one and damaged.
 fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     let unpacked = if powerpacker::is_packed(data) {
@@ -115,6 +115,8 @@ fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
         pack_ice::unpack(data)
     } else if rnc::is_packed(data) {
         rnc::unpack(data)
+    } else if imploder::is_packed(data) {
+        imploder::unpack(data)
     } else {
         return Ok(None);
     };
