@@ -25,12 +25,12 @@
 //!
 //! Choices of this crate: the picture is the cel alone, without its offsets;
 //! the palette is group 0 of the `.kcf` with the cel's stem, a gray ramp
-//! without one; palette colors past the end of a short palette are black;
-//! a 12-bit channel `v` becomes `v * 17`; transparent pixels (index 0, or
-//! alpha) stay clear, and a pixel with alpha is drawn over what is below. A cel finds a palette file
-//! only by its own stem, so a doll's cels, whose palettes have other names, are
-//! gray alone; the set's `.cnf` file, read by `set.rs`, gives them their
-//! palettes and places them.
+//! without one; palette colors past the end of a short palette are black; a
+//! 12-bit channel `v` becomes `v * 17`; a transparent pixel (index 0, or alpha
+//! 0) stays transparent, and a pixel with partial alpha is drawn over what is
+//! below it. A cel finds a palette file only by its own stem, so a doll's cels,
+//! whose palettes have other names, are gray alone; the set's `.cnf` file, read
+//! by `set.rs`, gives them their palettes and places them.
 
 use alloc::vec::Vec;
 
@@ -208,7 +208,7 @@ fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     picture(&read_conventional(data)?, companions)
 }
 
-/// The cel alone on a clear canvas, through the palette file with its stem.
+/// The cel alone on a transparent canvas, through the palette file with its stem.
 fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError> {
     // A cel with its own colors needs no palette file.
     let palette = cel.index_bits().map_or_else(Vec::new, |bits| {
@@ -307,7 +307,7 @@ mod tests {
         cel.extend_from_slice(&[0x1f, 0x20, 0xf1, 0x00]);
         let image = decode_cel(&cel, &NoCompanions).unwrap();
         assert_eq!((image.width(), image.height()), (3, 2));
-        // Gray ramp: 1 = 0x11, 15 = white; index 0 is clear.
+        // Gray ramp: 1 = 0x11, 15 = white; index 0 is transparent.
         let row = |y| [0, 1, 2].map(|x| image.get_argb(x, y));
         assert_eq!(row(0), [0xff11_1111, 0xffff_ffff, 0xff22_2222]);
         assert_eq!(row(1), [0xffff_ffff, 0xff11_1111, CLEAR]);

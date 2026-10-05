@@ -23,11 +23,11 @@
 //! for `IC` and `PT`: XOR clear is black); with AND set, XOR clear leaves the
 //! screen alone (transparent) and XOR set inverts it.
 //!
-//! Transparent pixels keep alpha 0. An inverting pixel inverts what is
-//! behind it, so there is no color for it: it is drawn as the inverse of the
-//! gray `c0c0c0` that transparent pixels used to be composited onto. A `BA` array shows its largest picture
-//! (the first of equal size); an array entry that is a plain OS/2 bitmap
-//! (`BM`) is not read. Hotspots are ignored.
+//! Transparent pixels keep alpha 0. An inverting pixel inverts whatever is
+//! behind it, so it has no color of its own; it is drawn as the fixed color
+//! `3f3f3f`, the inverse of the gray `c0c0c0`. A `BA` array shows its largest
+//! picture (the first of equal size); an array entry that is a plain OS/2
+//! bitmap (`BM`) is not read. Hotspots are ignored.
 //!
 //! Verification: no RECOIL oracle for this format; output matches Deark's PNG
 //! output (its alpha composited onto the gray `c0c0c0`) on the sample files.

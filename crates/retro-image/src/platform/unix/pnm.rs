@@ -12,13 +12,13 @@
 //!   PBM 1 is black but PAM 0 is black; PAM header lines `WIDTH`, `HEIGHT`,
 //!   `DEPTH`, `MAXVAL`, `TUPLTYPE`, `ENDHDR`). No Netpbm source was read.
 //!
-//! Samples are scaled to 8 bits by `value * 255 / maxval`, rounded. A PAM
-//! tuple type of `GRAYSCALE`, `BLACKANDWHITE` or `RGB`, with or without the
-//! `_ALPHA` suffix, picks the channels; a PAM without a tuple type is read by
-//! depth (1 gray, 2 gray and alpha, 3 RGB, 4 RGB and alpha). Alpha is
-//! kept as the image's straight alpha, scaled like the color samples. Only
-//! the first image of a file is decoded, and anything after it is ignored. The XV thumbnail
-//! variant of `P7` is not accepted.
+//! Samples are scaled to 8 bits by `value * 255 / maxval`, rounded. A PAM tuple
+//! type of `GRAYSCALE`, `BLACKANDWHITE` or `RGB`, with or without the `_ALPHA`
+//! suffix, picks the channels; a PAM without a tuple type is read by depth (1
+//! gray, 2 gray and alpha, 3 RGB, 4 RGB and alpha). Alpha is kept as straight
+//! alpha, scaled like the color samples. Only the first image of a file is
+//! decoded, and anything after it is ignored. The XV thumbnail variant of `P7`
+//! is not accepted.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's PPM reader pixel
 //! for pixel on the PBM, PGM and PPM samples (one 16-bit PGM is out of its

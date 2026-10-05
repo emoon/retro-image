@@ -22,12 +22,12 @@
 //!   channel fills exactly the picture width. The Utah Raster Toolkit source
 //!   was not read.
 //!
-//! Decoded: 8-bit pictures of one channel (gray, or an index through a
-//! one- or three-channel color map) or three channels (RGB, through a color
-//! map of one or three channels if present). The alpha channel is kept as the
-//! image's alpha; pixels no operation writes are
-//! background colored, with alpha 0 when the file has alpha. The image is
-//! `xsize` by `ysize`; the offsets are not used. Comments are ignored.
+//! Decoded: 8-bit pictures of one channel (gray, or an index through a one- or
+//! three-channel color map) or three channels (RGB, through a color map of one
+//! or three channels if present). The alpha channel is kept as the image's
+//! alpha. Pixels no operation writes are background colored, with alpha 0 when
+//! the file has alpha. The image is `xsize` by `ysize`; the offsets are not
+//! used. Comments are ignored.
 //!
 //! Verification: no tool decodes the samples (no RECOIL, Pillow, Deark or
 //! ffmpeg support), so the evidence is the structural check above and a

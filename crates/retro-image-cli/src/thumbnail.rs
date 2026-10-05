@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn transparent_pixels_add_no_color_to_the_average() {
-        // Clear red next to opaque blue: half the alpha, but still pure blue.
+        // Transparent red next to opaque blue: half the alpha, but still pure blue.
         let image = crate::tests::pam_image(2, &[255, 0, 0, 0, 0, 0, 255, 255]);
         let thumb = fit(&image, 1);
         assert!(thumb.alpha);

@@ -19,7 +19,7 @@
 //! from the documented layout, and the corpus holds synthetic files from a
 //! scratch encoder, so it is unverified against real game files.
 //!
-//! The alpha of each pixel is kept. An indexed
+//! Alpha is kept. An indexed
 //! texture without a palette header shows a gray ramp.
 
 use alloc::vec::Vec;

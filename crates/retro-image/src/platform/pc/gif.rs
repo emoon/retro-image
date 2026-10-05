@@ -12,11 +12,11 @@
 //! A MacBinary wrapper (`crate::macbinary`) is removed first.
 //!
 //! Only the first image is decoded. Its transparent color index (from a
-//! graphic control extension before the image) is clear. When the first image
-//! is smaller than the logical screen it is placed on a screen filled with the
-//! background color (clear if the background index is the transparent one),
-//! and cut off where it leaves the screen; without a usable screen the frame
-//! is shown alone.
+//! graphic control extension before the image) is transparent. When the first
+//! image is smaller than the logical screen it is placed on a screen filled
+//! with the background color (transparent when the background index is also
+//! the transparent index), and cut off where it leaves the screen; without a
+//! usable screen the frame is shown alone.
 //! Missing trailers and truncated LZW data are tolerated: the pixels decoded
 //! so far are kept.
 //!
@@ -360,7 +360,7 @@ mod tests {
         let image = decode_gif(&gif(&literals(), 0)).unwrap();
         assert_eq!((image.width(), image.height()), (2, 2));
         assert_eq!(image.rgb(), &[255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0]);
-        // Index 0 is the transparent one, so only the last pixel is clear.
+        // Index 0 is the transparent one, so only the last pixel is transparent.
         assert_eq!(image.get_argb(0, 0), 0xffff_0000);
         assert_eq!(image.get_argb(1, 1), CLEAR);
     }

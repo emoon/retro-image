@@ -14,11 +14,12 @@
 //!   oracle for the sample files.
 //!
 //! A bit-field alpha mask (BI_ALPHABITFIELDS, or the alpha mask of a V3 to V5
-//! header with BI_BITFIELDS) gives the alpha of 16 and 32-bit pixels; a mask
-//! that leaves every pixel clear is taken as unused, as the fourth byte of an
-//! ordinary 32-bit pixel always is. An icon's 32-bit pixels do use that byte,
-//! see `ico.rs`. JPEG and PNG payloads (compression 4 and 5) are rejected. A
-//! MacBinary wrapper (`crate::macbinary`) is removed first. A headerless DIB starts at the info header and is chosen by extension only.
+//! header with BI_BITFIELDS) gives the alpha of 16 and 32-bit pixels. If it is
+//! 0 for every pixel it is treated as unused, because the fourth byte of an
+//! ordinary 32-bit pixel is usually padding. The 32-bit pixels of an icon do
+//! use that byte; see `ico.rs`. JPEG and PNG payloads (compression 4 and 5)
+//! are rejected. A MacBinary wrapper (`crate::macbinary`) is removed first. A
+//! headerless DIB starts at the info header and is chosen by extension only.
 //!
 //! Verification: no RECOIL oracle for this format; output was compared pixel
 //! for pixel with Deark's PNG output on the sample files.
@@ -170,8 +171,8 @@ pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
 /// The bitmap of an icon or cursor entry: a headerless DIB whose height
 /// counts the colour bitmap plus a 1-bit AND mask of the same size.
 ///
-/// The alpha is that of the 32-bit pixels if any is not clear, as Windows
-/// does; otherwise a set bit of the mask makes a pixel clear.
+/// Alpha comes from the 32-bit pixels if any of them is visible, as Windows
+/// does; otherwise a set bit in the mask makes the pixel transparent.
 pub(super) fn decode_icon_dib(data: &[u8]) -> Result<Image, DecodeError> {
     let mut info = parse_info(data)?;
     info.height /= 2;
@@ -386,7 +387,7 @@ fn decode_pixels(
                     }
                 }
             }
-            // A mask that leaves every pixel clear is not used.
+            // An alpha that is 0 for every pixel is not used.
             let image = match alpha.filter(|plane| plane.iter().any(|&a| a != 0)) {
                 Some(plane) => image.with_alpha(plane),
                 None => image,

@@ -844,7 +844,7 @@ mod tests {
         assert_eq!(image.get_argb(0, 0), 0xff80_007f);
         image.draw(0, 0, 0xff00_ff00);
         assert_eq!(image.get_argb(0, 0), 0xff00_ff00, "opaque replaces");
-        // Over a clear pixel the source shows through unchanged.
+        // Over a transparent pixel the source shows through unchanged.
         let mut clear = Image::from_argb(1, 1, core::iter::once(CLEAR));
         clear.draw(0, 0, 0x80ff_0000);
         assert_eq!(clear.get_argb(0, 0), 0x80ff_0000);

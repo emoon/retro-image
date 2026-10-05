@@ -11,8 +11,8 @@
 //!
 //! Alpha is read from a 32-bit pixel (or color-map entry) whose descriptor
 //! says 8 attribute bits, and from bit 15 of a 16-bit one whose descriptor
-//! says 1. An alpha that leaves every pixel clear is taken as unused, since
-//! many writers keep that byte or bit at 0.
+//! says 1. An alpha that is 0 for every pixel is treated as unused, since many
+//! writers leave that byte or bit at 0.
 //!
 //! Version 1 files have no footer, so the format is chosen by extension only
 //! and the header is validated tightly (type, depth and colour-map
@@ -135,7 +135,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
             plane[y * width + x] = a;
         }
     }
-    // An alpha that leaves every pixel clear is not used.
+    // An alpha that is 0 for every pixel is not used.
     match alpha.filter(|plane| plane.iter().any(|&a| a != 0)) {
         Some(plane) => Ok(image.with_alpha(plane)),
         None => Ok(image),

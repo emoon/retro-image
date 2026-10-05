@@ -12,13 +12,12 @@
 //!   bit 7, ended by a zero count; 16-bit rows use the same packets on
 //!   16-bit units.
 //!
-//! One channel is gray, two are gray and alpha, three RGB and four RGBA;
-//! alpha is kept. 16-bit samples
-//! scale to 8 bits by rounding. Only color map id 0 (normal) is accepted, and
-//! the pixel minimum and maximum are ignored: samples are not stretched
-//! (`greytest.rgb` has a maximum of 146 and Pillow shows it unstretched too).
-//! The length table is not used, since each row ends with a zero count or at
-//! the picture width.
+//! One channel is gray, two are gray and alpha, three RGB and four RGBA; alpha
+//! is kept. 16-bit samples scale to 8 bits by rounding. Only color map id 0
+//! (normal) is accepted, and the pixel minimum and maximum are ignored: samples
+//! are not stretched (`greytest.rgb` has a maximum of 146 and Pillow shows it
+//! unstretched too). The length table is not used, since each row ends with a
+//! zero count or at the picture width.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's SGI reader and
 //! Deark's pixel for pixel on the 15 samples with 8-bit channels. On the

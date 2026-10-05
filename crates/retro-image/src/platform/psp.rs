@@ -22,7 +22,7 @@
 //!
 //! Read: RGB565, RGBA5551, RGBA4444 and RGBA8888 pixels and 4 and 8-bit indices
 //! (palette in the file). Not read: 16 and 32-bit indices and the DXT formats.
-//! The alpha of each pixel is kept.
+//! Alpha is kept.
 
 // Parts of this file follow PuyoTools.Core/Textures/Gim
 // (PuyoTools, https://github.com/nickworonekin/puyotools):

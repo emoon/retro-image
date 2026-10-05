@@ -25,7 +25,7 @@
 //! tests built from the documented layout and is unverified against real
 //! game files.
 //!
-//! The alpha of each pixel is kept.
+//! Alpha is kept.
 
 // Parts of this file follow PuyoTools.Core/Textures/Gvr and
 // PuyoTools.Core/Archives/Formats/Gvm

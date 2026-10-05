@@ -21,12 +21,12 @@
 //!   file ends exactly at its zero length word, and each icon cropped from
 //!   its cell of the sheet matches Deark's pixel for pixel.
 //!
-//! Choices of this crate: the sheet is `sheet.rs`'s grid (big and small icon
-//! of each record in file order, each in a cell as large as the largest icon,
-//! transparent pixels left clear); the `iconType` color flag is
-//! ignored, as in CiderPress II, because most icons are colored but say black
-//! and white. Files are recognized by their header alone, since the ProDOS
-//! file type is not part of the name.
+//! Choices of this crate: the sheet is `sheet.rs`'s grid (big and small icon of
+//! each record in file order, each in a cell as large as the largest icon,
+//! transparent pixels stay transparent); the `iconType` color flag is ignored,
+//! as in CiderPress II, because most icons are colored but say black and white.
+//! Files are recognized by their header alone, since the ProDOS file type is
+//! not part of the name.
 
 // Parts of this file follow Deark's modules/misc2.c
 // (Deark, https://github.com/jsummers/deark):

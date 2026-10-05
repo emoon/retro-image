@@ -21,8 +21,8 @@
 //!   the spec describes it and has no sample.
 //! - The 32-bit layout is red, green, blue, alpha, read off `abydos.rlen.svg`
 //!   (800x600, `ColorDepth` 32): bytes 0-2 are the rainbow and byte 3 is 0 or
-//!   255 with a few partial values at the edges. Transparent parts keep
-//!   their alpha.
+//!   255 with a few partial values at the edges. Transparent parts keep their
+//!   alpha.
 //!
 //! Only what a sample or a tool confirmed is drawn: 8-bit chunky data with a
 //! palette, 24-bit RGB (the spec's layout, no sample) and the 32-bit RGBA

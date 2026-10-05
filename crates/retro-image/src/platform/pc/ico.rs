@@ -15,10 +15,12 @@
 //!   development machine (see the divergence file `pc-ico.tsv`).
 //!
 //! Only the largest DIB image is decoded (ties go to the higher bit depth).
-//! Transparency is the alpha channel of a 32-bit image if it has any visible
-//! pixel, else the AND mask: a set bit makes the pixel clear (a cursor pixel
-//! that inverts the screen, AND and XOR set, is clear too). Images stored as PNG (Vista-style 256x256) are not
-//! supported; a file with only PNG images is rejected.
+//! Transparency comes from the alpha channel of a 32-bit image if any pixel in
+//! it is visible, and otherwise from the AND mask: a set bit makes the pixel
+//! transparent. That includes the cursor pixels that invert the screen (AND and
+//! XOR both set), which have no color of their own. Images stored as PNG
+//! (Vista-style 256x256) are not supported; a file with only PNG images is
+//! rejected.
 
 use alloc::vec::Vec;
 

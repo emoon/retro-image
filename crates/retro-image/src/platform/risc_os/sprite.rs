@@ -619,7 +619,7 @@ mod tests {
     #[test]
     fn a_mode_number_mask_has_the_image_layout() {
         // The sprite of the test above with a 4 bpp mask after the image:
-        // opaque, clear, opaque. The mask offset is at byte 48 of the file.
+        // opaque, transparent, opaque. The mask offset is at byte 48 of the file.
         let palette: Vec<u32> = (0..16).map(|i| i * 0x111111).collect();
         let mut file = sprite_file(27, 1, 1, (4, 15), &palette, &[0x21, 0x43, 0, 0]);
         let mask_at = (HEADER_LEN + palette.len() * 8 + 4) as u32;

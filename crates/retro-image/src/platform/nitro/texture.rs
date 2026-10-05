@@ -26,14 +26,13 @@
 //!
 //! The formats are 1 A3I5, 2 four colors, 3 sixteen colors, 4 256 colors, 5
 //! compressed 4 x 4, 6 A5I3 and 7 direct 15-bit color with an alpha bit, from
-//! GBATEK. Pixels are row by row, the low bits of a byte first. The alpha of
-//! each pixel is kept. In the
-//! compressed format each 4 x 4 block has 32 bits of 2-bit pixels (the
-//! first row in the low byte) and 16 bits of attributes (the palette offset
-//! in bits 0-13, in 4-byte steps, and the mode in 14-15); the mode says
-//! whether the fourth pixel is transparent and whether the third and fourth
-//! are mixed from the first two. Mixed colors are computed on the 5-bit
-//! channels, which may differ slightly from the console's.
+//! GBATEK. Pixels are row by row, the low bits of a byte first. Alpha is kept.
+//! In the compressed format each 4 x 4 block has 32 bits of 2-bit pixels (the
+//! first row in the low byte) and 16 bits of attributes (the palette offset in
+//! bits 0-13, in 4-byte steps, and the mode in 14-15); the mode says whether
+//! the fourth pixel is transparent and whether the third and fourth are mixed
+//! from the first two. Mixed colors are computed on the 5-bit channels, which
+//! may differ slightly from the console's.
 //!
 //! Palettes are named separately and the file does not say which belongs to
 //! which texture. The match is a guess in this order: the palette with the

@@ -16,15 +16,14 @@
 //!   PBM samples of the same picture); found by comparing the `input.im1` and
 //!   `input_p1.pbm` samples, not stated by the page.
 //!
-//! Types 4 (TIFF), 5 (IFF) and the experimental type are not accepted, nor
-//! are depths other than 1, 8, 24 and 32. The first byte of a 32-bit pixel
-//! is alpha when any pixel has it non-zero, and unused when all are 0. The
-//! `abydos.im32` sample (a converted RGBA picture) has real alpha there,
-//! while older files leave the pad byte 0; Deark makes the same choice.
-//! Alpha is kept. A color map
-//! on a 24 or 32-bit raster is skipped, and a raw color map on a 1 or 8-bit
-//! raster is ignored (8-bit pictures then show their values as grays).
-//! Palette entries missing from a short map are black.
+//! Types 4 (TIFF), 5 (IFF) and the experimental type are not accepted, nor are
+//! depths other than 1, 8, 24 and 32. The first byte of a 32-bit pixel is alpha
+//! when any pixel has it non-zero, and unused when all are 0. The `abydos.im32`
+//! sample (a converted RGBA picture) has real alpha there, while older files
+//! leave the pad byte 0; Deark makes the same choice. Alpha is kept. A color
+//! map on a 24 or 32-bit raster is skipped, and a raw color map on a 1 or 8-bit
+//! raster is ignored (8-bit pictures then show their values as grays). Palette
+//! entries missing from a short map are black.
 //!
 //! Verification: no RECOIL oracle. Output matches Pillow's Sun reader pixel
 //! for pixel on the ten samples without alpha and Deark's on all twelve (the

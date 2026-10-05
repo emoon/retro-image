@@ -17,16 +17,15 @@
 //!   `gray100` (and `grey`) worked out from the rule that `rgb.txt` follows.
 //!   The numbered variants of other colors (`red3`, `snow2`) are not included.
 //!
-//! The `c` color is used, or else `g`, `g4` or `m`. `None` is transparent and
-//! is left clear. A `#` color has one to four hex
-//! digits per channel. They are the top bits of a 16-bit value, so `#fff` is
-//! 0xf0f0f0 and `#3a7` is the same as `#3000a0007000`; the high byte is the
-//! 8-bit value (X(7), <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>,
-//! "Color Names"). A color name outside those, a pixel not in the color table,
-//! or a missing string fails the decode.
-//! Names are matched ignoring case and spaces. Hotspots and extensions are
-//! ignored. The file must open with `/* XPM */` or `! XPM2`: that is the
-//! signature.
+//! The `c` color is used, or else `g`, `g4` or `m`. `None` is transparent. A
+//! `#` color has one to four hex digits per channel. They are the top bits of a
+//! 16-bit value, so `#fff` is 0xf0f0f0 and `#3a7` is the same as
+//! `#3000a0007000`; the high byte is the 8-bit value (X(7),
+//! <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>, "Color Names").
+//! A color name outside those, a pixel not in the color table, or a missing
+//! string fails the decode. Names are matched ignoring case and spaces.
+//! Hotspots and extensions are ignored. The file must open with `/* XPM */` or
+//! `! XPM2`: that is the signature.
 //!
 //! Verification: no RECOIL oracle. Output matches ffmpeg's XPM decoder (run
 //! as a black box) pixel for pixel on nine of the twelve samples. ffmpeg
@@ -387,7 +386,7 @@ fn value_of<'a>(words: &'a [&'a [u8]], key: &[u8]) -> Option<&'a [&'a [u8]]> {
     Some(&words[start..start + len.unwrap_or(words.len() - start)])
 }
 
-/// Whether the color words say `None`, which is clear.
+/// Whether the color words say `None`, which is transparent.
 fn is_none(words: &[&[u8]]) -> bool {
     let letters = words.iter().flat_map(|w| w.iter());
     letters

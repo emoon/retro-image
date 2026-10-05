@@ -7,9 +7,8 @@
 //!   per pixel in row-major order; the colors are sRGB and not
 //!   alpha-premultiplied.
 //!
-//! Samples scale to 8 bits by rounding, and alpha is kept as straight alpha.
-//! The magic is the signature. Data after the
-//! last pixel is ignored.
+//! Samples scale to 8 bits by rounding, and alpha is kept. The magic is the
+//! signature. Data after the last pixel is ignored.
 //!
 //! Verification: no RECOIL oracle. Output compared pixel for pixel with
 //! Deark's `farbfeld` module (see the divergence file `unix-rasters.tsv`).

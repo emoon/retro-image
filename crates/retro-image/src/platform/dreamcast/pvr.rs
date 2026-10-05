@@ -33,9 +33,8 @@
 //!   without it), small VQ, rectangle twiddled, stride and the alternate
 //!   twiddled mipmap format have no sample; they follow the documents only.
 //!
-//! Not read: YUV422 and bump pixel formats, RLE-compressed files. The alpha
-//! of each pixel is kept; alpha-only textures
-//! (fonts) show as solid squares.
+//! Not read: YUV422 and bump pixel formats, RLE-compressed files. Alpha is
+//! kept; alpha-only textures (fonts) show as solid squares.
 
 // Parts of this file follow PuyoTools.Core/Textures/Pvr and
 // PuyoTools.Core/Archives/Formats/Pvm

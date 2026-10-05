@@ -25,7 +25,7 @@
 //! - Platform survey: `docs/research/gaps-consoles.md` section 3.2.
 //!
 //! Pictures with mipmaps show their largest level; a file with several
-//! pictures shows the first. The alpha of each pixel is kept.
+//! pictures shows the first. Alpha is kept.
 
 use alloc::vec::Vec;
 
