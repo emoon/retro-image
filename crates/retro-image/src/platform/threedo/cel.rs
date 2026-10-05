@@ -31,6 +31,11 @@ use crate::bytes::{be16, be32};
 use crate::image::{check_size, over_fill, widen_channel};
 use crate::{DecodeError, Image};
 
+/// Widest cel: the cel engine counts the pixels of a row in 11 bits. Packed
+/// cels get their width from the `CCB ` chunk, so it needs this limit; a row
+/// is cheap to describe but costs this many pixels to expand.
+const MAX_WIDTH: usize = 2048;
+
 const PACKED: u32 = 1 << 9;
 const BGND: u32 = 1 << 5;
 const CCBPRE: u32 = 1 << 22;
@@ -65,6 +70,20 @@ struct Layout {
     stride: usize,
 }
 
+impl Layout {
+    /// The fewest bytes of source data a cel of this size can have: the last
+    /// row of unpacked cels, or an offset in front of each packed row (which
+    /// start at least two words apart).
+    fn least_source_len(&self) -> usize {
+        let before_last_row = self.height - 1;
+        if self.packed {
+            before_last_row * 8 + 1
+        } else {
+            before_last_row * self.stride + (self.width * self.bits as usize).div_ceil(8)
+        }
+    }
+}
+
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let mut all = chunks(data).skip_while(|chunk| &chunk.tag != b"CCB ");
@@ -97,6 +116,10 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let layout = layout(&ccb, pre0, pre1).ok_or(fail)?;
     check_size(layout.width, layout.height)?;
     let source = source.get(data_at..).ok_or(fail)?;
+    // Header-sized buffers only once the data can fill them.
+    if source.len() < layout.least_source_len() {
+        return Err(fail);
+    }
 
     let colors = palette(plut);
     let bgnd = ccb.flags & BGND != 0;
@@ -145,6 +168,9 @@ fn layout(ccb: &Ccb, pre0: u32, pre1: u32) -> Option<Layout> {
     let packed = ccb.flags & PACKED != 0;
     let height = (pre0 >> 6 & 0x3ff) as usize + 1;
     let (width, stride) = if packed {
+        if ccb.width > MAX_WIDTH {
+            return None;
+        }
         (ccb.width, 0)
     } else {
         if pre1 & 0x800 != 0 {
@@ -208,7 +234,7 @@ impl Bits<'_> {
     /// The next `count` (at most 16) bits, `None` past the end.
     fn read(&mut self, count: u32) -> Option<u32> {
         let end = self.at.checked_add(count as usize)?;
-        if end > self.data.len() * 8 {
+        if end > self.data.len().saturating_mul(8) {
             return None;
         }
         let mut value = 0;
@@ -258,7 +284,7 @@ fn unpack_rows(
         let next = row_at.checked_add((offset + 2) * 4)?;
         let mut bits = Bits {
             data: source.get(..next.min(source.len()))?,
-            at: (row_at + offset_bytes) * 8,
+            at: row_at.checked_add(offset_bytes)?.checked_mul(8)?,
         };
         let mut x = 0;
         while x < layout.width {
@@ -404,6 +430,34 @@ mod tests {
         let row_colors: Vec<u32> = (0..5).map(|x| image.get(x, 1)).collect();
         let (red, green, clear) = (0xff0000, 0x00ff00, crate::image::TRANSPARENT_FILL);
         assert_eq!(row_colors, [red, green, clear, red, red]);
+    }
+
+    #[test]
+    fn packed_widths_beyond_the_cel_engine_are_refused() {
+        // 6-bit coded, one row of 4096 pixels: an offset byte of 0, then
+        // seven zero bytes (an end-of-row packet). The engine counts pixels in
+        // 11 bits, so 4096 is no cel, and 65536 wide rows must not be
+        // expanded from a few bytes.
+        for width in [2049, 4096, 65536] {
+            let mut file = ccb(PACKED | CCBPRE, 4, 0, width, 1);
+            file.extend(pdat(&[0; 8]));
+            assert!(decode(&file).is_err(), "width {width}");
+        }
+        let mut file = ccb(PACKED | CCBPRE, 4, 0, 2048, 1);
+        file.extend(pdat(&[0; 8]));
+        assert_eq!(decode(&file).unwrap().width(), 2048);
+    }
+
+    #[test]
+    fn declared_sizes_need_the_data_before_anything_is_allocated() {
+        // 16-bit unpacked, 2048x1024, with 8 bytes of data.
+        let mut file = ccb(CCBPRE, 6 | 0x10 | 1023 << 6, 2047 | 1022 << 16, 2048, 1024);
+        file.extend(pdat(&[0; 8]));
+        assert!(decode(&file).is_err());
+        // Packed, 1024 rows, with data for two.
+        let mut file = ccb(PACKED | CCBPRE, 4 | 1023 << 6, 0, 2048, 1024);
+        file.extend(pdat(&[0; 16]));
+        assert!(decode(&file).is_err());
     }
 
     #[test]
