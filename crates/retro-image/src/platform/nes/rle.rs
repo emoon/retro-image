@@ -7,12 +7,19 @@
 //! `corpus/extra/nintendo-rom-icons/nes-screens/climbr-title`. No format
 //! description and no encoder source was read. What the sample shows:
 //! - The first byte is the tag. Every other byte is copied to the output,
-//!   except the tag, which starts a pair or a triple.
+//!   except the tag, which starts a pair.
 //! - The tag followed by a 0 ends the data (the sample ends so).
-//! - The tag followed by `n` (1 to 255) and a value `v` is `n + 1` copies of
-//!   `v`. With `n` copies the sample's 85 runs unpack to 939 bytes; with
-//!   `n + 1` they unpack to exactly 1024, a nametable of 960 tile numbers
-//!   and its 64 attribute bytes, so that reading is taken.
+//! - The tag followed by `n` (1 to 255) repeats the byte just written `n`
+//!   more times. There is no value byte: the run follows a literal.
+//!
+//! The first reading tried here, a tag followed by `n` and a value `v` for
+//! `n + 1` copies of `v`, also consumes the whole sample and also unpacks to
+//! exactly 1024 bytes, so the length cannot tell the two apart. Drawn with
+//! the tile set of the sample (`climbr_title.chr`), that reading breaks the
+//! logo and shifts the text one tile; this one gives a clean title screen,
+//! so it is the one taken. One sample is thin evidence: it is the layout of
+//! the neslib `vram_unrle` routine as the author remembers it, checked
+//! against the picture, not against any source.
 //!
 //! A data byte equal to the tag, which the sample does not contain, has no
 //! known encoding, so the tag a writer picks is assumed to be unused.
@@ -24,19 +31,11 @@
 
 use alloc::vec::Vec;
 
-use super::nam;
+use super::nam::{self, WITH_ATTRIBUTES_LEN};
 use crate::{Companions, DecodeError, Image};
 
-/// Bytes of a nametable and of one with its attribute table.
-const NAMES_LEN: usize = 960;
-const WITH_ATTRIBUTES_LEN: usize = NAMES_LEN + 64;
-
 pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let screen = unpack(data)?;
-    if screen.len() != NAMES_LEN && screen.len() != WITH_ATTRIBUTES_LEN {
-        return Err(DecodeError::Unrecognized);
-    }
-    nam::draw_screen(&screen, companions)
+    nam::draw_screen(&unpack(data)?, companions)
 }
 
 /// The bytes the data unpacks to, which stay within one nametable and its
@@ -52,12 +51,12 @@ fn unpack(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
             out.push(byte);
         } else {
             let (&count, after) = rest.split_first().ok_or(fail)?;
+            rest = after;
             if count == 0 {
                 return Ok(out);
             }
-            let (&value, after) = after.split_first().ok_or(fail)?;
-            rest = after;
-            out.resize(out.len() + usize::from(count) + 1, value);
+            let &previous = out.last().ok_or(fail)?;
+            out.resize(out.len() + usize::from(count), previous);
         }
         if out.len() > WITH_ATTRIBUTES_LEN {
             return Err(fail);
@@ -82,35 +81,39 @@ mod tests {
         }
     }
 
-    /// Data with tag 9 that unpacks to `runs` runs of 256 bytes and then
-    /// `tail` more bytes, as one run of the value 1.
-    fn stream(runs: usize, tail: usize) -> Vec<u8> {
-        let mut data = alloc::vec![9];
-        for _ in 0..runs {
-            data.extend([9, 255, 1]);
+    /// Data with tag 9 that unpacks to `len` copies of the byte 1: the
+    /// literal, then runs of at most 255 more.
+    fn stream(len: usize) -> Vec<u8> {
+        let mut data = alloc::vec![9, 1];
+        let mut left = len - 1;
+        while left > 0 {
+            let run = left.min(255);
+            data.extend([9, run as u8]);
+            left -= run;
         }
-        data.extend([9, (tail - 1) as u8, 1, 9, 0]);
+        data.extend([9, 0]);
         data
     }
 
     #[test]
-    fn runs_are_one_longer_than_their_count_and_zero_ends_the_data() {
-        let data = [9, 5, 6, 9, 3, 7, 8, 9, 0];
-        assert_eq!(unpack(&data).unwrap(), [5, 6, 7, 7, 7, 7, 8]);
-        // No end mark, a cut run, an empty file and more than a nametable.
+    fn a_run_repeats_the_byte_before_it_and_zero_ends_the_data() {
+        let data = [9, 5, 6, 9, 3, 8, 9, 0];
+        assert_eq!(unpack(&data).unwrap(), [5, 6, 6, 6, 6, 8]);
+        // No end mark, an empty file, a run with nothing before it and more
+        // than a nametable.
         assert!(unpack(&data[..data.len() - 2]).is_err());
-        assert!(unpack(&[9, 9, 3]).is_err());
+        assert!(unpack(&[9, 9]).is_err());
         assert!(unpack(&[]).is_err());
-        assert!(unpack(&stream(5, 2)).is_err());
+        assert!(unpack(&[9, 9, 3, 9, 0]).is_err());
+        assert!(unpack(&stream(1025)).is_err());
     }
 
     #[test]
     fn only_a_nametable_sized_result_is_accepted() {
-        // 3 * 256 + 192 = 960 and + 64 = 1024 bytes.
-        assert!(decode(&stream(3, 192), &Chr).is_ok());
-        assert!(decode(&stream(4, 2), &Chr).is_err());
-        assert!(decode(&stream(3, 191), &Chr).is_err());
-        assert!(decode(&stream(3, 193), &Chr).is_err());
-        assert!(decode(&stream(3, 256), &Chr).is_ok());
+        assert_eq!(unpack(&stream(960)).unwrap().len(), 960);
+        assert!(decode(&stream(960), &Chr).is_ok());
+        assert!(decode(&stream(1024), &Chr).is_ok());
+        assert!(decode(&stream(959), &Chr).is_err());
+        assert!(decode(&stream(1000), &Chr).is_err());
     }
 }

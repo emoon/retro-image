@@ -10,7 +10,7 @@
 //!
 //! The file holds no graphics and no palette, so it needs the `.chr` with the
 //! same name and is rejected without one. Without a `.pal` the palette is not
-//! known, so colour numbers 0-3 are drawn as the same black to white ramp in
+//! known, so color numbers 0-3 are drawn as the same black to white ramp in
 //! every sub-palette, which also makes the attribute bytes irrelevant.
 //!
 //! A `.pal` with the same name is read by its size:
@@ -42,24 +42,24 @@ use crate::{Companions, DecodeError, Image};
 const WIDTH: usize = 32;
 const HEIGHT: usize = 30;
 const NAMES_LEN: usize = WIDTH * HEIGHT;
-const WITH_ATTRIBUTES_LEN: usize = NAMES_LEN + 64;
+pub(super) const WITH_ATTRIBUTES_LEN: usize = NAMES_LEN + 64;
 /// Colour numbers: black, dark grey, light grey, white.
 const RAMP: [u8; 4] = [0x0f, 0x00, 0x10, 0x30];
 
 pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    if data.len() != NAMES_LEN && data.len() != WITH_ATTRIBUTES_LEN {
-        return Err(DecodeError::Unrecognized);
-    }
     draw_screen(data, companions)
 }
 
 /// Draws a screen of 960 tile numbers, followed by 64 attribute bytes or
 /// not, with the `.chr` and `.pal` that sit beside the file `companions`
-/// belongs to.
+/// belongs to. Any other length is rejected.
 pub(super) fn draw_screen(
     screen: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
+    if screen.len() != NAMES_LEN && screen.len() != WITH_ATTRIBUTES_LEN {
+        return Err(DecodeError::Unrecognized);
+    }
     let pattern = companions.get("chr").ok_or(DecodeError::Unrecognized)?;
     if pattern.len() != PATTERN_TABLE_LEN && pattern.len() != 2 * PATTERN_TABLE_LEN {
         return Err(DecodeError::Unrecognized);
@@ -187,6 +187,18 @@ mod tests {
             decode(&screen, &beside).unwrap().get(16, 0),
             MASTER_PALETTE[0x11]
         );
+    }
+
+    #[test]
+    fn a_screen_of_another_length_is_rejected() {
+        let beside = Beside {
+            chr: pattern(),
+            pal: None,
+        };
+        for len in [0, 10, NAMES_LEN - 1, NAMES_LEN + 1, WITH_ATTRIBUTES_LEN + 1] {
+            assert!(draw_screen(&alloc::vec![0; len], &beside).is_err());
+        }
+        assert!(draw_screen(&[0; NAMES_LEN], &beside).is_ok());
     }
 
     #[test]
