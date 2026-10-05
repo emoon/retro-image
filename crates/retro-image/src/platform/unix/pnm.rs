@@ -29,8 +29,9 @@
 
 use alloc::vec::Vec;
 
-use super::{over_fill, to_byte};
+use super::to_byte;
 use crate::image::check_size;
+use crate::image::over_fill;
 use crate::{BitOrder, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;

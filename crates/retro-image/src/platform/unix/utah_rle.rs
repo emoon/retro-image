@@ -36,9 +36,9 @@
 
 use alloc::vec::Vec;
 
-use super::over_fill;
 use crate::bytes::le16;
 use crate::image::check_size;
+use crate::image::over_fill;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;

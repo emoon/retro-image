@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use super::ilbm::ham;
 use crate::bytes::be32;
 use crate::codec::{inflate, powerpacker, xpk};
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::image::{check_size, over_fill};
 use crate::{DecodeError, Image};
 
 /// `ViewMode` bits that say 6- and 8-bit indexed data is really HAM or
@@ -101,15 +101,6 @@ pub(super) fn bitmap_bytes(
         .ok_or(fail)
 }
 
-/// `color` at `opacity` (0-255) over [`TRANSPARENT_FILL`].
-pub(super) fn over_fill(color: u32, opacity: u32) -> u32 {
-    let mix = |shift: u32| {
-        let (c, f) = (color >> shift & 0xff, TRANSPARENT_FILL >> shift & 0xff);
-        (c * opacity + f * (255 - opacity) + 127) / 255
-    };
-    mix(16) << 16 | mix(8) << 8 | mix(0)
-}
-
 /// Where the rows are and how big they are.
 #[derive(Clone, Copy)]
 pub(super) struct Rows {
@@ -171,7 +162,7 @@ fn draw_row(pixels: Pixels, row: &[u8], palette: &[u32; 256], out: &mut [[u8; 3]
                 ham(held, v >> 6, data << 2 | data >> 4, palette[data as usize])
             }
             Pixels::Rgb24 => rgb(&row[x * 3..]),
-            Pixels::Rgba32 => over_fill(rgb(&row[x * 4..]), u32::from(row[x * 4 + 3])),
+            Pixels::Rgba32 => over_fill(rgb(&row[x * 4..]), row[x * 4 + 3]),
         };
         held = color;
         let [_, r, g, b] = color.to_be_bytes();
@@ -187,6 +178,7 @@ fn rgb(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::image::TRANSPARENT_FILL;
 
     fn grays() -> [u32; 256] {
         core::array::from_fn(|i| u32::from(i as u8) * 0x01_0101)

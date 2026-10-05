@@ -31,7 +31,6 @@ mod xpm;
 mod xwd;
 
 use crate::Format;
-use crate::image::TRANSPARENT_FILL;
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new(
@@ -72,18 +71,6 @@ pub(super) fn to_byte(value: u32, max: u32) -> u8 {
     ((value * 255 + u64::from(max) / 2) / u64::from(max)) as u8
 }
 
-/// A color (`0xRRGGBB`) at opacity `alpha` (0 to 255) over
-/// [`TRANSPARENT_FILL`], rounding to nearest.
-pub(super) fn over_fill(color: u32, alpha: u8) -> u32 {
-    let alpha = u32::from(alpha);
-    let channel = |shift: u32| {
-        let front = color >> shift & 0xff;
-        let back = TRANSPARENT_FILL >> shift & 0xff;
-        (front * alpha + back * (255 - alpha) + 127) / 255
-    };
-    channel(16) << 16 | channel(8) << 8 | channel(0)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,12 +83,5 @@ mod tests {
         assert_eq!(to_byte(0x8000, 0xffff), 128);
         assert_eq!(to_byte(300, 255), 255);
         assert_eq!(to_byte(200, 255), 200);
-    }
-
-    #[test]
-    fn over_fill_blends_towards_the_fill() {
-        assert_eq!(over_fill(0x123456, 255), 0x123456);
-        assert_eq!(over_fill(0x123456, 0), TRANSPARENT_FILL);
-        assert_eq!(over_fill(0xffffff, 128) >> 16 & 0xff, 0xe0);
     }
 }

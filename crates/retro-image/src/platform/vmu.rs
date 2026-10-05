@@ -51,7 +51,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::TRANSPARENT_FILL;
+use crate::image::{TRANSPARENT_FILL, over_fill};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
@@ -137,13 +137,9 @@ fn palette(data: &[u8], at: usize) -> Option<Vec<u32>> {
 
 /// A color word as `0xRRGGBB`, its alpha blended onto the transparent fill.
 fn argb4444(word: u16) -> u32 {
-    let alpha = u32::from(word >> 12) * 17;
-    let [_, fill_r, fill_g, fill_b] = TRANSPARENT_FILL.to_be_bytes();
-    let blend = |shift: u32, fill: u8| {
-        let value = u32::from(word >> shift & 15) * 17;
-        (value * alpha + u32::from(fill) * (255 - alpha) + 127) / 255
-    };
-    blend(8, fill_r) << 16 | blend(4, fill_g) << 8 | blend(0, fill_b)
+    let channel = |shift: u32| u32::from(word >> shift & 15) * 17;
+    let color = channel(8) << 16 | channel(4) << 8 | channel(0);
+    over_fill(color, (channel(12)) as u8)
 }
 
 /// CRC-16/XMODEM of the concatenation of `parts`.
