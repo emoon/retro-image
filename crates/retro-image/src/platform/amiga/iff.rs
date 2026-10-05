@@ -7,15 +7,39 @@ use crate::bytes::be32;
 
 /// Returns the FORM type and its contents, if `data` is an IFF FORM.
 ///
-/// The declared FORM length is clamped to the data actually present.
+/// The declared FORM length is clamped to the data actually present. When it
+/// is shorter than the data and cuts the last chunk off, some writer got the
+/// length wrong (two Deluxe Paint ACBM files are 68 bytes short), so the
+/// contents run to the end of the data instead. Bytes after a complete FORM
+/// are left out.
 pub(super) fn form(data: &[u8]) -> Option<([u8; 4], &[u8])> {
     if data.len() < 12 || &data[..4] != b"FORM" {
         return None;
     }
     let len = be32(data, 4)? as usize;
-    let end = data.len().min(8usize.saturating_add(len));
+    let declared = data.len().min(8usize.saturating_add(len)).max(12);
+    let end = if last_chunk_is_cut(&data[12..declared]) {
+        data.len()
+    } else {
+        declared
+    };
     let kind = data[8..12].try_into().ok()?;
-    Some((kind, &data[12..end.max(12)]))
+    Some((kind, &data[12..end]))
+}
+
+/// Whether the last chunk of `data` claims more bytes than `data` holds.
+fn last_chunk_is_cut(mut data: &[u8]) -> bool {
+    while data.len() >= 8 {
+        let Some(len) = be32(data, 4).map(|len| len as usize) else {
+            return false;
+        };
+        let rest = &data[8..];
+        if len > rest.len() {
+            return true;
+        }
+        data = &rest[len.saturating_add(len & 1).min(rest.len())..];
+    }
+    false
 }
 
 /// Iterates over `(id, body)` chunks; a body running past the end is clamped.
@@ -54,6 +78,24 @@ mod tests {
         assert_eq!(all.len(), 2);
         assert_eq!(all[0], (*b"AAAA", &b"x"[..]));
         assert_eq!(all[1], (*b"BBBB", &b"yz"[..]));
+    }
+
+    #[test]
+    fn short_form_length_runs_on_when_it_cuts_a_chunk() {
+        // The FORM says 0x10 bytes but BODY needs 0x14.
+        let data = b"FORM\0\0\0\x10ILBMBODY\0\0\0\x08abcdefgh";
+        let (_, contents) = form(data).unwrap();
+        assert_eq!(find(contents, b"BODY"), Some(&b"abcdefgh"[..]));
+    }
+
+    #[test]
+    fn bytes_after_a_complete_form_are_left_out() {
+        let data = b"FORM\0\0\0\x0cILBMAAAA\0\0\0\0trailing";
+        let (_, contents) = form(data).unwrap();
+        assert_eq!(contents, b"AAAA\0\0\0\0");
+        // A declared length that ends mid-header cuts no chunk either.
+        let data = b"FORM\0\0\0\x08ILBMAAA\0\0\0\0\0trailing";
+        assert_eq!(form(data).unwrap().1, b"AAA\0");
     }
 
     #[test]
