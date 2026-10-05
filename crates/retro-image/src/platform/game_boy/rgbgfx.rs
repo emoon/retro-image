@@ -26,12 +26,16 @@
 //!   of the tile (bit 3) and mirroring (bits 5 and 6, written only with
 //!   `rgbgfx -m`). The tile data and attribute map are found as companions.
 //! - The palette set is 2-byte little-endian RGB555 colors, 4 per palette
-//!   (2 with 1 bpp). A set bit 15 marks a transparent color, which is
-//!   drawn as the shared transparent fill. A `.pal` that is not a palette
-//!   set (size not a multiple of a palette, a JASC-PAL text, or the 192 or
-//!   1536 bytes of a NES emulator palette) is ignored, and the image is
-//!   drawn in gray. Without `.pal` every tile uses the gray shades whatever
-//!   its palette number.
+//!   (2 with 1 bpp). The transparent color is the word `0x8000` (and an
+//!   empty slot `0xFFFF`), which is drawn as the shared transparent fill; no
+//!   other word has bit 15 set. A `.pal` that is not a palette set is ignored
+//!   and the image is drawn in gray. That is a size that is not a multiple
+//!   of a palette, a text (JASC-PAL, GIMP, `RGB 31, 31, 31`: all printable
+//!   ASCII), a word with another bit 15 pattern, the 192 or 1536 bytes of a
+//!   NES emulator palette, the 768 bytes of a VGA palette, or the 16 or 32
+//!   bytes of a NES Screen Tool palette (NES color numbers, all below 0x40).
+//!   Without `.pal` every tile uses the gray shades whatever its palette
+//!   number.
 //!
 //! What the files do not record is guessed as `rgbgfx -r` does by default:
 //! tile IDs start at 0 (no `-b`), tiles trimmed with `-x` come out blank, and
@@ -109,10 +113,18 @@ impl Depth {
 const SHEET_TILES_PER_ROW: usize = 16;
 /// Byte sizes of the screens a tile map can be, and their width in tiles.
 const SCREEN_WIDTHS: [(usize, usize); 2] = [(20 * 18, 20), (32 * 32, 32)];
-/// Sizes of the NES emulator palettes (64 colors, with and without emphasis
-/// variants) that share the `.pal` extension.
-const NES_PALETTE_LENS: [usize; 2] = [192, 1536];
-const JASC_MAGIC: &[u8] = b"JASC-PAL";
+/// Sizes of the other binary files that share the `.pal` extension: NES
+/// emulator palettes (64 colors, with and without emphasis variants) and
+/// VGA palettes (256 colors of 3 bytes).
+const OTHER_PALETTE_LENS: [usize; 3] = [192, 768, 1536];
+/// Sizes of the NES Screen Tool palettes, 16 or 32 NES color numbers, which
+/// are all below this.
+const NESST_PALETTE_LENS: [usize; 2] = [16, 32];
+const NES_COLOR_LIMIT: u8 = 0x40;
+/// The words with bit 15 set that rgbgfx writes: the transparent color and
+/// an empty slot.
+const TRANSPARENT: u16 = 0x8000;
+const EMPTY: u16 = 0xffff;
 
 type Palette = [u32; 4];
 
@@ -198,13 +210,33 @@ fn read_palettes(companions: &dyn Companions, depth: Depth) -> Option<Vec<Palett
     parse_palettes(&companions.get("pal")?, depth)
 }
 
-/// The palettes of a `.pal` file, or `None` if it is something else.
+/// Whether `file` is a text, such as a JASC, GIMP or `RGB 31, 31, 31` palette.
+fn is_text(file: &[u8]) -> bool {
+    file.iter()
+        .all(|&b| b.is_ascii_graphic() || b.is_ascii_whitespace())
+}
+
+/// The palettes of a `.pal` file, or `None` if it is something else: a text,
+/// a file of a size that another kind of palette has, or one with a word
+/// that rgbgfx would not write (bit 15 is clear in a color).
 fn parse_palettes(file: &[u8], depth: Depth) -> Option<Vec<Palette>> {
     let stride = depth.colors() * 2;
+    let nes_colors =
+        NESST_PALETTE_LENS.contains(&file.len()) && file.iter().all(|&b| b < NES_COLOR_LIMIT);
+    let words = file
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&w| u16::from_le_bytes(w));
+    let writable = words
+        .clone()
+        .all(|w| w & 0x8000 == 0 || w == TRANSPARENT || w == EMPTY);
     if file.is_empty()
         || !file.len().is_multiple_of(stride)
-        || file.starts_with(JASC_MAGIC)
-        || NES_PALETTE_LENS.contains(&file.len())
+        || OTHER_PALETTE_LENS.contains(&file.len())
+        || nes_colors
+        || is_text(file)
+        || !writable
     {
         return None;
     }
@@ -220,7 +252,7 @@ fn parse_palettes(file: &[u8], depth: Depth) -> Option<Vec<Palette>> {
 
 /// A Game Boy Color color, with bit 15 set for a transparent one.
 fn rgb555(color: u16) -> u32 {
-    if color & 0x8000 != 0 {
+    if color & TRANSPARENT != 0 {
         return TRANSPARENT_FILL;
     }
     let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
@@ -473,5 +505,39 @@ mod tests {
         assert_eq!(parse_palettes(&words, TWO_BPP).unwrap().len(), 1);
         // A 1 bpp palette has two colors.
         assert_eq!(parse_palettes(&words, ONE_BPP).unwrap().len(), 2);
+        // The transparent word and an empty slot are rgbgfx's; other words
+        // with bit 15 set are not.
+        let transparent = [0x00, 0x80, 0xff, 0xff, 0x10, 0x42, 0, 0];
+        assert_eq!(parse_palettes(&transparent, TWO_BPP).unwrap().len(), 1);
+        assert!(parse_palettes(&[0, 0x80, 1, 0x80, 0, 0, 0, 0], TWO_BPP).is_none());
+    }
+
+    #[test]
+    fn text_vga_and_nes_screen_tool_palettes_do_not_recolor_the_tiles() {
+        // Palettes that other programs write under the same extension, each
+        // of a size that is a whole number of rgbgfx palettes.
+        let mut text = b"RGB 31, 31, 31\r\nRGB 0, 0, 0\r\n".to_vec();
+        text.resize(32, b' ');
+        let vga: Vec<u8> = (0..768).map(|i| (i % 64) as u8).collect();
+        let nes_screen_tool = [
+            0x0f, 0x00, 0x10, 0x30, 0x0f, 0x06, 0x16, 0x26, 0x0f, 0x09, 0x19, 0x29, 0x0f, 0x0c,
+            0x1c, 0x2c,
+        ];
+        let tiles = [0xff; 16]; // every pixel is color 1
+        let gray = decode_2bpp(&tiles, &NoCompanions).unwrap().get(0, 0);
+        for file in [text, vga, nes_screen_tool.to_vec()] {
+            assert!(
+                parse_palettes(&file, TWO_BPP).is_none(),
+                "{} bytes",
+                file.len()
+            );
+            let colored = decode_2bpp(&tiles, &Files(&[("pal", &file)])).unwrap();
+            assert_eq!(colored.get(0, 0), gray, "{} bytes", file.len());
+        }
+        // A dark rgbgfx palette of the same size is still a palette.
+        let dark = [
+            0x00, 0x00, 0x21, 0x04, 0x42, 0x08, 0x63, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        assert!(parse_palettes(&dark, TWO_BPP).is_some());
     }
 }
