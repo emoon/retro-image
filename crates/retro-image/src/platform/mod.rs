@@ -25,6 +25,7 @@ mod pc;
 mod playstation;
 mod playstation2;
 mod psion;
+mod psp;
 mod risc_os;
 mod sam_coupe;
 mod sharp_x68000;
@@ -64,6 +65,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     playstation::FORMATS,
     playstation2::FORMATS,
     psion::FORMATS,
+    psp::FORMATS,
     risc_os::FORMATS,
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,
