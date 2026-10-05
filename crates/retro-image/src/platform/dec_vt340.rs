@@ -31,9 +31,9 @@
 //! `ESC P` (the 8-bit introducer `0x90` is not read: no sample uses it and a
 //! lone `0x90` is far too common in random data), hold only text (`0x20` to
 //! `0x7e`, tab, return, newline) and end with `ESC \` or `0x9c`, which is also
-//! what content detection relies on. Pictures are capped at 4096 x 4096. A file of VMS
-//! variable-length records (the sample `test.six`: each record starts with a
-//! 16-bit length) is joined first, which no other viewer does.
+//! what content detection relies on. Pictures are capped at 4096 x 4096. A
+//! file of VMS variable-length records (the sample `test.six`: each record
+//! starts with a 16-bit length) is joined first, as a choice of this crate.
 
 // Parts of this file follow libsixel's src/fromsixel.c
 // (https://github.com/saitoha/libsixel):
@@ -208,8 +208,9 @@ fn decode_sixel(data: &[u8]) -> Result<Image, DecodeError> {
 /// The data of a file made of VMS variable-length records (a 16-bit length,
 /// the bytes, a pad byte to an even position), joined; `None` unless the
 /// records cover the whole file. Their length bytes would otherwise land in
-/// the sixel data. Records are short, which no sixel text file's first two
-/// bytes (an escape or a sixel character) are mistaken for.
+/// the sixel data. Records are at most `MAX_RECORD` long, so a sixel text
+/// file is not mistaken for one: its first two bytes (an escape or a sixel
+/// character), read as a length, are larger.
 fn join_records(data: &[u8]) -> Option<Vec<u8>> {
     let mut joined = Vec::with_capacity(data.len());
     let (mut at, mut records) = (0, 0);

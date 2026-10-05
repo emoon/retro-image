@@ -28,8 +28,8 @@
 //! - A channel value of 0, 2, ..., 14 is shown as the DAC level the hardware
 //!   outputs, 0, 52, 87, 116, 144, 172, 206, 255 of 255, not as `v * 17`
 //!   (which would be 0, 34, 68, ...). The ramp is not linear, and a linear
-//!   one makes dark art look too bright. The odd values do not exist in color
-//!   RAM; their bit is ignored.
+//!   one shows dark art darker than the hardware does. The odd values do not
+//!   exist in color RAM; their bit is ignored.
 //! - Color 0 is drawn from the palette like the others, though the hardware
 //!   treats it as transparent.
 //!

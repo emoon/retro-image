@@ -16,9 +16,9 @@
 //! long, such as a 1-channel picture of 95590 pixels, is taken for an RGB
 //! Intermediate picture.
 //!
-//! The helpers below hold the two pieces of arithmetic every format of the
-//! family needs: sample widths above 8 bits and an alpha channel, neither of
-//! which `Image` represents.
+//! `to_byte` below scales samples of any maximum, such as the 16-bit ones of
+//! farbfeld and PNM, to the 8 bits `Image` holds. Alpha is blended onto the
+//! shared fill by `crate::image::over_fill`.
 
 mod c_source;
 mod farbfeld;

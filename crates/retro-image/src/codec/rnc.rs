@@ -105,10 +105,11 @@ impl Header {
     }
 }
 
-/// Both layouts carry the same tag, so the stream decides: an old stream
-/// ends (at its beginning, as it is read backward) with literals, and a new
-/// one starts with bits a writer always leaves a certain way; failing both,
-/// a matching CRC-16 over the packed bytes means a new stream.
+/// Both layouts carry the same tag, so the stream decides. A clear top bit in
+/// the byte where an old stream would start (it is read backward) means a new
+/// stream. Otherwise a mask test per method on the first byte after the new
+/// header says old. When neither test settles it, a matching CRC-16 over the
+/// packed bytes means a new stream and anything else an old one.
 fn layout(data: &[u8], method: Method, packed_len: usize) -> Option<Layout> {
     if data.len() <= NEW_HEADER_LEN {
         return Some(Layout::Old);

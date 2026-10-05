@@ -22,8 +22,8 @@
 //! digits per channel. They are the top bits of a 16-bit value, so `#fff` is
 //! 0xf0f0f0 and `#3a7` is the same as `#3000a0007000`; the high byte is the
 //! 8-bit value (X(7), <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>,
-//! "Color Names"). A color name outside those, a
-//! pixel not in the color table, or a missing string fails the decode.
+//! "Color Names"). A color name outside those, a pixel not in the color table,
+//! or a missing string fails the decode.
 //! Names are matched ignoring case and spaces. Hotspots and extensions are
 //! ignored. The file must open with `/* XPM */` or `! XPM2`: that is the
 //! signature.

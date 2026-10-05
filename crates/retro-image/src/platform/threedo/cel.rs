@@ -18,9 +18,10 @@
 //!
 //! The `CCB ` chunk is the cel control block as 18 big-endian words after its
 //! header: version, flags, three pointers, position, six size and perspective
-//! words, `PIXC`, the two preamble words `PRE0` and `PRE1`, width and height. The flags used here are `PACKED`
-//! (bit 9), `BGND` (bit 5), `CCBPRE` (bit 22, the preamble is in the chunk,
-//! not at the start of the data) and the four `PLUTA` bits (0 to 3). `PRE0`
+//! words, `PIXC`, the two preamble words `PRE0` and `PRE1`, width and height.
+//! The flags used here are `PACKED` (bit 9), `BGND` (bit 5), `CCBPRE` (bit 22,
+//! the preamble is in the chunk, not at the start of the data) and the four
+//! `PLUTA` bits (0 to 3). `PRE0`
 //! gives bits per pixel (bits 0 to 2: 1, 2, 4, 6, 8, 16 for 1 to 6), `UNCODED`
 //! (bit 4) and the row count minus one (bits 6 to 15); `PRE1` of unpacked
 //! cels the pixels per row minus one (bits 0 to 10), `LRFORM` (bit 11) and the

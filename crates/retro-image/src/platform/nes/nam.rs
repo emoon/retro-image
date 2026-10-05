@@ -17,9 +17,9 @@
 //! - 16 or 32 bytes are NES color numbers, as NES Screen Tool saves them
 //!   (reverse engineered from `nes-screens/croom-ingame` in
 //!   `corpus/extra/nintendo-rom-icons`, whose game has a screenshot to compare
-//!   with). The first 16 bytes are
-//!   the four background palettes, four colors each, the first of every
-//!   group being the shared background color; the attribute bytes of the
+//!   with). The first 16 bytes are the four background palettes, four colors
+//!   each, the first of every group being the shared background color; the
+//!   attribute bytes of the
 //!   `.nam` then pick the group of each 2x2 tiles. A 32-byte file is taken to
 //!   add the sprite palettes after those, which is a guess from the `.nss`
 //!   session layout; no sample has one.

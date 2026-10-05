@@ -26,9 +26,10 @@ use crate::codec::{inflate, powerpacker, xpk};
 use crate::image::{check_size, over_fill, widen_channel};
 use crate::{DecodeError, Image};
 
-/// `ViewMode` bits that say 6- and 8-bit indexed data is really HAM or
-/// extra-half-brite, which this module does not draw from plain indices.
+/// `ViewMode` bit that says indexed data is really HAM, at any depth. This
+/// module does not draw it from plain indices.
 const HAM_KEY: u32 = 0x800;
+/// `ViewMode` bit that says 6-bit indexed data is really extra-half-brite.
 const EXTRA_HALF_BRITE_KEY: u32 = 0x80;
 
 /// How one pixel is stored.
@@ -49,8 +50,8 @@ pub(super) enum Pixels {
 impl Pixels {
     /// One byte per pixel holding a palette index of `depth` bits. `None` if
     /// the screen mode `view_mode` says the data is HAM (at any depth) or
-    /// 6-bit extra-half-brite:
-    /// plain indices would draw those pictures wrongly.
+    /// 6-bit extra-half-brite: plain indices would draw those pictures
+    /// wrongly.
     pub fn indexed(depth: u32, view_mode: u32) -> Option<Self> {
         let hold_and_modify = view_mode & HAM_KEY != 0;
         let half_brite = view_mode & EXTRA_HALF_BRITE_KEY != 0 && depth == 6;

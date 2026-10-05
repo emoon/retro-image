@@ -1,6 +1,6 @@
 //! Nintendo Entertainment System: pattern tables (`.chr`, `.pkb`), nametables
 //! (`.nam`, `.rle`), NES Screen Tool sessions (`.nss`) and the CHR-ROM of ROM
-//! images (`.nes`, `.unf`).
+//! images (`.nes`, `.unf`, `.unif`).
 //!
 //! Sources (details per format in each submodule):
 //! - Pattern table encoding (16 bytes per 8x8 tile, two bit planes):

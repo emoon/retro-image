@@ -17,7 +17,7 @@
 //!   a width of 68 takes 10). With info bits 5-7 zero the planes follow one
 //!   another; the one sample with 0x80 there (`optologo.cdxl`) interleaves
 //!   the planes row by row, like ILBM. Info bit 0 is HAM (6 planes: HAM6, 8
-//!   planes: HAM8); 0 is a plain palette picture.
+//!   planes: HAM8); with the bit clear it is a plain palette picture.
 //! - `optologo.cdxl` has a `1` in the byte before the plane count and 388
 //!   bytes more than its header accounts for, and `Maku.XL` 24 bytes more per
 //!   frame; both are after the picture and are not read. The wiki's
