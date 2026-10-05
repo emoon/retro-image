@@ -1,0 +1,4 @@
+# Divergences for amiga-more; see README.md.
+# SuperView Graphics (SGX/SVG), IFF-RGFX, YAFA, CDXL and Amiga bitmap fonts: RECOIL has none of them.
+extra/amiga-more/sembiance/image/sgx/testimg.sgx	288x442	28f11db54289ad1d	RECOIL has no Amiga SGX support (it only knows the SymbOS SGX) and rejects the file. Layout per Kleinert's SGX spec v4.2 with the sample-measured offsets (data at 822, 8-bit chunky, 256-entry palette). Output matches testimg-lz77.sgx pixel for pixel, and that file's zlib payload inflates to exactly this file's data. Reviewed: clean photo of orange flowers.
+extra/amiga-more/sembiance/image/sgx/testimg-lz77.sgx	288x442	28f11db54289ad1d	Same picture as testimg.sgx stored as LZ77 (length plus zlib stream); the decoded pixels are identical to the raw file's. RECOIL rejects it. Reviewed: clean photo of orange flowers.

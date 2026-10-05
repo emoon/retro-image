@@ -18,6 +18,7 @@
 //!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
 mod abk;
+mod chunky;
 mod dctv;
 mod deep;
 mod flf;
@@ -28,6 +29,7 @@ mod ilbm;
 mod multi_palette;
 mod pac_pic;
 mod rgbn;
+mod sgx;
 mod vdat;
 
 use crate::codec::{pack_ice, powerpacker};
@@ -59,6 +61,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "RGB8", &["rgb8"], decode_iff),
     Format::new("Amiga", "AMOS", &["abk"], decode_abk).signature(),
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
+    Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
     Format::new(
