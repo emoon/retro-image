@@ -1,5 +1,5 @@
-//! Game Boy: Game Boy Camera saves and Game Boy Tile Designer / Map Builder
-//! files.
+//! Game Boy: Game Boy Camera saves, Game Boy Tile Designer / Map Builder
+//! files and the files RGBDS's `rgbgfx` writes.
 //!
 //! Sources (details per format in each submodule):
 //! - Hardware tile encoding and the 128x112 Game Boy Camera picture: Pan Docs,
@@ -14,6 +14,7 @@
 
 mod camera;
 mod gbtd;
+mod rgbgfx;
 
 use crate::Format;
 use crate::tiles::TileLayout;
@@ -42,4 +43,29 @@ pub(super) static FORMATS: &[Format] = &[
         gbtd::decode_gbm,
     )
     .signature(),
+    // Headerless dumps, chosen by extension only.
+    Format::with_companions(
+        "Game Boy",
+        "rgbgfx 2bpp tile data",
+        &["2bpp"],
+        rgbgfx::decode_2bpp,
+    ),
+    Format::with_companions(
+        "Game Boy",
+        "rgbgfx 1bpp tile data",
+        &["1bpp"],
+        rgbgfx::decode_1bpp,
+    ),
+    Format::with_companions(
+        "Game Boy",
+        "rgbgfx tile map",
+        &["tilemap"],
+        rgbgfx::decode_tilemap,
+    ),
+    Format::with_companions(
+        "Game Boy",
+        "rgbgfx attribute map",
+        &["attrmap"],
+        rgbgfx::decode_attrmap,
+    ),
 ];
