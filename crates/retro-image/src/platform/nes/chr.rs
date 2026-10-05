@@ -19,5 +19,11 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != PATTERN_TABLE_LEN && data.len() != 2 * PATTERN_TABLE_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    PATTERN.sheet(data, TILES_PER_ROW, &GREYS)
+    sheet(data)
+}
+
+/// The tiles of `chr` as a sheet of grey tiles: how every NES graphics dump
+/// is drawn.
+pub(super) fn sheet(chr: &[u8]) -> Result<Image, DecodeError> {
+    PATTERN.sheet(chr, TILES_PER_ROW, &GREYS)
 }
