@@ -1,21 +1,30 @@
-//! Slow-scan television `.hrz` pictures.
+//! Slow-scan television (amateur radio) `.hrz` pictures.
 //!
 //! Sources:
 //! - Just Solve the File Format Problem, Slow-scan television
 //!   (<http://fileformats.archiveteam.org/wiki/Slow-scan_television>, CC0): a
 //!   headerless RGB bitmap of 256 x 240 pixels, 184320 bytes.
-//! - Reverse engineered from the one sample in `corpus/extra/misc-computers/sstv`:
-//!   every sample byte is 0 to 64, so a sample is read as 6 bits (0 to 63,
-//!   with 64 as full scale), and four times the value, capped at 255, shows a
-//!   normally exposed photograph; the red, green, blue order gives natural
-//!   colors (a wooden table is orange, not blue).
+//! - ImageMagick's HRZ coder, `coders/hrz.c`
+//!   (<https://github.com/ImageMagick/ImageMagick/blob/main/coders/hrz.c>,
+//!   Apache-2.0; cited for the facts, no code is copied): 256 x 240, red,
+//!   green, blue in that order, each sample multiplied by 4.
+//! - Checked on the one sample in `corpus/extra/misc-computers/sstv`: every
+//!   byte is 0 to 64, so a sample is 6 bits with 64 as full scale, and four
+//!   times the value shows a normally exposed photograph with natural colors
+//!   (a wooden table is orange, not blue). The product 256 of a sample of 64
+//!   is capped at 255 here, a choice of this crate.
 //!
-//! Recognized by extension and size only. The 6-bit scale is chosen by eye,
-//! not documented; no second decoder was available.
+//! Recognized by extension and size only. ImageMagick was not available to
+//! run, so there is no second decoder; the sample was reviewed by eye.
 
 use crate::{DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] = &[Format::new("SSTV", "HRZ", &["hrz"], decode_hrz)];
+pub(super) static FORMATS: &[Format] = &[Format::new(
+    "Amateur radio",
+    "Slow-scan television HRZ",
+    &["hrz"],
+    decode_hrz,
+)];
 
 const WIDTH: usize = 256;
 const HEIGHT: usize = 240;

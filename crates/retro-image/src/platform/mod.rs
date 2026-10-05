@@ -4,6 +4,7 @@
 //! No external format knowledge: the list of platform modules. Each module
 //! cites its own sources; the platform surveys are in `docs/research/`.
 
+mod amateur_radio;
 mod amiga;
 mod amstrad_cpc;
 mod amstrad_pcw;
@@ -30,7 +31,6 @@ mod risc_os;
 mod sam_coupe;
 mod sharp_x68000;
 mod sinclair_ql;
-mod sstv;
 mod tandy1000;
 mod textmode;
 mod thomson;
@@ -41,6 +41,7 @@ mod zx_spectrum;
 use crate::Format;
 
 pub(crate) static ALL: &[&[Format]] = &[
+    amateur_radio::FORMATS,
     amiga::FORMATS,
     amstrad_cpc::FORMATS,
     apple::FORMATS,
@@ -66,7 +67,6 @@ pub(crate) static ALL: &[&[Format]] = &[
     sam_coupe::FORMATS,
     sharp_x68000::FORMATS,
     sinclair_ql::FORMATS,
-    sstv::FORMATS,
     tandy1000::FORMATS,
     textmode::FORMATS,
     thomson::FORMATS,
