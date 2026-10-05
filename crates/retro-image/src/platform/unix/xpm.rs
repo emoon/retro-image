@@ -18,7 +18,10 @@
 //!
 //! The `c` color is used, or else `g`, `g4` or `m`. `None` is transparent and
 //! becomes the shared transparent-fill gray. A `#` color has one to four hex
-//! digits per channel, scaled to 8 bits. A color name outside the small table,
+//! digits per channel. They are the top bits of a 16-bit value, so `#fff` is
+//! 0xf0f0f0 and `#3a7` is the same as `#3000a0007000`; the high byte is the
+//! 8-bit value (X(7), <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>,
+//! "Color Names"). A color name outside the small table,
 //! a pixel not in the color table, or a missing string fails the decode.
 //! Names are matched ignoring case and spaces. Hotspots and extensions are
 //! ignored. The file must open with `/* XPM */` or `! XPM2`: that is the
@@ -83,7 +86,6 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
 use super::c_source::Tokens;
-use super::to_byte;
 use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::{DecodeError, Image};
 
@@ -279,12 +281,13 @@ fn color(words: &[&[u8]]) -> Result<u32, DecodeError> {
         if digits.len() % 3 != 0 || !(1..=4).contains(&per_channel) {
             return Err(FAIL);
         }
-        let max = (1u32 << (4 * per_channel)) - 1;
         let mut color = 0;
         for channel in digits.chunks_exact(per_channel) {
             let text = core::str::from_utf8(channel).map_err(|_| FAIL)?;
             let value = u32::from_str_radix(text, 16).map_err(|_| FAIL)?;
-            color = color << 8 | u32::from(to_byte(value, max));
+            // The digits are the top bits of a 16-bit value, and the high
+            // byte of that is the 8-bit value.
+            color = color << 8 | (value << (16 - 4 * per_channel)) >> 8;
         }
         return Ok(color);
     }
@@ -304,7 +307,7 @@ mod tests {
         let image = decode_xpm(
             b"/* XPM */\nstatic char *t[] = {\n/* w h n cpp */\n\"3 2 4 1 0 0\",\n\
               \"  c None\",\n\"a m white s x c #FF0000\",\n\"b c SeaGreen\",\n\
-              \"\\\\ c #fff\",\n\"ab\\\\\",\n\" a \"\n};",
+              \"\\\\ c #ffffff\",\n\"ab\\\\\",\n\" a \"\n};",
         )
         .unwrap();
         assert_eq!((image.width(), image.height()), (3, 2));
@@ -322,9 +325,13 @@ mod tests {
     }
 
     #[test]
-    fn hex_depths_scale_and_failures_are_errors() {
+    fn hex_digits_are_top_bits_and_failures_are_errors() {
         let hex = |digits: &str| color(&[digits.as_bytes()]);
-        assert_eq!(hex("#fff"), Ok(0xffffff));
+        // Fewer than four digits are the top bits of a 16-bit value.
+        assert_eq!(hex("#fff"), Ok(0xf0f0f0));
+        assert_eq!(hex("#3a7"), Ok(0x30a070));
+        assert_eq!(hex("#fffeeeddd"), Ok(0xffeedd));
+        assert_eq!(hex("#abcdef"), Ok(0xabcdef));
         assert_eq!(hex("#1234"), Err(FAIL));
         assert_eq!(hex("#ffff0000ffff"), Ok(0xff00ff));
         assert_eq!(hex("#8000"), Err(FAIL));
