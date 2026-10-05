@@ -1,5 +1,6 @@
-//! Nintendo DS NitroSDK 2D resources: palettes (`.nclr`), character data
-//! (`.ncgr`, `.ncbr`) and screens (`.nscr`).
+//! Nintendo DS NitroSDK resources: palettes (`.nclr`), character data
+//! (`.ncgr`, `.ncbr`) and screens (`.nscr`), and the 3D textures of `.nsbtx`
+//! and `.nsbmd` files (`texture.rs`).
 //!
 //! Sources:
 //! - NitroPaint by Garhoogin, BSD 2-Clause (notice below),
@@ -76,6 +77,7 @@ mod character;
 mod screen;
 #[cfg(test)]
 mod testing;
+mod texture;
 
 use alloc::vec::Vec;
 
@@ -95,6 +97,13 @@ pub(super) static FORMATS: &[Format] = &[
     )
     .signature(),
     Format::with_companions("Nintendo DS", "Nitro screen", &["nscr"], decode_screen).signature(),
+    Format::new(
+        "Nintendo DS",
+        "Nitro 3D textures",
+        &["nsbtx", "btx0", "nsbmd", "bmd0"],
+        texture::decode,
+    )
+    .signature(),
 ];
 
 /// Byte order mark of the little-endian files, as a 16-bit value.
