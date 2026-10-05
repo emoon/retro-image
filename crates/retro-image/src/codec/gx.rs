@@ -57,7 +57,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::be16;
-use crate::image::widen_channel as widen;
+use crate::image::{rgb565, widen_channel as widen, xrgb1555};
 
 /// How a texture's pixels are stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -170,29 +170,20 @@ fn argb(alpha: u32, r: u32, g: u32, b: u32) -> u32 {
 
 /// The color of a 16-bit palette entry or RGB565/RGB5A3 pixel.
 fn color16(format: PaletteFormat, word: u16) -> u32 {
-    let word = u32::from(word);
+    const OPAQUE: u32 = 0xff00_0000;
+    let bits = u32::from(word);
     match format {
         PaletteFormat::IA8 => {
-            let gray = word & 0xff;
-            argb(word >> 8, gray, gray, gray)
+            let gray = bits & 0xff;
+            argb(bits >> 8, gray, gray, gray)
         }
-        PaletteFormat::Rgb565 => argb(
-            255,
-            widen(word >> 11, 5),
-            widen(word >> 5 & 63, 6),
-            widen(word & 31, 5),
-        ),
-        PaletteFormat::Rgb5A3 if word & 0x8000 != 0 => argb(
-            255,
-            widen(word >> 10 & 31, 5),
-            widen(word >> 5 & 31, 5),
-            widen(word & 31, 5),
-        ),
+        PaletteFormat::Rgb565 => OPAQUE | rgb565(word),
+        PaletteFormat::Rgb5A3 if word & 0x8000 != 0 => OPAQUE | xrgb1555(word),
         PaletteFormat::Rgb5A3 => argb(
-            widen(word >> 12 & 7, 3),
-            widen(word >> 8 & 15, 4),
-            widen(word >> 4 & 15, 4),
-            widen(word & 15, 4),
+            widen(bits >> 12 & 7, 3),
+            widen(bits >> 8 & 15, 4),
+            widen(bits >> 4 & 15, 4),
+            widen(bits & 15, 4),
         ),
     }
 }
