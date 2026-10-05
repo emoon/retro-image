@@ -14,6 +14,7 @@
 
 mod camera;
 mod gbtd;
+mod printer;
 
 use crate::Format;
 use crate::tiles::TileLayout;
@@ -47,4 +48,5 @@ pub(super) static FORMATS: &[Format] = &[
         gbtd::decode_gbm,
     )
     .signature(),
+    Format::new("Game Boy", "Game Boy Printer capture", &[], printer::decode).signature(),
 ];
