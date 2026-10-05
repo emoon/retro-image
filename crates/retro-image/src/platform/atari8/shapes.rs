@@ -4,7 +4,7 @@
 //! - Movie Maker (Reston): Just Solve "Movie Maker"
 //!   (<http://fileformats.archiveteam.org/wiki/Movie_Maker>) and Wikipedia
 //!   (<https://en.wikipedia.org/wiki/Movie_Maker_(Reston_Publishing)>): a
-//!   160x96, 4-colour picture. Reverse engineered from ACTORS.SHP and the
+//!   160x96, 4-color picture. Reverse engineered from ACTORS.SHP and the
 //!   dexvert/pigwa Movie Maker samples by flipping single bytes and reading
 //!   back what `recoil2png` changes: 4384 bytes, the first 528 (a shape
 //!   directory) have no effect, the rest is a Movie Maker background (BKG).

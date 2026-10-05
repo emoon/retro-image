@@ -4,7 +4,7 @@
 //! (header, palette records, Tiny-style column order of compressed screens
 //! and Hans Wessels' public-domain palette index function).
 //! Observed from `recoil2png` output: per-line palettes are 9-bit ST
-//! colours (STE bits ignored); in 4096-colour mode the two palette sets
+//! colors (STE bits ignored); in 4096-color mode the two palette sets
 //! are averaged per component.
 
 use alloc::vec::Vec;
@@ -65,7 +65,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     }
 }
 
-/// Up to eight 16-colour palettes, each active from a given line down.
+/// Up to eight 16-color palettes, each active from a given line down.
 fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
     let resolution = if medium {
         Resolution::Medium
@@ -89,7 +89,7 @@ fn records(data: &[u8], screen: &[u8], medium: bool) -> Option<Image> {
     })
 }
 
-/// 32 ST colours per line chosen by `find_pbx_index`, optionally
+/// 32 ST colors per line chosen by `find_pbx_index`, optionally
 /// averaged with a second palette set.
 fn line_palettes(first: &[u8], second: Option<&[u8]>, screen: &[u8]) -> Option<Image> {
     let first = line_palette_image(first, screen)?;

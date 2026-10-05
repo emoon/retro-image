@@ -385,7 +385,7 @@ pub(super) static FORMATS: &[Format] = &[
         &["rm4"],
         rambrandt::decode_rm4,
     ),
-    // Headered bitmaps with per-line colours
+    // Headered bitmaps with per-line colors
     Format::new(ATARI8, "Hard Color Map", &["hcm"], hcm::decode_hcm).signature(),
     Format::new(ATARI8, "XL-Paint MAX raw", &["raw"], xl_paint::decode_raw),
     Format::new(ATARI8, "XL-Paint MAX", &["max"], xl_paint::decode_max),

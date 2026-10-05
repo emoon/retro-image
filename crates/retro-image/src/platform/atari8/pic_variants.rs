@@ -1,5 +1,5 @@
 //! Atari 8-bit `.PIC` files that are not Koala or Magic Painter: raw
-//! Micro Illustrator, Graphics 8, and BLASTER pictures with per-line colours.
+//! Micro Illustrator, Graphics 8, and BLASTER pictures with per-line colors.
 //!
 //! Sources: reverse engineered from samples and `recoil2png` output
 //! (`docs/research/gaps-corpus-atari8.md`, section 4), by hypothesis
@@ -23,7 +23,7 @@ use crate::{DecodeError, Image, NoCompanions};
 const LINES: usize = 96;
 const LINE: usize = 40;
 
-/// Raw Micro Illustrator screen with its 5-byte colour tail.
+/// Raw Micro Illustrator screen with its 5-byte color tail.
 pub(super) fn decode_mic_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 7685 {
         return Err(DecodeError::Unrecognized);
@@ -39,7 +39,7 @@ pub(super) fn decode_gr8_pic(data: &[u8]) -> Result<Image, DecodeError> {
     decode_gr8(data)
 }
 
-/// BLASTER: Graphics 15 with colour registers reloaded per line.
+/// BLASTER: Graphics 15 with color registers reloaded per line.
 pub(super) fn decode_blaster(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 5 + LINES * LINE + 5 * LINES {
         return Err(DecodeError::Unrecognized);

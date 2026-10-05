@@ -1,8 +1,8 @@
-//! EMC-editor (Masters Design Group, Magic Disk 64): unpacked multicolour
+//! EMC-editor (Masters Design Group, Magic Disk 64): unpacked multicolor
 //! FLI.
 //!
 //! Sources:
-//! - Memory map (load `$4000`, eight screen RAMs, bitmap, colour RAM,
+//! - Memory map (load `$4000`, eight screen RAMs, bitmap, color RAM,
 //!   background always black): GoDot's Magic Disk EMC loader page,
 //!   <https://www.godot64.de/german/l_mdisk.htm>.
 //! - The page gives 17410 bytes; the sample has 17412 (load address, the

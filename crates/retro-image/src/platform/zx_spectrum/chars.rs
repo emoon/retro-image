@@ -10,7 +10,7 @@
 //! - Font sheet layout (32 characters per row, white on black): observed
 //!   from `recoil2png` output.
 //! - CHX (ZX-Editor / ZX-Paintbrush big fonts): `CHX` signature, characters
-//!   of 1x1 to 4x4 cells, coloured or not: ZX-Paintbrush page above. Byte
+//!   of 1x1 to 4x4 cells, colored or not: ZX-Paintbrush page above. Byte
 //!   layout (256 little-endian file offsets at 5, 0 for a missing
 //!   character; each character: a flag, 0 with an attribute after each
 //!   cell or 1 without, width and height in cells, then the cells row by
@@ -192,7 +192,7 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(frame.into_image())
 }
 
-/// The character at `offset`: flag (0 coloured, 1 not), width and height in
+/// The character at `offset`: flag (0 colored, 1 not), width and height in
 /// cells (1-4), then the cells.
 fn big_char(data: &[u8], code: usize, offset: usize) -> Option<BigChar<'_>> {
     let header = data.get(offset..offset + 3)?;

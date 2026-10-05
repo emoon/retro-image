@@ -4,7 +4,7 @@
 //!
 //! Sources:
 //! - 8x16: the `vga_cp437_font_data` table of Deark `src/deark-data.c`
-//!   (<https://github.com/jsummers/deark>, MIT licence). Deark's readme
+//!   (<https://github.com/jsummers/deark>, MIT license). Deark's readme
 //!   ("Terms of use") says its VGA and CGA bitmapped fonts "have no known
 //!   copyright claims". The same 4096 bytes are libansilove's
 //!   `src/fonts/font_pc_80x25.h` (<https://github.com/ansilove/libansilove>,
@@ -16,7 +16,7 @@
 //! (37 CFR 202.1(e)); the notices below are kept because the tables were
 //! taken from those projects.
 
-// The 8x16 table is from Deark `src/deark-data.c`, under this licence:
+// The 8x16 table is from Deark `src/deark-data.c`, under this license:
 //
 // Copyright (C) 2016-2026 Jason Summers
 // <jason1@pobox.com>
@@ -40,7 +40,7 @@
 // THE SOFTWARE.
 //
 // The 8x8 table is from libansilove `src/fonts/font_pc_80x50.h`, under this
-// licence:
+// license:
 //
 // Copyright (c) 2011-2026, Stefan Vogt, Brian Cassidy, and Frederic Cambus
 // All rights reserved.

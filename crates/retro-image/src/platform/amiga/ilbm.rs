@@ -143,7 +143,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
 }
 
 /// The BMHD, CAMG and raw pixel values (palette indices or packed RGB,
-/// row-major) of a bitmap FORM, before any colour interpretation.
+/// row-major) of a bitmap FORM, before any color interpretation.
 pub(super) struct Bitmap {
     pub header: Header,
     pub camg: Option<u32>,
@@ -187,23 +187,23 @@ impl Bitmap {
     }
 
     /// Whether the first row starts with the HAM-E cookie. Both this and DCTV
-    /// encode colours the plain bitmap does not show, so such files are left
+    /// encode colors the plain bitmap does not show, so such files are left
     /// to decoders for those devices.
     fn is_ham_e(&self) -> bool {
         self.header.planes == 4 && self.row(0).is_some_and(super::ham_e::is_palette_line)
     }
 }
 
-/// Colour registers, as `0xRRGGBB`.
+/// Color registers, as `0xRRGGBB`.
 #[derive(Clone, Default)]
 pub(super) struct Palette(Vec<u32>);
 
 impl Palette {
     /// Reads a CMAP chunk.
     ///
-    /// At most 32 colours (the OCS register count) whose components all have
+    /// At most 32 colors (the OCS register count) whose components all have
     /// a zero low nibble were written by a 4-bit program, so the high nibble
-    /// is repeated as the ILBM spec recommends. The 32-colour limit is
+    /// is repeated as the ILBM spec recommends. The 32-color limit is
     /// observed from `recoil2png` output.
     pub(super) fn from_cmap(cmap: &[u8]) -> Self {
         let cmap = &cmap[..cmap.len() / 3 * 3];
@@ -226,7 +226,7 @@ impl Palette {
         self.0.len()
     }
 
-    /// Colour `index`; black if the CMAP is too short.
+    /// Color `index`; black if the CMAP is too short.
     pub(super) fn color(&self, index: u32) -> u32 {
         self.0.get(index as usize).copied().unwrap_or(0)
     }
@@ -238,13 +238,13 @@ impl Palette {
         self.0[index] = color;
     }
 
-    /// Extra-half-brite colour: colour `index` at half brightness.
+    /// Extra-half-brite color: color `index` at half brightness.
     fn half(&self, index: u32) -> u32 {
         half_brite(self.color(index))
     }
 }
 
-/// Extra-half-brite colour: each 8-bit component halved.
+/// Extra-half-brite color: each 8-bit component halved.
 pub(super) fn half_brite(rgb: u32) -> u32 {
     (rgb >> 1) & 0x7f7f7f
 }
@@ -327,7 +327,7 @@ fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {
         .collect())
 }
 
-/// How pixel values map to colours.
+/// How pixel values map to colors.
 enum Mode {
     Indexed,
     ExtraHalfBrite,
@@ -361,7 +361,7 @@ impl Mode {
         })
     }
 
-    /// Colours the pixel values `row` into `out`, 3 bytes per pixel.
+    /// Colors the pixel values `row` into `out`, 3 bytes per pixel.
     fn render_row(&self, row: &[u32], palette: &Palette, out: &mut [u8]) {
         let lookup = |i: u32| palette.color(i);
         let mut held = lookup(0);

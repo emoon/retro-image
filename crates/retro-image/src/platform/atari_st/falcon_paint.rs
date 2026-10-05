@@ -103,7 +103,7 @@ fn decode_esm_inner(data: &[u8]) -> Option<Image> {
 }
 
 /// Funny Paint: magic, width, height, planes, frames, one byte; frames;
-/// colour count - 1 and two longs; VDI palette. Only the first frame is
+/// color count - 1 and two longs; VDI palette. Only the first frame is
 /// shown.
 pub(super) fn decode_fun(data: &[u8]) -> Result<Image, DecodeError> {
     ok(decode_fun_inner(data))

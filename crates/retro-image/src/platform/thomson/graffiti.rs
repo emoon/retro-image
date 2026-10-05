@@ -10,7 +10,7 @@
 //!   Thomson),
 //!   <http://web.archive.org/web/20251005163132/http://collection.thomson.free.fr/code/articles/prehisto_bulletin/page.php?XI=0&XJ=13>.
 //! - The numbers are blank-separated ASCII; the first two are the picture
-//!   width and height - 1; in each colour B, V (green) and R are the
+//!   width and height - 1; in each color B, V (green) and R are the
 //!   channel already shifted into place (`B` a multiple of 256, `V` of 16):
 //!   observed in `GARDEN.D16` on the Graffiti disk,
 //!   <http://dcmoto.free.fr/programmes/graffiti/index.html>.
@@ -141,14 +141,14 @@ mod tests {
 
     #[test]
     fn m16_uses_companion_palette_and_checks_mode() {
-        // Bitmap 16, 2 columns of colour 1 pixels.
+        // Bitmap 16, 2 columns of color 1 pixels.
         let data = map::file(&[0x40, 0x01, 0x00, 0x10, 0x11, 0, 0, 0, 0]);
         let mut colors = [(0, 0, 0); 16];
         colors[1] = (15, 0, 0);
         let image = decode_m16(&data, &Palette(palette_text(&colors).into_bytes())).unwrap();
         assert_eq!(image.get(0, 0), 0x0000ff);
         let alone = decode_m16(&data, &crate::NoCompanions).unwrap();
-        assert_eq!(alone.get(0, 0), 0xff0000); // default colour 1: red
+        assert_eq!(alone.get(0, 0), 0xff0000); // default color 1: red
         assert!(decode_m02(&data, &crate::NoCompanions).is_err());
         assert!(decode_m04(&data, &crate::NoCompanions).is_err());
     }
@@ -158,8 +158,8 @@ mod tests {
         // 1 column, 8 lines: RAMA 0x80, RAMB 0x40.
         let data = map::file(&[0x00, 0x00, 0x00, 0x08, 0x80, 0, 0, 0x08, 0x40, 0, 0]);
         let image = decode_m04(&data, &crate::NoCompanions).unwrap();
-        assert_eq!(image.get(0, 0), 0x00ff00); // colour 2
-        assert_eq!(image.get(1, 0), 0xff0000); // colour 1
+        assert_eq!(image.get(0, 0), 0x00ff00); // color 2
+        assert_eq!(image.get(1, 0), 0xff0000); // color 1
         assert_eq!(image.get(2, 0), 0x000000);
     }
 }

@@ -9,10 +9,10 @@
 //!   FileSize, the per-type TInfo meaning, ANSiFlags and the TInfoS font
 //!   names ("IBM VGA50" and "IBM EGA43" are 8x8 fonts).
 //! - Deark `modules/sauce.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence): a FileSize of 0 or past the record is wrong in some files,
+//!   license): a FileSize of 0 or past the record is wrong in some files,
 //!   and the data then ends where the comments or the record begin.
 
-// The FileSize fallback follows Deark `modules/sauce.c`, under this licence:
+// The FileSize fallback follows Deark `modules/sauce.c`, under this license:
 //
 // Copyright (C) 2016-2026 Jason Summers
 // <jason1@pobox.com>
@@ -113,7 +113,7 @@ impl Sauce<'_> {
         )
     }
 
-    /// Non-blink mode (iCE colour): the attribute's bit 7 selects a bright
+    /// Non-blink mode (iCE color): the attribute's bit 7 selects a bright
     /// background instead of blinking.
     pub(super) fn ice(&self) -> bool {
         self.has_ansi_flags() && self.flags & 1 != 0

@@ -29,7 +29,7 @@
 //!   end+139201  bit 6: split inverse; low 2 bits 3: inverse ANTIC 4
 //!               cells don't use COLPF3 (1 and 2 do)
 //!   end+145216  30 row modes: 1 ANTIC 2, 2 ANTIC 4, 4 GTIA, 0xFF blank
-//!   end+146753  1: VBXE colour attributes follow (see below)
+//!   end+146753  1: VBXE color attributes follow (see below)
 //!   end+284997  30 rows of W bytes, bit 7: inverse of the bottom half
 //!   ```
 //!
@@ -37,22 +37,22 @@
 //!   rest of the file (up to 157 KB more). A scanline's PRIOR comes from
 //!   the size byte flags: player 0's select the priority (0: 4, 1: 2,
 //!   2: 1, 3: 8, 4: 0) even when it is off, player 1's bit 4 is the fifth
-//!   player and bit 5 multicolour players. Files end right after the row
+//!   player and bit 5 multicolor players. Files end right after the row
 //!   modes at the shortest; the later fields are read when present.
 //!
-//! VBXE colour attributes (athena, sergeantseymour-robotcop and
+//! VBXE color attributes (athena, sergeantseymour-robotcop and
 //! Blinkys, probed by changing one byte at a time and comparing the
 //! `recoil2png` renders, then checked on random synthetic files): when the
 //! flag at end+146753 is 1 and the inflated data holds 138242 more bytes, they
 //! start there as 48 columns of 240 records of 12 bytes. The first two bytes
 //! are 8 (column width, required) and the number of scanlines a record
 //! covers (1-255, normally 8). A 40-column screen is the middle 40 columns
-//! of the 48. Bytes 4, 6 and 8 of a record are the colours that replace
+//! of the 48. Bytes 4, 6 and 8 of a record are the colors that replace
 //! COLPF0, COLPF1 and COLPF2 for that column and those scanlines, as full
-//! colour values (luminance bit 0 counts); the other bytes make no
+//! color values (luminance bit 0 counts); the other bytes make no
 //! difference. COLBK, COLPF3 (inverse ANTIC 4 pixels), the players and the
 //! priorities work as without attributes, and GTIA modes 9 and 11 don't use the
-//! attributes. In ANTIC 2 rows the set pixels are COLPF1's colour whatever is
+//! attributes. In ANTIC 2 rows the set pixels are COLPF1's color whatever is
 //! above them and the rest counts as COLPF2. A flag other than 0 or 1 is
 //! rejected; a flag of 1 with less data than that is ignored.
 
@@ -79,12 +79,12 @@ pub(in crate::platform::atari8) fn decode_g2f(data: &[u8]) -> Result<Image, Deco
     decode(data, Some(false))
 }
 
-/// A G2F with VBXE colour attributes.
+/// A G2F with VBXE color attributes.
 pub(in crate::platform::atari8) fn decode_g2f_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
     decode(data, Some(true))
 }
 
-/// A G2F with or without VBXE colour attributes.
+/// A G2F with or without VBXE color attributes.
 pub(super) fn decode_plain_or_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
     decode(data, None)
 }

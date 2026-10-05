@@ -17,7 +17,7 @@
 //!   Bedstead was kept because it is the only CC0 source that documents its
 //!   origin, and a hand-drawn set would not match the hardware.
 //!
-//! Licence notice carried over from `bedstead.c`:
+//! License notice carried over from `bedstead.c`:
 //!
 //! > Many of the character bitmaps below formed the typeface embodied in
 //! > the SAA5050 series of character-generator chips originally made and

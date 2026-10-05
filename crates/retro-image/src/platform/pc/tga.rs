@@ -4,7 +4,7 @@
 //! - Truevision TGA File Format Specification, version 2.0 (1991), as
 //!   summarised at <https://en.wikipedia.org/wiki/Truevision_TGA> and
 //!   <http://www.paulbourke.net/dataformats/tga/>: 18-byte header, image ID,
-//!   colour map, pixel data (types 1, 2, 3 raw; 9, 10, 11 run-length coded),
+//!   color map, pixel data (types 1, 2, 3 raw; 9, 10, 11 run-length coded),
 //!   16-bit pixels as 1:5:5:5, bit 5 of the descriptor = top-to-bottom, bit 4
 //!   = right-to-left; the low 4 bits of the descriptor count the alpha
 //!   (attribute) bits per pixel.
@@ -15,7 +15,7 @@
 //! writers leave that byte or bit at 0.
 //!
 //! Version 1 files have no footer, so the format is chosen by extension only
-//! and the header is validated tightly (type, depth and colour-map
+//! and the header is validated tightly (type, depth and color-map
 //! consistency, sizes, enough data). Version 2 files end in
 //! `TRUEVISION-XFILE.`; the footer and extension area are not needed.
 //!
@@ -41,7 +41,7 @@ fn alpha_of(pixel: &[u8], attribute_bits: u8) -> u8 {
     }
 }
 
-/// One colour-map entry or pixel of 2 to 4 bytes as 0xRRGGBB.
+/// One color-map entry or pixel of 2 to 4 bytes as 0xRRGGBB.
 fn rgb_of(pixel: &[u8]) -> u32 {
     match *pixel {
         [b, g, r] | [b, g, r, _] => u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b),
@@ -82,7 +82,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
     };
     check_size(width, height)?;
 
-    // Image ID, then the colour map, then the pixels.
+    // Image ID, then the color map, then the pixels.
     let map_start = HEADER_LEN + id_len;
     let map_end = map_start + map_len * map_entry;
     let map_bytes = data.get(map_start..map_end).ok_or(fail)?;

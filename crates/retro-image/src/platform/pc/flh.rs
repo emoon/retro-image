@@ -1,4 +1,4 @@
-//! Hi-colour FLH animations (FLIC magic `0xAF44`), first picture only.
+//! Hi-color FLH animations (FLIC magic `0xAF44`), first picture only.
 //!
 //! Sources:
 //! - CompuPhase, "The FLIC file format", section on FLH:
@@ -24,7 +24,7 @@ const DTA_BRUN: u16 = 25;
 const DTA_COPY: u16 = 26;
 const DTA_LC: u16 = 27;
 
-/// A hi-colour screen of `0xRRGGBB` pixels.
+/// A hi-color screen of `0xRRGGBB` pixels.
 pub(super) struct HiScreen<'a> {
     data: &'a [u8],
     width: usize,
@@ -71,7 +71,7 @@ impl<'a> HiScreen<'a> {
         usize::from(self.byte(at)) | usize::from(self.byte(at + 1)) << 8
     }
 
-    /// The colour of the pixel word at `at`, bits widened to 8.
+    /// The color of the pixel word at `at`, bits widened to 8.
     fn color(&self, at: usize) -> u32 {
         let word = self.word(at) as u32;
         let widen = |value: u32, bits: u32| (value << (8 - bits)) | (value >> (2 * bits - 8));

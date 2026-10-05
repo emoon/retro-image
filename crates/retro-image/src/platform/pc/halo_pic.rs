@@ -6,7 +6,7 @@
 //!   reverse engineered": `AH` signature, version byte 2, graphics board and
 //!   mode, one run-length stream per plane aligned to 512-byte blocks).
 //! - Deark `drhalo.c`, `de_run_drhalopic` (<https://github.com/jsummers/deark>,
-//!   MIT licence): the table of board and mode combinations with their
+//!   MIT license): the table of board and mode combinations with their
 //!   dimensions and header sizes, the CGA palette choice, the block rules and
 //!   the de-interlacing of CGA and Hercules screens. Also the oracle for the
 //!   sample files.
@@ -16,9 +16,9 @@
 //! goes on, a byte with bit 7 set repeats the next byte `control & 0x7f`
 //! times, any other byte is followed by that many literals.
 //!
-//! The corpus has four CGA 320x200 samples with four colours (board `0x01`)
+//! The corpus has four CGA 320x200 samples with four colors (board `0x01`)
 //! and twenty EGA 640x350 samples (board `0x15`, mode 4, four planes, default
-//! 16-colour EGA palette). The other rows of the mode table (Hercules, VGA,
+//! 16-color EGA palette). The other rows of the mode table (Hercules, VGA,
 //! the remaining EGA modes) follow Deark and are not tested against any file.
 //! A separate `PAL` file is not read. Modes outside the table are rejected.
 //!
@@ -235,7 +235,7 @@ fn unpack_plane(data: &[u8], mut pos: usize, len: usize, out: &mut Vec<u8>) -> O
 
 /// The CGA palette from header bytes 12 and 14: bit 4 of the first selects
 /// high intensity, bit 0 of the second the cyan/magenta set, and the low
-/// nibble of the first is the background colour.
+/// nibble of the first is the background color.
 fn cga_palette(data: &[u8], header: usize) -> [u32; 4] {
     let (b12, b14) = if header >= 16 {
         (
@@ -256,7 +256,7 @@ fn cga_palette(data: &[u8], header: usize) -> [u32; 4] {
     palette
 }
 
-/// The default 256-colour palette, a whiteless RGB 3-3-2: red and green take
+/// The default 256-color palette, a whiteless RGB 3-3-2: red and green take
 /// eight levels, blue four.
 static RGB_332: [u32; 256] = {
     const LEVELS_8: [u32; 8] = [0, 35, 67, 99, 131, 163, 195, 227];

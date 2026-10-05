@@ -1,5 +1,5 @@
 //! ColorViewSquash (RGB): three frames shown through red, green and blue
-//! tinted hues so that the eye mixes them into a colour picture.
+//! tinted hues so that the eye mixes them into a color picture.
 //!
 //! Sources:
 //! - Format name, `RGB1` signature and the three-frame idea: Just Solve
@@ -22,10 +22,10 @@
 //!   literal triples; 8 is followed by N and N + 7 literal triples. Runs past
 //!   the end of the picture are cut off, missing data is an error.
 //! - Mode 9: each value is a luminance 0-15 of GTIA mode 9; mode 15: two
-//!   2-bit pixels (high bits first) from the colours 0, 4, 10, 14 of the
+//!   2-bit pixels (high bits first) from the colors 0, 4, 10, 14 of the
 //!   frame's hue, except that value 0 is black. The frames' hues are 3
-//!   (red-orange), 12 (green) and 7 (blue); the screen colour is the average
-//!   of the three frame colours (rounded down per channel). Mode 15 pictures
+//!   (red-orange), 12 (green) and 7 (blue); the screen color is the average
+//!   of the three frame colors (rounded down per channel). Mode 15 pictures
 //!   are 2 pixels wide per value, so every unit is 4 pixels wide as well.
 
 use super::palette::{average, rgb};

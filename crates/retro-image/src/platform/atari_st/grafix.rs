@@ -6,7 +6,7 @@
 //! data and watching which output pixels change):
 //!
 //! - `GRXP`, version, program name, then at 28 a compression word (0 or 1),
-//!   width, height and colour count, 256 VDI RGB triplets in pen order.
+//!   width, height and color count, 256 VDI RGB triplets in pen order.
 //! - At 1572 a word, the unpacked size (long) and the lengths of two packed
 //!   streams (longs); data starts at 1586.
 //! - Unpacked data is word-interleaved planes with rows padded to 16 pixels.

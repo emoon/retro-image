@@ -1,7 +1,7 @@
-//! ZX Spectrum Profi 512x240 16-colour screens (GRF).
+//! ZX Spectrum Profi 512x240 16-color screens (GRF).
 //!
 //! Sources:
-//! - 512x240 with colour attributes per 8x1 cell: speccy.info Profi
+//! - 512x240 with color attributes per 8x1 cell: speccy.info Profi
 //!   overview (Russian), Wayback Machine snapshot
 //!   <http://web.archive.org/web/20250924164348/https://speccy.info/Profi>
 //!   (the live site blocks automated fetches), see also

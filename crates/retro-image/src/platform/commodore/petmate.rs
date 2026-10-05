@@ -21,7 +21,7 @@
 //!   (`{pet,vic20,c16,c128}-charset-{upper,lower}.bin`; the repository is
 //!   MIT licensed, the glyph data is Commodore's ROM content, embedded with
 //!   the owner's approval as is the C64 set). The copyright notice and
-//!   licence text travel with them in `petmate_fonts/LICENSE-petmate9.txt`;
+//!   license text travel with them in `petmate_fonts/LICENSE-petmate9.txt`;
 //!   the file structure above is from the same project. The VDC screen shows the C128
 //!   upper set as glyphs 0-255 and the lower set as 256-511.
 //! - Palettes: those of the platform's other formats in this crate (VIC-II,
@@ -37,7 +37,7 @@ use crate::json::Value;
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
-/// What a screen's colour numbers mean.
+/// What a screen's color numbers mean.
 #[derive(Clone, Copy)]
 enum Machine {
     C64,

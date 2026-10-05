@@ -1,4 +1,4 @@
-//! Z's Staff Kid98 `ZIM` pictures (NEC PC-98, 640x400, 16 colours).
+//! Z's Staff Kid98 `ZIM` pictures (NEC PC-98, 640x400, 16 colors).
 //!
 //! No layout is published (emk's HTML5 viewer page says the format is a
 //! proprietary one with no public spec; only its prose was read, see

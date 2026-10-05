@@ -114,7 +114,7 @@ pub(super) static FORMATS: &[Format] = &[
     ),
 ];
 
-/// Brooks pictures, also accepting the other 3200-colour and screen-dump
+/// Brooks pictures, also accepting the other 3200-color and screen-dump
 /// layouts found under the same extensions.
 fn decode_3200(data: &[u8]) -> Result<Image, DecodeError> {
     super_hires::decode_brooks(data)

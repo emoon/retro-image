@@ -1,16 +1,16 @@
 //! C64 character-mode logos: Logo Painter 3 (`.lp3`).
 //!
 //! Sources:
-//! - Multicolour character mode (bit pairs `00` = `$D021`, `01` = `$D022`,
-//!   `10` = `$D023`, `11` = colour RAM): <https://www.cebix.net/VIC-Article.txt>.
+//! - Multicolor character mode (bit pairs `00` = `$D021`, `01` = `$D022`,
+//!   `10` = `$D023`, `11` = color RAM): <https://www.cebix.net/VIC-Article.txt>.
 //! - Layout reverse engineered from 2 samples and checked against
 //!   `recoil2png` output: load `$1800`, 40×50 screen codes, the character
 //!   set at `$2000`. A file with the viewer appended (4174 bytes) keeps
-//!   `$D021`, the colour RAM colour, `$D022` and `$D023` at `$1FFB-$1FFE`
-//!   (its viewer copies them there); 4098-byte files have no colours and
+//!   `$D021`, the color RAM color, `$D022` and `$D023` at `$1FFB-$1FFE`
+//!   (its viewer copies them there); 4098-byte files have no colors and
 //!   `recoil2png` shows them on black with light red, red and white. The
-//!   viewer turns on multicolour mode; every picture is drawn multicolour
-//!   with the low 3 bits of the colour RAM byte (bit 3 is set in the
+//!   viewer turns on multicolor mode; every picture is drawn multicolor
+//!   with the low 3 bits of the color RAM byte (bit 3 is set in the
 //!   sample, and `recoil2png` ignores it).
 
 use super::vic2;
@@ -24,7 +24,7 @@ const COLORS: usize = 2 + 0x7fb;
 const PLAIN_LEN: usize = CHARSET + 0x800;
 const WITH_VIEWER_LEN: usize = PLAIN_LEN + 76;
 
-/// Logo Painter 3: screen codes and a multicolour character set.
+/// Logo Painter 3: screen codes and a multicolor character set.
 pub(super) fn decode_logo_painter(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(&[0x00, 0x18]) {
         return Err(DecodeError::Unrecognized);

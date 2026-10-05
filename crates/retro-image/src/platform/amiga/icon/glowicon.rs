@@ -2,7 +2,7 @@
 //!
 //! Sources:
 //! - Layout (`FACE`: width - 1, height - 1, flags, aspect, palette size;
-//!   `IMAG`: transparent colour, colour count - 1, flags (bit 0
+//!   `IMAG`: transparent color, color count - 1, flags (bit 0
 //!   transparency, bit 1 palette present), image and palette storage
 //!   (0 one byte per entry, 1 run-length), bits per pixel, image and palette
 //!   byte counts - 1, image data, then RGB palette; the run-length scheme is
@@ -12,7 +12,7 @@
 //!   (<http://www.evillabs.net/index.php/Amiga_Icon_Formats>).
 //! - Palette entries the palette data doesn't define are black: Deark's
 //!   `modules/amigaicon.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence, notice below).
+//!   license, notice below).
 //!
 //! The `FACE` aspect byte is ignored: icons are shown with square pixels.
 
@@ -179,7 +179,7 @@ mod tests {
     }
 
     /// `FORM ICON` contents: a 2x1 FACE and one IMAG with the given flags,
-    /// uncompressed pixels 0, 1 and a 2-colour uncompressed palette.
+    /// uncompressed pixels 0, 1 and a 2-color uncompressed palette.
     fn form(flags: u8) -> Vec<u8> {
         let mut data = b"FACE\0\0\0\x06\x01\x00\x00\x00\x00\x05".to_vec();
         data.extend(b"IMAG\0\0\0\x12");

@@ -7,7 +7,7 @@
 //! Types 0x0c and 0x16: 320x200, one palette index per byte with the
 //! palette stored in the file (`codec::flf::decode_paletted`). `recoil2png`
 //! draws these two types, and the PC's 0x1b, identically; which of them
-//! belong to the ST is a guess from the 16-colour palette and the size.
+//! belong to the ST is a guess from the 16-color palette and the size.
 
 use crate::codec::flf::{self, Fluff};
 use crate::{DecodeError, Image};

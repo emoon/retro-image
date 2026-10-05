@@ -13,9 +13,9 @@
 //!   sprites of both frames (per frame ten 21-line bands of eight sprites:
 //!   four for the upper layer, one per 24-pixel column, then four for the
 //!   lower layer), one screen RAM of 12×25 cells shared by both frames, and
-//!   the colours of the four upper and four lower sprite columns.
+//!   the colors of the four upper and four lower sprite columns.
 //! - Super Hires Interlace FLI (SIF): two packed sections, one per frame,
-//!   then four colour bytes (upper and lower sprite layer of the first
+//!   then four color bytes (upper and lower sprite layer of the first
 //!   frame, then of the second). Each section starts with `$9400` plus its
 //!   own length, then an escape byte; the rest unpacks backwards
 //!   (`value count escape` runs, count 0 = 256) to 8176 bytes of planes.
@@ -26,24 +26,24 @@
 //!   of the block. The blocks are the editors' fixed pointer layout (found
 //!   in the samples); `recoil2png` ignores the pointer bytes in the file, and
 //!   so do we. SHF: 26 columns from column 14, from bitmap line 1, 167
-//!   lines, an upper layer (colour `$43E8`) over a lower one (`$43E9`), four
+//!   lines, an upper layer (color `$43E8`) over a lower one (`$43E9`), four
 //!   sprites each. SHX: 18 columns from column 11, 168 lines, one layer of
-//!   six sprites (colour `$43E9`).
+//!   six sprites (color `$43E9`).
 //! - Packed SHF (any other size): two ignored bytes, an escape byte, then
 //!   `escape count value` runs unpacking forwards to the planes of one SIF
-//!   frame; the sprite colours are at offsets `$1FE8` and `$1FE9`.
+//!   frame; the sprite colors are at offsets `$1FE8` and `$1FE9`.
 //!   `recoil2png` uses the first for both layers; running Crest's Super
 //!   Hires FLI Editor V1.0 (`SHF_V1_Fix.prg`,
 //!   <http://c64.rulez.org/pub/c64/Tools/Graphics/Bitmap/>) in VICE as a
 //!   black box showed the lower-layer sprites (4-7) take the second.
 //! - Packed SHX (any other size): two ignored bytes, data packed backwards
 //!   as in SIF, then the escape byte; it unpacks to three 3072-byte planes
-//!   of 168 lines × 18 bytes (sprites, bitmap, colours), with the sprite
-//!   colour at `$BD1`.
+//!   of 168 lines × 18 bytes (sprites, bitmap, colors), with the sprite
+//!   color at `$BD1`.
 //!
 //! The planes of SIF and packed SHF are 2048 bytes apart, with 167 lines ×
 //! 12 bytes each: upper sprite layer, lower sprite layer, hires bitmap, and
-//! a colour byte per 8-pixel cell per line (FLI).
+//! a color byte per 8-pixel cell per line (FLI).
 //!
 //! A set bit of an upper layer wins over lower layers, which win over the
 //! bitmap; interlaced frames are averaged per channel.
@@ -58,7 +58,7 @@ pub(super) const NARROW: usize = 96;
 /// Bytes of a 96-pixel line or row of cells.
 pub(super) const ROW: usize = NARROW / 8;
 
-/// An image from `pixel(x, y)` colour indices.
+/// An image from `pixel(x, y)` color indices.
 pub(super) fn render(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u8) -> Image {
     let colors: Vec<u8> = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -84,10 +84,10 @@ struct Planes<'a> {
     width: usize,
     height: usize,
     spacing: usize,
-    /// Plane index and colour of each sprite layer, topmost first.
+    /// Plane index and color of each sprite layer, topmost first.
     layers: &'a [(usize, u8)],
     bitmap: usize,
-    /// Plane of colour bytes: set pixels use the high nibble.
+    /// Plane of color bytes: set pixels use the high nibble.
     colors: usize,
 }
 
@@ -204,7 +204,7 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// A sprite layer of unpacked SHF/SHX: the block (pointer) of each 24-pixel
-/// column for each screen RAM, and the address of the layer's colour.
+/// column for each screen RAM, and the address of the layer's color.
 struct Layer {
     blocks: [&'static [u8]; 8],
     color: u16,
@@ -319,12 +319,12 @@ pub(super) fn decode_shf(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let mut planes = escape_rle(packed, *escape, Run::CountValue, PLANES_LEN)
         .ok_or(DecodeError::Unrecognized)?;
-    // Short data is accepted as long as the colours are there.
+    // Short data is accepted as long as the colors are there.
     if planes.len() <= 0x1fe9 {
         return Err(DecodeError::Unrecognized);
     }
     planes.resize(PLANES_LEN, 0);
-    // `recoil2png` paints both layers in the first colour; the editor
+    // `recoil2png` paints both layers in the first color; the editor
     // itself uses the second for the lower layer (see the module notes).
     four_planes(&planes, [planes[0x1fe8], planes[0x1fe9]])
 }
@@ -407,7 +407,7 @@ mod tests {
     fn sprite_blocks_follow_the_previous_line() {
         let mut data = alloc::vec![0u8; SHF.len];
         let mem = |addr: usize| addr - 0x4000 + 2;
-        // Picture line 0 is bitmap line 1: screen 1 colours, screen 0's
+        // Picture line 0 is bitmap line 1: screen 1 colors, screen 0's
         // blocks; the lower layer's column 0 is block $8A at $6280.
         data[mem(0x4400 + 14)] = 0x34;
         data[mem(0x6280)] = 0x40;

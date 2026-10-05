@@ -1,22 +1,22 @@
 //! TMS9918 / V9938 / V9958 video model shared by the MSX decoders: a VRAM
-//! snapshot, palettes, colour encodings and sprite rendering.
+//! snapshot, palettes, color encodings and sprite rendering.
 //!
 //! Sources:
 //! - VRAM tables, palette register format (`0RRR0BBB`, `00000GGG`) and the
 //!   Graphic 7 `GGGRRRBB` pixel format: MSX2 Technical Handbook, chapter 4 and
 //!   appendix 5 (<https://konamiman.github.io/MSX2-Technical-Handbook/>).
-//! - V9938 power-on palette and Graphic 7 sprite colours: V9938 Technical Data
+//! - V9938 power-on palette and Graphic 7 sprite colors: V9938 Technical Data
 //!   Book (<https://map.grauw.nl/resources/video/yamaha_v9938.pdf>).
 //! - YJK conversion: grauw, "The YJK screen modes"
 //!   (<https://map.grauw.nl/articles/yjk/>).
 //! - Sprite attribute layout, early clock, end markers (208 / 216), the
-//!   per-line sprite limits and the CC (colour combine) bit: TMS9918 data sheet
+//!   per-line sprite limits and the CC (color combine) bit: TMS9918 data sheet
 //!   (<https://map.grauw.nl/resources/video/texasinstruments_tms9918.pdf>)
 //!   and the V9938 data book above.
 //! - Observed from `recoil2png` output: the RGB values of the MSX1 (TMS9918)
 //!   palette, 3-bit to 8-bit scaling by bit replication, 2-bit Graphic 7 blue
 //!   levels (0, 0x49, 0x92, 0xff), the default Graphic 5 palette, sprites always
-//!   being 16x16 unmagnified, colour-0 sprites being opaque in sprite mode 2, and
+//!   being 16x16 unmagnified, color-0 sprites being opaque in sprite mode 2, and
 //!   a CC sprite being shown only after a non-CC sprite on the same line.
 
 use alloc::vec;
@@ -87,7 +87,7 @@ impl Vram {
     }
 }
 
-/// 16 colours as `0xRRGGBB`.
+/// 16 colors as `0xRRGGBB`.
 pub(in crate::platform) type Palette = [u32; 16];
 
 /// Scales a 3-bit level to 8 bits.
@@ -158,13 +158,13 @@ pub(super) const GRAPHIC5_PALETTE: Palette = {
     palette
 };
 
-/// TMS9918 colours for MSX1 dumps without a palette.
+/// TMS9918 colors for MSX1 dumps without a palette.
 pub(super) const MSX1_PALETTE: Palette = [
     0x000800, 0x000400, 0x3abb43, 0x70d377, 0x5459d7, 0x7b7be8, 0xb3634b, 0x61dfe7, 0xd46a53,
     0xf88e77, 0xc7c759, 0xd9d481, 0x36a53b, 0xb06bae, 0xc7d0c5, 0xfafff8,
 ];
 
-/// Fixed sprite colours in Graphic 7 (Screen 8).
+/// Fixed sprite colors in Graphic 7 (Screen 8).
 pub(super) const GRAPHIC7_SPRITE_PALETTE: Palette = palette3([
     (0, 0, 0),
     (0, 0, 2),
@@ -226,11 +226,11 @@ fn yjk_rgb(y: i32, j: i32, k: i32) -> u32 {
 pub(super) struct SpriteTables {
     pub attributes: usize,
     pub patterns: usize,
-    /// Sprite mode 2 (V9938 modes from Screen 4 up): per-line colour table.
+    /// Sprite mode 2 (V9938 modes from Screen 4 up): per-line color table.
     pub colours: Option<usize>,
 }
 
-/// Colour indices of the sprite pixels on screen line `y`, 256 wide.
+/// Color indices of the sprite pixels on screen line `y`, 256 wide.
 pub(super) fn sprite_line(vram: &Vram, tables: SpriteTables, y: i32) -> [Option<u8>; 256] {
     let mut line = [None; 256];
     let mode2 = tables.colours.is_some();
@@ -289,7 +289,7 @@ pub(super) fn sprite_line(vram: &Vram, tables: SpriteTables, y: i32) -> [Option<
         }
     }
     if !mode2 {
-        // Colour 0 is transparent in sprite mode 1.
+        // Color 0 is transparent in sprite mode 1.
         for pixel in &mut line {
             if *pixel == Some(0) {
                 *pixel = None;

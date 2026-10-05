@@ -18,21 +18,21 @@
 //!   ATARI2.CUT, torus.gr9p, RYS06.RYS, lenna.kss, GOD.GHG, face2.ghg, mori.ghg,
 //!   CLEANSE.PI8, MEMMAP.PI8, GOLDGATE/MONROE/NANCY/BOWGIRL.PI9) and then probed
 //!   with `recoil2png` on hand-made files (black box): accepted sizes, header
-//!   checks, which bytes are ignored, and the fixed colours.
+//!   checks, which bytes are ignored, and the fixed colors.
 //!
 //! Layouts:
-//! - TXS: 16x16 greys, one byte per pixel (0-15), behind the 6-byte binary-load
+//! - TXS: 16x16 grays, one byte per pixel (0-15), behind the 6-byte binary-load
 //!   header `FF FF 00 06 FF 06`, drawn 4x4. Bigger values are rejected.
-//! - FGE: 64x40 greys, two pixels per byte (high nibble first), behind a 6-byte
+//! - FGE: 64x40 grays, two pixels per byte (high nibble first), behind a 6-byte
 //!   header that RECOIL does not look at, drawn 4x4. Exactly 1286 bytes.
 //! - KFX 56x60 and CUT 96x99: bare 1-bit bitmaps (black and `0E` white).
-//! - GR9P: 80x60 greys, two pixels per byte, 2400 bytes, drawn 4x4.
-//! - RYS: 160x96 in the OS colours (Graphics 7 without the colour tail), 3840 bytes.
-//! - KSS: 160x160, 40 bytes per line, then the colours of values 0-3. 6404 bytes,
+//! - GR9P: 80x60 grays, two pixels per byte, 2400 bytes, drawn 4x4.
+//! - RYS: 160x96 in the OS colors (Graphics 7 without the color tail), 3840 bytes.
+//! - KSS: 160x160, 40 bytes per line, then the colors of values 0-3. 6404 bytes,
 //!   drawn 2x1.
 //! - GHG: width (LE16, 1-320), height (1-200), then 1-bit lines of (width + 7) / 8
 //!   bytes. A clear bit is `0C`, a set bit `02`.
-//! - PI8: 7680 bytes are a Graphics 15 screen in grey colours (`00 04 08 0C`);
+//! - PI8: 7680 bytes are a Graphics 15 screen in gray colors (`00 04 08 0C`);
 //!   7685 bytes are a Graphics 8 screen (black and `0E` white) plus 5 ignored
 //!   bytes.
 //! - PI9: a Graphics 9 screen with the black background and 4 (7684), 128 (7808) or 256
@@ -48,7 +48,7 @@
 //!   planes of width x height bytes. Mode `13`: the first plane is a Graphics 9
 //!   screen, drawn 4x4 (the second plane and the registers are unused). Mode
 //!   `0B`: the planes are two Graphics 15 frames shown on alternate scanlines
-//!   (frame 1 on even ones), each scanline with its own colours: registers 0-2
+//!   (frame 1 on even ones), each scanline with its own colors: registers 0-2
 //!   and 3 (background) for frame 1, registers 4-6 and 7 for frame 2.
 
 use super::antic::Bitmap;
@@ -58,7 +58,7 @@ use crate::bytes::le16;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-/// A 4x4-scaled picture of `width` x `height` pixels, one grey level (0-15)
+/// A 4x4-scaled picture of `width` x `height` pixels, one gray level (0-15)
 /// per entry of `levels`.
 fn grey_blocks(
     levels: impl Iterator<Item = u8>,
@@ -72,7 +72,7 @@ fn grey_blocks(
     image.scaled(4, 4)
 }
 
-/// TXS: 16x16 greys.
+/// TXS: 16x16 grays.
 pub(super) fn decode_txs(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = exactly(data, 262)?
         .strip_prefix(&[0xff, 0xff, 0x00, 0x06, 0xff, 0x06])
@@ -81,7 +81,7 @@ pub(super) fn decode_txs(data: &[u8]) -> Result<Image, DecodeError> {
     grey_blocks(pixels.iter().copied(), 16, 16)
 }
 
-/// Floor Designer: 64x40 greys behind an unchecked 6-byte header.
+/// Floor Designer: 64x40 grays behind an unchecked 6-byte header.
 pub(super) fn decode_fge(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 1286)?;
     bitmap(&screen[6..], 32, 4).render(4, 4, |_, level| rgb(level))
@@ -108,17 +108,17 @@ fn mono(data: &[u8], width: u32, height: u32, colors: [u32; 2]) -> Result<Image,
     )
 }
 
-/// Graphics 9+: 80x60 greys.
+/// Graphics 9+: 80x60 grays.
 pub(super) fn decode_gr9p(data: &[u8]) -> Result<Image, DecodeError> {
     bitmap(exactly(data, 2400)?, 40, 4).render(4, 4, |_, level| rgb(level))
 }
 
-/// Mamut: a Graphics 7 screen in the OS colours.
+/// Mamut: a Graphics 7 screen in the OS colors.
 pub(super) fn decode_rys(data: &[u8]) -> Result<Image, DecodeError> {
     four_color(bitmap(exactly(data, 3840)?, 40, 2), 2, 2, OS_COLORS)
 }
 
-/// KSS-Paint: 160x160, then the colours of pixel values 0-3.
+/// KSS-Paint: 160x160, then the colors of pixel values 0-3.
 pub(super) fn decode_kss(data: &[u8]) -> Result<Image, DecodeError> {
     let (screen, colors) = exactly(data, 6404)?.split_at(6400);
     let colors = [colors[0], colors[1], colors[2], colors[3]];
@@ -146,7 +146,7 @@ pub(super) fn decode_ghg(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
-/// PI8: Graphics 15 in greys (7680 bytes) or Graphics 8 (7685 bytes).
+/// PI8: Graphics 15 in grays (7680 bytes) or Graphics 8 (7685 bytes).
 pub(super) fn decode_pi8(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
         7680 => four_color(bitmap(data, 40, 2), 2, 1, GREY_COLORS),

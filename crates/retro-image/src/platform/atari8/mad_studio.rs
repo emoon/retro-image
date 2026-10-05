@@ -7,13 +7,13 @@
 //!   ch. 2 (<https://www.atariarchives.org/pmgraphics/chapter2.php>).
 //! - PLA/MIS (AtariTools-800 player and missile, Just Solve
 //!   "AtariTools-800", <http://fileformats.archiveteam.org/wiki/AtariTools-800>):
-//!   sizes, colour byte and bit order observed from `recoil2png` output.
+//!   sizes, color byte and bit order observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the fixed SPR/MSL heights, the MPL
-//!   variant with a 9-byte header (height, 4 X positions, 4 colours) that the
+//!   variant with a 9-byte header (height, 4 X positions, 4 colors) that the
 //!   sample uses, the MPL canvas (from the leftmost to the rightmost player)
 //!   and player priority, the 174-byte MPL variant (14-byte header, bytes 9-13
 //!   ignored; mutation probing of `recoil2png`, six samples in
-//!   `corpus/extra/atari8/madstudio`), and the TL4 colours (OS defaults, playfield 3 = 0x46).
+//!   `corpus/extra/atari8/madstudio`), and the TL4 colors (OS defaults, playfield 3 = 0x46).
 
 use super::antic::{Bitmap, fill};
 use super::font::draw_multicolor_glyph;
@@ -24,7 +24,7 @@ use crate::{DecodeError, Image};
 /// A player pixel is 2 high-resolution pixels wide.
 const PLAYER_PIXEL: u32 = 2;
 
-/// Single player: height (always 40), colour, 40 lines of 8 pixels.
+/// Single player: height (always 40), color, 40 lines of 8 pixels.
 pub(super) fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
     let [40, color, ref lines @ ..] = *data else {
         return Err(DecodeError::Unrecognized);
@@ -48,7 +48,7 @@ pub(super) fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
-/// Single missile: height (always 34), colour, 34 lines of 2 pixels.
+/// Single missile: height (always 34), color, 34 lines of 2 pixels.
 pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
     let [34, color, ref lines @ ..] = *data else {
         return Err(DecodeError::Unrecognized);
@@ -75,7 +75,7 @@ pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// AtariTools-800 player: colour, then 240 lines of 8 pixels.
+/// AtariTools-800 player: color, then 240 lines of 8 pixels.
 pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
     let [color, ref lines @ ..] = *data else {
         return Err(DecodeError::Unrecognized);
@@ -97,7 +97,7 @@ pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
-/// AtariTools-800 missile: colour (all 8 bits used), then 240 lines of
+/// AtariTools-800 missile: color (all 8 bits used), then 240 lines of
 /// 2 pixels, 4 lines to a byte, first line in the high bits.
 pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
     let [color, ref lines @ ..] = *data else {
@@ -132,11 +132,11 @@ pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Four overlapping players: height, X positions, colours, then the data of
+/// Four overlapping players: height, X positions, colors, then the data of
 /// players 0-3. Player 0 has the highest priority.
 pub(super) fn decode_mpl(data: &[u8]) -> Result<Image, DecodeError> {
     // The 174-byte layout has five more header bytes (player sizes and the
-    // third-colour flag) that are not needed to draw the players.
+    // third-color flag) that are not needed to draw the players.
     let header_len = if data.len() == 14 + 4 * 40 && data[0] == 40 {
         14
     } else {

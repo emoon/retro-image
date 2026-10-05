@@ -3,19 +3,19 @@
 //! Sources:
 //! - CompuPhase, "The FLIC file format": <https://www.compuphase.com/flic.htm>
 //!   (128-byte header with the `AF11` (FLI) or `AF12` (FLC) magic, frame
-//!   chunks `F1FA`, and the colour, delta and run-length sub-chunks).
+//!   chunks `F1FA`, and the color, delta and run-length sub-chunks).
 //! - Jim Kent, Dr. Dobb's Journal, March 1993, "The FLIC file format":
 //!   <https://jacobfilipp.com/DrDobbs/articles/DDJ/1993/9303/9303a/9303a.htm>
 //!   (BYTE_RUN, DELTA_FLI, DELTA_FLC, COLOR_64, COLOR_256, BLACK, COPY).
-//! - Deark `fli.c` (<https://github.com/jsummers/deark>, MIT licence) for
+//! - Deark `fli.c` (<https://github.com/jsummers/deark>, MIT license) for
 //!   how real files deviate (frame variant `F5FA`, an optional prefix chunk,
 //!   clamped chunk sizes, out-of-range pixels ignored); also the oracle for
 //!   the sample files.
 //!
 //! The picture is the screen after the first frame that draws pixels (a
 //! leading frame that only sets the palette is applied first, as Deark does).
-//! The screen starts with every pixel at colour 0, so a delta frame against
-//! the blank screen works. The hi-colour FLH variant
+//! The screen starts with every pixel at color 0, so a delta frame against
+//! the blank screen works. The hi-color FLH variant
 //! (`AF44`) is drawn by `flh.rs` on the same frame walk; the Animator Pro `PIC`
 //! and `COL` files are rejected.
 //!
@@ -77,7 +77,7 @@ const BYTE_RUN: u16 = 15;
 const COPY: u16 = 16;
 
 /// What a FLIC decoder draws chunks on; the 8-bit [`Screen`] here and the
-/// hi-colour screen in `flh.rs` share the file walking below.
+/// hi-color screen in `flh.rs` share the file walking below.
 pub(super) trait Canvas {
     /// Draws the chunk of `kind` whose body runs from `start` to `end`.
     fn apply(&mut self, kind: u16, start: usize, end: usize);
@@ -404,7 +404,7 @@ mod tests {
         out
     }
 
-    /// A 4x2 FLC whose first frame sets two colours, then draws `drawing`.
+    /// A 4x2 FLC whose first frame sets two colors, then draws `drawing`.
     fn flc(drawing: &[u8]) -> Vec<u8> {
         let mut sub = chunk_bytes(COLOR_64, &[1, 0, 0, 2, 0, 0, 0, 63, 63, 63]);
         sub.extend(drawing);
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn byte_run_frame_paints_through_the_palette() {
-        // Line 1: run of 4 x colour 1 (code 4); line 2: 2 literals then a run.
+        // Line 1: run of 4 x color 1 (code 4); line 2: 2 literals then a run.
         let draw = chunk_bytes(BYTE_RUN, &[1, 4, 1, 1, 0xfe, 0, 1, 2, 1]);
         let image = decode_flic(&flc(&draw)).unwrap();
         assert_eq!((image.width(), image.height()), (4, 2));
@@ -436,7 +436,7 @@ mod tests {
 
     #[test]
     fn delta_fli_skips_unchanged_pixels() {
-        // One line at y = 1: skip 1 pixel, 2 literal pixels of colour 1.
+        // One line at y = 1: skip 1 pixel, 2 literal pixels of color 1.
         let draw = chunk_bytes(DELTA_FLI, &[1, 0, 1, 0, 1, 1, 2, 1, 1]);
         let image = decode_flic(&flc(&draw)).unwrap();
         assert_eq!(image.get(0, 1), 0);

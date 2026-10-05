@@ -4,7 +4,7 @@
 //! Sources:
 //! - Photo slots, state vector and `Magic` marker: Raphael Boichot's notes in
 //!   <https://github.com/Raphael-Boichot/Inject-pictures-in-your-Game-Boy-Camera-saves>
-//!   (no licence stated, so used for facts only), checked against the four
+//!   (no license stated, so used for facts only), checked against the four
 //!   samples in `corpus/extra/gameboy-nes/gbcam` (the layout was confirmed
 //!   by rendering slot 1 of `gb-photo_photo.sav` to a clean test image).
 //! - Tile encoding and the 128x112 size: Pan Docs,

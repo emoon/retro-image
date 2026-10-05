@@ -3,9 +3,9 @@
 //! Sources:
 //! - Marco Pixel Editor 2.1 manual (MPE.DOC,
 //!   <http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/MARCO%20PIXEL%20EDITOR%202.1/MPE.DOC>):
-//!   Graphics 15 (160x192, 4 colours); the compressed save is `CPI`, the
+//!   Graphics 15 (160x192, 4 colors); the compressed save is `CPI`, the
 //!   plain one `PIC`. The packer is not documented.
-//! - The packer and colours were reverse engineered from the five corpus
+//! - The packer and colors were reverse engineered from the five corpus
 //!   samples and from `recoil2png` output on hand-made files. A byte that
 //!   equals the one before it is followed by a count `n`, and the run is `n +
 //!   1` copies of the byte; every other byte is a literal. (After a run the
@@ -13,8 +13,8 @@
 //!   (31 pages; RECOIL rejects fewer, and all samples end in 255 zeros and one
 //!   more byte); the first 7680 are the picture, 40 bytes per line with 4
 //!   pixels per byte, leftmost in the high bits. Pixel values 0-3 are shown
-//!   as the greys `00 0C 08 04` (the values 1 and 3 are not in the usual
-//!   order). Nothing in the file chooses the colours: the tail after the
+//!   as the grays `00 0C 08 04` (the values 1 and 3 are not in the usual
+//!   order). Nothing in the file chooses the colors: the tail after the
 //!   picture has no effect.
 
 use super::antic::Bitmap;

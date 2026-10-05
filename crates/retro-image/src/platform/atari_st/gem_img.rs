@@ -1,4 +1,4 @@
-//! GEM Bit Image (`IMG`) and its colour dialects (`XIMG`, `STTT`, `TIMG`).
+//! GEM Bit Image (`IMG`) and its color dialects (`XIMG`, `STTT`, `TIMG`).
 //!
 //! Sources:
 //! - <https://temlib.org/AtariForumWiki/index.php/GEM_Bit_Image_file_format>
@@ -12,7 +12,7 @@
 //!   pixels; TIMG pictures are true bitplanes, see [`timg_color`].
 //! - Reverse engineered from sample files and black-box tests with
 //!   `recoil2png` (hand-modified copies): FSNAP's line-above copies and
-//!   256-byte literals, 8-plane grey levels and the 24-bit BGR dialect.
+//!   256-byte literals, 8-plane gray levels and the 24-bit BGR dialect.
 
 use alloc::vec::Vec;
 
@@ -147,7 +147,7 @@ fn timg_color(index: usize, bits: [u32; 3]) -> u32 {
     color
 }
 
-/// True colour lines are chunky xRGB1555 or RGB565 words, RGB or xRGB
+/// True color lines are chunky xRGB1555 or RGB565 words, RGB or xRGB
 /// pixels; they are never scaled for pixel aspect.
 fn true_color(data: &[u8], h: &Header) -> Option<Image> {
     let bytes = h.planes.div_ceil(8);
@@ -167,7 +167,7 @@ fn true_color(data: &[u8], h: &Header) -> Option<Image> {
     Some(image)
 }
 
-/// A true-colour dialect flagged by a ninth header word of 3 (the planes
+/// A true-color dialect flagged by a ninth header word of 3 (the planes
 /// and pattern words are ignored): lines of chunky blue, green, red pixels
 /// stored only as `0x80, n` records followed by `n` pixels. Derived from a
 /// sample file and black-box tests with `recoil2png`, which rejects
@@ -209,7 +209,7 @@ fn pixel_scale(h: &Header) -> (usize, usize) {
 fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
     let extra = &data[16..h.header_len];
     if h.planes > 8 {
-        // True colour: no palette, at most an empty XIMG one.
+        // True color: no palette, at most an empty XIMG one.
         let timg = extra.len() == 12 && &extra[..4] == b"TIMG";
         return (extra.is_empty() || extra == b"XIMG\0\0" || timg).then(Vec::new);
     }
@@ -222,7 +222,7 @@ fn palette(data: &[u8], h: &Header) -> Option<Vec<u32>> {
     if extra.len() <= 2 && h.planes <= 4 {
         return Some(super::common::default_vdi_palette(colors));
     }
-    // 256 colours without a palette are inverted grey levels. Without an
+    // 256 colors without a palette are inverted gray levels. Without an
     // `XIMG` header the planes count from the most significant bit (black-box
     // tests with `recoil2png`, moving the samples' rasters between headers).
     if h.planes == 8 && (extra.len() <= 2 || extra == b"XIMG\0\0") {

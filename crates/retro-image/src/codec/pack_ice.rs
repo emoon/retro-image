@@ -5,7 +5,7 @@
 //!
 //! The bit stream layout follows Ancient's `IceDecompressor`
 //! (<https://github.com/temisu/ancient>, src/IceDecompressor.cpp), which is
-//! distributed under this licence:
+//! distributed under this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

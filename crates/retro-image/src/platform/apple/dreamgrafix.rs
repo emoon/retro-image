@@ -1,9 +1,9 @@
-//! DreamGrafix pictures (ProDOS PNT/$8005): a 256-colour or 3200-colour
+//! DreamGrafix pictures (ProDOS PNT/$8005): a 256-color or 3200-color
 //! Super Hi-Res screen compressed with a 12-bit LZW variant, followed by a
 //! 17-byte footer.
 //!
 //! Sources:
-//! - Footer, the two unpacked layouts and the colour modes: CiderPress II
+//! - Footer, the two unpacked layouts and the color modes: CiderPress II
 //!   Super Hi-Res notes, "PNT/$8005 and PIC/$8003: DreamGrafix Image"
 //!   (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>).
 //! - LZW: read from CiderPress II `FileConv/Gfx/SuperHiRes_DreamGrafix.cs`
@@ -13,14 +13,14 @@
 //!   ends the data, 258 is the first free code. The width grows by one bit
 //!   when the next free code reaches 2^width, up to 12 bits, after which no
 //!   more codes are added. The code after a clear is a literal byte.
-//! - The pictures in the 3200-colour layout go through the Brooks renderer
-//!   (`super_hires::render_3200`); the 256-colour layout is the 32 KB
+//! - The pictures in the 3200-color layout go through the Brooks renderer
+//!   (`super_hires::render_3200`); the 256-color layout is the 32 KB
 //!   screen dump.
 //! - Checked against the 10 DreamGrafix files in
 //!   `corpus/extra/next-amiga-pc/apple2gs-dreamgrafix`, by eye; every
-//!   file must unpack to exactly the size its colour mode calls for.
+//!   file must unpack to exactly the size its color mode calls for.
 //!
-//! The licence of the CiderPress II source:
+//! The license of the CiderPress II source:
 //!
 //! ```text
 //! Copyright 2023 faddenSoft
@@ -52,7 +52,7 @@ const SCREEN_LEN: usize = 0x8000;
 const COLORS_3200_LEN: usize = 200 * 32;
 
 /// Unpacked sizes: pixels, SCBs and palettes plus 512 spare bytes (256
-/// colours), or pixels, 200 palettes and 512 spare bytes (3200 colours).
+/// colors), or pixels, 200 palettes and 512 spare bytes (3200 colors).
 const SIZE_256: usize = PIXELS_LEN + 256 + 512 + 512;
 const SIZE_3200: usize = PIXELS_LEN + COLORS_3200_LEN + 512;
 

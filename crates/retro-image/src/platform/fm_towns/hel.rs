@@ -5,7 +5,7 @@
 //!   then 160x120 1-bit frames of 2400 bytes from offset 12, each frame
 //!   toggling the pixels it sets on the previous picture, which starts
 //!   black): Deark's `modules/misc2.c`, `fmtowns_hel`
-//!   (<https://github.com/jsummers/deark>, MIT licence, notice below). The
+//!   (<https://github.com/jsummers/deark>, MIT license, notice below). The
 //!   10 sample sizes listed in `docs/research/gaps-pc-japan.md` (all
 //!   12 mod 1000) agree with 12 + 2400 per frame.
 //! - Showing only the first frame is this crate's own choice. No sample was

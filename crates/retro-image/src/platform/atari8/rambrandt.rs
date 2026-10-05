@@ -1,4 +1,4 @@
-//! Rambrandt (RM0 to RM4): pictures whose colour registers change on selected
+//! Rambrandt (RM0 to RM4): pictures whose color registers change on selected
 //! scanlines. The extension digit is the Rambrandt graphics mode.
 //!
 //! Sources:
@@ -9,7 +9,7 @@
 //! - The program's documentation disk (`Rambrandt_docs.ATR`, files DOC.003 and
 //!   DOC.004, copyright 1985 Antic Publishing and Bard Ermentrout), read as
 //!   prose for the modes (0: 160x96, 1: GTIA 9, 2: GTIA 10, 3: GTIA 11, 4:
-//!   160x192 four colours) and the picture layout (screen, registers 704-712
+//!   160x192 four colors) and the picture layout (screen, registers 704-712
 //!   and three 128-byte tables); see `docs/research/next-blocked.md`.
 //! - Everything else was reverse engineered from TITLE.RM2 and ADVANCED.RM4 and
 //!   by black-box probing of `recoil2png`: one-byte changes to find which bytes
@@ -22,10 +22,10 @@
 //!
 //! RM2: exactly 8192 bytes: a Graphics 10 screen of 192 lines x 40 bytes
 //! (4 bits per pixel, drawn 4 wide), the 9 registers 704-712 (the GTIA mode 10
-//! colours), 119 unread bytes, and the three change tables below.
+//! colors), 119 unread bytes, and the three change tables below.
 //!
 //! RM4: a Koala file (see `koala.rs`) of a Graphics 15 screen, then the 9
-//! registers 464 bytes before the end of the file (the colours in the Koala
+//! registers 464 bytes before the end of the file (the colors in the Koala
 //! header are not read) and the three change tables as the last 384 bytes.
 //! Appending bytes to the file moves both, so a file with extra data is
 //! misread, as it is by `recoil2png`.
@@ -37,19 +37,19 @@
 //! register's starting value is not used, only that of a change-table entry.
 //!
 //! RM0 is the RM2 container with a 160x96 screen of 2-bit pixels in the first
-//! 3840 bytes, drawn 2x2 and coloured like RM4 (value 0 is register 8, 1 to 3
+//! 3840 bytes, drawn 2x2 and colored like RM4 (value 0 is register 8, 1 to 3
 //! are registers 4 to 6).
 //!
 //! In every mode a line code in the first table must be 0, 3, 6 to 99 or 102
 //! to 197 (RM0: 0, 3 or 6 to 100), or the file is refused.
 //!
 //! The change tables are three lists of 128 bytes: line codes, register
-//! numbers and colours. Entry p belongs to the line pair 2 (p - 15) and
+//! numbers and colors. Entry p belongs to the line pair 2 (p - 15) and
 //! 2 (p - 15) + 1. A register number of 8 or less selects a register
 //! (0-8, the numbering of 704-712) and 0x80 means no change. The line code
 //! is the line plus 3 (plus 5 from line 97 on, since two scanlines of the
 //! 4 KB boundary can't take a change); the entry applies from that line if
-//! it is one of the pair, and the register keeps the colour from there on.
+//! it is one of the pair, and the register keeps the color from there on.
 //! A line code of 0 or one outside the pair leaves the entry unused.
 //!
 //! RM0 has one entry per line of the 96: entry n + 15 belongs to line n (line 0
@@ -120,12 +120,12 @@ impl Layout {
     }
 }
 
-/// The nine colour registers on every line.
+/// The nine color registers on every line.
 struct Registers(Vec<[u8; 9]>);
 
 impl Registers {
     /// The registers `start` with the changes of `tables` (line codes,
-    /// register numbers and colours) applied.
+    /// register numbers and colors) applied.
     fn new(start: [u8; 9], tables: &[u8], layout: Layout) -> Self {
         let (codes, numbers, colors) = (
             &tables[..TABLE],
@@ -311,7 +311,7 @@ mod tests {
     fn changes_apply_from_their_line() {
         let mut tables = vec![0u8; TABLES];
         tables[TABLE..2 * TABLE].fill(0x80);
-        // Entry 28 is the pair of lines 26 and 27: register 3 gets colour 0x44
+        // Entry 28 is the pair of lines 26 and 27: register 3 gets color 0x44
         // on line 27 (line code 27 + 3).
         tables[28] = 30;
         tables[TABLE + 28] = 3;

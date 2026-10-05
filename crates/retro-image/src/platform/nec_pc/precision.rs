@@ -1,5 +1,5 @@
 //! Palette precision of Japanese computers, used by the MAG, MKI and Pi
-//! decoders to turn 8-bit palette components into the displayed colours.
+//! decoders to turn 8-bit palette components into the displayed colors.
 //!
 //! Sources: the significant-bit conventions are described in Kirinn Bunnylin's
 //! Maki-chan and Pi pages (<https://mooncore.eu/bunny/txt/makichan.htm>); the

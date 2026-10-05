@@ -9,7 +9,7 @@
 //!   lines, pixels doubled): zx-image README (CC0),
 //!   <https://github.com/moroz1999/zx-image>.
 //! - ATR dither pattern (`55 AA ...`, first row starting with paper) and the
-//!   mono SCR colours: observed from `recoil2png` output.
+//!   mono SCR colors: observed from `recoil2png` output.
 
 use super::screen::{
     ATTRIBUTES_LEN, BITMAP_LEN, COLUMNS, Frame, HEIGHT, SCR_LEN, WIDTH, attribute_color,

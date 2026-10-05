@@ -102,7 +102,7 @@ fn decode_charset(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Colour bits: 0 red, 1 green, 2 blue.
+/// Color bits: 0 red, 1 green, 2 blue.
 fn color(index: u8) -> u32 {
     let channel = |bit: u8| if index & bit != 0 { 0xff } else { 0 };
     channel(1) << 16 | channel(2) << 8 | channel(4)

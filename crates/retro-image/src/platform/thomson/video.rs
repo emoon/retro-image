@@ -5,10 +5,10 @@
 //! - Pixel layout of each mode: Prehisto, "Les fichiers graphiques
 //!   Thomson" (ContacThoms bulletin article, Collection Thomson),
 //!   <http://web.archive.org/web/20251005163132/http://collection.thomson.free.fr/code/articles/prehisto_bulletin/page.php?XI=0&XJ=13>:
-//!   40 columns (RAMA "forme" bits, RAMB colour byte per 8 pixels), bitmap 4
-//!   (RAMA bit = colour 2, RAMB bit = colour 1), bitmap 16 (two pixels per
-//!   byte, high nibble left), 80 columns (set bit = colour 1).
-//! - The 40-column colour byte of the TO7/70 and TO8 (foreground in bits
+//!   40 columns (RAMA "forme" bits, RAMB color byte per 8 pixels), bitmap 4
+//!   (RAMA bit = color 2, RAMB bit = color 1), bitmap 16 (two pixels per
+//!   byte, high nibble left), 80 columns (set bit = color 1).
+//! - The 40-column color byte of the TO7/70 and TO8 (foreground in bits
 //!   6-3, background in bits 7 and 2-0, the pastel bit inverted), and the
 //!   order of the banks across the line in bitmap 16 and 80 columns (a RAMA
 //!   byte, then the RAMB byte at the same address): MAME
@@ -18,8 +18,8 @@
 //! - Bitmap 16 pixels are twice as wide as they are tall, and 80-column
 //!   pixels half as wide: shown 2x1 and 1x2 to keep the 4:3 screen.
 //!
-//! The colour-byte decoding and bank order follow MAME's
-//! `src/mame/thomson/to_video.cpp`, used under its licence:
+//! The color-byte decoding and bank order follow MAME's
+//! `src/mame/thomson/to_video.cpp`, used under its license:
 //!
 //! ```text
 //! license:BSD-3-Clause
@@ -76,7 +76,7 @@ impl Columns<'_> {
 }
 
 /// The foreground and background palette indices of a TO7/70 40-column
-/// colour byte: bits 6-3 and bits 7, 2-0, with the pastel bit (the top
+/// color byte: bits 6-3 and bits 7, 2-0, with the pastel bit (the top
 /// bit of each index) stored inverted.
 pub(super) fn attribute_colors(byte: u8) -> (usize, usize) {
     let foreground = (byte >> 3 & 15) ^ 8;
@@ -84,7 +84,7 @@ pub(super) fn attribute_colors(byte: u8) -> (usize, usize) {
     (usize::from(foreground), usize::from(background))
 }
 
-/// 40 columns: RAMA holds the "forme" bits, RAMB the colour bytes.
+/// 40 columns: RAMA holds the "forme" bits, RAMB the color bytes.
 pub(super) fn columns40(forme: Columns, couleur: Columns, palette: &[u32; 16]) -> Image {
     draw_bits(forme, palette, |x, y, bit| {
         let (foreground, background) = attribute_colors(couleur.at(x, y));
@@ -92,7 +92,7 @@ pub(super) fn columns40(forme: Columns, couleur: Columns, palette: &[u32; 16]) -
     })
 }
 
-/// Bitmap 4: a pixel's colour is `2 * RAMA bit + RAMB bit`.
+/// Bitmap 4: a pixel's color is `2 * RAMA bit + RAMB bit`.
 pub(super) fn bitmap4(rama: Columns, ramb: Columns, palette: &[u32; 16]) -> Image {
     let mut image = Image::new((rama.count() * 8) as u32, rama.lines as u32);
     for x in 0..rama.count() {
@@ -124,7 +124,7 @@ pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Result<Image, Dec
     image.scaled(2, 1)
 }
 
-/// 80 columns: set bits in colour 1, clear bits in colour 0, shown 1x2.
+/// 80 columns: set bits in color 1, clear bits in color 0, shown 1x2.
 pub(super) fn columns80(bytes: Columns, palette: &[u32; 16]) -> Result<Image, DecodeError> {
     draw_bits(bytes, palette, |_, _, bit| usize::from(bit)).scaled(1, 2)
 }

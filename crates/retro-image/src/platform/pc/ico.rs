@@ -6,10 +6,10 @@
 //!   <https://learn.microsoft.com/en-us/previous-versions/ms997538(v=msdn.10)>
 //!   and the Wikipedia article <https://en.wikipedia.org/wiki/ICO_(file_format)>
 //!   (6-byte directory: reserved 0, type 1 icon or 2 cursor, count; 16-byte
-//!   entries: width, height (0 means 256), colours, reserved, planes or
+//!   entries: width, height (0 means 256), colors, reserved, planes or
 //!   hotspot x, bits per pixel or hotspot y, data size, data offset).
 //! - Each DIB image is a headerless bitmap whose stored height is twice the
-//!   picture height: the colour bitmap, then a 1-bit AND mask. See `bmp.rs`
+//!   picture height: the color bitmap, then a 1-bit AND mask. See `bmp.rs`
 //!   for the DIB layouts.
 //! - Verified against Pillow's ICO and CUR decoders on icons found on the
 //!   development machine (see the divergence file `pc-ico.tsv`).

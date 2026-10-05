@@ -2,16 +2,16 @@
 //!
 //! Sources:
 //! - Layout (header of transparency flag `B`/`C`, width + `$21`, height +
-//!   `$21` and a two-character colour count, then 8-bit RGB palette entries
-//!   and chunky pixels of just enough bits for the colour count, packed 7
+//!   `$21` and a two-character color count, then 8-bit RGB palette entries
+//!   and chunky pixels of just enough bits for the color count, packed 7
 //!   bits per character: `$20-$6F` and `$A1-$D0` are values, `$D1-$FF` are
 //!   runs of 1-47 times 7 zero bits; each line is flushed and padded): Dirk
 //!   Stöcker, "Amiga Icon Format" (2002), NewIcon extension section
 //!   (<http://www.evillabs.net/index.php/Amiga_Icon_Formats>).
 //! - The pixels start at the first line end after the whole palette;
-//!   transparency means colour 0 is transparent; up to 512 stored colours;
+//!   transparency means color 0 is transparent; up to 512 stored colors;
 //!   unused palette entries are black: Deark's `modules/amigaicon.c`
-//!   (<https://github.com/jsummers/deark>, MIT licence, notice below).
+//!   (<https://github.com/jsummers/deark>, MIT license, notice below).
 
 // Parts of this file follow Deark's modules/amigaicon.c
 // (Deark, https://github.com/jsummers/deark):
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn decodes_palette_then_pixels_line_by_line() {
-        // 2x1, 2 colours (1 bit per pixel), colour 0 transparent.
+        // 2x1, 2 colors (1 bit per pixel), color 0 transparent.
         let mut first = b"IM1=B\x23\x22!#".to_vec();
         // Palette bytes 12 34 56 ab cd ef as 7-bit groups (48 bits, 7 chars).
         let bits: u64 = 0x1234_56ab_cdef;

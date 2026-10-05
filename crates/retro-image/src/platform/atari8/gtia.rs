@@ -1,4 +1,4 @@
-//! GTIA player/missile graphics and colour priority.
+//! GTIA player/missile graphics and color priority.
 //!
 //! Sources:
 //! - De Re Atari ch. 4, player-missile graphics: HPOS, SIZE, GRAF and PRIOR
@@ -8,17 +8,17 @@
 //!   (<https://www.atariarchives.org/pmgraphics/chapter2.php>); Altirra
 //!   Hardware Reference Manual, GTIA priority
 //!   (<https://www.virtualdub.org/downloads/Altirra%20Hardware%20Reference%20Manual.pdf>).
-//! - The priority logic is the GTIA's: every colour register whose signal
+//! - The priority logic is the GTIA's: every color register whose signal
 //!   survives the priority equations below is ORed into the output, which
-//!   is what makes conflicting PRIOR settings show mixed or black colours.
+//!   is what makes conflicting PRIOR settings show mixed or black colors.
 //!   The equations were checked by black-box probing of `recoil2png` with
 //!   hand-made Graph2Font MCH files: every PRIOR value (0-63), every
 //!   combination of the four players over background and each playfield
-//!   colour, and every missile combination with and without the
-//!   fifth-player bit. The output geometry (HPOS 0x2C at pixel 0, colour
+//!   color, and every missile combination with and without the
+//!   fifth-player bit. The output geometry (HPOS 0x2C at pixel 0, color
 //!   clocks 2 pixels wide) was observed the same way.
 
-/// Player colour registers (COLPM0-3), playfield registers (COLPF0-3) and
+/// Player color registers (COLPM0-3), playfield registers (COLPF0-3) and
 /// the background (COLBK).
 #[derive(Clone, Copy)]
 pub(super) struct Colors {
@@ -27,7 +27,7 @@ pub(super) struct Colors {
     pub background: u8,
 }
 
-/// The colour value GTIA shows for `players` (bits 0-3 = P0-P3) over
+/// The color value GTIA shows for `players` (bits 0-3 = P0-P3) over
 /// `playfield` (bits 0-3 = PF0-PF3) under `prior`.
 pub(super) fn resolve(prior: u8, players: u8, playfield: u8, colors: &Colors) -> u8 {
     let selected = SIGNALS[signal_index(prior, players, playfield)];
@@ -50,7 +50,7 @@ pub(super) fn resolve(prior: u8, players: u8, playfield: u8, colors: &Colors) ->
 }
 
 /// Index into [`SIGNALS`]: the PRIOR bits the equations read (0-3 and the
-/// multicolour player bit 5), the players and the playfield.
+/// multicolor player bit 5), the players and the playfield.
 fn signal_index(prior: u8, players: u8, playfield: u8) -> usize {
     usize::from(prior & 15 | (prior >> 5 & 1) << 4)
         | usize::from(players & 15) << 5
@@ -69,7 +69,7 @@ static SIGNALS: [u16; 1 << 13] = {
     table
 };
 
-/// Which colour registers show: bit 0-3 = players, 4-7 = playfields,
+/// Which color registers show: bit 0-3 = players, 4-7 = playfields,
 /// 8 = background.
 // Every signal is written as "present and not blocked by ...", which reads
 // better than the minimised forms Clippy suggests.

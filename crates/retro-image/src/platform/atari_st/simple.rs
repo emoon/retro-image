@@ -5,7 +5,7 @@
 //!   <https://temlib.org/AtariForumWiki/index.php/NEOchrome_file_format>
 //! - Doodle: <https://temlib.org/AtariForumWiki/index.php/Doodle_file_format>
 //! - Art Director: <https://temlib.org/AtariForumWiki/index.php/Art_Director_file_format>
-//! - GFA Artist ("1000 colours off"):
+//! - GFA Artist ("1000 colors off"):
 //!   <https://temlib.org/AtariForumWiki/index.php/GFA_Artist_file_format>
 //! - Palette Master: <http://fileformats.archiveteam.org/wiki/Palette_Master>
 //! - PaintPro / PlusPaint (`PIC`, single and double height):
@@ -31,7 +31,7 @@
 //!   modes); offsets and RLE records derived from sample files.
 //! - Raw low-resolution screen dumps (`DAT`, possibly Pack-Ice packed): the
 //!   32000-byte screen memory layout is the Atari Compendium one cited in
-//!   `common.rs`; the files carry no palette, so the 16 colours are a grey
+//!   `common.rs`; the files carry no palette, so the 16 colors are a gray
 //!   ramp. Derived from the two Pack-Ice samples `00SCREEN.DAT` and
 //!   `33SCREEN.DAT` (they unpack to exactly 32000 bytes and show a coherent
 //!   picture as 4-plane low resolution); the survey is
@@ -110,7 +110,7 @@ pub(super) fn decode_doo(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// A raw low-resolution screen dump, possibly Pack-Ice packed. There is
-/// no palette in the file, so the pens are a grey ramp.
+/// no palette in the file, so the pens are a gray ramp.
 pub(super) fn decode_raw_screen(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = if crate::codec::pack_ice::is_packed(data) {
         Some(crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?)
@@ -152,15 +152,15 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
             ok(decode_screen(Resolution::Low, data, &words))
         }
         36864 => ok(decode_palette_master(data)),
-        // GFA Artist "1000 colours on": planes word, reserved word, screen,
-        // normal palette, 69 raster palettes, colour cycling tables.
+        // GFA Artist "1000 colors on": planes word, reserved word, screen,
+        // normal palette, 69 raster palettes, color cycling tables.
         34360 => ok(decode_gfa_artist_rasters(data)),
         _ => Err(DecodeError::Unrecognized),
     }
 }
 
-/// Palette Master: 32768-byte screen area, then a 16-colour palette and
-/// records of a start line and colours 1-15, ended by line 0xFFFF. Colours
+/// Palette Master: 32768-byte screen area, then a 16-color palette and
+/// records of a start line and colors 1-15, ended by line 0xFFFF. Colors
 /// are always 9-bit ST ones (observed from `recoil2png` output).
 fn decode_palette_master(data: &[u8]) -> Option<Image> {
     let all = super::common::words(&data[32768..]);
@@ -177,7 +177,7 @@ fn decode_palette_master(data: &[u8]) -> Option<Image> {
         let line = &data[y * 160..(y + 1) * 160];
         for x in 0..320 {
             let c = super::common::interleaved_index(line, x, 4);
-            // Colour 0 is shared by all palettes.
+            // Color 0 is shared by all palettes.
             let word = if c == 0 { all[0] } else { palette[c] };
             image.set(x, y as u32, super::common::st_rgb(word, false));
         }
@@ -185,7 +185,7 @@ fn decode_palette_master(data: &[u8]) -> Option<Image> {
     Some(image)
 }
 
-/// Line `y` of a GFA Artist "1000 colours" picture uses palette
+/// Line `y` of a GFA Artist "1000 colors" picture uses palette
 /// `2 + ceil(y / 3)` of the 70 stored after the screen (the normal one
 /// first): derived from the sample file and `recoil2png` output.
 fn decode_gfa_artist_rasters(data: &[u8]) -> Option<Image> {
@@ -305,7 +305,7 @@ pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
     ok(image.map(|image| super::common::crop(&image, width.into(), height.into())))
 }
 
-/// DeskPic: `GF25`, colours, width, height, data size (longs), word-
+/// DeskPic: `GF25`, colors, width, height, data size (longs), word-
 /// interleaved bitmap, then 256 VDI (0-1000) RGB triplets in pen order.
 pub(super) fn decode_gfb(data: &[u8]) -> Result<Image, DecodeError> {
     decode_gfb_inner(data).ok_or(DecodeError::Unrecognized)
@@ -414,7 +414,7 @@ fn image_manager_side(len: usize, planes: usize) -> Result<usize, DecodeError> {
         .ok_or(DecodeError::Unrecognized)
 }
 
-/// Atari Image Manager `IM`: a square 8-bit grey plane (derived from
+/// Atari Image Manager `IM`: a square 8-bit gray plane (derived from
 /// sample files and `recoil2png` output).
 pub(super) fn decode_im(data: &[u8]) -> Result<Image, DecodeError> {
     let side = image_manager_side(data.len(), 1)?;

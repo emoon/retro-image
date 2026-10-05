@@ -2,10 +2,10 @@
 //!
 //! Sources: reverse engineered from `image12.flf` by black-box probing of
 //! `recoil2png`; TRSE's GPL-3 source was not read. Container:
-//! [`crate::codec::flf`]. Colour values: the eight Spectrum colours at the
+//! [`crate::codec::flf`]. Color values: the eight Spectrum colors at the
 //! `0xcd` level, as `recoil2png` draws them.
 //!
-//! Type 0x1c: byte 12 is `0x0e`, then 256x192 colour numbers (one per byte)
+//! Type 0x1c: byte 12 is `0x0e`, then 256x192 color numbers (one per byte)
 //! from offset 13, then the optional closing block. Numbers 8-15 draw like
 //! 0-7 and 16 and above draw black, as `recoil2png` does.
 

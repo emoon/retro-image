@@ -10,13 +10,13 @@
 //!   two 5x5 and 1x1 ones), which match their lengths exactly.
 //! - Version 5: header and section order reverse engineered from the
 //!   `.ctm` files in RECOIL's sample set and checked against `recoil2png`;
-//!   the flag bits (tile system, expanded character set, multicolour) and
-//!   the colouring methods agree with c64lib's CTM 5 reader (MIT, see
+//!   the flag bits (tile system, expanded character set, multicolor) and
+//!   the coloring methods agree with c64lib's CTM 5 reader (MIT, see
 //!   `blocks.rs` for its notice).
 
 use super::{Cells, ColorTable, Colors, Mode, Project, Reader, sizes_in_range};
 
-/// Colouring methods of versions 4 and 5.
+/// Coloring methods of versions 4 and 5.
 const GLOBAL: u8 = 0;
 const PER_TILE: u8 = 1;
 const PER_CHAR_OR_CELL: u8 = 2;
@@ -52,7 +52,7 @@ pub(super) fn version4(data: &[u8]) -> Option<Project<'_>> {
     } else {
         Cells::Words(r.take(tile_count * tile_cells * 2)?)
     };
-    // Cell attributes exist in every colouring method.
+    // Cell attributes exist in every coloring method.
     let cell_attributes = r.take(tile_count * tile_cells)?;
     let colors = match colouring {
         GLOBAL => Colors::Global(ram_color),

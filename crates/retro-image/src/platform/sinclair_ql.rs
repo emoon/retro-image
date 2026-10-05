@@ -8,7 +8,7 @@
 //!   flash bit toggles flashing): T. Tebby and D. Karlin, "Sinclair QL
 //!   Software Developer's Guide" (1984), section 10.2, "Display Control",
 //!   <https://www.sinclairql.net/downloads/1984-00_Sinclair_QL_Software_Developers_Guide_by_Tony_Tebby_and_David_Karlin-OCRed-SQPP.pdf>.
-//! - Mode 4 colours black, red, green, white; mode 8 colours from the R, G,
+//! - Mode 4 colors black, red, green, white; mode 8 colors from the R, G,
 //!   B bits; 32 768-byte files as 512x256 screens with no mode stored; PIC
 //!   area saves (`$4AFC`, width in 512-pixel coordinates, height, line
 //!   increment, mode 0/4 or 8, spare byte, then the lines) and PSA files
@@ -46,18 +46,18 @@ pub(super) static FORMATS: &[Format] = &[
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
-    /// 4 colours, 8 pixels per 16-bit word.
+    /// 4 colors, 8 pixels per 16-bit word.
     Four,
-    /// 8 colours, 4 pixels per word, each two mode 4 pixels wide.
+    /// 8 colors, 4 pixels per word, each two mode 4 pixels wide.
     Eight,
 }
 
-/// Colours by G, R, B bits. Mode 4 has only black, red, green and white.
+/// Colors by G, R, B bits. Mode 4 has only black, red, green and white.
 const COLORS: [u32; 8] = [
     0x000000, 0x0000ff, 0xff0000, 0xff00ff, 0x00ff00, 0x00ffff, 0xffff00, 0xffffff,
 ];
 
-/// The colour at mode 4 pixel column `x` (0-7) of a screen word
+/// The color at mode 4 pixel column `x` (0-7) of a screen word
 /// (`even`, `odd` bytes). In mode 8, columns `2n` and `2n + 1` are pixel n.
 fn pixel(mode: Mode, even: u8, odd: u8, x: usize) -> u32 {
     let index = match mode {
@@ -72,7 +72,7 @@ fn pixel(mode: Mode, even: u8, odd: u8, x: usize) -> u32 {
         }
         Mode::Eight => {
             // Flash bits (even byte, odd positions) are ignored: pixels are
-            // shown in their own colour, the steady phase of flashing.
+            // shown in their own color, the steady phase of flashing.
             let shift = 7 - x / 2 * 2;
             (even >> shift & 1) << 2 | (odd >> shift & 1) << 1 | (odd >> (shift - 1) & 1)
         }

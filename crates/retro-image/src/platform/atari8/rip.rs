@@ -1,16 +1,16 @@
-//! RIP (Rocky Interlace Picture): HIP-like interlaced pictures with colour
+//! RIP (Rocky Interlace Picture): HIP-like interlaced pictures with color
 //! registers, raw or packed with the "PCK" packer.
 //!
 //! Sources:
 //! - Just Solve "Rocky Interlace Picture"
 //!   (<http://fileformats.archiveteam.org/wiki/Rocky_Interlace_Picture>) for the
-//!   name and that it extends HIP with colour; atari-owner.com "Atari Software
+//!   name and that it extends HIP with color; atari-owner.com "Atari Software
 //!   Graphic Modes" (<https://atari-owner.com/club/articles/atari-software-graphic-modes.17/>)
 //!   for the display modes. Neither documents the layout or the packer.
 //! - Everything else was reverse engineered from the corpus samples (AWORL,
 //!   COYOTE, TAQUART, GOSTBUST, C640002, MOONSET, PRAGNIEN, MADMAN, C640095,
 //!   C640096) and by black-box probing of `recoil2png`: raw files built from
-//!   a hand-made header with uniform frames and one colour at a time, size and
+//!   a hand-made header with uniform frames and one color at a time, size and
 //!   header scans, and bit flips in packed streams. The packer was solved by
 //!   decoding GOSTBUST's stream and comparing it with the 7680 bytes
 //!   `recoil2png` shows.
@@ -19,7 +19,7 @@
 //! 16-bit fields: 0 or 1 (packed; the data is packed when it starts with
 //! `PCK`), the header length (the offset of the PCK data), the width in
 //! 4-pixel units (even, 2-80), the height (1-239) and the title length; then
-//! `T:`, the title, a tab, `CM:` and 9 colour bytes (the registers 704-712).
+//! `T:`, the title, a tab, `CM:` and 9 color bytes (the registers 704-712).
 //! The data follows.
 //! Bytes per line are width / 2. Modes (the byte after the version):
 //! - `0e`: one Graphics 15 frame; 0 is the background (register 8), 1-3 are
@@ -30,10 +30,10 @@
 //!   lines they swap.
 //! - `20`: a GTIA mode 10 frame (registers 0-8, as in HIP) then a mode 9
 //!   frame, shown like HIP.
-//! - `30`: like `20`, but mode 10 colours come from a table after both
+//! - `30`: like `20`, but mode 10 colors come from a table after both
 //!   frames: 8 bytes per pair of lines, for the values 1-8 (the registers
 //!   0-7 by value - 1; 9-11 use the last, 12-15 the entries 3-6). Value 0 is
-//!   black. The colour bytes of the header are not read.
+//!   black. The color bytes of the header are not read.
 //!
 //! The packer ("PCK", an LZ77 scheme with Huffman codes): 13 bytes that are
 //! not read, then three canonical Huffman code length tables of 4-bit lengths
@@ -92,7 +92,7 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let unpacked;
     // The header-length field (offset 10) gives the start of the packed data;
-    // some files carry extra bytes between the colours and the packer.
+    // some files carry extra bytes between the colors and the packer.
     let packed_at = usize::from(be16(data, 10).ok_or(bad)?);
     let body = match data.get(packed_at..) {
         Some(tail) if tail.starts_with(b"PCK") => tail,
@@ -162,7 +162,7 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
     })
 }
 
-/// Colour of a mode `30` value on line `y`: black for 0, else the line pair's
+/// Color of a mode `30` value on line `y`: black for 0, else the line pair's
 /// table entry.
 fn tail_color(tail: &[u8], y: usize, value: u8) -> u32 {
     let entry = match value {

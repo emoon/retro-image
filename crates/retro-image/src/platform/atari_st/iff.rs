@@ -6,7 +6,7 @@
 //! - <https://temlib.org/AtariForumWiki/index.php/IFF_file_format> (FORM,
 //!   BMHD, CMAP and BODY chunks, PackBits body)
 //! - NEOchrome Master `RAST` chunks: <https://temlib.org/AtariForumWiki/index.php/Neochrome_Master>
-//! - Observed from `recoil2png` output: colour map bytes keep their high
+//! - Observed from `recoil2png` output: color map bytes keep their high
 //!   nibble (times 0x11); pixels with an x:y aspect below 1:2 are shown with
 //!   doubled lines.
 

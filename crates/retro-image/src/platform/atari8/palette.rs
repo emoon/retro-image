@@ -1,14 +1,14 @@
-//! The 256-colour GTIA palette (PAL).
+//! The 256-color GTIA palette (PAL).
 //!
 //! Source: reverse engineered by black-box probing of `recoil2png` (its
 //! default PAL palette); no palette document or table was copied. The
 //! hue/luminance model (high nibble hue, low nibble luminance) is from De Re
 //! Atari ch. 3 (<https://www.atariarchives.org/dere/chapt03.php>). Synthetic
-//! MIC files with every colour-register value were rendered and the even
+//! MIC files with every color-register value were rendered and the even
 //! luminances read back. Every channel fits `clamp(base[hue] + 0x11 * luminance)`
 //! exactly, so the table below stores only the 16 per-hue bases. Odd luminances
 //! (used by GTIA mode 9) follow the same formula; for hue 0 they were confirmed
-//! with a 16-grey GR9 file (`0x111111 * luminance`).
+//! with a 16-gray GR9 file (`0x111111 * luminance`).
 
 /// Per-hue RGB value at luminance 0 before clamping.
 const HUE_BASE: [[i16; 3]; 16] = [
@@ -30,7 +30,7 @@ const HUE_BASE: [[i16; 3]; 16] = [
     [63, -12, -101],
 ];
 
-/// `0xRRGGBB` of an Atari colour value: hue in the high nibble, luminance in the low.
+/// `0xRRGGBB` of an Atari color value: hue in the high nibble, luminance in the low.
 pub(super) fn rgb(color: u8) -> u32 {
     let base = HUE_BASE[usize::from(color >> 4)];
     let step = 0x11 * i16::from(color & 0x0f);
@@ -39,12 +39,12 @@ pub(super) fn rgb(color: u8) -> u32 {
     })
 }
 
-/// Colour of a register outside GTIA mode 9: luminance bit 0 is ignored.
+/// Color of a register outside GTIA mode 9: luminance bit 0 is ignored.
 pub(super) fn register_rgb(color: u8) -> u32 {
     rgb(color & 0xfe)
 }
 
-/// Per-channel average of `0xRRGGBB` colours, rounded down.
+/// Per-channel average of `0xRRGGBB` colors, rounded down.
 pub(super) fn average<const N: usize>(colors: [u32; N]) -> u32 {
     let channel = |shift: u32| colors.iter().map(|c| c >> shift & 0xff).sum::<u32>() / N as u32;
     channel(16) << 16 | channel(8) << 8 | channel(0)

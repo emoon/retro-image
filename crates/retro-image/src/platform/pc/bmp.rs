@@ -10,7 +10,7 @@
 //! - OS/2 BITMAPCOREHEADER (12 bytes, 16-bit sizes, 3-byte palette entries)
 //!   and the 16/64-byte OS/2 2.x headers (compression 3 and 4 there mean
 //!   Huffman 1D and RLE24, which are rejected): Deark `bmp.c`
-//!   (<https://github.com/jsummers/deark>, MIT licence), also used as the
+//!   (<https://github.com/jsummers/deark>, MIT license), also used as the
 //!   oracle for the sample files.
 //!
 //! A bit-field alpha mask (BI_ALPHABITFIELDS, or the alpha mask of a V3 to V5
@@ -59,7 +59,7 @@ use crate::{DecodeError, Image};
 const FILE_HEADER_LEN: usize = 14;
 /// Info header sizes: OS/2 core, OS/2 2.x short, Windows 3 to 5, OS/2 2.x.
 const HEADER_SIZES: [usize; 8] = [12, 16, 40, 52, 56, 64, 108, 124];
-/// Where the colour masks start in a header that carries them.
+/// Where the color masks start in a header that carries them.
 const MASKS_AT: usize = 40;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -169,7 +169,7 @@ pub(super) fn decode_bmp(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// The bitmap of an icon or cursor entry: a headerless DIB whose height
-/// counts the colour bitmap plus a 1-bit AND mask of the same size.
+/// counts the color bitmap plus a 1-bit AND mask of the same size.
 ///
 /// Alpha comes from the 32-bit pixels if any of them is visible, as Windows
 /// does; otherwise a set bit in the mask makes the pixel transparent.
@@ -538,7 +538,7 @@ mod tests {
         // of nibbles 1,0,1,0. Second row: absolute run of 3 nibbles 1,1,1.
         let mut extra = vec![0, 0, 0, 0, 255, 255, 255, 0];
         extra.extend_from_slice(&[4, 0x10, 0, 0, 0, 3, 0x11, 0x10, 0, 1]);
-        // The palette is limited to 2 entries by colours-used.
+        // The palette is limited to 2 entries by colors-used.
         let mut d = dib(4, 2, 4, 2, &extra);
         d[32] = 2;
         let image = decode_bmp(&file(&d, 8)).unwrap();

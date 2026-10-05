@@ -8,20 +8,20 @@
 //!   against); set bits are black.
 //! - BASIC 8 / IPaint `brus` pictures: GoDot BASIC 8 saver and IPaint
 //!   saver pages, <https://www.godot64.de/german/s_b8mode1.htm>,
-//!   <https://www.godot64.de/german/s_ipaint.htm> (header, colour modes,
+//!   <https://www.godot64.de/german/s_ipaint.htm> (header, color modes,
 //!   attribute row interleave, RLE). The `COLR` chunk tag between the
-//!   separately packed bitmap and colours was found in sample files; only
-//!   packed files with colour (modes 1-4) are supported. The attribute row
+//!   separately packed bitmap and colors was found in sample files; only
+//!   packed files with color (modes 1-4) are supported. The attribute row
 //!   interleave applies only to interlaced (taller than 200 lines)
 //!   pictures: non-interlaced samples (BASIC 8 mode 1 slideshow pictures,
-//!   152-line IPaint clip art) render with colour fringes at every shape
+//!   152-line IPaint clip art) render with color fringes at every shape
 //!   edge when interleaved and cleanly with one attribute row per cell.
 
 use crate::image::{BitOrder, check_size};
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
 
-/// VDC RGBI colour: bit 3 red, bit 2 green, bit 1 blue, bit 0 intensity;
+/// VDC RGBI color: bit 3 red, bit 2 green, bit 1 blue, bit 0 intensity;
 /// dark yellow shows as brown. Levels observed from `recoil2png` output.
 pub(super) fn rgbi(color: u8) -> u32 {
     if color == 12 {
@@ -58,7 +58,7 @@ fn unpack(packed: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
     (out.len() == len).then_some((out, i))
 }
 
-/// BASIC 8 / IPaint `brus` picture, packed, colour modes 1-4: load
+/// BASIC 8 / IPaint `brus` picture, packed, color modes 1-4: load
 /// address, 16-byte header, the bitmap (width × height bytes), `COLR`,
 /// then one background/foreground byte per attribute cell. In interlaced
 /// pictures even and odd lines (the two fields) use alternate attribute
@@ -133,7 +133,7 @@ pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
 mod tests {
     use super::*;
 
-    /// One 8-pixel column, colour mode 1 (8×2 cells), all pixels set,
+    /// One 8-pixel column, color mode 1 (8×2 cells), all pixels set,
     /// attribute rows alternating foreground 1 and 2; `height` lines.
     fn brus(height: u16) -> Vec<u8> {
         let mut data = b"\0\0BRUS\x04\0\0\0\x01\x01\x01".to_vec();
@@ -149,7 +149,7 @@ mod tests {
         data
     }
 
-    /// Foreground colour index of each line (`rgbi` 1 is grey, 2 blue).
+    /// Foreground color index of each line (`rgbi` 1 is gray, 2 blue).
     fn line_colors(image: &Image) -> Vec<u8> {
         image
             .rgb()

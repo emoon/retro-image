@@ -7,18 +7,18 @@
 //!   is twice the FileType; the ANSiFlags select non-blink mode and 9-pixel
 //!   letter spacing.
 //! - Deark `modules/bintext.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence): without a width, BIN is 160 columns wide; FileType 1 with a
+//!   license): without a width, BIN is 160 columns wide; FileType 1 with a
 //!   TInfo1 means TInfo1 is half the width (written by ACiDDraw). ADF is a
 //!   version byte (1), a 64-entry 6-bit EGA palette of which entries 0-5,
-//!   20, 7 and 56-63 are the 16 text colours, an 8x16 font, then an
+//!   20, 7 and 56-63 are the 16 text colors, an 8x16 font, then an
 //!   80-column non-blink screen; the palette bytes are all 0-63.
 //! - libansilove `src/loaders/icedraw.c`
 //!   (<https://github.com/ansilove/libansilove>, BSD-2-Clause): IDF is a
 //!   12-byte header ("\x04" "1.4", then x1, y1, x2, y2 as little-endian
 //!   words; the width is x2 + 1), the screen, an 8x16 font and a 6-bit
-//!   16-colour palette at the end; a character 1 starts a run (attribute
+//!   16-color palette at the end; a character 1 starts a run (attribute
 //!   byte unused, a count word, then the character and attribute to repeat);
-//!   iCE Draw always uses non-blink colours.
+//!   iCE Draw always uses non-blink colors.
 //! - Reverse engineered from samples: BIN files without SAUCE of 4000 bytes
 //!   are one 80x25 screen (`COMPUTER.BIN`, `LM_SCR1.BIN` from the dexvert
 //!   samples), not 12.5 rows of 160 columns as Deark assumes. Other BIN
@@ -29,7 +29,7 @@
 //!   (`SQ-FORCE.IDF`).
 
 // The BinaryText width quirk and the ADF layout follow Deark `modules/bintext.c`,
-// under this licence:
+// under this license:
 //
 // Copyright (C) 2016-2026 Jason Summers
 // <jason1@pobox.com>
@@ -53,7 +53,7 @@
 // THE SOFTWARE.
 //
 // The IDF layout follows libansilove `src/loaders/icedraw.c`, under this
-// licence:
+// license:
 //
 // Copyright (c) 2011-2026, Stefan Vogt, Brian Cassidy, and Frederic Cambus
 // All rights reserved.
@@ -112,7 +112,7 @@ pub(super) fn decode_bin(data: &[u8]) -> Result<Image, DecodeError> {
 /// Whether `pairs` looks like one 80x25 text screen: at least 95% of the
 /// characters printable ASCII or CP437 shading and line drawing
 /// (B0h-DFh), and at most 32 different attributes. Real screens use a few
-/// colours; random data, code and compressed data spread over all 256.
+/// colors; random data, code and compressed data spread over all 256.
 fn plausible_screen(pairs: &[u8]) -> bool {
     if pairs.len() != SCREEN_LEN {
         return false;
@@ -132,7 +132,7 @@ fn plausible_screen(pairs: &[u8]) -> bool {
 const ADF_PALETTE_LEN: usize = 64 * 3;
 const ADF_FONT_AT: usize = 1 + ADF_PALETTE_LEN;
 const ADF_SCREEN_AT: usize = ADF_FONT_AT + 4096;
-/// The EGA palette entries of the 16 text colours.
+/// The EGA palette entries of the 16 text colors.
 const ADF_COLORS: [usize; 16] = [0, 1, 2, 3, 4, 5, 20, 7, 56, 57, 58, 59, 60, 61, 62, 63];
 
 /// ArtWorx Data Format. No signature: the version byte, the 0-63 palette
@@ -260,7 +260,7 @@ mod tests {
         assert!(decode_bin(&data).is_err());
     }
 
-    /// An ADF file: grey palette entry 7, blank font, `pairs`.
+    /// An ADF file: gray palette entry 7, blank font, `pairs`.
     fn adf(pairs: &[u8]) -> Vec<u8> {
         let mut data = vec![1u8];
         let mut ega = [0u8; ADF_PALETTE_LEN];
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn adf_maps_the_ega_palette_and_checks_its_layout() {
         let mut pairs = vec![0u8; 160];
-        pairs[1] = 0x67; // grey on brown
+        pairs[1] = 0x67; // gray on brown
         let image = decode_adf(&adf(&pairs)).unwrap();
         assert_eq!((image.width(), image.height()), (640, 16));
         assert_eq!(image.get(0, 0), 0xaa0000, "background from EGA entry 20");

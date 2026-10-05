@@ -1,5 +1,5 @@
-//! Atari Falcon formats: high-colour (RGB565), 8-plane, greyscale and
-//! true-colour pictures.
+//! Atari Falcon formats: high-color (RGB565), 8-plane, grayscale and
+//! true-color pictures.
 //!
 //! Sources:
 //! - Falcon RGB565 words and VIDEL palette entries (`R, G, 0, B` bytes):
@@ -26,8 +26,8 @@
 //! - Falcon True Color: <http://fileformats.archiveteam.org/wiki/Falcon_True_Color>
 //! - XGA: <http://fileformats.archiveteam.org/wiki/XGA_(Falcon)>
 //! - Observed from `recoil2png` output: RGB565 components are scaled by
-//!   bit replication, 7-bit greys doubled; palette bytes are used as they
-//!   are; InShape 8-bit greys are inverted (0 = white); 384-pixel-wide XGA
+//!   bit replication, 7-bit grays doubled; palette bytes are used as they
+//!   are; InShape 8-bit grays are inverted (0 = white); 384-pixel-wide XGA
 //!   pictures are shown with doubled pixels.
 
 use alloc::vec::Vec;
@@ -53,7 +53,7 @@ fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Optio
     image.scaled(x_scale as u32, 1).ok()
 }
 
-/// Renders one byte per pixel through `level` (grey from byte value).
+/// Renders one byte per pixel through `level` (gray from byte value).
 fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height)?;
@@ -81,7 +81,7 @@ pub(super) fn videl_entries(data: &[u8], count: usize) -> Option<Vec<u32>> {
     )
 }
 
-/// ImageLab: `B&W256`, width, height, 8-bit grey (0 = black).
+/// ImageLab: `B&W256`, width, height, 8-bit gray (0 = black).
 pub(super) fn decode_bw(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..6) != Some(b"B&W256") {
         return Err(DecodeError::Unrecognized);
@@ -91,7 +91,7 @@ pub(super) fn decode_bw(data: &[u8]) -> Result<Image, DecodeError> {
     ok(grey(&data[10..], width, height, u32::from))
 }
 
-/// Print-Technik: `0x0F0F 0x0001`, width, height, word, 7-bit grey.
+/// Print-Technik: `0x0F0F 0x0001`, width, height, word, 7-bit gray.
 pub(super) fn decode_hir(data: &[u8]) -> Result<Image, DecodeError> {
     if be32(data, 0) != Some(0x0f0f_0001) {
         return Err(DecodeError::Unrecognized);
@@ -103,7 +103,7 @@ pub(super) fn decode_hir(data: &[u8]) -> Result<Image, DecodeError> {
     }))
 }
 
-/// IMG Scan raw greyscale (0 = white): size picks the resolution.
+/// IMG Scan raw grayscale (0 = white): size picks the resolution.
 pub(super) fn decode_img_scan(data: &[u8]) -> Result<Image, DecodeError> {
     let (width, height) = match data.len() {
         64000 => (320, 200),
@@ -309,7 +309,7 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
 
 /// ICDRAW icons (`IBI` one icon, `IB3` three): `ICBI`/`ICB3` header of 64
 /// bytes with the size and plane count, then the (first) icon as 32x32
-/// word-interleaved planes in the default VDI colours. Sources: survey
+/// word-interleaved planes in the default VDI colors. Sources: survey
 /// notes (`docs/research/atari-st-tt-falcon.md`); the layout is derived from
 /// sample files and `recoil2png` output.
 pub(super) fn decode_icdraw(data: &[u8]) -> Result<Image, DecodeError> {
@@ -349,7 +349,7 @@ pub(super) fn decode_xga(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// InShape: `IS_IMAGE`, type, planes, width, height, then 1-bit, 8-bit
-/// grey, RGB or ARGB pixels.
+/// gray, RGB or ARGB pixels.
 pub(super) fn decode_iim(data: &[u8]) -> Result<Image, DecodeError> {
     ok(decode_iim_inner(data))
 }

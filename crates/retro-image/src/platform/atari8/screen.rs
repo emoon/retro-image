@@ -3,25 +3,25 @@
 //! Sources:
 //! - Modes: De Re Atari ch. 2 (<https://www.atariarchives.org/dere/chapt02.php>)
 //!   and App. E (<https://www.atariarchives.org/dere/chaptE.php>); Mapping
-//!   the Atari App. 15, colour registers 704-712
+//!   the Atari App. 15, color registers 704-712
 //!   (<https://www.atariarchives.org/mapping/appendix15.php>).
 //! - GR7, GR8, GR9: Just Solve "GR*" (<http://fileformats.archiveteam.org/wiki/GR*>)
 //!   and AtariWiki File Suffix
 //!   (<https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix>): sizes.
 //! - G10: Just Solve "GR*" (7689 bytes = screen + registers 704-712).
 //! - G11: De Re Atari App. E (raw GTIA mode 11 dump).
-//! - TXE (96 doubled GR9 lines) and ZM4 (64x64 greys drawn 4x4): sizes
+//! - TXE (96 doubled GR9 lines) and ZM4 (64x64 grays drawn 4x4): sizes
 //!   and layouts observed from `recoil2png` output.
 //! - TX0 (Just Solve "Texture Maker0",
 //!   <http://fileformats.archiveteam.org/wiki/Texture_Maker0>: 16x16, 16
-//!   colours) and WND (Blazing Paddles window, up to 160x192, 4 colours;
+//!   colors) and WND (Blazing Paddles window, up to 160x192, 4 colors;
 //!   manual: <https://archive.org/details/BlazingPaddlesAtariSupplementManualBaudville>):
-//!   header, layout, the hue OR and the window colours observed from
+//!   header, layout, the hue OR and the window colors observed from
 //!   `recoil2png` output.
 //! - G09: sizes (7680, 15360) and the two screens side by side: observed
 //!   from `recoil2png` output.
 //! - MIC: Graph2Font manual (<https://g2f.atari8.info/instrukcja_eng.html>;
-//!   screen + colours 712, 708, 709, 710; COL = 5 x 256 per-line colours).
+//!   screen + colors 712, 708, 709, 710; COL = 5 x 256 per-line colors).
 //!   Which MIC sizes and COL sizes RECOIL pairs, and the table order:
 //!   observed from `recoil2png` output.
 //! - DRG: Just Solve "AtariCAD" (<http://fileformats.archiveteam.org/wiki/AtariCAD>;
@@ -32,7 +32,7 @@
 //! - SKP: Sketch-PadDles page (<https://www.vitoco.cl/atari/10liner/SKETCH/>;
 //!   raw 7680-byte GR15 screen).
 //! - DIT: Just Solve "DrawIt" (<http://fileformats.archiveteam.org/wiki/DrawIt_(Atari)>;
-//!   3845 bytes = GR7 screen + 5 colours).
+//!   3845 bytes = GR7 screen + 5 colors).
 //! - BKG: Just Solve "Movie Maker" (<http://fileformats.archiveteam.org/wiki/Movie_Maker>;
 //!   3856 bytes = GR7 screen + 16 bytes).
 //! - MGP: Just Solve "Magic Painter"
@@ -45,13 +45,13 @@
 //!   240 bytes + COLOR4, COLOR0-2).
 //! - SG3: Just Solve "Standard Graphics 3"
 //!   (<http://fileformats.archiveteam.org/wiki/Standard_Graphics_3_(Atari)>;
-//!   40x24, 4 colours).
+//!   40x24, 4 colors).
 //! - AGP: Just Solve "AtariTools-800"
 //!   (<http://fileformats.archiveteam.org/wiki/AtariTools-800>; exactly 7690
 //!   bytes).
 //! - Visualizer PIC: ANTIC "Rapid Graphics Converter" article
 //!   (<https://www.atarimagazines.com/v4n7/rapidgraphicsconverter.html>;
-//!   about 31 sectors, 160x79, 4 colours); size and layout observed from
+//!   about 31 sectors, 160x79, 4 colors); size and layout observed from
 //!   `recoil2png` output.
 //! - PSF: AtariAge "Print Shop graphics" thread
 //!   (<https://forums.atariage.com/topic/324752-print-shop-atari-related-graphics/>)
@@ -61,7 +61,7 @@
 //! - RAP: Just Solve "Vidig Paint" (<http://fileformats.archiveteam.org/wiki/Vidig_Paint>;
 //!   7681 bytes = 7680 + 1).
 //! - Observed from `recoil2png` output: accepted sizes, the 5-byte MIC tail,
-//!   the GR8 colour tail, default colours, the fixed GR9/G11 luminances, the
+//!   the GR8 color tail, default colors, the fixed GR9/G11 luminances, the
 //!   tail orders of DIT, BKG and MGP, the AGP header (mode, then
 //!   registers 704-712), and GTIA mode 9 ORing pixels into the background.
 
@@ -72,9 +72,9 @@ use crate::{Companions, DecodeError, Image};
 const LINE: usize = 40;
 const MAX_LINES: usize = 240;
 
-/// The OS power-up colours: background, playfield 0-2.
+/// The OS power-up colors: background, playfield 0-2.
 pub(super) const OS_COLORS: [u8; 4] = [0x00, 0x28, 0xca, 0x94];
-/// Grey ramp used when a GR15 file has no colours.
+/// Gray ramp used when a GR15 file has no colors.
 pub(super) const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
 
 /// Splits a dump of whole 40-byte lines (1 to 240) from the bytes after them.
@@ -166,7 +166,7 @@ fn gtia11(bitmap: Bitmap<'_>, background: u8) -> Result<Image, DecodeError> {
     })
 }
 
-/// Graphics 8: 320 pixels per line. Only a 7682-byte file stores colours:
+/// Graphics 8: 320 pixels per line. Only a 7682-byte file stores colors:
 /// background and foreground luminance after 192 lines.
 pub(super) fn decode_gr8(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(data)?;
@@ -189,7 +189,7 @@ pub(super) fn decode_mbg(data: &[u8]) -> Result<Image, DecodeError> {
     hires(bitmap(screen, 64, 1), rgb(0x00), rgb(0x0e))
 }
 
-/// Vidig Paint: 192 lines of Graphics 9, then the background colour.
+/// Vidig Paint: 192 lines of Graphics 9, then the background color.
 pub(super) fn decode_rap(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, tail) = lines(exactly(data, 7681)?)?;
     gtia9(bitmap, tail[0])
@@ -204,7 +204,7 @@ pub(super) fn decode_psf(data: &[u8]) -> Result<Image, DecodeError> {
     hires(bitmap(&data[..572], 11, 1), rgb(0x0e), rgb(0x00))
 }
 
-/// Graphics 9: 80 pixels of 16 grey luminances.
+/// Graphics 9: 80 pixels of 16 gray luminances.
 pub(super) fn decode_gr9(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, _) = lines(data)?;
     gtia9(bitmap, 0x00)
@@ -233,13 +233,13 @@ pub(super) fn decode_g09(data: &[u8]) -> Result<Image, DecodeError> {
     }
 }
 
-/// TXE: 96 lines of Graphics 9 greys, each shown twice.
+/// TXE: 96 lines of Graphics 9 grays, each shown twice.
 pub(super) fn decode_txe(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 3840)?;
     bitmap(screen, LINE, 4).render(4, 2, |_, value| rgb(value))
 }
 
-/// Zoom 4: 64x64 greys, one nibble per pixel, drawn 4x4.
+/// Zoom 4: 64x64 grays, one nibble per pixel, drawn 4x4.
 pub(super) fn decode_zm4(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = exactly(data, 2048)?;
     bitmap(screen, 32, 4).render(4, 4, |_, value| rgb(value))
@@ -326,7 +326,7 @@ pub(super) fn decode_bkg(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Magic Painter: playfield 0-2, background, an unknown byte, a rainbow
 /// flag, then a Graphics 7 screen lacking its last byte. The flag is 4 for
-/// fixed colours or 3 when playfield 2 cycles through all colours, starting
+/// fixed colors or 3 when playfield 2 cycles through all colors, starting
 /// at 0x10 and stepping once per line.
 pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
     let data = exactly(data, 3845)?;
@@ -371,15 +371,15 @@ pub(super) fn decode_gr3(data: &[u8]) -> Result<Image, DecodeError> {
     four_color(bitmap(&data[..240], 10, 2), 8, 8, colors)
 }
 
-/// Standard Graphics 3: 40x24 pixels in the OS colours.
+/// Standard Graphics 3: 40x24 pixels in the OS colors.
 pub(super) fn decode_sg3(data: &[u8]) -> Result<Image, DecodeError> {
     four_color(bitmap(exactly(data, 240)?, 10, 2), 8, 8, OS_COLORS)
 }
 
-/// Micro Illustrator / Graphics 15: 160 pixels, 4 colours. A 4-byte tail is
+/// Micro Illustrator / Graphics 15: 160 pixels, 4 colors. A 4-byte tail is
 /// background and playfield 0-2; a 5-byte tail is playfield 0-2, background
-/// and an unused byte; no tail or a 3-byte one gives grey defaults, any
-/// other length is rejected. A 240-line picture takes per-line colours from
+/// and an unused byte; no tail or a 3-byte one gives gray defaults, any
+/// other length is rejected. A 240-line picture takes per-line colors from
 /// a Graph2Font `.COL` file of 1024 or 1280 bytes when present: table
 /// `value` (background, playfield 0-2), entry `line`.
 pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
@@ -401,7 +401,7 @@ pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Ima
     four_color(bitmap, 2, 1, colors)
 }
 
-/// Sketch-PadDles: a bare Graphics 15 screen in the program's colours.
+/// Sketch-PadDles: a bare Graphics 15 screen in the program's colors.
 pub(super) fn decode_skp(data: &[u8]) -> Result<Image, DecodeError> {
     let (bitmap, _) = lines(exactly(data, 7680)?)?;
     four_color(bitmap, 2, 1, [0x26, 0x28, 0x00, 0x0c])

@@ -1,5 +1,5 @@
 //! "Mode 5" pictures by SyX: a mode 1 overscan bitmap (GFX) whose pen
-//! colours are reprogrammed every line, and pen 0 six times per line (CM5).
+//! colors are reprogrammed every line, and pen 0 six times per line (CM5).
 //!
 //! Sources:
 //! - CM5 holds the changing palette and GFX the screen: cpcwiki CM5 page,
@@ -7,10 +7,10 @@
 //!   automated fetches and has no Wayback Machine snapshot; read as a
 //!   search snippet only), see `docs/research/sinclair-cpc-bbc-misc.md`.
 //! - Layout (GFX: 256 linear lines of 72 bytes, 288 mode 1 pixels; CM5: the
-//!   colour of pen 3, then per line pen 2, pen 1 and pen 0 for each 48-pixel
+//!   color of pen 3, then per line pen 2, pen 1 and pen 0 for each 48-pixel
 //!   column band, all as `0x40 | hardware colour`; exact sizes): reverse
 //!   engineered from samples and `recoil2png` output. RECOIL also rejects
-//!   colours without bit 6; we accept them, as the GFX file already
+//!   colors without bit 6; we accept them, as the GFX file already
 //!   identifies the format.
 
 use super::amsdos::strip_amsdos;
@@ -23,7 +23,7 @@ const LINE_BYTES: usize = WIDTH / 4;
 const GFX_LEN: usize = LINE_BYTES * HEIGHT;
 const LINE_COLORS: usize = 8;
 const CM5_LEN: usize = 1 + LINE_COLORS * HEIGHT;
-/// Width of each band of pen 0 colours.
+/// Width of each band of pen 0 colors.
 const BAND: usize = 48;
 
 /// CM5 with its GFX companion; the bitmap is needed, so CM5 alone fails.
@@ -31,7 +31,7 @@ pub(super) fn decode_cm5(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let colors = strip_amsdos(data);
     let gfx = companions.get("gfx").ok_or(DecodeError::Unrecognized)?;
     let gfx = strip_amsdos(&gfx);
-    // Colours are `0x40 | n`; a bare hardware number `n` (seen for black in
+    // Colors are `0x40 | n`; a bare hardware number `n` (seen for black in
     // a sample) means the same.
     let valid = |c: &u8| c & !0x5f == 0;
     if colors.len() != CM5_LEN || gfx.len() != GFX_LEN || !colors.iter().all(valid) {

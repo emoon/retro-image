@@ -1,4 +1,4 @@
-//! Avatar (AVT): BBS text with the compact AVT/0 colour and cursor codes.
+//! Avatar (AVT): BBS text with the compact AVT/0 color and cursor codes.
 //!
 //! Sources:
 //! - FSC-0025, "AVATAR" by George A. Stanislav (<http://ftsc.org/docs/fsc-0025.001>):

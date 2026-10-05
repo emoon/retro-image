@@ -7,7 +7,7 @@
 //!   <https://www.nesdev.org/wiki/PPU_pattern_tables> and nametable and
 //!   attribute layout <https://www.nesdev.org/wiki/PPU_nametables>,
 //!   <https://www.nesdev.org/wiki/PPU_attribute_tables> (nesdev wiki, no
-//!   licence shown, used for facts only).
+//!   license shown, used for facts only).
 //! - Master palette: one of the many published approximations of the 2C02
 //!   NTSC output (the nesdev wiki page
 //!   <https://www.nesdev.org/wiki/PPU_palettes> lists several). The 64 values
@@ -33,7 +33,7 @@ mod rom;
 use crate::Format;
 use crate::tiles::TileLayout;
 
-/// The 2C02 colour numbers `$00-$3F` as `0xRRGGBB`.
+/// The 2C02 color numbers `$00-$3F` as `0xRRGGBB`.
 #[rustfmt::skip]
 const MASTER_PALETTE: [u32; 64] = [
     0x666666, 0x002a88, 0x1412a7, 0x3b00a4, 0x5c007e, 0x6e0040, 0x6c0600, 0x561d00,

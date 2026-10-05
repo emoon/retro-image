@@ -142,7 +142,7 @@ pub(super) fn decode_screen(resolution: Resolution, bitmap: &[u8], words: &[u16]
 }
 
 /// Decodes a 32000-byte ST screen whose palette changes from line to line:
-/// `palette(y)` gives the colours of source line `y`.
+/// `palette(y)` gives the colors of source line `y`.
 pub(super) fn decode_screen_by_line(
     resolution: Resolution,
     bitmap: &[u8],
@@ -255,7 +255,7 @@ pub(super) fn vdi_level(v: u16) -> u32 {
 
 /// VDI pen used for hardware palette index `index` of a `colors`-entry
 /// palette: pen 1 (black) is the last register and pens 2-15 are
-/// scrambled (the usual GEM VDI colour mapping; the 256-colour variant,
+/// scrambled (the usual GEM VDI color mapping; the 256-color variant,
 /// where register 15 shows pen 255, is observed from `recoil2png` output).
 pub(super) fn vdi_pen(index: usize, colors: usize) -> usize {
     const PENS_16: [usize; 16] = [0, 2, 3, 6, 4, 7, 5, 8, 9, 10, 11, 14, 12, 15, 13, 1];
@@ -270,7 +270,7 @@ pub(super) fn vdi_pen(index: usize, colors: usize) -> usize {
     }
 }
 
-/// The default GEM VDI colours for a palette of up to 16 `colors`, in
+/// The default GEM VDI colors for a palette of up to 16 `colors`, in
 /// hardware register order (observed from `recoil2png` output).
 pub(super) fn default_vdi_palette(colors: usize) -> Vec<u32> {
     const PENS: [u32; 16] = [

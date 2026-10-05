@@ -18,24 +18,24 @@
 //!   bytes, 160x100).
 //! - SHC: Just Solve "SAMAR Hires Interlace"
 //!   (<http://fileformats.archiveteam.org/wiki/SAMAR_Hires_Interlace>;
-//!   exactly 17920 bytes, 320x192, 2 frames with a colour map). The layout
+//!   exactly 17920 bytes, 320x192, 2 frames with a color map). The layout
 //!   was reverse engineered by black-box probing of `recoil2png` with
 //!   modified and hand-made files: two 7680-byte Graphics 8 frames, then
-//!   per frame 1280 bytes holding 6 colours for each of the 192 scanlines
-//!   (the last 128 unused). Each colour is the background (COLPF2) of a
+//!   per frame 1280 bytes holding 6 colors for each of the 192 scanlines
+//!   (the last 128 unused). Each color is the background (COLPF2) of a
 //!   fixed span of the scanline, a mid-line register change: frame 1
 //!   switches at pixels 94, 166, 214, 262 and 306, frame 2 at 46, 142, 190,
 //!   238 and 286. Set pixels show the background hue at luminance 0.
 //! - IST: Just Solve "Atari Interlaced Studio"
 //!   (<http://fileformats.archiveteam.org/wiki/Atari_Interlaced_Studio>;
 //!   exactly 17184 bytes, 160x200, 2 frames); the frame offsets and
-//!   per-line colour tables are observed from `recoil2png` output.
+//!   per-line color tables are observed from `recoil2png` output.
 //! - HCI: Just Solve "HCI" (<http://fileformats.archiveteam.org/wiki/HCI>;
 //!   exactly 16006 bytes, 2 frames); the frame modes (Graphics 8 and 15)
-//!   and colour layout observed from `recoil2png` output.
+//!   and color layout observed from `recoil2png` output.
 //! - Observed from `recoil2png` output: the frames are shown as the average
-//!   of their colours; INP keeps 4 colours after the frames (and RECOIL
-//!   accepts trailing data); MCP and MCPP store two colour sets (playfield
+//!   of their colors; INP keeps 4 colors after the frames (and RECOIL
+//!   accepts trailing data); MCP and MCPP store two color sets (playfield
 //!   0-2, background) that swap between the frames on every line; MCPP's
 //!   frames are 100-line halves shown on alternate lines, not mixed.
 
@@ -67,7 +67,7 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
     ]))
 }
 
-/// INT95a: `INT95a`, width in bytes, height, `0F 2B`, the colour sets
+/// INT95a: `INT95a`, width in bytes, height, `0F 2B`, the color sets
 /// (background, playfield 0-2) of both frames, then both frames. (`.INT`
 /// files without the signature are InterPainter pictures.)
 pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
@@ -125,7 +125,7 @@ pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Atari Interlace Studio: two 160x200 frames at offsets 16 and 8208, then
-/// at 16384 four tables of 200 per-line colours: background, playfield 0-2.
+/// at 16384 four tables of 200 per-line colors: background, playfield 0-2.
 pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 17184 {
         return Err(DecodeError::Unrecognized);
@@ -138,7 +138,7 @@ pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
     ]))
 }
 
-/// McPainter: two 160x200 frames, then two colour sets. On even lines the
+/// McPainter: two 160x200 frames, then two color sets. On even lines the
 /// first frame uses the first set, on odd lines the second.
 pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME + 8 {
@@ -147,7 +147,7 @@ pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
     mcp_picture(data, 200)
 }
 
-/// Two `lines`-line frames and two colour sets, which swap between the
+/// Two `lines`-line frames and two color sets, which swap between the
 /// frames on alternate lines. `data` must hold exactly that.
 pub(super) fn mcp_picture(data: &[u8], lines: usize) -> Result<Image, DecodeError> {
     let frame_len = 40 * lines;
@@ -163,7 +163,7 @@ pub(super) fn mcp_picture(data: &[u8], lines: usize) -> Result<Image, DecodeErro
     ]))
 }
 
-/// Paradox: two 160x100 halves, then two colour sets. Even output lines
+/// Paradox: two 160x100 halves, then two color sets. Even output lines
 /// come from the first half in the first set, odd lines from the second
 /// half in the second set; nothing is mixed.
 pub(super) fn decode_mcpp(data: &[u8]) -> Result<Image, DecodeError> {
@@ -189,7 +189,7 @@ fn color_sets(data: &[u8]) -> [[u8; 4]; 2] {
 }
 
 /// SAMAR Hires Interlace: two Graphics 8 frames, then each frame's 6
-/// background colours per scanline, changed at fixed pixels mid-line.
+/// background colors per scanline, changed at fixed pixels mid-line.
 pub(super) fn decode_shc(data: &[u8]) -> Result<Image, DecodeError> {
     const SCREEN: usize = 7680;
     const SPLITS: [[usize; 5]; 2] = [[94, 166, 214, 262, 306], [46, 142, 190, 238, 286]];

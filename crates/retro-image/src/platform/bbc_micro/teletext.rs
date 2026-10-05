@@ -2,7 +2,7 @@
 //! EP1 and raw Mode 7 readers.
 //!
 //! Sources:
-//! - Control-code behaviour (set-at / set-after, hold graphics, double
+//! - Control-code behavior (set-at / set-after, hold graphics, double
 //!   height needing the code on both rows, line-start defaults, mosaic bit
 //!   layout, BBC byte translation of hash / underline / pound, character
 //!   rounding): <http://mdfs.net/Info/Comp/Teletext/Controls>.
@@ -142,7 +142,7 @@ impl Attributes {
     }
 
     /// Shows `code` under the current attributes and moves on to the next
-    /// position. Colour, double height and release take effect after the
+    /// position. Color, double height and release take effect after the
     /// cell they sit in; background, size reset, contiguity and hold take
     /// effect on it.
     fn advance(&mut self, code: u8, dialect: Dialect) -> Cell {

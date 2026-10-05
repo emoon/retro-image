@@ -1,15 +1,15 @@
-//! MCS pictures: 160x192, nine colours, a multicolour character screen with
+//! MCS pictures: 160x192, nine colors, a multicolor character screen with
 //! players and missiles.
 //!
 //! Sources:
 //! - Just Solve "MCS" (<http://fileformats.archiveteam.org/wiki/MCS>):
-//!   exactly 10185 bytes, 160x192, 9 colours.
-//! - ANTIC mode 4 (multicolour text) and the player/missile hardware: De Re
+//!   exactly 10185 bytes, 160x192, 9 colors.
+//! - ANTIC mode 4 (multicolor text) and the player/missile hardware: De Re
 //!   Atari ch. 2 and 4 (<https://www.atariarchives.org/dere/chapt02.php>,
 //!   <https://www.atariarchives.org/dere/chapt04.php>); priority rules in
 //!   [`gtia`].
 //! - The layout was reverse engineered from the corpus samples and
-//!   `recoil2png` output on hand-made files. The file is nine colour
+//!   `recoil2png` output on hand-made files. The file is nine color
 //!   registers (COLPM0-3, COLPF0-3, COLBK), eight 1024-byte character sets
 //!   of 128 8-byte characters, a 40x24 screen of character codes (960 bytes
 //!   at offset 8201), and 128 bytes each for the missiles and players 0-3 (at
@@ -22,7 +22,7 @@
 //!   pixels wide (8 bits of 8 output pixels, bit 7 leftmost) and starts at
 //!   output pixel 80 * n; the missile of the same number follows it at
 //!   80 * n + 64 with two bits (bit 1 left) of 8 pixels, in the player's
-//!   colour. Their bytes cover two scanlines each, from byte 16 on. The
+//!   color. Their bytes cover two scanlines each, from byte 16 on. The
 //!   playfield hides every player and missile, which show only over the
 //!   background (PRIOR 4).
 

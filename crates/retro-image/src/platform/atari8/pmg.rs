@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - Player/missile geometry (players 8 bits wide, missiles 2 bits, a pixel is
-//!   2 high-resolution pixels, overlapping players OR their colours): Atari
+//!   2 high-resolution pixels, overlapping players OR their colors): Atari
 //!   Player-Missile Graphics in BASIC, ch. 2
 //!   (<https://www.atariarchives.org/pmgraphics/chapter2.php>) and De Re Atari
 //!   App. E (<https://www.atariarchives.org/dere/chaptE.php>).
@@ -14,12 +14,12 @@
 //!   (<http://fileformats.archiveteam.org/wiki/Atari_graphics_formats>).
 //! - LDM: Just Solve "Ludek Maker"
 //!   (<http://fileformats.archiveteam.org/wiki/Ludek_Maker>; starts with the
-//!   inverse-ATASCII text "Ludek Maker data file", 4 colours).
+//!   inverse-ATASCII text "Ludek Maker data file", 4 colors).
 //! - The layouts are reverse engineered from the corpus samples (TEST_4M.4MI,
 //!   4ALIENS.4PL, 4PM_TEST2.4PM, MWALK.APL, FAIRY.PMD, PMG Designer's CTR0,
 //!   CTR1, HELI, and GO/SPYGO/ROTATE.LDM) and by `recoil2png` probing: one byte of a zero-filled file
 //!   at a time was set and the pixel that lit up read back, which gives the
-//!   placement of every data block, the colour byte of every frame, the
+//!   placement of every data block, the color byte of every frame, the
 //!   accepted header ranges and the exact file lengths.
 
 use super::antic::fill;
@@ -35,7 +35,7 @@ const CELL: usize = 10;
 /// Lines of a full PMG memory area at double-line resolution.
 const PM_LINES: usize = 240;
 
-/// A sheet of player pixels where overlapping players OR their colour
+/// A sheet of player pixels where overlapping players OR their color
 /// register values, shown when the sheet is finished.
 struct Sheet {
     width: usize,
@@ -85,7 +85,7 @@ impl Sheet {
 
 /// Draws the four missiles of one line byte (missile 0 in the low bits, the
 /// left pixel in the high bit of each pair) at `x`, 8 image pixels apart,
-/// each in its own full-resolution colour.
+/// each in its own full-resolution color.
 fn draw_missiles(image: &mut Image, x: u32, y: u32, line: u8, colors: &[u8]) {
     for (missile, &color) in colors.iter().enumerate().take(4) {
         for pixel in 0..2 {
@@ -97,7 +97,7 @@ fn draw_missiles(image: &mut Image, x: u32, y: u32, line: u8, colors: &[u8]) {
     }
 }
 
-/// Four missiles: colours of missiles 0-3, then 240 lines.
+/// Four missiles: colors of missiles 0-3, then 240 lines.
 pub(super) fn decode_4mi(data: &[u8]) -> Result<Image, DecodeError> {
     let (colors, lines) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
     if lines.len() != PM_LINES {
@@ -110,7 +110,7 @@ pub(super) fn decode_4mi(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Draws players 0-3 side by side, one `CELL` apart, in the colours of
+/// Draws players 0-3 side by side, one `CELL` apart, in the colors of
 /// `colors`; each has `PM_LINES` lines in `players`.
 fn draw_players(sheet: &mut Sheet, colors: &[u8], players: &[u8]) {
     for (player, memory) in players.as_chunks::<PM_LINES>().0.iter().enumerate() {
@@ -120,7 +120,7 @@ fn draw_players(sheet: &mut Sheet, colors: &[u8], players: &[u8]) {
     }
 }
 
-/// Four players: colours of players 0-3, then 4 x 240 lines.
+/// Four players: colors of players 0-3, then 4 x 240 lines.
 pub(super) fn decode_4pl(data: &[u8]) -> Result<Image, DecodeError> {
     let (colors, players) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
     if players.len() != 4 * PM_LINES {
@@ -131,7 +131,7 @@ pub(super) fn decode_4pl(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(sheet.finish())
 }
 
-/// Four players and four missiles: colours of 0-3, 4 x 240 player lines,
+/// Four players and four missiles: colors of 0-3, 4 x 240 player lines,
 /// then 240 missile lines. The missiles sit right of the players.
 pub(super) fn decode_4pm(data: &[u8]) -> Result<Image, DecodeError> {
     let (colors, rest) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
@@ -156,7 +156,7 @@ pub(super) fn decode_4pm(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Atari Player Editor animation: `9A F8 39 21`, frame count (1-16), height
 /// (1-48), the X offset of player 1 from player 0 in player pixels (0-8),
-/// then per player 16 frame colours plus a spare byte (the first player's at
+/// then per player 16 frame colors plus a spare byte (the first player's at
 /// 7, the second's at 24), a spare byte, and per player 17 frame slots of
 /// 48 lines (from 42 and 858). Exactly 1677 bytes, the last 3 unused.
 pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
@@ -200,7 +200,7 @@ pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(sheet.finish())
 }
 
-/// PMG Designer: `F0 ED E4`, the colours of players 0-3, three counts
+/// PMG Designer: `F0 ED E4`, the colors of players 0-3, three counts
 /// (players per frame 2 or 4, then two factors of the frame count, at most
 /// 160 frames), the height (1-48), then `players x frames` blocks of `height`
 /// lines, player-major. Players 0 and 1 form one sprite, 2 and 3 a second;
@@ -248,7 +248,7 @@ pub(super) fn decode_pmd(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Ludek Maker animation: the text "Ludek Maker data file" in inverse
-/// ATASCII, the colours of players 0/2 and 1/3, a number of unshown trailing
+/// ATASCII, the colors of players 0/2 and 1/3, a number of unshown trailing
 /// frames, the frame count (1-100, the shown ones are the first `count - skip`),
 /// a 256-byte script that RECOIL ignores, then at least `count` frames of
 /// 120 bytes: players 0-3, 30 lines each. Players 0/1 are the left 8 pixels

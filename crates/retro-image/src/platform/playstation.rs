@@ -5,7 +5,7 @@
 //!   (<https://problemkaputt.de/psxspx-cdrom-file-video-texture-image-tim-pxl-clt-sony.htm>)
 //!   and the Kaitai `psx_tim.ksy` spec (CC0, <https://formats.kaitai.io/psx_tim/>):
 //!   id `$10`, flags (bits 0-2 depth, bit 3 CLUT), blocks of
-//!   `[length, x, y, width in halfwords, height, data]`, 15-bit BGR colours.
+//!   `[length, x, y, width in halfwords, height, data]`, 15-bit BGR colors.
 //! - 5-bit to 8-bit scaling (`v << 3 | v >> 2`, which is `image::bgr555`):
 //!   observed from `recoil2png` output.
 
@@ -92,7 +92,7 @@ mod tests {
         let mut data = alloc::vec::Vec::new();
         data.extend_from_slice(&0x10u32.to_le_bytes());
         data.extend_from_slice(&8u32.to_le_bytes());
-        // One palette row of 16 colours, then the pixel block.
+        // One palette row of 16 colors, then the pixel block.
         data.extend_from_slice(&(12 + 32u32).to_le_bytes());
         data.extend_from_slice(&[0; 4]);
         data.extend_from_slice(&16u16.to_le_bytes());

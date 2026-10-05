@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn signature_formats_decode_files_with_any_extension() {
-        // 1x1 single-plane ILBM: BMHD, CMAP (2 colours), BODY (one word).
+        // 1x1 single-plane ILBM: BMHD, CMAP (2 colors), BODY (one word).
         let mut ilbm = Vec::new();
         ilbm.extend_from_slice(b"FORM\0\0\0\x3eILBM");
         ilbm.extend_from_slice(

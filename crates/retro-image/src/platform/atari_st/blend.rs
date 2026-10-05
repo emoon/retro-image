@@ -39,7 +39,7 @@ const PCI_HEIGHT: usize = 278;
 const PCI_SCREEN_LEN: usize = PCI_WIDTH / 8 * PCI_HEIGHT * 4;
 const PCI_PALETTE_LEN: usize = PCI_HEIGHT * 32;
 
-/// Two 352x278 screens (separate plane blocks), then a 16-colour palette
+/// Two 352x278 screens (separate plane blocks), then a 16-color palette
 /// per line for each.
 pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = unpack_ice(data)?;

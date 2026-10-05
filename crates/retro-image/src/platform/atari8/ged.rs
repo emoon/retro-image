@@ -1,9 +1,9 @@
-//! GED pictures: 160x200 in four colours with players and missiles, driven
+//! GED pictures: 160x200 in four colors with players and missiles, driven
 //! by display list interrupts that rewrite GTIA registers on every line.
 //!
 //! Sources:
 //! - Just Solve "GED" (<http://fileformats.archiveteam.org/wiki/GED>):
-//!   exactly 11302 bytes, starts `FF FF`, 160x200 with per-line colours.
+//!   exactly 11302 bytes, starts `FF FF`, 160x200 with per-line colors.
 //! - GTIA registers and player/missile graphics: De Re Atari ch. 4
 //!   (<https://www.atariarchives.org/dere/chapt04.php>), Mapping the Atari
 //!   App. 15 (<https://www.atariarchives.org/mapping/appendix15.php>); the
@@ -15,9 +15,9 @@
 //!   - two 200-byte tables at offsets 6 and 206 holding, for every line, the
 //!     value and the number of a GTIA register (`$D000` + the low 5 bits;
 //!     `$1E` and the registers above `$1B` do nothing) which the line's DLI
-//!     writes before the line is drawn, e.g. a colour or a player position;
+//!     writes before the line is drawn, e.g. a color or a player position;
 //!     the register stays changed (the graphics registers only for the line);
-//!   - eight 200-byte tables at 406, each line's colour for playfield 0
+//!   - eight 200-byte tables at 406, each line's color for playfield 0
 //!     (tables 0, 3, 6), playfield 1 (1, 4, 7) and playfield 2 (2, 5): the
 //!     first of each applies from the left edge, the others take over at
 //!     pixels that depend on the DLI's timing byte below, see [`SWITCH_AT`];
@@ -27,7 +27,7 @@
 //!     bits, unlike the hardware), SIZEM, PRIOR, COLPF3, COLBK, HPOSP0-3,
 //!     the HPOS of missile 0 (each other missile starts where the one before ends), the
 //!     timing byte 0-7, and a byte that does nothing. Positions here are
-//!     relative to the left edge of the picture, in colour clocks; the
+//!     relative to the left edge of the picture, in color clocks; the
 //!     writes use the hardware's (`$30` is the left edge);
 //!   - the 200 lines of 40 bytes of Graphics 15 at 3302.
 //!   - Pixel value 0 shows COLBK, 1-3 playfield 0-2.
@@ -153,7 +153,7 @@ const SWITCH_AT: [[usize; 8]; 5] = [
 ];
 
 /// Where the four missiles start: missile 0 at `first` and each next one
-/// right after the one before, whose width (two bits of 1, 2, 1 or 4 colour
+/// right after the one before, whose width (two bits of 1, 2, 1 or 4 color
 /// clocks) its size sets. Writes to the position registers move them
 /// individually later.
 fn missile_positions(first: u8, sizes: u8) -> [u8; 4] {
@@ -165,7 +165,7 @@ fn missile_positions(first: u8, sizes: u8) -> [u8; 4] {
     positions
 }
 
-/// The table giving playfield colour `register` (0-2) at output pixel `x`:
+/// The table giving playfield color `register` (0-2) at output pixel `x`:
 /// table `register` from the left edge, then table `register + 3` and
 /// (for playfield 0 and 1) table 6 or 7, or for playfield 2 only table 5.
 fn playfield_table(register: usize, x: usize, timing: usize) -> usize {
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn line_writes_move_players() {
         let mut data = blank();
-        // Player 0 on lines 0 and 1, colour 0x0e; line 1 writes HPOSP0 = 0x40,
+        // Player 0 on lines 0 and 1, color 0x0e; line 1 writes HPOSP0 = 0x40,
         // 32 pixels from the left edge.
         data[OBJECTS + 256 + FIRST_LINE] = 0xff;
         data[OBJECTS + 256 + FIRST_LINE + 1] = 0xff;

@@ -1,12 +1,12 @@
 //! SAM Coupe screens in the four video modes.
 //!
 //! Sources:
-//! - Video modes, CLUT colour bits, mode 3/4 pixel packing and the ROM's
+//! - Video modes, CLUT color bits, mode 3/4 pixel packing and the ROM's
 //!   palette table (`PALTAB`, 40 bytes) followed by the line interrupt
-//!   colour table (`LINICOLS`): SAM Coupe Technical Manual v3.0,
+//!   color table (`LINICOLS`): SAM Coupe Technical Manual v3.0,
 //!   <https://sam.speccy.cz/systech/sam-coupe_tech-man_v3-0.pdf>.
 //! - SimCoupe screenshot (SSX) sizes, screen data followed by the CLUT
-//!   (16 entries, 4 in mode 3), and the raw 512x192 colour dump: obo's post,
+//!   (16 entries, 4 in mode 3), and the raw 512x192 color dump: obo's post,
 //!   <https://spectrumcomputing.co.uk/forums/viewtopic.php?t=1926>.
 //! - SAM BASIC `SCREEN$` files (screen memory, then 40 palette bytes, then
 //!   4-byte line interrupt records up to 0xFF; mode 2 attributes 8192 bytes
@@ -145,7 +145,7 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != RAW_WIDTH * HEIGHT {
         return Err(DecodeError::Unrecognized);
     }
-    // One SAM colour byte per pixel of the 512x192 display.
+    // One SAM color byte per pixel of the 512x192 display.
     let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32);
     for (i, &value) in data.iter().enumerate() {
         let (x, y) = ((i % RAW_WIDTH) as u32, (i / RAW_WIDTH) as u32);
@@ -169,9 +169,9 @@ impl Palette {
         }
     }
 
-    /// Palette table (16 colours, 4 mode 3 colours, the same again for
+    /// Palette table (16 colors, 4 mode 3 colors, the same again for
     /// the flash phase), then line interrupt records (line, CLUT entry,
-    /// colour, flash colour) ending with 0xFF. Changes apply from the line
+    /// color, flash color) ending with 0xFF. Changes apply from the line
     /// after the given one (observed from `recoil2png` output). Returns the
     /// palette and the number of bytes used.
     fn from_screen_file(tail: &[u8]) -> Result<(Self, usize), DecodeError> {
@@ -214,7 +214,7 @@ impl Palette {
     }
 }
 
-/// CLUT colour: bits 0 blue, 1 red, 2 green (low bits), 3 bright (lowest
+/// CLUT color: bits 0 blue, 1 red, 2 green (low bits), 3 bright (lowest
 /// bit of every channel), 4 blue, 5 red, 6 green (high bits). Each 3-bit
 /// channel is widened by repeating its bits.
 fn color(value: u8) -> u32 {

@@ -6,7 +6,7 @@
 //!   RLE): SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), sections BSC,
 //!   BMC4 and BSP, <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>;
 //!   zx-image README (CC0), <https://github.com/moroz1999/zx-image>.
-//! - Border colours at normal intensity: observed from `recoil2png` output.
+//! - Border colors at normal intensity: observed from `recoil2png` output.
 
 use super::screen::{
     ATTRIBUTES_LEN, BITMAP_LEN, COLUMNS, Frame, HEIGHT, SCR_LEN, WIDTH, attribute_color,
@@ -108,7 +108,7 @@ fn bsp_frame(scr: &[u8], border: &[u8]) -> Result<Frame, DecodeError> {
     Ok(frame)
 }
 
-/// BSP border runs, one per byte: colour in bits 2-0, length code in bits
+/// BSP border runs, one per byte: color in bits 2-0, length code in bits
 /// 7-3. Code 0 runs to the end of the segment (the line, or the left side
 /// of a screen row), 1 takes the half-length from the next byte, 2 is 24
 /// pixels, and higher codes are `(code + 13) * 2` pixels. The runs must use

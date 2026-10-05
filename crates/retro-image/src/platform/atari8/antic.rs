@@ -34,7 +34,7 @@ impl Bitmap<'_> {
         (byte >> shift) & ((1 << self.bits) - 1)
     }
 
-    /// Draws every pixel as a `pixel_width` x `pixel_height` block, colour
+    /// Draws every pixel as a `pixel_width` x `pixel_height` block, color
     /// from `color(line, value)`. The caller checks `data` holds every line.
     pub fn render(
         &self,

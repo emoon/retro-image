@@ -21,29 +21,29 @@
 //!   wastage); in a RISC OS 3.5 sprite it has 1 bit per pixel, rows padded to
 //!   whole words. A pixel is opaque when its mask bits are not all zero.
 //!   A mask that does not fit in the file is ignored.
-//! - Mode numbers 0-46 (pixel resolution, OS-unit resolution, colours):
+//! - Mode numbers 0-46 (pixel resolution, OS-unit resolution, colors):
 //!   PRM volume 4, "Table B: Modes",
 //!   <http://www.riscos.com/support/developers/prm/modes.html>; the eigen
 //!   factors are log2(OS units / pixels).
-//! - Default 256-colour palette (bits 0-1 tint, 2 red bit 2, 3 blue bit 2,
+//! - Default 256-color palette (bits 0-1 tint, 2 red bit 2, 3 blue bit 2,
 //!   4 red bit 3, 5 green bit 2, 6 green bit 3, 7 blue bit 3), and 16-entry
-//!   (VIDC1) palettes of 256-colour sprites (the low 4 bits of a pixel pick
+//!   (VIDC1) palettes of 256-color sprites (the low 4 bits of a pixel pick
 //!   the entry, the high 4 override red bit 3, green bits 2-3 and blue bit
 //!   3): PRM, "VDU drivers",
 //!   <http://www.riscos.com/support/developers/prm/vdu.html>. Such palettes
 //!   were found in mode 28 sprites (sembiance samples `*.bin,FF9`), where
 //!   they hold the default palette's first 16 entries.
-//! - Palettes of sprites without one: the Wimp colours, as RISC OS's Paint
-//!   shows them (2 colours: Wimp colours 0 and 7; 4 colours: 0, 2, 4, 7),
-//!   PRM, "The Window Manager", "Colour handling",
+//! - Palettes of sprites without one: the Wimp colors, as RISC OS's Paint
+//!   shows them (2 colors: Wimp colors 0 and 7; 4 colors: 0, 2, 4, 7),
+//!   PRM, "The Window Manager", "Color handling",
 //!   <http://www.riscos.com/support/developers/prm/wimp.html>. The Wimp
-//!   colour values, including the RISC OS 3.5 dark blue `#4499FF` (RISC OS
+//!   color values, including the RISC OS 3.5 dark blue `#4499FF` (RISC OS
 //!   3's `*Desktop_SetPalette` example has `#004499`), and averaging the two
-//!   (flash) colours of a palette entry, are those of Deark's `rosprite`
-//!   module (`modules/rosprite.c`, MIT licence, notice below), which is also
+//!   (flash) colors of a palette entry, are those of Deark's `rosprite`
+//!   module (`modules/rosprite.c`, MIT license, notice below), which is also
 //!   the black-box reference for this decoder.
 //! - 16-bit pixels scaled to 8 bits by rounding `v * 255 / 31`, as Deark
-//!   does (`de_bgr555_to_888` in `src/deark-data.c`, same licence).
+//!   does (`de_bgr555_to_888` in `src/deark-data.c`, same license).
 //!   Bit replication (`image::bgr555`) differs from it for 4 of the 32 values.
 //!
 //! Portions derived from Deark (<https://entropymine.com/deark/>),
@@ -373,10 +373,10 @@ fn indexed_pixel(row: &[u8], bit: usize, bpp: usize) -> u8 {
     }
 }
 
-/// Colours for an indexed sprite.
+/// Colors for an indexed sprite.
 enum Colors {
     Table(Vec<u32>),
-    /// A 16-entry palette in a 256-colour sprite (VIDC1): the low 4 bits of
+    /// A 16-entry palette in a 256-color sprite (VIDC1): the low 4 bits of
     /// a pixel pick the entry, the high 4 bits override red bit 3, green
     /// bits 2 and 3 and blue bit 3.
     Vidc1(Vec<u32>),
@@ -401,8 +401,8 @@ impl Colors {
     }
 }
 
-/// The sprite's own palette if it has one for every colour, else the
-/// default one. Each entry is two `&BBGGRR00` words (the two flash colours),
+/// The sprite's own palette if it has one for every color, else the
+/// default one. Each entry is two `&BBGGRR00` words (the two flash colors),
 /// shown averaged.
 fn sprite_palette(palette: &[u8], bpp: usize) -> Colors {
     let colors = 1usize << bpp;
@@ -426,7 +426,7 @@ fn sprite_palette(palette: &[u8], bpp: usize) -> Colors {
     }
 }
 
-/// The Wimp colours from white (0) to light blue (15), as `0xRRGGBB`.
+/// The Wimp colors from white (0) to light blue (15), as `0xRRGGBB`.
 const WIMP: [u32; 16] = [
     0xffffff, 0xdddddd, 0xbbbbbb, 0x999999, 0x777777, 0x555555, 0x333333, 0x000000, 0x4499ff,
     0xeeee00, 0x00cc00, 0xdd0000, 0xeeeebb, 0x558800, 0xffbb00, 0x00bbff,
@@ -441,7 +441,7 @@ fn default_palette(bpp: usize) -> Vec<u32> {
     }
 }
 
-/// The default 256-colour palette: bits 0-1 are a tint added to all three
+/// The default 256-color palette: bits 0-1 are a tint added to all three
 /// guns, bits 2-7 are red bit 2, blue bit 2, red bit 3, green bit 2, green
 /// bit 3, blue bit 3 of the 4-bit guns.
 fn default_256_color(index: u8) -> u32 {
@@ -557,7 +557,7 @@ mod tests {
         assert_eq!(colors.color(0x15), 0x99_22_33, "bit 4: red bit 3");
         assert_eq!(colors.color(0x65), 0x11_ee_33, "bits 5-6: green bits 2-3");
         assert_eq!(colors.color(0x85), 0x11_22_bb, "bit 7: blue bit 3");
-        // The default palette's first 16 entries give the default colours.
+        // The default palette's first 16 entries give the default colors.
         let defaults: Vec<u32> = (0..16).map(|i| default_256_color(i) & 0x70_70_70).collect();
         let colors = Colors::Vidc1(defaults);
         assert!((0..=255).all(|i| colors.color(i) == default_256_color(i)));
@@ -593,7 +593,7 @@ mod tests {
             file.extend_from_slice(&w.to_le_bytes());
         }
         for &color in palette {
-            // &BBGGRR00 as a little-endian word, twice (both flash colours).
+            // &BBGGRR00 as a little-endian word, twice (both flash colors).
             let [_, r, g, b] = color.to_be_bytes();
             for _ in 0..2 {
                 file.extend_from_slice(&[0, r, g, b]);

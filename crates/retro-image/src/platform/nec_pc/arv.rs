@@ -1,4 +1,4 @@
-//! `ARV` pictures (ARTV, NEC PC-98, 640x400, 16 colours): the 16-colour
+//! `ARV` pictures (ARTV, NEC PC-98, 640x400, 16 colors): the 16-color
 //! relative of ArtMaster88 (`SS_SIF` files).
 //!
 //! The archiveteam wiki page on ArtMaster88 only gives the signature

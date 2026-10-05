@@ -6,7 +6,7 @@
 //! - fileformat.info, "Autodesk CEL":
 //!   <https://www.fileformat.info/format/cel/corion.htm>.
 //! - Deark `misc2.c`, `de_run_animator_pic` (<https://github.com/jsummers/deark>,
-//!   MIT licence): header fields and the 6-bit palette; also the oracle for the
+//!   MIT license): header fields and the 6-bit palette; also the oracle for the
 //!   sample files.
 //! - Reverse engineered from the 21 samples in the corpus: the signature
 //!   `19 91`, width and height, a position, the depth byte (8), a flag byte,

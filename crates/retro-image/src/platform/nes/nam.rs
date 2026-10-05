@@ -43,7 +43,7 @@ const WIDTH: usize = 32;
 const HEIGHT: usize = 30;
 const NAMES_LEN: usize = WIDTH * HEIGHT;
 pub(super) const WITH_ATTRIBUTES_LEN: usize = NAMES_LEN + 64;
-/// Colour numbers: black, dark grey, light grey, white.
+/// Color numbers: black, dark gray, light gray, white.
 const RAMP: [u8; 4] = [0x0f, 0x00, 0x10, 0x30];
 
 pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {

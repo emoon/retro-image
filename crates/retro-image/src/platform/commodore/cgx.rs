@@ -7,7 +7,7 @@
 //!   `DATA` chunks, frame component order.
 //! - Matrix frames drawn side by side, row by row, and the frame size taken
 //!   as the `DATA` size divided by the frame count, observed from sample
-//!   files and `recoil2png` output. Only 40×25-cell hires and multicolour
+//!   files and `recoil2png` output. Only 40×25-cell hires and multicolor
 //!   bitmap frames without FLI or interlace attributes are supported.
 
 use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN, rgb};

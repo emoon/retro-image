@@ -1,4 +1,4 @@
-//! HCB-editor: multicolour bitmap whose screen RAM changes every four lines.
+//! HCB-editor: multicolor bitmap whose screen RAM changes every four lines.
 //!
 //! Sources: reverse engineered from `kemikal.hcb` and `fembot.hcb` by
 //! black-box probing of `recoil2png` (byte flips in copies and synthetic
@@ -6,8 +6,8 @@
 //! - `$5000-$57FF`: no effect on the picture.
 //! - `$5800` and `$5C00`: two screen RAMs; the first serves lines 0-3 of
 //!   every character row, the second lines 4-7.
-//! - `$6000`: multicolour bitmap in the usual cell order.
-//! - `$7F40`: 50 background colours, one per four lines.
+//! - `$6000`: multicolor bitmap in the usual cell order.
+//! - `$7F40`: 50 background colors, one per four lines.
 //!
 //! Bit pair `01` is the screen high nibble, `10` and `11` its low nibble.
 //! The leftmost 24 pixels (the FLI bug area) are cut, as for the FLI formats.

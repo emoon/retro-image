@@ -4,11 +4,11 @@
 //! Sources:
 //! - GoDot Botticelli loader page, <https://www.godot64.de/german/l_botticelli.htm>,
 //!   and <http://plus4world.powweb.com/software/Multi_Botticelli>: luminance
-//!   (1024 bytes), colour (1024 bytes) and bitmap (8000 bytes); `MULT` and
-//!   the nibble-swapped `$FF16`/`$FF15` colours at the end of the luminance
+//!   (1024 bytes), color (1024 bytes) and bitmap (8000 bytes); `MULT` and
+//!   the nibble-swapped `$FF16`/`$FF15` colors at the end of the luminance
 //!   block.
-//! - Which nibbles colour which pixel values (set/`01`: high colour nibble
-//!   with low luminance nibble; clear/`10`: low colour nibble with high
+//! - Which nibbles color which pixel values (set/`01`: high color nibble
+//!   with low luminance nibble; clear/`10`: low color nibble with high
 //!   luminance nibble; `00` = `$FF15`, `11` = `$FF16`): worked out from the
 //!   sample files against `recoil2png` output.
 //! - The 2050-byte 128x64 variant (`DCD.P4I`): reverse engineered from that
@@ -19,7 +19,7 @@
 
 use crate::{DecodeError, Image};
 
-/// RGB of TED colour `luminance * 16 + hue` (hue 0 is black at any luminance).
+/// RGB of TED color `luminance * 16 + hue` (hue 0 is black at any luminance).
 const PALETTE: [u32; 128] = [
     0x030303, 0x2f2f2f, 0x681010, 0x004242, 0x58006d, 0x004e00, 0x191c94, 0x383800, 0x562000,
     0x4b2800, 0x164800, 0x69072f, 0x004626, 0x062a80, 0x2a149b, 0x0b4900, //
@@ -39,7 +39,7 @@ const PALETTE: [u32; 128] = [
     0xffffb2, 0xfcffa2, 0xffeeff, 0xd1ffff, 0xebffff, 0xfff8ff, 0xedffbc,
 ];
 
-/// RGB of a TED colour register value (bits 6-4 luminance, bits 3-0 hue).
+/// RGB of a TED color register value (bits 6-4 luminance, bits 3-0 hue).
 pub(super) fn rgb(color: u8) -> u32 {
     PALETTE[usize::from(color & 0x7f)]
 }
@@ -85,10 +85,10 @@ pub(super) fn decode_p4i(data: &[u8]) -> Result<Image, DecodeError> {
 const STRIPS: usize = 32;
 const STRIP_LINES: usize = 64;
 const FOUR_GREYS_LEN: usize = 2 + STRIPS * STRIP_LINES;
-/// TED colours of the four 2-bit pixel values (hue 1 at luminance 0, 3, 5, 7).
+/// TED colors of the four 2-bit pixel values (hue 1 at luminance 0, 3, 5, 7).
 const FOUR_GREYS: [u8; 4] = [0x00, 0x31, 0x51, 0x71];
 
-/// 128x64 four-grey variant: a 2-byte load address, then 32 column strips of
+/// 128x64 four-gray variant: a 2-byte load address, then 32 column strips of
 /// 64 bytes. A strip is a column four pixels wide, one byte per line, most
 /// significant pixel pair first. Shown with pixels doubled horizontally.
 pub(super) fn decode_p4i_grey(data: &[u8]) -> Result<Image, DecodeError> {

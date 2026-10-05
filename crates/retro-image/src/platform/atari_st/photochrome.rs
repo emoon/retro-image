@@ -6,7 +6,7 @@
 //!   function)
 //! - <http://fileformats.archiveteam.org/wiki/PhotoChrome>
 //! - Observed from `recoil2png` output: 320x199 output starting at the
-//!   second scanline, which uses the first 48-colour palette; alternating
+//!   second scanline, which uses the first 48-color palette; alternating
 //!   screens are averaged per component.
 
 use alloc::vec::Vec;
@@ -82,7 +82,7 @@ impl Frame {
 }
 
 /// Hans Wessels' `find_pcs_index`: which of 64 entries (from the line's
-/// first) pixel `x` with colour `c` shows.
+/// first) pixel `x` with color `c` shows.
 fn palette_index(x: usize, c: usize) -> usize {
     let mut index = c;
     let x1 = 4 * c;

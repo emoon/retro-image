@@ -5,7 +5,7 @@
 //! (<http://fileformats.archiveteam.org/wiki/Trzmiel>) and "Kompresor do
 //! Animatora" (<http://fileformats.archiveteam.org/wiki/Kompresor_do_Animatora>),
 //! and the RECOIL formats list (<https://recoil.sourceforge.net/formats.html>)
-//! only name the formats (320x192 mono, 4 colours). Both packers are
+//! only name the formats (320x192 mono, 4 colors). Both packers are
 //! undocumented; the layouts were reverse engineered from the corpus samples
 //! (CPR: RMF, WALL, DEMO, WINSTON, TEX, BRUSH, DREAM13; KPR: FONTY) and
 //! probed with hand-made files fed to `recoil2png` (black box).
@@ -23,7 +23,7 @@
 //! length), two ignored bytes (`KB`), the number of bands, the cells per
 //! band row and the rows, then the map of tile numbers (band by band, each
 //! band row by row, left to right), then 8-byte tiles of four 2-bit pixels per
-//! line (Graphics 15 shape, drawn 2x1) in grey (`00 04 08 0C`). A tile
+//! line (Graphics 15 shape, drawn 2x1) in gray (`00 04 08 0C`). A tile
 //! number must lie inside the tile data.
 
 use super::palette::rgb;

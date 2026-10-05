@@ -1,9 +1,9 @@
-//! CPC video hardware: colours, screen modes and pixel packing.
+//! CPC video hardware: colors, screen modes and pixel packing.
 //!
 //! Sources:
-//! - Hardware colour numbers (32 codes, 27 colours, three levels per
+//! - Hardware color numbers (32 codes, 27 colors, three levels per
 //!   channel): Gate Array, <https://cpctech.cpcwiki.de/docs/garray.html>.
-//! - Firmware colour numbers (`9 * green + 3 * red + blue`, levels 0-2) and
+//! - Firmware color numbers (`9 * green + 3 * red + blue`, levels 0-2) and
 //!   the power-on inks of the 16 pens: Amstrad CPC6128 User Instructions,
 //!   chapter 8 ("INK" and the default ink table),
 //!   <https://archive.org/details/amstrad-cpc-6128-user-manual>.
@@ -23,7 +23,7 @@ const fn rgb(red: usize, green: usize, blue: usize) -> u32 {
     LEVELS[red] << 16 | LEVELS[green] << 8 | LEVELS[blue]
 }
 
-/// Colours of the hardware colour numbers 0-31.
+/// Colors of the hardware color numbers 0-31.
 const HARDWARE_COLORS: [u32; 32] = [
     rgb(1, 1, 1),
     rgb(1, 1, 1),
@@ -59,18 +59,18 @@ const HARDWARE_COLORS: [u32; 32] = [
     rgb(1, 1, 2),
 ];
 
-/// Colour of a hardware colour number (bits 4-0; files often store it
+/// Color of a hardware color number (bits 4-0; files often store it
 /// with bit 6 set, as the Gate Array command `0x40 | n`).
 pub(super) fn hardware_color(value: u8) -> u32 {
     HARDWARE_COLORS[usize::from(value & 31)]
 }
 
-/// Colour of a firmware colour number 0-26.
+/// Color of a firmware color number 0-26.
 pub(super) const fn firmware_color(n: usize) -> u32 {
     rgb(n / 3 % 3, n / 9, n % 3)
 }
 
-/// Power-on colours of pens 0-15 (pens 14 and 15 flash; their first colour).
+/// Power-on colors of pens 0-15 (pens 14 and 15 flash; their first color).
 pub(super) const DEFAULT_PENS: [u32; 16] = {
     const INKS: [usize; 16] = [1, 24, 20, 6, 26, 0, 2, 8, 10, 12, 14, 16, 18, 22, 1, 16];
     let mut pens = [0; 16];
@@ -84,11 +84,11 @@ pub(super) const DEFAULT_PENS: [u32; 16] = {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Mode {
-    /// 160x200, 16 colours.
+    /// 160x200, 16 colors.
     Zero,
-    /// 320x200, 4 colours.
+    /// 320x200, 4 colors.
     One,
-    /// 640x200, 2 colours.
+    /// 640x200, 2 colors.
     Two,
 }
 

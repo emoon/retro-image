@@ -14,9 +14,9 @@
 //! | Drazlace (DRL, DLP) | CB "Drazlace", GD Draz |
 //! | True Paint (MCI) | CB "True Paint", GD TruePaint |
 //! | True Paint, self-running packed | reverse engineered from 5 samples: BASIC `SYS` stub, a 256-byte depacker holding the flag table, and the unpacked picture in True Paint's memory map moved down by `$8000`; see `unpack::flag_table_rle`. Checked pixel for pixel against `recoil2png` on the unpacked data |
-//! | Interlace Hires Editor (IHE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two bare bitmaps at `$2000` and `$4000`, set bits black and clear bits grey (`$0C`) in both frames |
-//! | Multi-Lace Editor (MLE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two 2048-byte multicolour bitmaps at `$2000` and `$2800` (6 rows of cells and 16 cells of the 7th, 56 lines), fixed colours; the first frame is shown one pixel to the right |
-//! | Interlaced Logo Editor (ILE) | reverse engineered by probing `recoil2png` with synthetic 4098-byte files (no sample file exists): two 2048-byte multicolour frames of 6 rows of cells; four bytes at the end of the second frame hold the background and the `01`, `10` and `11` colours; the first frame is shown one pixel to the right |
+//! | Interlace Hires Editor (IHE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two bare bitmaps at `$2000` and `$4000`, set bits black and clear bits gray (`$0C`) in both frames |
+//! | Multi-Lace Editor (MLE) | reverse engineered from 1 sample by mutating bytes and watching `recoil2png`: two 2048-byte multicolor bitmaps at `$2000` and `$2800` (6 rows of cells and 16 cells of the 7th, 56 lines), fixed colors; the first frame is shown one pixel to the right |
+//! | Interlaced Logo Editor (ILE) | reverse engineered by probing `recoil2png` with synthetic 4098-byte files (no sample file exists): two 2048-byte multicolor frames of 6 rows of cells; four bytes at the end of the second frame hold the background and the `01`, `10` and `11` colors; the first frame is shown one pixel to the right |
 //! | Hires-Interlace (HLF) | CB "Hires-Interlace v1.0"; which screen RAM pairs with which bitmap checked against `recoil2png` output |
 
 use super::bitmap::{Hires, Multicolor};
@@ -26,7 +26,7 @@ use super::vic2::{BITMAP_LEN, Bitmap, Frame, SCREEN_LEN};
 use crate::{DecodeError, Image};
 
 /// Blends two frames; `shift` moves the second one right by a hires pixel,
-/// bringing in the given background colour at the left edge.
+/// bringing in the given background color at the left edge.
 fn blend(
     first: Option<Frame>,
     second: Option<Frame>,
@@ -212,7 +212,7 @@ pub(super) fn decode_hireslace(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Interlace Hires Editor: two 8000-byte bitmaps at `$2000` and `$4000`
-/// (the 192 bytes between them are unused), with fixed colours.
+/// (the 192 bytes between them are unused), with fixed colors.
 pub(super) fn decode_interlace_hires_editor(data: &[u8]) -> Result<Image, DecodeError> {
     const LEN: usize = 2 + 0x3f40;
     const SECOND: usize = 2 + 0x2000;
@@ -230,9 +230,9 @@ pub(super) fn decode_interlace_hires_editor(data: &[u8]) -> Result<Image, Decode
     blend(frame(2), frame(SECOND), None)
 }
 
-/// Multi-Lace Editor: two multicolour bitmaps of 256 cells each (the cells
+/// Multi-Lace Editor: two multicolor bitmaps of 256 cells each (the cells
 /// after them, up to 7 rows, are blank) at `$2000` and `$2800`, drawn in
-/// fixed colours: `01` brown, `10` orange, `11` green on black. The first
+/// fixed colors: `01` brown, `10` orange, `11` green on black. The first
 /// frame is shifted one pixel right.
 pub(super) fn decode_multi_lace(data: &[u8]) -> Result<Image, DecodeError> {
     const FRAME_LEN: usize = 0x800;
@@ -250,11 +250,11 @@ pub(super) fn decode_multi_lace(data: &[u8]) -> Result<Image, DecodeError> {
     blend(frame(2 + FRAME_LEN), frame(2), Some(0))
 }
 
-/// Interlaced Logo Editor: two multicolour logo frames of 40×6 cells (1920
+/// Interlaced Logo Editor: two multicolor logo frames of 40×6 cells (1920
 /// bytes each, followed by 128 bytes that only matter in the second frame).
-/// The second frame ends with the colours: bytes 2044 to 2047 are the
-/// background and the colours of bit pairs `01`, `10` and `11` (the last
-/// one is a colour RAM colour, so 0 to 7). The first frame is shown one
+/// The second frame ends with the colors: bytes 2044 to 2047 are the
+/// background and the colors of bit pairs `01`, `10` and `11` (the last
+/// one is a color RAM color, so 0 to 7). The first frame is shown one
 /// pixel to the right.
 pub(super) fn decode_interlaced_logo_editor(data: &[u8]) -> Result<Image, DecodeError> {
     const FRAME_LEN: usize = 0x800;
@@ -301,14 +301,14 @@ mod tests {
     #[test]
     fn logo_editor_colours_and_shift() {
         let mut data = alloc::vec![0u8; 4098];
-        // Second frame: bit pair `11` at the left edge, whose colour is the
-        // last of the four colour bytes (colour RAM, so 3 bits: 0x0b is 3).
+        // Second frame: bit pair `11` at the left edge, whose color is the
+        // last of the four color bytes (color RAM, so 3 bits: 0x0b is 3).
         data[2 + 0x800] = 0b1100_0000;
         data[2 + 0x800 + 2047] = 0x0b;
         let image = decode_interlaced_logo_editor(&data).unwrap();
         assert_eq!((image.width(), image.height()), (320, 48));
         // The first frame is shifted right, so the background fills its
-        // left edge and the second frame's colour blends with it.
+        // left edge and the second frame's color blends with it.
         assert_eq!(pixel(&image, 0, 0), blended(3, 0));
         assert_eq!(pixel(&image, 2, 0), blended(0, 0));
         assert!(decode_interlaced_logo_editor(&data[..4097]).is_err());
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn hireslace_uses_both_screens() {
         let mut data = alloc::vec![0u8; 32770];
-        data[2 + 0x4000] = 0x20; // second screen: set colour 2
+        data[2 + 0x4000] = 0x20; // second screen: set color 2
         data[2 + 0x6000] = 0x80; // second bitmap: first pixel set
         let image = decode_hireslace(&data).unwrap();
         assert_eq!((image.width(), image.height()), (320, 200));

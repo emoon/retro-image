@@ -18,9 +18,9 @@
 //!     unpacker (DECMAP, 6809 assembly) stops as soon as the area is full
 //!     and reads a literal count of 0 as 256;
 //!   - optional trailers before the closing record: TO-SNAP (40 bytes:
-//!     `SCRMOD` word (`0001` for bitmap 4), border colour, BASIC `CONSOLE`
-//!     mode, 16 palette words for colours 0-15, marker `A55A`) and "PPM"
-//!     (36 bytes: 16 palette words for colours 15-0, `CONSOLE` mode,
+//!     `SCRMOD` word (`0001` for bitmap 4), border color, BASIC `CONSOLE`
+//!     mode, 16 palette words for colors 0-15, marker `A55A`) and "PPM"
+//!     (36 bytes: 16 palette words for colors 15-0, `CONSOLE` mode,
 //!     marker `HL`). A negative palette word `w` stands for `-(w + 1)`.
 //! - One more byte may sit between the closing zeros and the record end:
 //!   `SAVEP` saves an integer array, so the data length is even (observed
@@ -291,8 +291,8 @@ mod tests {
         );
         let image = map.render(&DEFAULT_PALETTE).unwrap();
         assert_eq!((image.width(), image.height()), (8, 8));
-        assert_eq!(image.get(2, 0), 0x00ff00); // colour 2
-        assert_eq!(image.get(6, 0), 0x0000ff); // colour 4
+        assert_eq!(image.get(2, 0), 0x00ff00); // color 2
+        assert_eq!(image.get(6, 0), 0x0000ff); // color 4
     }
 
     #[test]

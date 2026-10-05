@@ -76,7 +76,7 @@ fn matches_recoil_on_corpus() {
 
         // Formats with companion files are also checked with them present,
         // against RECOIL given the same files. That includes formats whose
-        // main file doesn't decode alone (e.g. a picture without its colours).
+        // main file doesn't decode alone (e.g. a picture without its colors).
         let siblings = sample.siblings();
         let companions = common::SiblingFiles::new(&siblings, sample.path.parent().unwrap());
         let decoded_alone = alone.is_some();

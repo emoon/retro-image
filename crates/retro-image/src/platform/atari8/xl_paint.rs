@@ -3,22 +3,22 @@
 //! Sources:
 //! - XL-Paint 1.9 MaX info (Polish),
 //!   <http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/XL-Paint%201.9Max.txt>:
-//!   the program draws 160x192 pictures in 16-colour interlace (two frames
+//!   the program draws 160x192 pictures in 16-color interlace (two frames
 //!   shown alternately). RAW is `XLPB` plus 7680 + 7680 bytes of frame data,
-//!   XLP is `XLPC` (or no header), 4 colour bytes and compressed data, MAX
-//!   is `XLPM`, per-line colour tables and compressed data.
+//!   XLP is `XLPC` (or no header), 4 color bytes and compressed data, MAX
+//!   is `XLPM`, per-line color tables and compressed data.
 //! - Just Solve "XL-Paint" (<http://fileformats.archiveteam.org/wiki/XL-Paint>).
 //! - The rest was reverse engineered from the corpus and `recoil2png` output
 //!   (black box, including hand-made files):
-//!   - RAW: after the frames come two colour sets (playfield 0-2, then the
+//!   - RAW: after the frames come two color sets (playfield 0-2, then the
 //!     background). Lines alternate: the first frame uses the first set on
 //!     even lines and the second set on odd lines, the second frame the
 //!     reverse.
 //!   - MAX: nine tables of 192 bytes (one value per line) follow the header:
-//!     the background and playfield 0-2 colours of the second stored frame
+//!     the background and playfield 0-2 colors of the second stored frame
 //!     (tables 0-3), then those of the first stored frame (tables 4-7), and
 //!     one that has no effect. BIRD.MAX and BIRD.RAW (and the GOLDENB pair)
-//!     render identically, which gave the layout: RAW's two colour sets are
+//!     render identically, which gave the layout: RAW's two color sets are
 //!     tables 4-7 and 0-3 (as playfield 0-2, then background), and line `y`
 //!     of RAW frame `f` is stored frame `(f + y) % 2`.
 //!   - The packer, shared by XLP and MAX, is described at [`command`]. The
@@ -27,8 +27,8 @@
 //!     192 (or 200) lines of the first stored frame, then those of the
 //!     second. Which commands are valid, how short data is treated and the
 //!     XLP line count rules (see [`decode_xlp`]) were probed with hand-made
-//!     files whose colour tables make every pair of stored pixel values show
-//!     as a distinct colour.
+//!     files whose color tables make every pair of stored pixel values show
+//!     as a distinct color.
 
 use super::antic::Bitmap;
 use super::interlace::mcp_picture;
@@ -51,7 +51,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     mcp_picture(rest, LINES)
 }
 
-/// A colour set stored as playfield 0-2, then the background.
+/// A color set stored as playfield 0-2, then the background.
 fn set_color(set: &[u8], value: u8) -> u8 {
     match value {
         0 => set[3],
@@ -59,7 +59,7 @@ fn set_color(set: &[u8], value: u8) -> u8 {
     }
 }
 
-/// MAX: `XLPM`, nine tables of 192 per-line colours, packed frames.
+/// MAX: `XLPM`, nine tables of 192 per-line colors, packed frames.
 pub(super) fn decode_max(data: &[u8]) -> Result<Image, DecodeError> {
     let rest = data
         .strip_prefix(b"XLPM")

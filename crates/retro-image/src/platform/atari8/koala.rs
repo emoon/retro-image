@@ -3,7 +3,7 @@
 //! Source: "Koala picture files" by Jiri Bernasek (BEWESOFT),
 //! <http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/KOALA%20PICTURE%20FILES.txt>:
 //! magic `FF 80 C9 C7`, header length - 1 at offset 4, compression method at
-//! 7, window (start X byte, end X byte, start Y, end Y) at 9-12, colours
+//! 7, window (start X byte, end X byte, start Y, end Y) at 9-12, colors
 //! 708-712 at 13-17. Method 0 stores the window raw, method 1 packed in
 //! vertical order (even lines, then odd lines, column by column), method 2
 //! packed in line order. Packed entries: bit 7 set = literal block, clear =
@@ -18,7 +18,7 @@
 //! luminance; sample OPIS.PIC. Other modes are rejected here.
 //!
 //! Not marked as a signature format: Rambrandt (RM0-RM4) files start with
-//! the same Koala header followed by extra colour data, so content
+//! the same Koala header followed by extra color data, so content
 //! detection would misdecode them.
 
 use super::antic::Bitmap;
@@ -31,7 +31,7 @@ use alloc::vec::Vec;
 const LINE: usize = 40;
 const LINES: usize = 192;
 const HEADER_MIN: usize = 18;
-/// Graphics 15 (4 colours).
+/// Graphics 15 (4 colors).
 pub(super) const ANTIC_E: u8 = 0x0e;
 /// Text mode 2 (Graphics 0): screen codes.
 const ANTIC_2: u8 = 0x02;
@@ -39,7 +39,7 @@ const ANTIC_2: u8 = 0x02;
 const ANTIC_F: u8 = 0x0f;
 
 /// A decoded Koala file: the 40 x 192 byte screen, the ANTIC mode byte and
-/// the colours 708-712 of the header.
+/// the colors 708-712 of the header.
 pub(super) struct Pic {
     pub screen: [u8; LINE * LINES],
     pub mode: u8,

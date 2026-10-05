@@ -5,10 +5,10 @@
 //! Sources:
 //! - The SAUCE specification, "ANSiFlags"
 //!   (<https://www.acid.org/info/sauce/sauce.htm>): the attribute byte's
-//!   blink bit (blinking foreground, or with non-blink "iCE colour" the
+//!   blink bit (blinking foreground, or with non-blink "iCE color" the
 //!   high-intensity background), and the 9-pixel letter spacing in which the
 //!   VGA repeats the 8th glyph column for characters C0h-DFh only.
-//! - The 16 colours of the IBM CGA/EGA/VGA text palette and the 6-bit DAC
+//! - The 16 colors of the IBM CGA/EGA/VGA text palette and the 6-bit DAC
 //!   scaling: shared with `pc.rs` (observed from `recoil2png` output); the
 //!   palette is also the default of the XBin specification
 //!   (<https://web.archive.org/web/20120204063040/http://www.acid.org/info/xbin/x_spec.htm>).
@@ -20,7 +20,7 @@ use super::super::pc::vga_rgb;
 use super::font::Font;
 use crate::{DecodeError, Image};
 
-/// The 16 colours of the IBM CGA/EGA/VGA text palette, by attribute value.
+/// The 16 colors of the IBM CGA/EGA/VGA text palette, by attribute value.
 pub(super) const PALETTE: [u32; 16] = super::super::pc::CGA_PALETTE;
 
 /// Most cells a picture may have: 80 columns by 3276 rows. Keeps hostile
@@ -38,7 +38,7 @@ const MAX_PIXELS: usize = 1 << 24;
 /// Most columns a picture may have.
 pub(super) const MAX_COLUMNS: usize = 2048;
 
-/// One character cell: a glyph and its colours as `0xRRGGBB`.
+/// One character cell: a glyph and its colors as `0xRRGGBB`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Cell {
     pub(super) glyph: u8,
@@ -47,7 +47,7 @@ pub(super) struct Cell {
 }
 
 impl Cell {
-    /// A space in light grey on black, as on a cleared DOS screen.
+    /// A space in light gray on black, as on a cleared DOS screen.
     pub(super) const BLANK: Self = Self {
         glyph: b' ',
         fg: PALETTE[7],
@@ -99,7 +99,7 @@ fn repeat8(color: [u8; 3]) -> [u64; 3] {
 
 /// For each glyph row, 0xff over the 3 bytes of every set pixel (leftmost
 /// pixel = most significant bit first), 0 elsewhere, as three words in
-/// native byte order. Lets a row of 8 pixels be coloured with a few
+/// native byte order. Lets a row of 8 pixels be colored with a few
 /// word-wide AND and XOR instead of a branch per pixel.
 const GLYPH_MASKS: [[u64; 3]; 256] = {
     let mut masks = [[0; 3]; 256];
@@ -123,7 +123,7 @@ const GLYPH_MASKS: [[u64; 3]; 256] = {
     masks
 };
 
-/// A cell's colours as bytes, ready to be blended into pixel lines.
+/// A cell's colors as bytes, ready to be blended into pixel lines.
 struct Painted {
     glyph: u8,
     line_drawing: bool,
@@ -165,7 +165,7 @@ pub(super) fn render(
     }
     let rows = rows.min(MAX_PIXELS / row_pixels);
     let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32);
-    // Per cell of the current text row, so its colours are expanded once
+    // Per cell of the current text row, so its colors are expanded once
     // for all of its pixel lines.
     let mut painted = Vec::with_capacity(width);
     for (cell_row, row_cells) in cells.chunks(width).take(rows).enumerate() {

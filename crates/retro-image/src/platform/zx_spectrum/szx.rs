@@ -188,7 +188,7 @@ mod tests {
         let ram = (b"RAMP", raw_ramp(5, &bank(true)));
         let ok = file(1, &[(b"JOY\0", vec![0; 6]), ram.clone()]);
         assert!(decode_szx(&ok).is_ok());
-        // Timex hi-colour, ULAplus enabled, unknown machine, no screen page.
+        // Timex hi-color, ULAplus enabled, unknown machine, no screen page.
         let scld = (b"SCLD", vec![0, 2]);
         assert!(decode_szx(&file(8, &[scld, ram.clone()])).is_err());
         let pltt = (b"PLTT", vec![1; 66]);

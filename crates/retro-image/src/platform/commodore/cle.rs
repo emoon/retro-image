@@ -4,8 +4,8 @@
 //! (<http://fileformats.archiveteam.org/wiki/Centauri_Logo_Editor> only names
 //! the tool). Reverse engineered from 9 samples by black-box probing of
 //! `recoil2png`: mutating single bytes shows load address `$6000` (ignored),
-//! an 8000-byte multicolour bitmap at file offset 2 in the usual cell order,
-//! then three colour bytes at offsets 8002-8004: the colours of bit pairs
+//! an 8000-byte multicolor bitmap at file offset 2 in the usual cell order,
+//! then three color bytes at offsets 8002-8004: the colors of bit pairs
 //! `01` (high nibble) and `10` (low nibble), `11` (low nibble) and the
 //! background `00` (low nibble). Offsets 8005-8193 (padding in most
 //! samples) do not change the output.

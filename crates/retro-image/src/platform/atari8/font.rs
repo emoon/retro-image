@@ -12,15 +12,15 @@
 //!   (<http://ftp.pigwa.net/stuff/collections/atari_forever/Tools%20-%20atr/Super%20IRG%20Font%20Editor/SIFE.TXT>):
 //!   two 1024-byte ANTIC mode 4 charsets flipped every frame.
 //! - ACS: Just Solve "AtariTools-800"
-//!   (<http://fileformats.archiveteam.org/wiki/AtariTools-800>, 4 colours).
-//!   Size 1028, the colour bytes and the 16-character rows: observed from
+//!   (<http://fileformats.archiveteam.org/wiki/AtariTools-800>, 4 colors).
+//!   Size 1028, the color bytes and the 16-character rows: observed from
 //!   `recoil2png` output.
 //! - JGP: Just Solve "Jet Graphics Planner"
 //!   (<http://fileformats.archiveteam.org/wiki/Jet_Graphics_Planner>;
-//!   exactly 2054 bytes, 4 colours).
+//!   exactly 2054 bytes, 4 colors).
 //!   The binary-load header (any 2048-byte segment), the two charsets
 //!   stacked as 8x16 characters
-//!   and the grey colours: observed from `recoil2png` output.
+//!   and the gray colors: observed from `recoil2png` output.
 //! - NLQ: Just Solve "Daisy-Dot font"
 //!   (<http://fileformats.archiveteam.org/wiki/Daisy-Dot_font>) and the
 //!   Daisy-Dot II reader of
@@ -36,7 +36,7 @@
 //!   layouts reverse engineered from samples and checked against
 //!   `recoil2png` output.
 //! - Accepted sizes (FNT 1024-1026 bytes), the sheet layout of 32
-//!   characters per row and the colours (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
+//!   characters per row and the colors (SIF: 0x00, 0x4C, 0xCC, 0x8C, the
 //!   two charsets mixed): observed from `recoil2png` output.
 //!
 //! The NLQ layout notes derive from monobit, whose notice follows.
@@ -129,7 +129,7 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Jet Graphics Planner: a DOS binary-load header for one 2048-byte
 /// segment (at any address), then two ANTIC mode 4 charsets shown as 8x16
-/// characters (first charset on top), in greys.
+/// characters (first charset on top), in grays.
 pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
     let charsets = binary_load(data, 2048).ok_or(DecodeError::Unrecognized)?;
     let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);

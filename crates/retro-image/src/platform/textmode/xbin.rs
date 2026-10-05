@@ -11,14 +11,14 @@
 //!   or a repeated pair, and whose low six bits are the count minus one.
 //!   Without a font the VGA default (16 pixels high) applies.
 //! - Deark `modules/bintext.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence): runs are expanded as one stream (the specification keeps
+//!   license): runs are expanded as one stream (the specification keeps
 //!   them within a row, so for valid files that's the same), image data
 //!   missing at the end is blank, and 512-character files are not
 //!   supported (the specification doesn't say how the attribute selects
 //!   the second 256 characters).
 
 // The handling of short data and 512-character files follows Deark
-// `modules/bintext.c`, under this licence:
+// `modules/bintext.c`, under this license:
 //
 // Copyright (C) 2016-2026 Jason Summers
 // <jason1@pobox.com>
@@ -178,8 +178,8 @@ mod tests {
     #[test]
     fn reads_header_palette_font_and_flags() {
         let mut rest = vec![0u8; 48];
-        rest[3..6].copy_from_slice(&[63, 63, 63]); // colour 1 white
-        rest[27..30].copy_from_slice(&[0, 0, 42]); // colour 9 dark blue
+        rest[3..6].copy_from_slice(&[63, 63, 63]); // color 1 white
+        rest[27..30].copy_from_slice(&[0, 0, 42]); // color 9 dark blue
         let mut font = vec![0u8; 256 * 8];
         font[b'#' as usize * 8] = 0x80;
         rest.extend_from_slice(&font);

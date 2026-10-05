@@ -5,7 +5,7 @@
 //! - Format specifications by Harry Mulder, (c) 1999: `GBRS9906.ZIP` (GBR,
 //!   1 June 1999) and `GBMS9910.ZIP` (GBM, October 1999), from
 //!   <http://www.devrs.com/gb/hmgd/supp.html>. They are the author's published
-//!   format documents with no licence stated; used as a prose specification.
+//!   format documents with no license stated; used as a prose specification.
 //! - Reverse engineered from the GBDK-2020 example assets in
 //!   `corpus/extra/gameboy-nes/gbtd` (see its `MANIFEST.tsv`):
 //!   - the documents call every number "hi-endian" but the files are
@@ -18,15 +18,15 @@
 //!
 //! GBR: `GBO0`, then objects `u16 type, u16 id, u32 length, body`. TileData
 //! (type 2) is a 30-byte name, `u16` tile width and height in pixels, `u16`
-//! count, a 4-byte colour set and one byte per pixel (0-3, remapped through
-//! the colour set), tile after tile. A GBR is shown as a sheet of tiles, 128
-//! pixels wide where the tiles allow. TileSettings (type 3) selects a colour
+//! count, a 4-byte color set and one byte per pixel (0-3, remapped through
+//! the color set), tile after tile. A GBR is shown as a sheet of tiles, 128
+//! pixels wide where the tiles allow. TileSettings (type 3) selects a color
 //! set in byte 11 (the document's field order, with a 1-byte split order as
 //! the files have it): 0 Pocket, 1 Game Boy, 2 Game Boy Color, 3 Super Game
-//! Boy. Only the Game Boy Color set is drawn in colour: Palettes (type 0x0D)
-//! holds the palettes as `R, G, B, 0` colours and TilePal (0x0E) the palette
+//! Boy. Only the Game Boy Color set is drawn in color: Palettes (type 0x0D)
+//! holds the palettes as `R, G, B, 0` colors and TilePal (0x0E) the palette
 //! number of each tile (confirmed by the Petris and word-blocks samples, whose
-//! colour set 2 files use several palettes, while the colour set 0 and 1 files
+//! color set 2 files use several palettes, while the color set 0 and 1 files
 //! carry unused default palettes). The SGB palettes are ignored.
 //!
 //! GBM: `GBO1`, then objects with a 20-byte header (`HPJMTL`, `u16` type,
@@ -54,7 +54,7 @@ const TILE_DATA: u16 = 2;
 const TILE_SETTINGS: u16 = 3;
 const PALETTES: u16 = 0x0d;
 const TILE_PALETTES: u16 = 0x0e;
-/// Offset of the selected colour set in the TileSettings body, and its
+/// Offset of the selected color set in the TileSettings body, and its
 /// value for Game Boy Color.
 const COLOR_SET_AT: usize = 11;
 const COLOR_SET_GBC: u8 = 2;
@@ -63,7 +63,7 @@ const MAP_TILES: u16 = 3;
 const SHEET_WIDTH: usize = 128;
 
 /// A tile set: `count` tiles of `width` x `height` pixels, one byte per
-/// pixel, and the colour set that remaps them to shades.
+/// pixel, and the color set that remaps them to shades.
 struct TileSet<'a> {
     width: usize,
     height: usize,
@@ -112,7 +112,7 @@ impl Cell {
 }
 
 impl TileSet<'_> {
-    /// The colour at (`x`, `y`) of the tile `cell` shows, white for a tile
+    /// The color at (`x`, `y`) of the tile `cell` shows, white for a tile
     /// that isn't there.
     fn color(&self, cell: &Cell, x: usize, y: usize) -> u32 {
         if cell.tile >= self.count {
@@ -215,7 +215,7 @@ fn parse_gbr(data: &[u8]) -> Result<TileSet<'_>, DecodeError> {
 }
 
 /// The Palettes and TilePal objects: `u16` object id, `u16` count, then
-/// `count` sets of four `R, G, B, 0` colours, respectively `count` `u32`
+/// `count` sets of four `R, G, B, 0` colors, respectively `count` `u32`
 /// palette numbers (one per tile). Each is followed by the same for SGB,
 /// which is not drawn.
 fn gbc_colors(objects: &[Object]) -> Option<GbcColors> {

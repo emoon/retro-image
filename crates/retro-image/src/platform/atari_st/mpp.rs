@@ -2,8 +2,8 @@
 //!
 //! Sources:
 //! - <http://zerkman.sector1.fr/index.php?post/2012/10/08/Atari-ST-Multipalette-Picture-file-format>
-//! - Reference converter `mpp2bmp.c` (WTFPL, a permissive licence):
-//!   <https://codeberg.org/zerkman/mpp> - header layout, the four display
+//! - Reference converter `mpp2bmp.c` (WTFPL, a permissive license):
+//!   <https://codeberg.org/zerkman/mpp>: header layout, the four display
 //!   modes and their palette change positions.
 //! - Files in the wild hold 199 (273 in overscan) lines, not the 200 (276)
 //!   of the current converter: derived from sample file sizes.

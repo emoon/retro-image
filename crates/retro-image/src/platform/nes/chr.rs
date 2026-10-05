@@ -9,7 +9,7 @@
 //! only whole pattern tables). Other lengths are not taken: `.chr` is also the
 //! extension of Borland BGI fonts and Atari 8-bit character sets.
 //!
-//! The file has no palette, so colour numbers 0-3 are shown as a black to
+//! The file has no palette, so color numbers 0-3 are shown as a black to
 //! white ramp. Tiles are laid out 16 to a row, 128 pixels wide; an 8 KiB file
 //! shows the second pattern table below the first. [`sheet`] also draws the
 //! CHR-ROM of a ROM image, up to megabytes: a bigger block gets a wider

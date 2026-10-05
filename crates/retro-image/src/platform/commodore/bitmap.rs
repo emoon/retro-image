@@ -1,5 +1,5 @@
 //! C64 single-screen bitmap formats: one 320×200 bitmap with one screen RAM
-//! (hires) or screen RAM, colour RAM and background colour (multicolour).
+//! (hires) or screen RAM, color RAM and background color (multicolor).
 //!
 //! Sources (memory maps):
 //! - Codebase64 "C64 Graphics File Format Specs" (CB),
@@ -15,15 +15,15 @@
 //! | Wigmore Artist 64, Blazing Paddles, Vidcom 64, Image System multi | CB, BT, GD |
 //! | Advanced Art Studio, Saracen Paint, Paint Magic, Drazpaint | CB, GD |
 //! | Art Studio, Interpaint hires, Image System hires, Hi-Eddi, Doodle (DD, JJ) | CB, BT, GD |
-//! | Hires-Bitmap (mono), Gigapaint hires, Giga-CAD, Mono Magic | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap, GD format table <https://www.godot64.de/german/formats.htm>; colours observed from `recoil2png` output |
+//! | Hires-Bitmap (mono), Gigapaint hires, Giga-CAD, Mono Magic | <http://fileformats.archiveteam.org/wiki/Hires-Bitmap>, GD HiresBitmap, GD format table <https://www.godot64.de/german/formats.htm>; colors observed from `recoil2png` output |
 //! | Micro Illustrator (uncompressed only) | GD MIllustr8or <https://www.godot64.de/german/l_millu.htm> |
 //! | Picasso 64 | <http://fileformats.archiveteam.org/wiki/Picasso_64> (load `$1800`, size); Vidcom's layout at `$1800`, background at `$1FFF`: reverse engineered from 9 samples with different backgrounds and checked against `recoil2png` output |
-//! | Cheese | <http://fileformats.archiveteam.org/wiki/Cheese> (size); load `$8000`, bitmap `$8000`, screen `$C200`, colour `$C800`, background `$CFFD`: reverse engineered from 3 samples and checked against `recoil2png` output (changing `$CFFD` changes its background) |
-//! | Rainbow Painter | <http://fileformats.archiveteam.org/wiki/Rainbow_Painter> (size); load `$5C00`, screen `$5C00`, bitmap `$6000`, colour `$8000`: reverse engineered from 2 samples. No byte sets the background: `recoil2png` shows black whatever the unused bytes hold |
-//! | Face Painter | Koala layout at `$4000` plus one trailing byte: reverse engineered from 3 samples by mutating bytes and watching `recoil2png` (bitmap `$4000`, screen `$5F40`, colour `$6328`, background `$6710`; the byte after it changes nothing) |
+//! | Cheese | <http://fileformats.archiveteam.org/wiki/Cheese> (size); load `$8000`, bitmap `$8000`, screen `$C200`, color `$C800`, background `$CFFD`: reverse engineered from 3 samples and checked against `recoil2png` output (changing `$CFFD` changes its background) |
+//! | Rainbow Painter | <http://fileformats.archiveteam.org/wiki/Rainbow_Painter> (size); load `$5C00`, screen `$5C00`, bitmap `$6000`, color `$8000`: reverse engineered from 2 samples. No byte sets the background: `recoil2png` shows black whatever the unused bytes hold |
+//! | Face Painter | Koala layout at `$4000` plus one trailing byte: reverse engineered from 3 samples by mutating bytes and watching `recoil2png` (bitmap `$4000`, screen `$5F40`, color `$6328`, background `$6710`; the byte after it changes nothing) |
 //! | Dolphin Ed | Drazpaint's memory map at `$5800` with the background at `$5FE8` (offset 2026), 10242 bytes: reverse engineered from 1 sample by mutating bytes and watching `recoil2png`. The background is found by changing it (the sample's own is black) |
 //! | Hires-Editor (HET) | Doodle's map (screen `$5C00`, bitmap `$6000`) in a 9217-byte file, one byte short of Doodle's: reverse engineered from 1 sample by mutating bytes and watching `recoil2png`; the bytes after the bitmap change nothing |
-//! | Zoomatic (ZOM) | Koala's layout (bitmap, screen RAM, colour RAM, background; 10001 bytes) in the escape-last RLE of [`escape_last_rle`]. Read from the save routine of Zoomatic 5.7, which packs `$6000-$8710` after copying the screen RAMs behind the bitmap, and from the loader in Showmatic; checked against `recoil2png` with Koala pictures repacked that way |
+//! | Zoomatic (ZOM) | Koala's layout (bitmap, screen RAM, color RAM, background; 10001 bytes) in the escape-last RLE of [`escape_last_rle`]. Read from the save routine of Zoomatic 5.7, which packs `$6000-$8710` after copying the screen RAMs behind the bitmap, and from the loader in Showmatic; checked against `recoil2png` with Koala pictures repacked that way |
 //! | Hi-Pic Creator | <http://fileformats.archiveteam.org/wiki/Hi-Pic_Creator> (size); bitmap-then-screen order checked against `recoil2png` output |
 
 use super::prg::Prg;
@@ -34,7 +34,7 @@ use alloc::vec::Vec;
 
 const HEIGHT: usize = 200;
 
-/// Memory map of a multicolour picture.
+/// Memory map of a multicolor picture.
 pub(super) struct Multicolor {
     pub load: u16,
     /// Accepted file sizes, including the load address.
@@ -103,7 +103,7 @@ impl Hires {
     }
 }
 
-/// Koala layout: bitmap, screen, colour, background, all consecutive.
+/// Koala layout: bitmap, screen, color, background, all consecutive.
 const fn koala_at(load: u16, sizes: &'static [usize]) -> Multicolor {
     Multicolor {
         load,
@@ -257,7 +257,7 @@ pub(super) fn decode_hi_pic_creator(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// Paint Magic: display code, bitmap, background, one byte filling the
-/// whole colour RAM, border, screen.
+/// whole color RAM, border, screen.
 pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 9332 {
         return Err(DecodeError::Unrecognized);
@@ -280,7 +280,7 @@ pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Micro Illustrator, uncompressed: 22-byte header (load address, magic
 /// `FF 80 69 67`, header length 20, compression 0, background, ...), then
-/// screen, colour RAM and bitmap. The magic is optional (some files have
+/// screen, color RAM and bitmap. The magic is optional (some files have
 /// zeroes there); byte 7 (compression) must be 0. Size 10022 only. See
 /// docs/research/gaps-corpus-other.md.
 pub(super) fn decode_micro_illustrator(data: &[u8]) -> Result<Image, DecodeError> {
@@ -340,7 +340,7 @@ pub(super) fn decode_cheese(data: &[u8]) -> Result<Image, DecodeError> {
     CHEESE.decode(data)
 }
 
-/// Rainbow Painter: screen, bitmap and colour RAM from `$5C00`, on black.
+/// Rainbow Painter: screen, bitmap and color RAM from `$5C00`, on black.
 pub(super) fn decode_rainbow_painter(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 10242 {
         return Err(DecodeError::Unrecognized);
@@ -369,7 +369,7 @@ pub(super) fn decode_advanced_art_studio(data: &[u8]) -> Result<Image, DecodeErr
 }
 
 /// Saracen Paint: `$7800-$9FE8`. Some files stop at `$9F1F`, before the
-/// last five rows of colour RAM; one such sample is a byte-exact prefix of
+/// last five rows of color RAM; one such sample is a byte-exact prefix of
 /// a full file whose missing tail is all zeros, so the tail is zero-filled.
 pub(super) fn decode_saracen_paint(data: &[u8]) -> Result<Image, DecodeError> {
     const SHORT_LEN: usize = 2 + 0x9f20 - 0x7800;

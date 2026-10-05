@@ -18,7 +18,7 @@
 //! The Timex TC2048 (Z80 hardware 14) is read when its screen port value
 //! (byte 35) is 0, the standard screen; the one sample
 //! (`corpus/extra/zx-timex-samram`, an emulator state after reset) uses no
-//! other mode, so the Timex hi-colour and hi-res modes are not read here.
+//! other mode, so the Timex hi-color and hi-res modes are not read here.
 //! That byte's meaning is taken from the sample's manifest, not from the Z80
 //! specification, which doesn't mention Timex machines.
 //!

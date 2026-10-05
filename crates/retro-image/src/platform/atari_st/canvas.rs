@@ -152,14 +152,14 @@ impl<'a> Hbl<'a> {
         })
     }
 
-    /// The `colors` hardware colours of line `y`, or `None` above the
+    /// The `colors` hardware colors of line `y`, or `None` above the
     /// first used entry.
     fn palette(&self, y: usize, colors: usize) -> Option<Vec<u32>> {
         let position = y / HBL_LINES;
         let ordinal = (*self.entries.get(position)?)?;
         let record = &self.records[(self.used - ordinal) * HBL_RECORD_LEN..][..HBL_RECORD_LEN];
         // The palette set from the top of the screen maps pens like a
-        // 16-colour mode even in medium resolution (observed from
+        // 16-color mode even in medium resolution (observed from
         // `recoil2png` output).
         let pen_colors = if ordinal == 0 && self.first_entry_at_top() {
             16

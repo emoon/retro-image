@@ -9,15 +9,15 @@
 //!   Dirk Stöcker, "Amiga Icon Format" (2002), OS1.x/OS2.x section
 //!   (<http://www.evillabs.net/index.php/Amiga_Icon_Formats>), and Deark's
 //!   `modules/amigaicon.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence, notice below).
+//!   license, notice below).
 //! - The icon revision in the low byte of the gadget's UserData (+44), which
 //!   also says whether DrawerData2 is present: Stöcker and Deark.
 //! - Workbench 1.x pens (blue, white, black, orange) for revision 0, 2.x
-//!   pens (grey, black, white, blue) otherwise, and doubled lines for the
+//!   pens (gray, black, white, blue) otherwise, and doubled lines for the
 //!   high-resolution screen: observed from `recoil2png` output. The 2.x
 //!   blue (`$3B67A2`, from Deark) is not used by any 2-plane sample.
 //! - 3-plane 2.x icons: the 2.x pens followed by the other four MagicWB
-//!   colours (dark grey, light grey, beige, pink). The order is observed
+//!   colors (dark gray, light gray, beige, pink). The order is observed
 //!   from `recoil2png` output; beige (`$AA907C`, unused by the samples) is
 //!   from Deark's MagicWB palette.
 //!
@@ -27,8 +27,8 @@
 //! to the file (`glowicon`). We show the normal state of the best one that
 //! decodes: GlowIcon, then NewIcon, then classic. RECOIL shows only the
 //! classic image. NewIcons and GlowIcons are drawn for square pixels and
-//! are not doubled; their transparent colour becomes the Workbench 2.x
-//! background pen, the colour the classic image's colour 0 shows as.
+//! are not doubled; their transparent color becomes the Workbench 2.x
+//! background pen, the color the classic image's color 0 shows as.
 
 // Workbench pen values and the walk over the DiskObject's optional parts
 // follow Deark's modules/amigaicon.c (Deark, https://github.com/jsummers/deark):
@@ -113,7 +113,7 @@ fn decode_classic(data: &[u8]) -> Result<Image, DecodeError> {
     let width = usize::from(be16(header, 4).ok_or(fail)?);
     let height = usize::from(be16(header, 6).ok_or(fail)?);
     let depth = usize::from(be16(header, 8).ok_or(fail)?);
-    // Only depths whose colours all have a known pen.
+    // Only depths whose colors all have a known pen.
     if !(2..=3).contains(&depth) || 1 << depth > palette.len() {
         return Err(fail);
     }
@@ -228,7 +228,7 @@ mod tests {
         let mut image = vec![0; IMAGE_HEADER_LEN];
         image[4..10].copy_from_slice(&[0, 16, 0, 1, 0, 2]);
         data.extend(image);
-        data.extend([0x80, 0, 0x80, 0]); // pixel 0 has colour 3
+        data.extend([0x80, 0, 0x80, 0]); // pixel 0 has color 3
         if !tool_types.is_empty() {
             data[54] = 1;
             let count = (tool_types.len() as u32 + 1) * 4;
