@@ -19,13 +19,14 @@
 //! Verification: no RECOIL or Deark support; output reviewed by eye.
 
 use super::cga::unpack_2bit;
-use super::cga_set;
+use super::pcpaint::CGA_4;
 use crate::{DecodeError, Image};
 
 const WIDTH: usize = 320;
 const HEIGHT: usize = 200;
 const FILE_LEN: usize = WIDTH / 4 * HEIGHT;
-const PALETTE: [u32; 4] = cga_set([11, 13, 15]);
+/// CGA palette 1 at high intensity.
+const PALETTE: [u32; 4] = CGA_4[3];
 
 pub(super) fn decode_raw_cga(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FILE_LEN {

@@ -73,9 +73,9 @@
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
+use super::CGA_PALETTE;
 use super::cga::{BANK_STRIDE, deinterlace, unpack_2bit};
 use super::pcpaint::{CGA_4, VGA_PALETTE, unpack_blocks};
-use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
 use crate::platform::textmode;
 use crate::{DecodeError, Image};
@@ -90,7 +90,7 @@ const HEIGHT: usize = 200;
 const ROW_LEN: usize = WIDTH / 4;
 const SCREEN_LEN: usize = 2 * BANK_STRIDE;
 /// CGA palette 1 at high intensity.
-const DEFAULT_PALETTE: [u32; 4] = cga_set([11, 13, 15]);
+const DEFAULT_PALETTE: [u32; 4] = CGA_4[3];
 /// Where PCPaint keeps its mark, in the gap between the CGA banks.
 const PCPAINT_MARK: &[u8] = b"PCPaint V1.";
 const PCPAINT_MARK_AT: usize = 8000;

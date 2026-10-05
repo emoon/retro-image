@@ -43,7 +43,7 @@
 use alloc::vec;
 
 use super::cga::{deinterlace, unpack_2bit};
-use super::cga_set;
+use super::pcpaint::CGA_4;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -63,7 +63,7 @@ const SCREENS: [(usize, usize, usize); 4] = [
     (6 * BANK_LEN + MAGIC.len(), SCREEN_WIDTH, SCREEN_HEIGHT),
 ];
 /// CGA palette 0 at low intensity.
-const PALETTE: [u32; 4] = cga_set([2, 4, 6]);
+const PALETTE: [u32; 4] = CGA_4[1];
 
 /// The size and the magic in the middle of the file together make this a
 /// reliable signature.
