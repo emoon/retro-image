@@ -15,25 +15,30 @@ pub(crate) fn unpack(src: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
     let mut out = Vec::with_capacity(len.min(src.len().saturating_mul(64)));
     let mut pos = 0;
     while out.len() < len {
-        let n = *src.get(pos)? as i8;
-        pos += 1;
-        match n {
-            0..=127 => {
-                let count = n as usize + 1;
-                let literal = src.get(pos..pos + count)?;
-                pos += count;
-                out.extend_from_slice(literal);
-            }
-            -127..=-1 => {
-                let value = *src.get(pos)?;
-                pos += 1;
-                out.resize(out.len() + (1 - n as isize) as usize, value);
-            }
-            -128 => {}
-        }
+        pos = packet(src, pos, &mut out)?;
     }
     out.truncate(len);
     Some((out, pos))
+}
+
+/// Unpacks the packet at `pos` into `out` and returns the position after it,
+/// or `None` if `src` ends inside it.
+fn packet(src: &[u8], pos: usize, out: &mut Vec<u8>) -> Option<usize> {
+    let n = *src.get(pos)? as i8;
+    let pos = pos + 1;
+    match n {
+        0..=127 => {
+            let count = n as usize + 1;
+            out.extend_from_slice(src.get(pos..pos + count)?);
+            Some(pos + count)
+        }
+        -127..=-1 => {
+            let value = *src.get(pos)?;
+            out.resize(out.len() + (1 - n as isize) as usize, value);
+            Some(pos + 1)
+        }
+        -128 => Some(pos),
+    }
 }
 
 #[cfg(test)]
