@@ -1,10 +1,24 @@
 //! Cels: a `CCB ` chunk, one `PDAT` chunk of source data and optionally a
 //! `PLUT` chunk, as `.cel` files and (the first frame of) `.anim` files hold.
 //!
-//! Sources: see the parent module. The `CCB ` chunk is the cel control block
-//! as 18 big-endian words after its header: version, flags, three pointers,
-//! position, six size and perspective words, `PIXC`, the two preamble words
-//! `PRE0` and `PRE1`, width and height. The flags used here are `PACKED`
+//! Sources:
+//! - "3DO File Format" in the 3DO Portfolio 2.5 documentation
+//!   (`ppgfldr/smmfldr/cdmfldr/08CDM001.html`, mirrored at
+//!   <https://3dodev.com/documentation/file_formats/media/container/3do> and in
+//!   <https://github.com/trapexit/3do-devkit> `docs/3dosdk/`; prose only, its
+//!   license is not stated): the chunks and the `CCB `, `PLUT` and `ANIM`
+//!   layouts.
+//! - The Graphics Programmer's Guide of the same documentation (`5gpgc.html`
+//!   on the CCB flags, `5gpgd.html` on packed and unpacked source data,
+//!   `5gpge.html` on the preamble words and `3gpgc.html` on the pixel decoder,
+//!   under `ppgfldr/ggsfldr/gpgfldr/`; prose only).
+//! - The `CCBPRE` rule, the unpacked row stride and the 16-bit coded cels were
+//!   found by checking the documents against the samples of
+//!   `trapexit/3do-devkit` (data only, none of its source was read).
+//!
+//! The `CCB ` chunk is the cel control block as 18 big-endian words after its
+//! header: version, flags, three pointers, position, six size and perspective
+//! words, `PIXC`, the two preamble words `PRE0` and `PRE1`, width and height. The flags used here are `PACKED`
 //! (bit 9), `BGND` (bit 5), `CCBPRE` (bit 22, the preamble is in the chunk,
 //! not at the start of the data) and the four `PLUTA` bits (0 to 3). `PRE0`
 //! gives bits per pixel (bits 0 to 2: 1, 2, 4, 6, 8, 16 for 1 to 6), `UNCODED`
@@ -12,7 +26,7 @@
 //! cels the pixels per row minus one (bits 0 to 10), `LRFORM` (bit 11) and the
 //! row stride in words minus two (`WOFFSET`: bits 24 to 31 up to 6 bits per
 //! pixel, bits 16 to 25 for 8 and 16). A packed cel takes its width from
-//! the `CCB `.
+//! the `CCB ` (up to 2048 pixels).
 //!
 //! Unpacked rows start on word boundaries. A packed row starts with an offset
 //! (8 bits for pixels of 6 bits or less in the first byte, else 10 bits in the
