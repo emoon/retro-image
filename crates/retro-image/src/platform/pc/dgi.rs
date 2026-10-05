@@ -73,7 +73,7 @@ mod tests {
     fn quadrants_land_in_their_corners() {
         let mut file = vec![0u8; FILE_LEN];
         file[MAGIC_AT..][..MAGIC.len()].copy_from_slice(&MAGIC);
-        // First pixel of each screen: colours 1, 2, 3 and 2.
+        // First pixel of each screen: colors 1, 2, 3 and 2.
         for (&(start, _, _), value) in SCREENS.iter().zip([1u8, 2, 3, 2]) {
             file[start] = value << 6;
         }

@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 pub(super) const BANK_STRIDE: usize = 8192;
 
 /// Four pixel values per byte, leftmost pixel in the high bits (the 320x200
-/// 4-colour mode, 2 bits per pixel).
+/// 4-color mode, 2 bits per pixel).
 pub(super) fn unpack_2bit(bytes: &[u8]) -> Vec<u8> {
     bytes
         .iter()

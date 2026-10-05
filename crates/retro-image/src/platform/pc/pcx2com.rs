@@ -62,7 +62,7 @@ mod tests {
         com[..STUB.len()].copy_from_slice(&STUB);
         com[SIGNATURE_AT..SIGNATURE_AT + 8].copy_from_slice(&SIGNATURE);
         com[PALETTE_AT + 3..PALETTE_AT + 6].copy_from_slice(&[63, 0, 32]);
-        // 64000 pixels of colour 1: 1015 runs of 63, then one of 55.
+        // 64000 pixels of color 1: 1015 runs of 63, then one of 55.
         for _ in 0..1015 {
             com.extend_from_slice(&[0xc0 | 63, 1]);
         }
