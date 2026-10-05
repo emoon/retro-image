@@ -72,7 +72,7 @@ pub(super) fn decode_set(data: &[u8], companions: &dyn Companions) -> Result<Ima
         .iter()
         .map(|name| {
             let kcf = fetch(companions, name)?;
-            read_palette(&kcf, set.group).map(|colors| full_palette(Some(colors), None))
+            read_palette(&kcf, set.group).map(|colors| full_palette(Some(colors), 8))
         })
         .collect();
     let background = palettes
@@ -97,7 +97,12 @@ pub(super) fn decode_set(data: &[u8], companions: &dyn Companions) -> Result<Ima
         let (x, y) = (x + cel.x as i64, y + cel.y as i64);
         match palettes.get(entry.palette).and_then(Option::as_ref) {
             Some(palette) => cel.draw(&mut canvas, x, y, palette),
-            None => cel.draw(&mut canvas, x, y, &full_palette(None, cel.index_bits())),
+            None => {
+                let gray = cel
+                    .index_bits()
+                    .map_or_else(Vec::new, |bits| full_palette(None, bits));
+                cel.draw(&mut canvas, x, y, &gray);
+            }
         }
         drawn += 1;
     }

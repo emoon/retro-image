@@ -42,11 +42,18 @@ mod set;
 
 pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("KiSS", "Cel", &["cel"], decode_cel).signature(),
-    // No header to check: only the exact size tells it from other `.cel` files.
-    Format::with_companions("KiSS", "Conventional cel", &["cel"], decode_old_cel),
     // A text file naming the cels and palettes it places; no signature.
     Format::with_companions("KiSS", "Set", &["cnf"], set::decode_set),
 ];
+
+/// No header to check: only the exact size tells this cel from other `.cel`
+/// files, so the registry puts it after every other claimant of the extension.
+pub(super) static BY_SIZE: &[Format] = &[Format::with_companions(
+    "KiSS",
+    "Conventional cel",
+    &["cel"],
+    decode_old_cel,
+)];
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
 const HEADER_LEN: usize = 32;
@@ -207,10 +214,11 @@ fn decode_old_cel(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
 /// The cel alone on the transparent fill, through the palette file with its
 /// stem.
 fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let palette = full_palette(
-        companions.get("kcf").and_then(|kcf| read_palette(&kcf, 0)),
-        cel.index_bits(),
-    );
+    // A cel with its own colors needs no palette file.
+    let palette = cel.index_bits().map_or_else(Vec::new, |bits| {
+        let colors = companions.get("kcf").and_then(|kcf| read_palette(&kcf, 0));
+        full_palette(colors, bits)
+    });
     let fill = core::iter::repeat(TRANSPARENT_FILL);
     let mut image = Image::from_colors(cel.width as u32, cel.height as u32, fill);
     cel.draw(&mut image, 0, 0, &palette);
@@ -219,8 +227,8 @@ fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError>
 
 /// The 256 colors an indexed cel looks up: `colors` if there are some, else a
 /// gray ramp, and black past the end of a short palette.
-fn full_palette(colors: Option<Vec<u32>>, bits: Option<u8>) -> Vec<u32> {
-    let mut palette = colors.unwrap_or_else(|| gray_ramp(bits.unwrap_or(8)));
+fn full_palette(colors: Option<Vec<u32>>, bits: u8) -> Vec<u32> {
+    let mut palette = colors.unwrap_or_else(|| gray_ramp(bits));
     palette.resize(256, 0);
     palette
 }
@@ -358,6 +366,42 @@ mod tests {
         assert_eq!(read_palette(&kcf, 5).unwrap()[0], 0xff0000);
         assert!(read_palette(&kcf[..60], 0).is_none());
         assert_eq!(read_palette(&kcf, 0).unwrap().len(), 16);
+    }
+
+    #[test]
+    fn the_size_gated_cel_is_tried_after_every_other_cel_format() {
+        let by_extension: Vec<&Format> = crate::candidates("doll.cel")
+            .filter(|f| f.matches_filename("doll.cel"))
+            .collect();
+        assert!(by_extension.len() > 2, "several formats claim .cel");
+        assert_eq!(by_extension.last().unwrap().name, "Conventional cel");
+    }
+
+    #[test]
+    fn a_cherry_kiss_cel_does_not_ask_for_a_palette_file() {
+        struct Asked(core::cell::Cell<bool>);
+
+        impl Companions for Asked {
+            fn get(&self, _extension: &str) -> Option<Vec<u8>> {
+                self.0.set(true);
+                None
+            }
+
+            fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+                None
+            }
+        }
+
+        let mut cel = header(CKISS_MARK, 32, 1, 1);
+        cel.extend_from_slice(&[1, 2, 3, 255]);
+        let asked = Asked(core::cell::Cell::new(false));
+        decode_cel(&cel, &asked).unwrap();
+        assert!(!asked.0.get());
+        // An indexed cel does.
+        let mut cel = header(CEL_MARK, 8, 1, 1);
+        cel.push(1);
+        decode_cel(&cel, &asked).unwrap();
+        assert!(asked.0.get());
     }
 
     #[test]

@@ -73,7 +73,9 @@ pub(crate) static ALL: &[&[Format]] = &[
     trs80::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
-    // Last: its headerless `.cut`, `.grf` and `.spc` formats are recognized
-    // by size, so every other claimant of those extensions goes first.
+    // Last: formats recognized by size alone (PCW `.cut`, `.grf` and `.spc`,
+    // the KiSS conventional `.cel`), so every other claimant of those
+    // extensions goes first.
     amstrad_pcw::FORMATS,
+    kiss::BY_SIZE,
 ];
