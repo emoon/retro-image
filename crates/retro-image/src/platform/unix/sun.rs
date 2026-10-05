@@ -67,10 +67,12 @@ pub(super) fn decode_sun(data: &[u8]) -> Result<Image, DecodeError> {
     let bits_per_row = width.checked_mul(depth as usize).ok_or(FAIL)?;
     let row_len = bits_per_row.div_ceil(16) * 2;
     let total = row_len.checked_mul(height).ok_or(FAIL)?;
-    let raster = if kind == TYPE_BYTE_ENCODED {
-        unpack(packed, total)?
+    let unpacked;
+    let raster: &[u8] = if kind == TYPE_BYTE_ENCODED {
+        unpacked = unpack(packed, total)?;
+        &unpacked
     } else {
-        packed.get(..total).ok_or(FAIL)?.to_vec()
+        packed.get(..total).ok_or(FAIL)?
     };
 
     let (w, h) = (width as u32, height as u32);
@@ -82,7 +84,7 @@ pub(super) fn decode_sun(data: &[u8]) -> Result<Image, DecodeError> {
             } else {
                 [0xff_ffff, 0]
             };
-            Image::from_bits(w, h, &raster, row_len, BitOrder::MsbFirst, colors)
+            Image::from_bits(w, h, raster, row_len, BitOrder::MsbFirst, colors)
         }
         8 => {
             let palette = if map_kind == 1 {

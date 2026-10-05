@@ -92,8 +92,9 @@ fn decode_bits(
     let unit = if wide { 2 } else { 1 };
     let row_len = width.div_ceil(8 * unit) * unit;
     let values = row_len / unit * height;
-    // Every value takes at least two characters, a number and a separator.
-    if values > tokens.data.len() {
+    // Every value takes at least two characters, a number and a separator
+    // (the closing brace for the last one): refuse before allocating.
+    if values > tokens.data.len() / 2 {
         return Err(FAIL);
     }
     let mut bitmap = Vec::with_capacity(row_len * height);

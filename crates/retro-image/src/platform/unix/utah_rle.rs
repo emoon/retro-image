@@ -134,10 +134,11 @@ pub(super) fn decode_utah_rle(data: &[u8]) -> Result<Image, DecodeError> {
     }
     check_size(width, height)?;
 
-    // The background color, padded to an odd length (the fixed header is odd).
+    // The background color. The paper pads it to an odd length, which a
+    // channel count of 1 or 3 already is.
     let mut pos = FIXED_HEADER_LEN;
     let background = data.get(pos..pos + colors).ok_or(FAIL)?;
-    pos += colors + (colors + 1) % 2;
+    pos += colors;
     let map = if map_channels == 0 {
         None
     } else {
@@ -272,9 +273,6 @@ mod tests {
         bytes.extend_from_slice(&height.to_le_bytes());
         bytes.extend_from_slice(&[flags, colors, 8, 0, 8]);
         bytes.extend(core::iter::repeat_n(0, usize::from(colors)));
-        if colors.is_multiple_of(2) {
-            bytes.push(0);
-        }
         bytes
     }
 

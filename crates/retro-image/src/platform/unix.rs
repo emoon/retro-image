@@ -64,6 +64,9 @@ pub(super) static FORMATS: &[Format] = &[
 
 /// Scales a sample of `0..=max` to `0..=255`, rounding to nearest. Values
 /// above `max` count as `max`.
+///
+/// Panics if `max` is 0 (a division by zero); every caller has a maximum of
+/// at least 1 from its header or its mask.
 pub(super) fn to_byte(value: u32, max: u32) -> u8 {
     let value = u64::from(value.min(max));
     ((value * 255 + u64::from(max) / 2) / u64::from(max)) as u8
