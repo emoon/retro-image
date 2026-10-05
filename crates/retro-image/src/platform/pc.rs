@@ -25,6 +25,7 @@
 //!   `pc/printmaster.rs`, PrintPartner in `pc/printpartner.rs`.
 //! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
 //! - IBM Storyboard pictures: see `pc/storyboard.rs`.
+//! - Inset PIX pictures: see `pc/inset_pix.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -43,6 +44,7 @@ mod halo;
 mod halo_pic;
 mod ico;
 mod image72;
+mod inset_pix;
 mod pcpaint;
 mod pcx;
 mod printmaster;
@@ -127,6 +129,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
+    // Item index, mandatory items and every tile are checked, but there is no
+    // magic number: claimed by extension only (`.pix` is also Atari and TRS-80).
+    Format::new("PC", "Inset PIX", &["pix"], inset_pix::decode_pix),
     // The `EP_CAP` text makes the first kind detectable by content. The later
     // kind has only a header check and a strictly decoded stream, so it is
     // claimed by extension, after the other `.pic` formats.
