@@ -20,9 +20,12 @@
 //! The length table is not used, since each row ends with a zero count or at
 //! the picture width.
 //!
-//! Verification: compared pixel for pixel with Pillow's SGI reader and with
-//! Deark's; see the divergence file `unix-rasters.tsv` for which tool covers
-//! which sample.
+//! Verification: no RECOIL oracle. Output matches Pillow's SGI reader and
+//! Deark's pixel for pixel on the 15 samples with 8-bit channels. On the
+//! 16-bit `norle-16.sgi` both take the high byte of each sample, so they
+//! differ from our rounding by at most 2 levels (the output equals an
+//! independent numpy parse that rounds). See the divergence file
+//! `unix-rasters.tsv`.
 
 use super::{over_fill, to_byte};
 use crate::bytes::{be16, be32};

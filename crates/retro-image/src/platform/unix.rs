@@ -1,12 +1,15 @@
 //! Unix and workstation raster formats.
 //!
-//! Each format cites its own sources in its submodule: `unix/pnm.rs`, `unix/sun.rs`,
-//! `unix/sgi.rs`, `unix/xbm.rs`,
-//! `unix/xpm.rs`, `unix/xwd.rs`,
-//! `unix/farbfeld.rs`, `unix/utah_rle.rs`.
-//! Survey: `docs/research/gaps-computers-extra.md` (candidate C4). These are
-//! general-purpose formats, like GIF and BMP on the PC, so no machine of the
-//! RECOIL list owns them; the platform is named `Unix`.
+//! These are general-purpose formats, like GIF and BMP on the PC, so no
+//! machine of the RECOIL list owns them; the platform is named `Unix`.
+//! Survey: `docs/research/gaps-computers-extra.md` (candidate C4).
+//!
+//! Each submodule (`pnm.rs`, `sun.rs`, `sgi.rs`, `xbm.rs`, `xpm.rs`, `xwd.rs`,
+//! `farbfeld.rs`, `utah_rle.rs`) cites its own sources; `c_source.rs` is the
+//! tokenizer that XBM and XPM share. All of them check a signature. The
+//! `.rgb` decoders of Atari and ZX Spectrum and the `.rle` decoder of the
+//! TRS-80 come earlier in the registry and accept only their own layout, so
+//! their files still reach them first.
 //!
 //! The helpers below hold the two pieces of arithmetic every format of the
 //! family needs: sample widths above 8 bits and an alpha channel, neither of

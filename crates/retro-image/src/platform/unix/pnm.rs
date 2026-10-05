@@ -20,9 +20,12 @@
 //! a file is decoded, and anything after it is ignored. The XV thumbnail
 //! variant of `P7` is not accepted.
 //!
-//! Verification: compared pixel for pixel with Pillow's PPM reader and with a
-//! separate numpy parser for the 16-bit and PAM files (see the divergence file
-//! `unix-rasters.tsv`).
+//! Verification: no RECOIL oracle. Output matches Pillow's PPM reader pixel
+//! for pixel on the PBM, PGM and PPM samples (one 16-bit PGM is out of its
+//! reach), and Deark's `pnm` module on the PAM files and that PGM. Deark takes
+//! the high byte of 16-bit samples where Pillow and we round, which differs by
+//! one level on `lighthouse_rgb48.ppm`. See the divergence file
+//! `unix-rasters.tsv`.
 
 use alloc::vec::Vec;
 
