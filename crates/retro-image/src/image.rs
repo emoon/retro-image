@@ -68,6 +68,10 @@ pub(crate) fn rgb565(word: u16) -> u32 {
 /// light gray, which stays visible against both white and black artwork.
 pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 
+/// A fully transparent pixel as [`Image::get_argb`] reports it.
+#[cfg(test)]
+pub(crate) const CLEAR: u32 = 0;
+
 /// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
 /// transparent and 255 for opaque, rounded to the nearest level.
 pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
@@ -82,12 +86,6 @@ pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
 /// `color` drawn over [`TRANSPARENT_FILL`] with `alpha`.
 pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
     over(TRANSPARENT_FILL, color, alpha)
-}
-
-/// `0xAARRGGBB` over [`TRANSPARENT_FILL`] as `0xRRGGBB`: the form the texture
-/// formats decode to.
-pub(crate) fn over_fill_argb(argb: u32) -> u32 {
-    over_fill(argb & 0xff_ffff, (argb >> 24) as u8)
 }
 
 /// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
@@ -154,6 +152,23 @@ impl Image {
             let [_, r, g, b] = color.to_be_bytes();
             *pixel = [r, g, b];
         }
+        image
+    }
+
+    /// An image from straight `0xAARRGGBB` pixels in row-major order; pixels
+    /// the iterator doesn't reach stay opaque black.
+    pub(crate) fn from_argb(width: u32, height: u32, pixels: impl Iterator<Item = u32>) -> Self {
+        let mut image = Self::new(width, height);
+        let mut alpha = alloc::vec![255; image.rgb.len() / 3];
+        let mut opaque = true;
+        let targets = image.rgb.as_chunks_mut::<3>().0.iter_mut().zip(&mut alpha);
+        for ((color, slot), argb) in targets.zip(pixels) {
+            let [a, r, g, b] = argb.to_be_bytes();
+            *color = [r, g, b];
+            *slot = a;
+            opaque &= a == 255;
+        }
+        image.alpha = (!opaque).then_some(alpha);
         image
     }
 
@@ -278,6 +293,18 @@ impl Image {
         let i = y as usize * self.width as usize + x as usize;
         let [r, g, b] = self.rgb.as_chunks::<3>().0[i];
         u32::from_be_bytes([0, r, g, b])
+    }
+
+    /// The pixel at (`x`, `y`) as straight `0xAARRGGBB`, with every fully
+    /// transparent pixel as 0.
+    #[cfg(test)]
+    pub(crate) fn get_argb(&self, x: u32, y: u32) -> u32 {
+        let i = y as usize * self.width as usize + x as usize;
+        let alpha = self.alpha.as_ref().map_or(255, |a| a[i]);
+        match alpha {
+            0 => CLEAR,
+            _ => (u32::from(alpha) << 24) | self.get(x, y),
+        }
     }
 
     /// An image from one palette index per pixel, row-major.
@@ -757,14 +784,6 @@ mod tests {
         assert_eq!(gray_ramp(2), [0xff00_0000, 0xffff_ffff]);
         assert_eq!(gray_ramp(16)[1], 0xff11_1111);
         assert_eq!(gray_ramp(1), [0xff00_0000]);
-    }
-
-    #[test]
-    fn over_fill_argb_flattens_alpha_over_the_fill() {
-        assert_eq!(over_fill_argb(0xff12_3456), 0x123456);
-        assert_eq!(over_fill_argb(0x0012_3456), TRANSPARENT_FILL);
-        // Half of white over 0xc0 is 0xdf.5, rounded up.
-        assert_eq!(over_fill_argb(0x80ff_ffff), 0xe0e0e0);
     }
 
     #[test]

@@ -56,7 +56,7 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
 use crate::bytes::le32;
-use crate::image::{check_size, over_fill};
+use crate::image::check_size;
 use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -144,9 +144,9 @@ pub(super) fn decode_aif(data: &[u8]) -> Result<Image, DecodeError> {
         } else {
             0
         };
-        over_fill(u32::from(icon.levels[i]) * 0x01_0101, alpha)
+        (u32::from(alpha) << 24) | (u32::from(icon.levels[i]) * 0x01_0101)
     });
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         icon.width as u32,
         icon.height as u32,
         colors,
@@ -290,8 +290,8 @@ mod tests {
         data.extend_from_slice(&icon);
         data.extend_from_slice(&mask);
         let image = decode_aif(&data).unwrap();
-        assert_eq!(image.get(0, 0), 0xffffff);
-        assert_eq!(image.get(1, 0), crate::image::TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(0, 0), 0xffff_ffff);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
     }
 
     #[test]

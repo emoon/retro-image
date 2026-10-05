@@ -57,7 +57,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, le32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};
-use crate::image::{check_size, gray_ramp, over_fill_argb};
+use crate::image::{check_size, gray_ramp};
 use crate::{Companions, DecodeError, Image};
 
 /// Flag in the low nibble of byte 10: the palette follows the header.
@@ -112,10 +112,10 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
         Some(len) => external_palette(companions, len).unwrap_or_else(|| gray_ramp(len)),
     };
     let argb = gx::decode(format, width, height, body, &palette).ok_or(fail)?;
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         width as u32,
         height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 
@@ -172,10 +172,10 @@ mod tests {
     }
 
     #[test]
-    fn transparent_pixels_take_the_fill_color() {
+    fn transparent_pixels_keep_their_alpha() {
         // RGB5A3 alpha 0 (top bit clear, alpha bits zero).
         let image = decode_gvr(&gvr(0, 5, 4, 4, &[0; 32]), &NoCompanions).unwrap();
-        assert_eq!(image.get(2, 2), crate::image::TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(2, 2), crate::image::CLEAR);
     }
 
     #[test]

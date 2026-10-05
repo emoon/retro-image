@@ -43,7 +43,7 @@
 
 use super::{Chunk, chunks};
 use crate::bytes::{be16, be32};
-use crate::image::{check_size, over_fill_argb, xrgb1555};
+use crate::image::{check_size, xrgb1555};
 use crate::{DecodeError, Image};
 
 /// Widest cel: the cel engine counts the pixels of a row in 11 bits. Packed
@@ -156,10 +156,10 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         read_rows(source, &layout, &color, &mut pixels).ok_or(fail)?;
     }
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         layout.width as u32,
         layout.height as u32,
-        pixels.into_iter().map(over_fill_argb),
+        pixels.into_iter(),
     ))
 }
 
@@ -380,11 +380,7 @@ mod tests {
         let image = decode(&file).unwrap();
         assert_eq!((image.width(), image.height()), (2, 1));
         assert_eq!(image.get(0, 0), 0xff0000);
-        assert_eq!(
-            image.get(1, 0),
-            crate::image::TRANSPARENT_FILL,
-            "zero is clear"
-        );
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR, "zero is clear");
     }
 
     #[test]
@@ -441,8 +437,8 @@ mod tests {
         file.extend(plut(&[0x0000, 0x7c00, 0x03e0]));
         file.extend(pdat(&source));
         let image = decode(&file).unwrap();
-        let row_colors: Vec<u32> = (0..5).map(|x| image.get(x, 1)).collect();
-        let (red, green, clear) = (0xff0000, 0x00ff00, crate::image::TRANSPARENT_FILL);
+        let row_colors: Vec<u32> = (0..5).map(|x| image.get_argb(x, 1)).collect();
+        let (red, green, clear) = (0xffff_0000, 0xff00_ff00, crate::image::CLEAR);
         assert_eq!(row_colors, [red, green, clear, red, red]);
     }
 

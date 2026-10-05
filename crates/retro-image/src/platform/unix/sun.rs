@@ -36,7 +36,6 @@ use alloc::vec::Vec;
 
 use crate::bytes::be32;
 use crate::image::check_size;
-use crate::image::over_fill;
 use crate::{BitOrder, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
@@ -113,13 +112,10 @@ pub(super) fn decode_sun(data: &[u8]) -> Result<Image, DecodeError> {
                 let [a, b, c] = [pixel[bytes - 3], pixel[bytes - 2], pixel[bytes - 1]];
                 let (r, g, b) = if rgb_order { (a, b, c) } else { (c, b, a) };
                 let color = u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b);
-                if has_alpha {
-                    over_fill(color, pixel[0])
-                } else {
-                    color
-                }
+                let alpha = if has_alpha { pixel[0] } else { 255 };
+                u32::from(alpha) << 24 | color
             });
-            Ok(Image::from_colors(w, h, colors))
+            Ok(Image::from_argb(w, h, colors))
         }
     }
 }

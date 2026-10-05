@@ -66,7 +66,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{check_size, gray_ramp, over_fill_argb, rgb565, widen_channel, xrgb1555};
+use crate::image::{check_size, gray_ramp, rgb565, widen_channel, xrgb1555};
 use crate::morton::morton_index;
 use crate::{Companions, DecodeError, Image};
 
@@ -360,10 +360,10 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             }
         }
     }
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         width as u32,
         height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 

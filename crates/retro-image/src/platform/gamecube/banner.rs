@@ -37,7 +37,6 @@
 
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};
-use crate::image::over_fill_argb;
 use crate::{DecodeError, Image};
 
 const BANNER_WIDTH: usize = 96;
@@ -160,10 +159,10 @@ fn picture(
             gx::decode(PixelFormat::C8, width, height, pixels, &colors)?
         }
     };
-    Some(Image::from_colors(
+    Some(Image::from_argb(
         width as u32,
         height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 

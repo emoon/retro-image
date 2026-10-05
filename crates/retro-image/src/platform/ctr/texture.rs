@@ -32,7 +32,7 @@
 //!   rows of the stored data, with the padding in the first.
 
 use super::etc1;
-use crate::image::{check_size, over_fill, widen_channel};
+use crate::image::{check_size, widen_channel};
 use crate::morton::morton_index;
 use crate::{DecodeError, Image};
 
@@ -238,7 +238,7 @@ impl Texture<'_> {
         }
         check_size(visible_width, visible_height)?;
         let tiles_per_row = width / TILE;
-        let mut colors = alloc::vec![0; visible_width * visible_height];
+        let mut colors = alloc::vec![0xff00_0000; visible_width * visible_height];
         // Rows are stored bottom row first, so the picture's rows come from
         // the last tile rows.
         for tile_row in (height - visible_height) / TILE..height / TILE {
@@ -250,15 +250,13 @@ impl Texture<'_> {
                     let x = tile_column * TILE + n % TILE;
                     let y = height - 1 - (tile_row * TILE + n / TILE);
                     if x < visible_width && y < visible_height {
-                        colors[y * visible_width + x] = over_fill(
-                            u32::from_be_bytes([0, pixel[0], pixel[1], pixel[2]]),
-                            pixel[3],
-                        );
+                        colors[y * visible_width + x] =
+                            u32::from_be_bytes([pixel[3], pixel[0], pixel[1], pixel[2]]);
                     }
                 }
             }
         }
-        Ok(Image::from_colors(
+        Ok(Image::from_argb(
             visible_width as u32,
             visible_height as u32,
             colors.into_iter(),
@@ -269,7 +267,7 @@ impl Texture<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
+    use crate::image::CLEAR;
     use alloc::vec::Vec;
 
     /// A 16 x 8 texture (two tiles) of `format` from `data`.
@@ -381,15 +379,15 @@ mod tests {
             height: 8,
             data: &with_alpha,
         };
-        assert_eq!(transparent.image(8, 8).unwrap().get(0, 7), TRANSPARENT_FILL);
+        assert_eq!(transparent.image(8, 8).unwrap().get_argb(0, 7), CLEAR);
     }
 
     #[test]
-    fn alpha_is_composited_onto_the_fill_and_sizes_are_checked() {
+    fn alpha_is_kept_and_sizes_are_checked() {
         let transparent = texture(Format::Rgba8, &[0; 16 * 8 * 4])
             .image(16, 8)
             .unwrap();
-        assert_eq!(transparent.get(0, 0), TRANSPARENT_FILL);
+        assert_eq!(transparent.get_argb(0, 0), CLEAR);
         let opaque = [0xff; 16 * 8 * 4];
         assert_eq!(
             texture(Format::Rgba8, &opaque)

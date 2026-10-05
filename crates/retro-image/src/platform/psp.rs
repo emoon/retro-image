@@ -51,7 +51,7 @@
 
 use alloc::vec::Vec;
 
-use crate::image::{bgr555, check_size, over_fill_argb, widen_channel};
+use crate::image::{bgr555, check_size, widen_channel};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -216,11 +216,7 @@ fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
             color(endian, format, &texel).unwrap_or(0)
         }
     });
-    Ok(Image::from_colors(
-        width as u32,
-        height as u32,
-        argb.map(over_fill_argb),
-    ))
+    Ok(Image::from_argb(width as u32, height as u32, argb))
 }
 
 /// The colors of a palette chunk, padded to 256 entries so that any index of
@@ -340,7 +336,7 @@ mod tests {
         let image = decode_gim(&gim(&indexed)).unwrap();
         assert_eq!(image.get(0, 0), 0x102030);
         // Index 0 is transparent black in this palette.
-        assert_eq!(image.get(1, 0), crate::image::TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(1, 0), crate::image::CLEAR);
         indexed.palette = None;
         assert!(decode_gim(&gim(&indexed)).is_err());
     }
@@ -364,7 +360,7 @@ mod tests {
         let image = decode_gim(&gim(&picture)).unwrap();
         assert_eq!(image.get(0, 1), 0x010203);
         assert_eq!(image.get(16, 0), 0x040506);
-        assert_eq!(image.get(16, 1), crate::image::TRANSPARENT_FILL);
+        assert_eq!(image.get_argb(16, 1), crate::image::CLEAR);
     }
 
     #[test]

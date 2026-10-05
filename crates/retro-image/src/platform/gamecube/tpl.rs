@@ -26,7 +26,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, PaletteFormat, PixelFormat};
-use crate::image::{check_size, gray_ramp, over_fill_argb};
+use crate::image::{check_size, gray_ramp};
 use crate::{DecodeError, Image};
 
 const MAGIC: u32 = 0x0020_af30;
@@ -63,10 +63,10 @@ pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let pixels = data.get(pixels_at..).ok_or(fail)?;
     let argb = gx::decode(format, width, height, pixels, &palette).ok_or(fail)?;
-    Ok(Image::from_colors(
+    Ok(Image::from_argb(
         width as u32,
         height as u32,
-        argb.into_iter().map(over_fill_argb),
+        argb.into_iter(),
     ))
 }
 
