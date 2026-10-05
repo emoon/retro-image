@@ -34,6 +34,7 @@ mod flh;
 mod flic;
 mod gif;
 mod gifexe;
+mod gws_exepic;
 mod halo;
 mod halo_pic;
 mod hp_icn;
@@ -93,6 +94,13 @@ pub(super) static FORMATS: &[Format] = &[
         "GIFEXE self-displaying GIF",
         &["exe"],
         gifexe::decode_gifexe,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "Graphic Workshop self-displaying picture",
+        &["exe"],
+        gws_exepic::decode_gws_exepic,
     )
     .signature(),
     Format::new(
