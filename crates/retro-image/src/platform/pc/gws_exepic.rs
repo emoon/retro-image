@@ -60,12 +60,14 @@ pub(super) fn decode_gws_exepic(data: &[u8]) -> Result<Image, DecodeError> {
     }
     check_size(width, height)?;
     let planes = if depth < 5 { depth } else { 1 };
-    // A row holds `width` bytes, or `width` bits per plane.
+    // A row holds `width` bytes, or `width` bits per plane, and at most one
+    // pad byte (all 14 samples have none).
     let row_min = if depth > 4 { width } else { width.div_ceil(8) };
-    if row_len < row_min {
+    if !(row_min..=row_min + 1).contains(&row_len) {
         return Err(FAIL);
     }
-    check_size(row_len, height)?;
+    // Expanding planes makes a value per bit of the padded rows.
+    check_size(if depth > 4 { row_len } else { row_len * 8 }, height)?;
     let len = row_len * planes * height;
     let stored = data.get(picture..).ok_or(FAIL)?;
     let rows = if compression == RUN_LENGTH {
@@ -108,6 +110,18 @@ mod tests {
     /// A one-row picture behind the header, palette entries 1 to 3 set to
     /// grays 1 to 3, the picture 16-byte aligned after the palette.
     fn exe(width: u16, depth: u16, compression: u16, picture: &[u8]) -> Vec<u8> {
+        let row_len = if depth > 4 { width } else { width.div_ceil(8) };
+        exe_with_rows(width, 1, row_len, depth, compression, picture)
+    }
+
+    fn exe_with_rows(
+        width: u16,
+        height: u16,
+        row_len: u16,
+        depth: u16,
+        compression: u16,
+        picture: &[u8],
+    ) -> Vec<u8> {
         let code = 32;
         let picture_at = (PALETTE_AT + (3 << depth)).next_multiple_of(16);
         let mut file = vec![0u8; code + picture_at];
@@ -116,18 +130,17 @@ mod tests {
         file[16..18].copy_from_slice(&0x200u16.to_le_bytes());
         file[24..26].copy_from_slice(&34u16.to_le_bytes());
         file[code + 29..code + 44].copy_from_slice(b"GraphicWorkshop");
-        let row_len = if depth > 4 { width } else { width.div_ceil(8) };
         for (at, value) in [
             (9, picture_at as u16),
             (11, width),
-            (13, 1),
+            (13, height),
             (15, row_len),
             (17, depth),
             (19, compression),
         ] {
             file[code + at..code + at + 2].copy_from_slice(&value.to_le_bytes());
         }
-        for gray in 1..4 {
+        for gray in 1..(1usize << depth).min(4) {
             file[code + PALETTE_AT + gray * 3..][..3].fill(gray as u8);
         }
         file.extend_from_slice(picture);
@@ -150,6 +163,16 @@ mod tests {
         let image = decode_gws_exepic(&exe(4, 2, STORED as u16, &picture)).unwrap();
         let colors: Vec<u32> = (0..4).map(|x| image.get(x, 0)).collect();
         assert_eq!(colors, [0x010101, 0x020202, 0x030303, 0]);
+    }
+
+    #[test]
+    fn rows_far_wider_than_the_picture_are_rejected_before_expanding_them() {
+        // 8 pixels wide, but 129-byte rows of 1-bit pixels, 65535 rows: the
+        // stored raster passes the size cap, the 1032-pixel rows expanded to
+        // a value each (about 270 MB) would not.
+        let picture = vec![0u8; 129 * 65535];
+        let file = exe_with_rows(8, 65535, 129, 1, STORED as u16, &picture);
+        assert!(decode_gws_exepic(&file).is_err());
     }
 
     #[test]
