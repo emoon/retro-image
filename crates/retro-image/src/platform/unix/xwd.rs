@@ -25,7 +25,9 @@
 //! use the colormap by pixel value (by entry order when the entries do not
 //! have distinct pixel values), or a gray ramp without one. XYPixmap
 //! (several bit planes) is not decoded. A 1-bit file without a colormap
-//! shows 0 as black.
+//! shows 0 as white and 1 as black, which is how ffmpeg reads the 1-bit dumps
+//! it writes (Deark shows them inverted). The samples written by X programs
+//! all have a colormap, so this case comes from other writers.
 //!
 //! The strict header (version 7, known formats and sizes, the image inside
 //! the file) is the signature.
@@ -133,7 +135,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     let (format, depth) = (word(2)?, word(3)?);
     let (width, height) = (word(4)? as usize, word(5)? as usize);
     let (byte_order, bit_order, bitmap_pad) = (word(7)?, word(9)?, word(10)? as usize);
-    let (bitmap_unit, mut bits_per_pixel) = (word(8)? as usize, word(11)? as usize);
+    let (mut bitmap_unit, mut bits_per_pixel) = (word(8)? as usize, word(11)? as usize);
     let bytes_per_line = word(12)? as usize;
     let visual_class = word(13)?;
     let (entries, ncolors) = (word(18)? as usize, word(19)? as usize);
@@ -165,6 +167,13 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     };
     if bits_per_pixel == 24 && bytes_per_line == width * 4 && padded != width * 4 {
         bits_per_pixel = 32;
+    }
+    // The bitmap unit applies to bitmaps only (`XWDFile.h`). The 1-bit pixels
+    // of a ZPixmap are bytes whose bit order is `bitmap_bit_order`, and a row
+    // is as long as `bytes_per_line` says: ffmpeg writes unit 32 with rows of
+    // ceil(width / 8) bytes.
+    if format == Z_PIXMAP {
+        bitmap_unit = 8;
     }
     // A 1-bit row is made of whole bitmap units.
     let used = match bits_per_pixel {
@@ -284,6 +293,13 @@ fn channel(pixel: u32, mask: u32) -> u32 {
 /// entries where there are any, otherwise a gray ramp over the depth.
 fn palette(data: &[u8], h: &Header) -> Vec<u32> {
     let mut palette = alloc::vec![0; 256];
+    if h.colors == 0 && h.depth == 1 {
+        // Black and white in the order of the bitmap formats (PBM, XBM) and of
+        // ffmpeg, which reads and writes its 1-bit dumps this way; Deark
+        // shows them inverted.
+        palette[0] = 0xff_ffff;
+        return palette;
+    }
     if h.colors == 0 {
         let max = (1u32 << h.depth.min(8)) - 1;
         for (value, color) in (0..).zip(palette.iter_mut().take(max as usize + 1)) {
@@ -366,10 +382,10 @@ mod tests {
         bytes
     }
 
-    /// Columns of the first row that are black.
-    fn black(image: &Image) -> Vec<u32> {
+    /// Columns of row `y` that are black.
+    fn black(image: &Image, y: u32) -> Vec<u32> {
         (0..image.width())
-            .filter(|&x| image.get(x, 0) == 0)
+            .filter(|&x| image.get(x, y) == 0)
             .collect()
     }
 
@@ -388,7 +404,7 @@ mod tests {
             ..Spec::default()
         };
         let bytes = file(&lsb, &colors, &[1, 0x80, 0, 0]);
-        assert_eq!(black(&decode_xwd(&bytes).unwrap()), [0, 15]);
+        assert_eq!(black(&decode_xwd(&bytes).unwrap(), 0), [0, 15]);
         // The same bytes as a ZPixmap with the most significant byte and
         // bit first: the unit is 0x0180, so pixels 7 and 8.
         let msb = Spec {
@@ -398,7 +414,33 @@ mod tests {
             ..lsb
         };
         let bytes = file(&msb, &colors, &[1, 0x80, 0, 0]);
-        assert_eq!(black(&decode_xwd(&bytes).unwrap()), [7, 8]);
+        assert_eq!(black(&decode_xwd(&bytes).unwrap(), 0), [7, 8]);
+    }
+
+    #[test]
+    fn one_bit_pixmaps_are_read_byte_by_byte_with_rows_of_whole_bytes() {
+        // How ffmpeg writes them: bitmap unit 32 and pad 8 in the header,
+        // but rows of ceil(width / 8) bytes. 20 pixels take 3 bytes; the
+        // bit order (most significant first) decides, not the byte order.
+        let spec = Spec {
+            format: Z_PIXMAP,
+            depth: 1,
+            size: [20, 2],
+            msb_bytes: false,
+            unit: 32,
+            msb_bits: true,
+            bits_per_pixel: 1,
+            bytes_per_line: 3,
+            pad: 8,
+            class: 0,
+            masks: [0; 3],
+        };
+        // No colormap: 1 is black. Row 0 sets pixels 0 and 15 (bytes 80 01),
+        // row 1 sets pixel 19 (third byte 0x10).
+        let raster = [0x80, 0x01, 0x00, 0x00, 0x00, 0x10];
+        let image = decode_xwd(&file(&spec, &[], &raster)).unwrap();
+        assert_eq!(black(&image, 0), [0, 15]);
+        assert_eq!(black(&image, 1), [19]);
     }
 
     #[test]
