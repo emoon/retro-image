@@ -283,10 +283,10 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
             for (half, byte) in [word & 0xff, word >> 8].into_iter().enumerate() {
                 let joined = x + half;
                 let (column, line) = (joined % width, y + joined / width);
-                let colour = widen_channel(byte >> 2 & 7, 3) << 16
+                let color = widen_channel(byte >> 2 & 7, 3) << 16
                     | widen_channel(byte >> 5, 3) << 8
                     | widen_channel(byte & 3, 2);
-                image.set(column as u32, line as u32, colour);
+                image.set(column as u32, line as u32, color);
             }
         }
         return Ok(image);

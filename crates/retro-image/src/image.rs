@@ -63,9 +63,9 @@ pub(crate) fn rgb565(word: u16) -> u32 {
     channel(11, 5) << 16 | channel(5, 6) << 8 | channel(0, 5)
 }
 
-/// Colour shown where a picture is transparent. `Image` has no alpha channel,
+/// Color shown where a picture is transparent. `Image` has no alpha channel,
 /// so every decoder whose format carries transparency composites onto this
-/// light grey, which stays visible against both white and black artwork.
+/// light gray, which stays visible against both white and black artwork.
 pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
 
 /// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
