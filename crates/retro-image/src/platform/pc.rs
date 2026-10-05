@@ -19,24 +19,41 @@
 //! - PCPaint/PICtor, Animator PIC/CEL, FLI/FLC and Dr. Halo PIC: see
 //!   `pc/pcpaint.rs`, `pc/animator.rs`, `pc/flic.rs`, `pc/flh.rs`, `pc/halo_pic.rs`.
 //! - Windows icons and cursors: see `pc/ico.rs`.
+//! - PFS: First Publisher clip art: see `pc/fp_art.rs`.
+//! - The Print Shop and The New Print Shop libraries: see `pc/printshop.rs`
+//!   (the sheet layout is in `pc/clipart.rs`) and PrintMaster in
+//!   `pc/printmaster.rs`, PrintPartner in `pc/printpartner.rs`.
+//! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
+//! - IBM Storyboard pictures: see `pc/storyboard.rs`.
+//! - Inset PIX pictures: see `pc/inset_pix.rs`.
+//! - WordPerfect Graphics bitmaps: see `pc/wpg.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
 mod animator;
 mod animator_pro;
 mod bmp;
+mod clipart;
 mod colorix;
 mod flf;
 mod flh;
 mod flic;
+mod fp_art;
 mod gif;
+mod grasp_gl;
 mod halo;
 mod halo_pic;
 mod ico;
 mod image72;
+mod inset_pix;
 mod pcpaint;
 mod pcx;
+mod printmaster;
+mod printpartner;
+mod printshop;
+mod storyboard;
 mod tga;
+mod wpg;
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -50,6 +67,17 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo version 2", &["epa"], decode_awbm).signature(),
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
+    // Recognized by size alone; `.art` is also used by Atari and Commodore
+    // formats, which come earlier in the registry.
+    Format::new("PC", "PFS: First Publisher", &["art"], fp_art::decode_art),
+    // `.dat` is a size rule (whole 572-byte pictures); Atari ST comes first.
+    Format::new("PC", "The Print Shop", &["dat"], printshop::decode_dat),
+    Format::new("PC", "The New Print Shop", &["pog"], printshop::decode_pog),
+    // `.shp` is also Atari 8-bit and Commodore; the records must fill the file.
+    Format::new("PC", "PrintMaster", &["shp"], printmaster::decode_shp).signature(),
+    Format::new("PC", "PrintPartner", &["gph"], printpartner::decode_gph).signature(),
+    // The index and the chain of members make this safe to detect by content.
+    Format::new("PC", "GRASP GL animation", &["gl"], grasp_gl::decode_gl).signature(),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
@@ -103,6 +131,26 @@ pub(super) static FORMATS: &[Format] = &[
     Format::with_companions("PC", "Dr. Halo", &["cut"], halo::decode_cut),
     Format::new("PC", "Turbo Rascal Syntax Error", &["flf"], flf::decode_flf).signature(),
     Format::new("PC", "Image 72 font", &["fnt"], image72::decode),
+    // Item index, mandatory items and every tile are checked, but there is no
+    // magic number: claimed by extension only (`.pix` is also Atari and TRS-80).
+    Format::new("PC", "Inset PIX", &["pix"], inset_pix::decode_pix),
+    Format::new("PC", "WordPerfect Graphics", &["wpg"], wpg::decode_wpg).signature(),
+    // The `EP_CAP` text makes the first kind detectable by content. The later
+    // kind has only a header check and a strictly decoded stream, so it is
+    // claimed by extension, after the other `.pic` formats.
+    Format::new(
+        "PC",
+        "IBM Storyboard (EP_CAP)",
+        &["pic", "cap"],
+        storyboard::decode_old,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "IBM Storyboard",
+        &["pic", "cap", "tem"],
+        storyboard::decode_new,
+    ),
 ];
 
 /// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
