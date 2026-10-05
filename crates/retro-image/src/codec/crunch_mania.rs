@@ -272,7 +272,8 @@ mod tests {
     fn noise_ends_in_none() {
         for tag in [b"CrM!", b"Crm!", b"CrM2", b"Crm2"] {
             for fill in [0u8, 0xff, 0x6d] {
-                let _ = unpack(&file(tag, 500, &[fill; 40]));
+                let data = file(tag, 500, &[fill; 40]);
+                assert_eq!(unpack(&data), None, "{tag:?}, fill {fill:#x}");
             }
         }
     }

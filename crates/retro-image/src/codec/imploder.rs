@@ -227,7 +227,7 @@ mod tests {
         for fill in [0u8, 0xff, 0x2a] {
             let mut data = file(1000, 0x40);
             data[12..0x40].fill(fill);
-            let _ = unpack(&data);
+            assert_eq!(unpack(&data), None, "fill {fill:#x}");
         }
     }
 }

@@ -485,9 +485,10 @@ mod tests {
             for method in [1u8, 2] {
                 let mut data = file(100, 40, &[fill; 40]);
                 data[3] = method;
-                assert!(unpack(&data).is_none() || is_packed(&data));
+                assert_eq!(unpack(&data), None, "method {method}, fill {fill:#x}");
+                // The same with data after the stream, as in a larger file.
                 let long = [data.clone(), alloc::vec![fill; 40]].concat();
-                let _ = unpack(&long);
+                assert_eq!(unpack(&long), None, "method {method}, fill {fill:#x}");
             }
         }
     }

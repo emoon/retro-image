@@ -434,6 +434,23 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn nuke_decodes_a_literal_and_a_match() {
+        // Bits come from words fetched in the order they are needed: the
+        // 1-bit reader's (0 = literals follow, 1 = one literal, then 1 = no
+        // more literals: 0b011 followed by zeros), the 4-bit reader's long
+        // (distance code 0, a 2-byte match) and the variable reader's word
+        // (distance 1 in its top nibble). The literal byte is read backward
+        // from the end.
+        let packed = [0x60, 0x00, 0, 0, 0, 0, 0x10, 0x00, b'a'];
+        let mut out = [0; 3];
+        assert_eq!(nuke(&packed, &mut out), Some(()));
+        assert_eq!(&out, b"aaa");
+        // Asking for more than the stream makes fails.
+        let mut longer = [0; 5];
+        assert_eq!(nuke(&packed, &mut longer), None);
+    }
+
+    #[test]
     fn nuke_literal_run_only() {
         // One literal flag-less run is not enough to fill the output, so
         // it must fail rather than loop or panic.
