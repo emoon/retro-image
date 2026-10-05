@@ -23,7 +23,7 @@ const GREYS: [u32; 4] = [0x00_0000, 0x55_5555, 0xaa_aaaa, 0xff_ffff];
 
 /// Most bytes a `.chr` file may have: the 256 KiB of the biggest common
 /// CHR-ROM (MMC3 boards).
-const MAX_LEN: usize = 256 * 1024;
+pub(super) const MAX_LEN: usize = 256 * 1024;
 
 /// Bytes of an Atari 8-bit character set (128 characters of 8 bytes), which
 /// the Atari decoders claim under the same extension: the fonts of

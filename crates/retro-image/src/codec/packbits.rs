@@ -21,6 +21,20 @@ pub(crate) fn unpack(src: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
     Some((out, pos))
 }
 
+/// Unpacks ByteRun1 data from all of `src`. Returns `None` if `src` ends
+/// inside a packet or the output exceeds `limit` bytes.
+pub(crate) fn unpack_all(src: &[u8], limit: usize) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    let mut pos = 0;
+    while pos < src.len() {
+        pos = packet(src, pos, &mut out)?;
+        if out.len() > limit {
+            return None;
+        }
+    }
+    Some(out)
+}
+
 /// Unpacks the packet at `pos` into `out` and returns the position after it,
 /// or `None` if `src` ends inside it.
 fn packet(src: &[u8], pos: usize, out: &mut Vec<u8>) -> Option<usize> {
@@ -50,6 +64,15 @@ mod tests {
         let (out, used) = unpack(&[2, 1, 2, 3, 0xfe, 9, 0x80, 0], 6).unwrap();
         assert_eq!(out, [1, 2, 3, 9, 9, 9]);
         assert_eq!(used, 6);
+    }
+
+    #[test]
+    fn unpack_all_runs_to_the_end_of_the_input_within_the_limit() {
+        let src = [2, 1, 2, 3, 0xfe, 9, 0x80];
+        assert_eq!(unpack_all(&src, 6).unwrap(), [1, 2, 3, 9, 9, 9]);
+        assert!(unpack_all(&src, 5).is_none());
+        assert!(unpack_all(&src[..3], 6).is_none());
+        assert_eq!(unpack_all(&[], 0).unwrap(), []);
     }
 
     #[test]

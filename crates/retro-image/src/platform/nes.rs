@@ -23,6 +23,7 @@ mod chr;
 mod nam;
 mod nametable;
 mod nss;
+mod pkb;
 mod rle;
 mod rom;
 
@@ -51,6 +52,7 @@ const PATTERN_TABLE_LEN: usize = 256 * PATTERN.tile_len();
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NES", "Pattern table", &["chr"], chr::decode),
+    Format::new("NES", "Pattern table (PackBits)", &["pkb"], pkb::decode),
     Format::with_companions("NES", "Nametable", &["nam"], nam::decode),
     Format::with_companions("NES", "Nametable (RLE)", &["rle"], rle::decode),
     Format::new("NES", "NES Screen Tool session", &["nss"], nss::decode).signature(),
