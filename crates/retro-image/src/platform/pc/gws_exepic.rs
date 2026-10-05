@@ -18,6 +18,10 @@
 //! - Checked on 14 sample files (Sembiance's `graphicWorkshopSelfDisplayingImage`
 //!   folder).
 //!
+//! No extension is claimed: `.com` and `.exe` belong to every DOS program, and
+//! the shared MIME package would send them all to the image viewer. The check
+//! is strict enough to find these files by content under any name.
+//!
 //! Verification: no RECOIL oracle for this format; output matches Deark's
 //! `gws_exepic` module pixel for pixel on the sample files.
 
@@ -176,8 +180,10 @@ mod tests {
 
     #[test]
     fn eight_bit_pictures_are_one_byte_per_pixel_and_may_be_run_length_coded() {
-        let stored = decode_gws_exepic(&exe(2, 8, STORED as u16, &[1, 3])).unwrap();
+        let file = exe(2, 8, STORED as u16, &[1, 3]);
+        let stored = decode_gws_exepic(&file).unwrap();
         assert_eq!([stored.get(0, 0), stored.get(1, 0)], [0x010101, 0x030303]);
+        assert_eq!(crate::decode("picture.exe", &file), Ok(stored));
         // C2 01: two pixels of color 1.
         let packed = decode_gws_exepic(&exe(2, 8, RUN_LENGTH as u16, &[0xc2, 1])).unwrap();
         assert_eq!([packed.get(0, 0), packed.get(1, 0)], [0x010101; 2]);

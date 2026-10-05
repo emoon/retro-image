@@ -12,6 +12,10 @@
 //!   `100h`, so 152 and 920) and fills `FA00h` = 64000 bytes of video memory.
 //! - Checked on 2 sample files (Sembiance's `pcx2com` folder).
 //!
+//! No extension is claimed: `.com` and `.exe` belong to every DOS program, and
+//! the shared MIME package would send them all to the image viewer. The check
+//! is strict enough to find these files by content under any name.
+//!
 //! Verification: no RECOIL oracle for this format; output matches Deark's
 //! `pcx2com` module (which writes a PCX and converts that) on both files.
 
@@ -94,6 +98,7 @@ mod tests {
         let image = decode_pcx2com(&com).unwrap();
         assert_eq!((image.width(), image.height()), (320, 200));
         assert_eq!(image.get(319, 199), 0xff0082);
+        assert_eq!(crate::decode("picture.com", &com), Ok(image));
         let last = com.len() - 1;
         com[last] = 0;
         assert!(decode_pcx2com(&com).is_err());

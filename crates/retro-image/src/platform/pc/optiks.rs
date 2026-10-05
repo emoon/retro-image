@@ -14,6 +14,10 @@
 //!   2.16 or later (offset 5744), up to 640x1249 pixels. A set bit is white,
 //!   as in Deark's output; checked by eye.
 //!
+//! No extension is claimed: `.com` and `.exe` belong to every DOS program, and
+//! the shared MIME package would send them all to the image viewer. The check
+//! is strict enough to find these files by content under any name.
+//!
 //! Verification: no RECOIL oracle for this format; output matches Deark's
 //! `optiks_com` module pixel for pixel on the sample files.
 
@@ -86,13 +90,15 @@ mod tests {
         com[..STUB.len()].copy_from_slice(&STUB);
         com[VERSION_AT..VERSION_AT + 4].copy_from_slice(&VERSIONS[1].0.to_be_bytes());
         com[at - 13..at - 9].copy_from_slice(&BEFORE_PICTURE.to_be_bytes());
-        // One byte per row, two rows: a literal 0x80 and a run of one 0x01.
+        // One byte per row, two rows: a literal 0x80, then `FF 01`, a run of two
+        // 0x01 bytes that the picture size cuts to one.
         com.extend_from_slice(&[1, 0, 2, 0, 0, 0x80, 0xff, 0x01]);
         let image = decode_optiks(&com).unwrap();
         assert_eq!((image.width(), image.height()), (8, 2));
         assert_eq!(image.get(0, 0), 0xffffff);
         assert_eq!(image.get(7, 1), 0xffffff);
         assert_eq!(image.get(1, 0), 0);
+        assert_eq!(crate::decode("picture.com", &com), Ok(image));
         com[at - 13] = 0;
         assert!(decode_optiks(&com).is_err());
     }

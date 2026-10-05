@@ -3,11 +3,12 @@
 //! Sources:
 //! - Deark `misc2.c` (<https://github.com/jsummers/deark>, MIT license): the
 //!   COM stub starts with `BC 00 01 B8 13 00 CD 10` (`mov sp, 100h`, then
-//!   `mov ax, 13h` and `int 10h`: VGA mode 13h), has `BA` at offset 17 and a
-//!   16-bit operand at 18; the picture record sits at that operand minus 272.
-//!   Disassembling the stub explains the number: `BA` is `mov dx, imm16`
-//!   after `mov ax, 1012h` and `mov cx, 100h`, a BIOS call that loads 256 DAC
-//!   colors from `ES:DX`, so the operand is the palette's address in memory.
+//!   `mov ax, 13h` and `int 10h`: VGA mode 13h), has the byte `BA` at offset 17
+//!   and a 16-bit operand at 18; the picture record sits at that operand
+//!   minus 272. Disassembling the stub explains the number: `BA` is the
+//!   opcode of `mov dx, imm16`, after `mov ax, 1012h` and `mov cx, 100h`, a
+//!   BIOS call that loads 256 DAC colors from `ES:DX`, so the operand is the
+//!   palette's address in memory.
 //!   A COM file loads at `100h` and the palette starts 16 bytes into the
 //!   record, so the record's file offset is the operand less 256 and 16.
 //! - The record: `PX`, 16-bit width and height, padding up to 16 bytes, a
@@ -17,6 +18,10 @@
 //! - Checked on the sample files (Sembiance's `pixit` folder): ten COM
 //!   programs, two of them named `.EXE` (they are COM files by content), all
 //!   with the record at offset 72 or 74.
+//!
+//! Only the raw `.PIX` form is chosen by extension. The stub form is found by
+//! content under any name: `.com` and `.exe` belong to every DOS program, and
+//! the shared MIME package would send them all to the image viewer.
 //!
 //! Verification: no RECOIL oracle for this format; output matches Deark's
 //! `pixit` module pixel for pixel on the sample files.
@@ -134,6 +139,8 @@ mod tests {
         assert_eq!((image.width(), image.height()), (2, 1));
         assert_eq!(image.get(0, 0), 0xff0082);
         assert_eq!(image.get(1, 0), 0);
+        // Found by content under the name a DOS program has.
+        assert_eq!(crate::decode("picture.com", &com), Ok(image));
         com[at] = b'Q';
         assert!(decode_pixit(&com).is_err());
     }

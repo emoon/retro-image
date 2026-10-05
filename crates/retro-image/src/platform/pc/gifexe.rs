@@ -16,6 +16,10 @@
 //! by searching for `GIF8`, so an executable passes only if it really has a
 //! GIF appended where its own header says the program stops.
 //!
+//! No extension is claimed: `.com` and `.exe` belong to every DOS program, and
+//! the shared MIME package would send them all to the image viewer. The check
+//! is strict enough to find these files by content under any name.
+//!
 //! Verification: the payload goes through the GIF decoder (`gif.rs`), which
 //! was compared with Deark. No RECOIL or Deark module exists for GIFEXE; the
 //! output equals Deark's decode of the GIF cut out of each file.
@@ -63,6 +67,13 @@ mod tests {
         exe.extend_from_slice(gif);
         let image = decode_gifexe(&exe).unwrap();
         assert_eq!((image.width(), image.height()), (1, 1));
+        // Found by content under any name: no format claims `.exe` or `.com`,
+        // so those files are not all sent to the image viewer by extension.
+        assert_eq!(crate::decode("picture.exe", &exe), Ok(image.clone()));
+        assert_eq!(crate::decode("picture.bin", &exe), Ok(image));
+        assert!(
+            !crate::formats().any(|f| f.matches_filename("x.exe") || f.matches_filename("x.com"))
+        );
         // The same bytes with a header that ends the program elsewhere fail.
         exe[2..4].copy_from_slice(&89u16.to_le_bytes());
         assert!(decode_gifexe(&exe).is_err());

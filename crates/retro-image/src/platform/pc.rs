@@ -94,35 +94,35 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new(
         "PC",
         "GIFEXE self-displaying GIF",
-        &["exe"],
+        &[],
         gifexe::decode_gifexe,
     )
     .signature(),
     Format::new(
         "PC",
         "Graphic Workshop self-displaying picture",
-        &["exe"],
+        &[],
         gws_exepic::decode_gws_exepic,
     )
     .signature(),
     Format::new(
         "PC",
         "OPTIKS self-displaying picture",
-        &["com"],
+        &[],
         optiks::decode_optiks,
     )
     .signature(),
     Format::new(
         "PC",
         "PCX2COM self-displaying picture",
-        &["com"],
+        &[],
         pcx2com::decode_pcx2com,
     )
     .signature(),
     Format::new(
         "PC",
         "PIXIT self-displaying picture",
-        &["com", "exe", "pix"],
+        &["pix"],
         pixit::decode_pixit,
     )
     .signature(),
