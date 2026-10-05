@@ -1,4 +1,5 @@
 //! 3DS GPU textures: the pixel formats and the way their pixels are laid out.
+//! The compressed formats are in `etc1.rs`.
 //!
 //! Sources: GBATEK, "3DS GPU Texture Formats" (format numbers, bit layouts of
 //! each pixel), "3DS Video Texture Swizzling" (Z-order inside 8 x 8 tiles) and
@@ -24,8 +25,7 @@
 //! textures, are stored top row first); it is based on how textures are
 //! used on the 3DS and is to be confirmed with a real file.
 
-use alloc::vec::Vec;
-
+use super::etc1;
 use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::morton::morton_index;
 use crate::{DecodeError, Image};
@@ -48,6 +48,8 @@ pub(super) enum Format {
     La4,
     L4,
     A4,
+    Etc1,
+    Etc1A4,
 }
 
 impl Format {
@@ -66,6 +68,8 @@ impl Format {
             9 => Self::La4,
             10 => Self::L4,
             11 => Self::A4,
+            12 => Self::Etc1,
+            13 => Self::Etc1A4,
             _ => return None,
         })
     }
@@ -84,7 +88,8 @@ impl Format {
             Self::Rgb8 => 24,
             Self::Rgba5551 | Self::Rgb565 | Self::Rgba4 | Self::La8 | Self::Hilo8 => 16,
             Self::L8 | Self::A8 | Self::La4 => 8,
-            Self::L4 | Self::A4 => 4,
+            Self::L4 | Self::A4 | Self::Etc1 => 4,
+            Self::Etc1A4 => 8,
         }
     }
 
@@ -156,7 +161,38 @@ impl Format {
                 [l, l, l, 255]
             }
             Self::A4 => [0, 0, 0, widen4(nibble(index))],
+            Self::Etc1 | Self::Etc1A4 => unreachable!("compressed blocks decode in `tile`"),
         }
+    }
+
+    /// The 64 pixels of tile number `tile` of `data`, row by row.
+    fn tile(self, data: &[u8], tile: usize) -> [[u8; 4]; 64] {
+        let mut pixels = [[0; 4]; 64];
+        if matches!(self, Self::Etc1 | Self::Etc1A4) {
+            // Four blocks of 4 x 4 pixels in Z-order.
+            let block_len = self.bits() * 16 / 8;
+            for block in 0..4 {
+                let bytes = &data[(tile * 4 + block) * block_len..][..block_len];
+                let words = bytes.as_chunks::<8>().0;
+                let word = |i: usize| u64::from_le_bytes(words[i]);
+                let decoded = match self {
+                    Self::Etc1A4 => etc1::decode_block(word(1), Some(word(0))),
+                    _ => etc1::decode_block(word(0), None),
+                };
+                let (left, top) = (block % 2 * 4, block / 2 * 4);
+                for (k, &pixel) in decoded.iter().enumerate() {
+                    pixels[(top + k % 4) * TILE + left + k / 4] = pixel;
+                }
+            }
+        } else {
+            for y in 0..TILE {
+                for x in 0..TILE {
+                    let index = tile * TILE * TILE + morton_index(x as u32, y as u32) as usize;
+                    pixels[y * TILE + x] = self.pixel(data, index);
+                }
+            }
+        }
+        pixels
     }
 }
 
@@ -189,15 +225,21 @@ impl Texture<'_> {
         }
         check_size(visible_width, visible_height)?;
         let tiles_per_row = width / TILE;
-        let mut colors = Vec::with_capacity(visible_width * visible_height);
-        for y in 0..visible_height {
-            // Rows are stored bottom row first.
-            let stored_y = height - 1 - y;
-            for x in 0..visible_width {
-                let tile = stored_y / TILE * tiles_per_row + x / TILE;
-                let within = morton_index((x % TILE) as u32, (stored_y % TILE) as u32);
-                let index = tile * TILE * TILE + within as usize;
-                colors.push(composite(self.format.pixel(self.data, index)));
+        let mut colors = alloc::vec![0; visible_width * visible_height];
+        // Rows are stored bottom row first, so the picture's rows come from
+        // the last tile rows.
+        for tile_row in (height - visible_height) / TILE..height / TILE {
+            for tile_column in 0..visible_width.div_ceil(TILE) {
+                let tile = self
+                    .format
+                    .tile(self.data, tile_row * tiles_per_row + tile_column);
+                for (n, &pixel) in tile.iter().enumerate() {
+                    let x = tile_column * TILE + n % TILE;
+                    let y = height - 1 - (tile_row * TILE + n / TILE);
+                    if x < visible_width && y < visible_height {
+                        colors[y * visible_width + x] = composite(pixel);
+                    }
+                }
             }
         }
         Ok(Image::from_colors(
@@ -221,6 +263,7 @@ fn composite([r, g, b, a]: [u8; 4]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     /// A 16 x 8 texture (two tiles) of `format` from `data`.
     fn texture(format: Format, data: &[u8]) -> Texture<'_> {
@@ -289,7 +332,49 @@ mod tests {
         assert_eq!(Format::from_clim(9), Some(Format::Rgba8));
         assert_eq!(Format::from_clim(13), Some(Format::A4));
         assert_eq!(Format::from_clim(14), None);
-        assert_eq!(Format::from_gpu(12), None);
+        assert_eq!(Format::from_clim(10), Some(Format::Etc1));
+        assert_eq!(Format::from_gpu(13), Some(Format::Etc1A4));
+        assert_eq!(Format::from_gpu(14), None);
+    }
+
+    #[test]
+    fn compressed_blocks_are_in_z_order_inside_a_tile() {
+        // One tile of ETC1: four solid blocks, individual mode, base color
+        // (n, n, n) widened plus 2 from table 0, for n = 1 to 4.
+        let data: Vec<u8> = (1..=4u64)
+            .flat_map(|n| {
+                let gray = n << 60 | n << 56 | n << 52 | n << 48 | n << 44 | n << 40;
+                gray.to_le_bytes()
+            })
+            .collect();
+        let tile = Texture {
+            format: Format::Etc1,
+            width: 8,
+            height: 8,
+            data: &data,
+        };
+        let image = tile.image(8, 8).unwrap();
+        let level = |n: u32| n * 17 + 2;
+        let gray = |n: u32| level(n) * 0x01_0101;
+        // Block 0 is stored at the top left, so it ends at the bottom left
+        // of the upside-down picture; block 2 is stored below it.
+        assert_eq!(image.get(0, 7), gray(1));
+        assert_eq!(image.get(4, 7), gray(2));
+        assert_eq!(image.get(0, 0), gray(3));
+        assert_eq!(image.get(7, 3), gray(4));
+        // ETC1A4 blocks are 16 bytes: the alpha, then the color block.
+        let mut with_alpha = Vec::new();
+        for block in data.as_chunks::<8>().0 {
+            with_alpha.extend_from_slice(&[0; 8]);
+            with_alpha.extend_from_slice(block);
+        }
+        let transparent = Texture {
+            format: Format::Etc1A4,
+            width: 8,
+            height: 8,
+            data: &with_alpha,
+        };
+        assert_eq!(transparent.image(8, 8).unwrap().get(0, 7), TRANSPARENT_FILL);
     }
 
     #[test]

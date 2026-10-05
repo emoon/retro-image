@@ -15,7 +15,8 @@
 //! (0x2C and 0x2E, powers of two), the OpenTK format and data type (0x30 and
 //! 0x32, 16 bits each) and the offset of its data from the texture offset
 //! (0x34). A cube map is rejected, since GBATEK does not say where its sides
-//! are.
+//! are. The ETC1 formats have data type 0, and the compression flag is
+//! redundant with the format, so it is ignored.
 
 use super::texture::{Format, Texture};
 use crate::bytes::{le16, le32};
@@ -37,6 +38,8 @@ fn format(opentk_format: u16, data_type: u16) -> Option<Format> {
         (0x6758, 0x6760) => Format::La4,
         (0x6757, 0x6761) => Format::L4,
         (0x6756, 0x6761) => Format::A4,
+        (0x675a, 0) => Format::Etc1,
+        (0x675b, 0) => Format::Etc1A4,
         _ => return None,
     })
 }
@@ -116,6 +119,15 @@ mod tests {
         let blue = decode(&ctxb(8, 8, (0x6754, 0x8363), 0, &words)).unwrap();
         assert_eq!(blue.get(0, 7), 0x00_00ff);
         assert_eq!(blue.get(0, 0), 0);
+    }
+
+    #[test]
+    fn compressed_textures_have_no_data_type() {
+        // One 8 x 8 tile of ETC1: four blocks of 8 bytes.
+        let image = decode(&ctxb(8, 8, (0x675a, 0), 0, &[0; 32])).unwrap();
+        assert_eq!((image.width(), image.height()), (8, 8));
+        assert!(decode(&ctxb(8, 8, (0x675b, 0), 0, &[0; 64])).is_ok());
+        assert!(decode(&ctxb(8, 8, (0x675a, 0x1401), 0, &[0; 32])).is_err());
     }
 
     #[test]

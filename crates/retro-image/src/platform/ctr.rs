@@ -20,6 +20,7 @@
 mod clim;
 mod ctpk;
 mod ctxb;
+mod etc1;
 mod texture;
 
 use crate::Format;

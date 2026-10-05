@@ -111,7 +111,7 @@ mod tests {
         bad[0] = b'X';
         assert!(decode(&bad).is_err());
         let mut bad = file.clone();
-        bad[ENTRIES_AT + 0xc] = 0xc; // ETC1: not supported yet
+        bad[ENTRIES_AT + 0xc] = 14; // no such format
         assert!(decode(&bad).is_err());
         assert!(decode(&ctpk(&[])).is_err());
         assert!(decode(&ctpk(&[(7, 8, 8, 1, &[0; 64])])).is_err());
