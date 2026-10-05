@@ -171,6 +171,17 @@ mod tests {
     use super::*;
     use crate::NoCompanions;
 
+    #[test]
+    fn spr_is_tried_here_after_every_other_claimant() {
+        // Formats recognized by signature are tried after the extension
+        // matches, so look at the extension matches only.
+        let claimants: Vec<&Format> = crate::candidates("x.spr")
+            .filter(|f| f.matches_filename("x.spr"))
+            .collect();
+        assert!(claimants.len() > 1, "other formats claim .spr too");
+        assert_eq!(claimants.last().map(|f| f.platform), Some("Neo Geo"));
+    }
+
     /// The first pixel of row 3 of the sprite in each quadrant is set in the
     /// plane given, so its color number is the plane's bit.
     #[test]
