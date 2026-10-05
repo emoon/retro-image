@@ -7,7 +7,7 @@
 //!   cdmfldr/08CDM001.html`, mirrored at
 //!   <https://3dodev.com/documentation/file_formats/media/container/3do> and in
 //!   <https://github.com/trapexit/3do-devkit> `docs/3dosdk/`; prose only, its
-//!   licence is not stated).
+//!   license is not stated).
 //! - Cel flags, the preamble words and the packed and unpacked source data:
 //!   the same documentation's Graphics Programmer's Guide (`5gpgc.html`,
 //!   `5gpgd.html`, `5gpge.html`, `3gpgc.html` under `ppgfldr/ggsfldr/

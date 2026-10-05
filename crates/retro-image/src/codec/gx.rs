@@ -4,7 +4,7 @@
 //! Sources:
 //! - Block sizes, bit layouts and the CMPR sub-block order: PuyoTools'
 //!   `PuyoTools.Core/Textures/Gvr` pixel and palette codecs
-//!   (<https://github.com/nickworonekin/puyotools>, MIT licence, notice
+//!   (<https://github.com/nickworonekin/puyotools>, MIT license, notice
 //!   below), cross-checked against the mkwiiki "Image Formats" page for TPL
 //!   textures (<https://wiki.tockdom.com/wiki/Image_Formats>, facts only) and
 //!   YAGCD chapter 15 (<https://hitmen.c02.at/files/yagcd/yagcd/chap15.html>,

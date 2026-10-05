@@ -11,7 +11,7 @@
 //!   count at 14, colors from 16): PuyoTools, the wiki page
 //!   <https://github.com/nickworonekin/puyotools/wiki/PVR-Texture> and
 //!   `PuyoTools.Core/Textures/Pvr` and `Archives/Formats/Pvm`
-//!   (<https://github.com/nickworonekin/puyotools>, MIT licence, notice below).
+//!   (<https://github.com/nickworonekin/puyotools>, MIT license, notice below).
 //!   A PVM starts `PVMH` with the little-endian offset of the first texture
 //!   minus 8 at byte 4.
 //! - Reverse engineered from samples, where documents disagree or are silent:

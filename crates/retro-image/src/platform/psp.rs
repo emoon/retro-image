@@ -3,7 +3,7 @@
 //! Sources:
 //! - Layout: PuyoTools' `PuyoTools.Core/Textures/Gim` (`GimTextureDecoder.cs`,
 //!   `GimPixelFormat.cs`, `GimPaletteFormat.cs` and the pixel and palette
-//!   codecs; <https://github.com/nickworonekin/puyotools>, MIT licence, notice
+//!   codecs; <https://github.com/nickworonekin/puyotools>, MIT license, notice
 //!   below). The magic is `MIG.00.1PSP` (little-endian, PSP) or `.GIM1.00PSP`
 //!   (big-endian, PS3), followed by chunks from offset 16. Each chunk starts
 //!   with a 16-bit type, and has its total length at +8: type 2 is the file
