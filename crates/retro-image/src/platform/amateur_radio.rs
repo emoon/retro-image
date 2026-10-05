@@ -6,8 +6,9 @@
 //!   headerless RGB bitmap of 256 x 240 pixels, 184320 bytes.
 //! - ImageMagick's HRZ coder, `coders/hrz.c`
 //!   (<https://github.com/ImageMagick/ImageMagick/blob/main/coders/hrz.c>,
-//!   Apache-2.0; cited for the facts, no code is copied): 256 x 240, red,
-//!   green, blue in that order, each sample multiplied by 4.
+//!   ImageMagick License, a permissive Apache-style license; cited for the
+//!   facts, no code is copied): 256 x 240, red, green, blue in that order,
+//!   each sample multiplied by 4.
 //! - Checked on the one sample in `corpus/extra/misc-computers/sstv`: every
 //!   byte is 0 to 64, so a sample is 6 bits with 64 as full scale, and four
 //!   times the value shows a normally exposed photograph with natural colors

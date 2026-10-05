@@ -5,7 +5,7 @@
 //! - "TIM2 format specification ver.4", web technology Corp., 1999-12-02:
 //!   file and picture headers, image types, CLUT types and the compound CLUT
 //!   order of section 4.5. The copy read is `webtech/tim2v4b_e.zip` in
-//!   <https://github.com/GirianSeed/tim2>. It carries a "[CONFIDENTIAL]"
+//!   <https://github.com/GirianSeed/tim2>. It carries a "`[CONFIDENTIAL]`"
 //!   banner but has been public for years; the project owner approved
 //!   reading it as specification prose, and nothing of the repository's
 //!   sample code was read.
