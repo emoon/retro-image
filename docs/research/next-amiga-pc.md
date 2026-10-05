@@ -9,6 +9,11 @@ XEX pictures. Read first: [CLEANROOM.md](../../CLEANROOM.md), [README.md](README
 [gaps-pc-japan.md](gaps-pc-japan.md), [gaps-atari.md](gaps-atari.md),
 [gaps-ranking.md](gaps-ranking.md), [../adding-a-format.md](../adding-a-format.md).
 
+Out of scope here, covered in [gaps-computers-extra.md](gaps-computers-extra.md): GRASP GL,
+self-displaying DOS picture executables (GIFEXE, PCX2EXE and similar), DCX, PC BSAVE/raw
+CGA-EGA dumps, WPG, Print Shop/PrintMaster, First Publisher, Storyboard and Inset PIX.
+PCPaint `.OVR` containers (4.7) and GIF-in-GRASP are left to the GRASP GL entry there.
+
 Clean-room position: no RECOIL source and no GPL/LGPL decoder code was read. Code that was read
 is BSD-2 (Ancient, only its headers and detection lines), MIT (Deark module list and licence) or
 Apache-2.0 (CiderPress II notes and file headers). Everything else is prose specs.
