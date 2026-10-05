@@ -11,25 +11,25 @@
 //! - `Spr!`, a four-byte version (ignored), then `00 01`-style flags. Byte 9
 //!   is 1 if every line is shown twice, 0 if once. Byte 10 bit 2 gives a
 //!   second column of sprites, bit 0 a missile pair beside each column. Byte
-//!   14 bit 0 says colours are given per line. Bytes 12 and 13 widen the
+//!   14 bit 0 says colors are given per line. Bytes 12 and 13 widen the
 //!   canvas for the second column (`2 * byte 13` pixels, the width of that
 //!   column). With byte 16 zero, bytes 17 and 18 are the frame and line
 //!   counts; otherwise bytes 16 and 17 are (and byte 18 widens a one-column
 //!   canvas). The data starts at byte 19, which is where all offsets below are
 //!   counted from.
-//! - Per frame, one colour byte for each player (two players per column): all
+//! - Per frame, one color byte for each player (two players per column): all
 //!   frames of player 0, then of player 1, and so on.
 //! - Then one plane per player, again player after player, each holding one
 //!   byte per line per frame (frame after frame). With missiles, one more plane
 //!   per player follows, whose low two bits are the missile pixels (bit 1
 //!   left).
-//! - With per-line colours, five more planes of one byte per line per frame
+//! - With per-line colors, five more planes of one byte per line per frame
 //!   follow: the background and the four players.
 //! - Players are 8 bits wide, one bit being 2 screen pixels. The two players of
-//!   a column overlap and OR their colour registers (the Atari's multi-colour
+//!   a column overlap and OR their color registers (the Atari's multi-color
 //!   players); a column is 16 pixels wide, 20 with its missiles. Frames are
-//!   spread 4 pixels apart, the background colour of a frame filling the gap
-//!   after it. Colours are Atari colour registers.
+//!   spread 4 pixels apart, the background color of a frame filling the gap
+//!   after it. Colors are Atari color registers.
 //! - Bytes after the last plane are ignored.
 
 use super::antic::fill;
@@ -67,7 +67,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         (layout.frames * frame_width - GAP) as u32,
         (layout.lines * repeat) as u32,
     );
-    // Colour register of `player` on `line` of `frame`.
+    // Color register of `player` on `line` of `frame`.
     let color = |player: usize, frame: usize, line: usize| {
         if layout.per_line {
             line_colors[(1 + player) * per_plane + frame * layout.lines + line]
@@ -177,7 +177,7 @@ impl Layout {
         self.columns * self.column_width()
     }
 
-    /// Players with colour bytes.
+    /// Players with color bytes.
     fn players(&self) -> usize {
         2 * self.columns
     }
@@ -196,7 +196,7 @@ impl Layout {
 mod tests {
     use super::*;
 
-    /// One frame of one line: players 0 and 1 in colours `c0` and `c1`.
+    /// One frame of one line: players 0 and 1 in colors `c0` and `c1`.
     fn sheet(bits0: u8, bits1: u8, c0: u8, c1: u8) -> alloc::vec::Vec<u8> {
         let mut data = b"Spr!\0\0\0\x03\0\0".to_vec();
         data.resize(16, 0);

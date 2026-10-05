@@ -1,11 +1,11 @@
-//! PCBoard display files (PCB): text with `@X` colour codes.
+//! PCBoard display files (PCB): text with `@X` color codes.
 //!
 //! Sources:
 //! - libansilove `src/loaders/pcboard.c`
 //!   (<https://github.com/ansilove/libansilove>, BSD-2-Clause): `@X` and
-//!   two hexadecimal digits (background, then foreground) set the colour,
+//!   two hexadecimal digits (background, then foreground) set the color,
 //!   `@CLS@` clears the screen, a line feed also returns the cursor to
-//!   column 0, light grey on black to start, 80 columns.
+//!   column 0, light gray on black to start, 80 columns.
 //! - The SAUCE specification (<https://www.acid.org/info/sauce/sauce.htm>):
 //!   DataType 1, FileType 4 is PCBoard, with the width in TInfo1; the EOF
 //!   character (1Ah) ends the text.
@@ -14,8 +14,8 @@
 //!   samples); with no BBS to ask they are shown as written (libansilove
 //!   drops the `@`). The attribute's bit 7 blinks, as on a DOS screen.
 
-// The colour codes follow libansilove `src/loaders/pcboard.c`, under this
-// licence:
+// The color codes follow libansilove `src/loaders/pcboard.c`, under this
+// license:
 //
 // Copyright (c) 2011-2026, Stefan Vogt, Brian Cassidy, and Frederic Cambus
 // All rights reserved.
@@ -122,7 +122,7 @@ mod tests {
         let image = decode(b"@CLS@@X1Fab\r\n@X8Ec@USER@").unwrap();
         assert_eq!((image.width(), image.height()), (640, 32));
         assert_eq!(image.get(0, 0), PALETTE[1], "blue background");
-        // Background 8 blinks: dark grey becomes black on a still picture.
+        // Background 8 blinks: dark gray becomes black on a still picture.
         assert_eq!(image.get(0, 16), PALETTE[0]);
         // "@USER@" drawn as text: '@' at column 1.
         let lit = (8..16).any(|x| (16..32).any(|y| image.get(x, y) != PALETTE[0]));

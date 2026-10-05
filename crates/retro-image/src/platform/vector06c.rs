@@ -2,13 +2,13 @@
 //!
 //! Sources:
 //! - Screen: 4 bit planes of 32 columns, each column 256 bytes of 8 pixels
-//!   (most significant bit leftmost) running bottom to top; 16 colours from
+//!   (most significant bit leftmost) running bottom to top; 16 colors from
 //!   a palette of 8-bit `BBGGGRRR` values: Wikipedia,
 //!   <https://en.wikipedia.org/wiki/Vector-06C>.
 //! - SPR layout (16 palette bytes, then a run-length stream read backwards
 //!   from the end of the file into the screen, filled from its end), the
 //!   plane order, the edge cases (trailing bytes, unused bytes after the
-//!   palette, overrunning the screen) and the colour levels: reverse
+//!   palette, overrunning the screen) and the color levels: reverse
 //!   engineered from the sample files of the `vector-06c-spr2bmp` repository,
 //!   <https://github.com/drilnet/vector-06c-spr2bmp>
 //!   (data only; its code and the `Info SPR` archive were not read) and

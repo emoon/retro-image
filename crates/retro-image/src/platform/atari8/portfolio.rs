@@ -7,7 +7,7 @@
 //! - PGF: Just Solve "PGF (Portfolio Graphics)"
 //!   (<http://fileformats.archiveteam.org/wiki/PGF_(Portfolio_Graphics)>):
 //!   1920 bytes, 30 bytes per row.
-//! - Colours (set bit = black on white): observed from `recoil2png` output.
+//! - Colors (set bit = black on white): observed from `recoil2png` output.
 
 use super::antic::Bitmap;
 use crate::{DecodeError, Image};

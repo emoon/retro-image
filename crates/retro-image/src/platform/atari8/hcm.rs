@@ -1,12 +1,12 @@
-//! Hard Color Map (HCM): 128x192, a 2-bit bitmap over a per-line colour map.
+//! Hard Color Map (HCM): 128x192, a 2-bit bitmap over a per-line color map.
 //!
 //! Sources:
 //! - RECOIL's format list (<https://recoil.sourceforge.net/formats.html>):
-//!   128x192, 9 colours; nothing else is published about the format.
+//!   128x192, 9 colors; nothing else is published about the format.
 //! - Everything below was reverse engineered by black-box probing of
 //!   `recoil2png` with hand-made files (a tut1.hcm sample with its tables
 //!   cleared, one byte set at a time) and checked on both corpus samples.
-//!   The file is `HCMA`, `38 01`, a mode byte (0 or 2), the colours
+//!   The file is `HCMA`, `38 01`, a mode byte (0 or 2), the colors
 //!   background, A, B, PF0, PF1, PF2 (offsets 7-12; 13-47 are unused), eight
 //!   256-byte tables of 192 lines starting at offset 48, then the bitmap at
 //!   offset 2064 (192 lines of 32 bytes, 2 bits per pixel, drawn 2 wide).
@@ -20,11 +20,11 @@
 //!   tables differently (tables 4 and 5 are the A bits of columns 2-9 and
 //!   10-17, tables 6 and 7 their B bits) and the missile byte holds A in
 //!   its low nibble and B in its high nibble, bits 0-3 covering columns 19,
-//!   18, 21 and 20. A and B are drawn in the colours of players 0 and
+//!   18, 21 and 20. A and B are drawn in the colors of players 0 and
 //!   1 (mode 0: A as player 0 but B as player 2, which hides behind PF0 and
 //!   PF1) and resolved against the 2-bit pixels (values 1-3 = PF0-2) with the
 //!   GTIA priority rules in [`gtia`]: mode 0 is PRIOR 0 and mode 2 behaves
-//!   as PRIOR 4 with multicolour players (playfield above the players, which
+//!   as PRIOR 4 with multicolor players (playfield above the players, which
 //!   OR where they overlap).
 
 use super::antic::Bitmap;

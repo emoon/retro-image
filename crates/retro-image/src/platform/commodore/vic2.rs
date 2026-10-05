@@ -1,9 +1,9 @@
 //! VIC-II building blocks shared by the C64 formats: palette, hires and
-//! multicolour bitmap rendering (optionally with per-line FLI screens and
+//! multicolor bitmap rendering (optionally with per-line FLI screens and
 //! `$D021` tables) and interlace blending.
 //!
 //! Sources:
-//! - Bitmap, screen RAM and colour RAM semantics: Christian Bauer, "The MOS
+//! - Bitmap, screen RAM and color RAM semantics: Christian Bauer, "The MOS
 //!   6567/6569 video controller (VIC-II)", <https://www.cebix.net/VIC-Article.txt>,
 //!   and the C64 Programmer's Reference Guide,
 //!   <https://archive.org/details/Commodore_64_Programmers_Reference_Guide_1983_Commodore>.
@@ -11,7 +11,7 @@
 //!   <https://www.pepto.de/projects/colorvic/2001/>; that `recoil2png` uses it
 //!   was observed from its output.
 //! - Output conventions, observed from `recoil2png` output: images are
-//!   320 pixels wide with multicolour pixels doubled; FLI pictures drop the
+//!   320 pixels wide with multicolor pixels doubled; FLI pictures drop the
 //!   leftmost 24 pixels (the FLI bug), giving 296; interlaced pictures are
 //!   the per-channel average of both frames.
 
@@ -32,7 +32,7 @@ pub(super) fn rgb(color: u8) -> u32 {
 pub(super) const WIDTH: usize = 320;
 /// Bytes of a 320×200 bitmap.
 pub(super) const BITMAP_LEN: usize = 8000;
-/// Bytes of a screen or colour RAM.
+/// Bytes of a screen or color RAM.
 pub(super) const SCREEN_LEN: usize = 1000;
 /// Leftmost pixels hidden by the FLI bug that `recoil2png` crops away.
 pub(super) const FLI_BUG: usize = 24;
@@ -64,7 +64,7 @@ impl Screens<'_> {
     }
 }
 
-/// Background colour (`$D021`) source.
+/// Background color (`$D021`) source.
 #[derive(Clone, Copy)]
 pub(super) enum Background<'a> {
     Fixed(u8),
@@ -87,7 +87,7 @@ pub(super) struct Bitmap<'a> {
     /// 8 bytes per 8×8 cell, cells in row-major order.
     pub bitmap: &'a [u8],
     pub screens: Screens<'a>,
-    /// Colour RAM (multicolour only).
+    /// Color RAM (multicolor only).
     pub color: &'a [u8],
     pub background: Background<'a>,
 }
@@ -123,7 +123,7 @@ impl<'a> Bitmap<'a> {
             && (!multicolor || self.color.len() >= SCREEN_LEN.min(cells))
     }
 
-    /// Fills line `y` with hires colours: set bits use the screen's high
+    /// Fills line `y` with hires colors: set bits use the screen's high
     /// nibble, clear bits its low nibble.
     fn hires_row(&self, y: usize, out: &mut [u8; WIDTH]) {
         for (column, pixels) in out.as_chunks_mut::<8>().0.iter_mut().enumerate() {
@@ -137,7 +137,7 @@ impl<'a> Bitmap<'a> {
         }
     }
 
-    /// Fills line `y` with multicolour colours; each bit pair covers two
+    /// Fills line `y` with multicolor colors; each bit pair covers two
     /// hires pixels.
     fn multicolor_row(&self, y: usize, out: &mut [u8; WIDTH]) {
         let background = self.background.get(y);
@@ -153,7 +153,7 @@ impl<'a> Bitmap<'a> {
     }
 }
 
-/// A picture as C64 colour indices, 320 hires pixels wide.
+/// A picture as C64 color indices, 320 hires pixels wide.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Frame {
     height: usize,
@@ -272,7 +272,7 @@ impl Frame {
     }
 }
 
-/// An image from one C64 colour per pixel (the high nibble is ignored).
+/// An image from one C64 color per pixel (the high nibble is ignored).
 /// `colors` must hold `width * height` entries.
 pub(super) fn image(width: usize, height: usize, mut colors: Vec<u8>) -> Image {
     debug_assert_eq!(colors.len(), width * height);

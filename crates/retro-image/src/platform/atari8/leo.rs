@@ -4,15 +4,15 @@
 //! Sources:
 //! - Just Solve "Larka Edytor Obiekt"
 //!   (<http://fileformats.archiveteam.org/wiki/Larka_Edytor_Obiekt>; ANTIC 4
-//!   objects, 5 colours). ANTIC mode 4 glyphs and the inverse bit: De Re Atari
+//!   objects, 5 colors). ANTIC mode 4 glyphs and the inverse bit: De Re Atari
 //!   ch. 2 (<https://www.atariarchives.org/dere/chapt02.php>).
 //! - The layout is reverse engineered from the corpus sample PINGWINKI.LEO by
 //!   flipping single bytes and reading back with `recoil2png` which pixels
 //!   change: 256 glyphs of 8 bytes, a 256-byte table (one entry per cell of
-//!   the 32 x 8 cell picture: low 7 bits the glyph, bit 7 selecting colour 3
+//!   the 32 x 8 cell picture: low 7 bits the glyph, bit 7 selecting color 3
 //!   for pixel value 3), a second 256-byte table that RECOIL ignores, five
-//!   colours, and 15 ignored bytes. The cell order within the picture, which
-//!   interleaves the four glyphs of an object, and the colour order (the
+//!   colors, and 15 ignored bytes. The cell order within the picture, which
+//!   interleaves the four glyphs of an object, and the color order (the
 //!   registers in shadow order, playfield 0-3 then background) are observed from `recoil2png` output.
 
 use super::font::draw_multicolor_glyph;
@@ -22,7 +22,7 @@ const GLYPHS: usize = 256;
 const COLUMNS: usize = 32;
 const ROWS: usize = 8;
 
-/// Exactly 2580 bytes: glyphs, cell table, ignored table, the colour
+/// Exactly 2580 bytes: glyphs, cell table, ignored table, the color
 /// registers playfield 0-3 and background, 15 ignored bytes.
 pub(super) fn decode_leo(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2580 {

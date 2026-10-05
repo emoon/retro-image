@@ -16,18 +16,18 @@
 //! - Everything else was reverse engineered from the corpus samples
 //!   (WARRIOR.IGE, willy.ild, HIP3D1.ING, GIRL.MGA and the MegaColorEditor
 //!   files, CH2016.BGP, LUKE1.BGP) and by black-box probing of `recoil2png`
-//!   with hand-made files (uniform frames with one colour register set at a
+//!   with hand-made files (uniform frames with one color register set at a
 //!   time, one-byte changes to see which bytes are read, size scans).
 //!
 //! Layouts found:
 //! - IGE: a DOS binary-load header `FF FF F6 A3 FF BB`, the two bytes
-//!   `FF 5F`, four colour registers per frame (frame 1 then frame 2, indexed by
+//!   `FF 5F`, four color registers per frame (frame 1 then frame 2, indexed by
 //!   pixel value), then two frames of 96 lines x 32 bytes (128 pixels, 2 bits
 //!   each, drawn 2 wide). The frames are averaged.
 //! - ILD: exactly 8195 bytes: two frames of 128 lines x 32 bytes (2 bits) shown
-//!   in greys 0, 6, 2, 10 for pixel values 0-3, drawn 2 wide and averaged;
+//!   in grays 0, 6, 2, 10 for pixel values 0-3, drawn 2 wide and averaged;
 //!   the 3 trailing bytes are not read.
-//! - ING: two frames of 200 lines x 40 bytes (2 bits), then four colour
+//! - ING: two frames of 200 lines x 40 bytes (2 bits), then four color
 //!   registers shared by both frames. Anything after them is ignored. Same
 //!   layout as InterPainter, so `interlace::decode_inp` decodes it.
 //! - HR: exactly 16384 bytes: two 1-bit frames of 256 lines x 32 bytes, of
@@ -48,7 +48,7 @@
 //!   THESUNV2.CIN, which renders identically. The chunks unpack to 3840 bytes
 //!   each: the Graphics 15 columns of even lines, then of odd lines (96 bytes
 //!   per column, left to right), then the 7680 bytes of the hue plane, also by
-//!   column (192 per column), then the 1024 bytes of per-line colour tables.
+//!   column (192 per column), then the 1024 bytes of per-line color tables.
 //!   Together that is a 16384-byte CIN picture. DRACONUS.CCI's odd-line chunk
 //!   unpacks to 2 bytes too many; they are dropped, as is any data after the
 //!   fourth chunk (probed: only the 1024-byte table variant is accepted).
@@ -81,7 +81,7 @@ fn narrow_frames(
     Ok(Image::blend(&[&frame(first, 0)?, &frame(second, 1)?]))
 }
 
-/// Interlace Graphics Editor: a binary-load header, `FF 5F`, 2 x 4 colour
+/// Interlace Graphics Editor: a binary-load header, `FF 5F`, 2 x 4 color
 /// registers, then two 128x96 frames.
 pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
     const MAGIC: [u8; 8] = [0xff, 0xff, 0xf6, 0xa3, 0xff, 0xbb, 0xff, 0x5f];
@@ -94,7 +94,7 @@ pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
     })
 }
 
-/// Interlace Logo Designer: two 128x128 frames in four greys.
+/// Interlace Logo Designer: two 128x128 frames in four grays.
 pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
     const GREYS: [u8; 4] = [0x00, 0x06, 0x02, 0x0a];
     if data.len() != 2 * 32 * 128 + 3 {
@@ -105,7 +105,7 @@ pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
     })
 }
 
-/// Atari HR: two 256x239 one-bit frames, averaged into black, grey and white.
+/// Atari HR: two 256x239 one-bit frames, averaged into black, gray and white.
 pub(super) fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
     const FRAME: usize = 8192;
     if data.len() != 2 * FRAME {

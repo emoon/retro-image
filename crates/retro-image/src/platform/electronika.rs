@@ -1,7 +1,7 @@
 //! Electronika BK and Electronika MC 0515 screen dumps.
 //!
 //! Sources:
-//! - BK-0010 screen (16 KB, 64 bytes per line, 256 lines; colour mode 2 bits
+//! - BK-0010 screen (16 KB, 64 bytes per line, 256 lines; color mode 2 bits
 //!   per pixel, black/blue/green/red): Electronika BK hardware overviews,
 //!   <https://en.wikipedia.org/wiki/Electronika_BK> and
 //!   <https://alemorf.github.io/retro_computers/computer.html?id=BK0010>
@@ -9,8 +9,8 @@
 //! - BK pixel order (lowest bits leftmost): reverse engineered from samples
 //!   and `recoil2png` output.
 //! - BKS screens (16384 bytes mono 512x256, or 16384 + a palette number 0-15
-//!   for colour; two of either blended as a flickering pair), white-on-black
-//!   mono with rows doubled, and the colours of the BK-0011M's 16 palettes:
+//!   for color; two of either blended as a flickering pair), white-on-black
+//!   mono with rows doubled, and the colors of the BK-0011M's 16 palettes:
 //!   observed from `recoil2png` output.
 //! - MC 0515 640x200 monochrome screen (16000 bytes): emuverse,
 //!   <https://emuverse.ru/wiki/Электроника_МС_0515>. Line order, bit order
@@ -29,7 +29,7 @@ pub(super) static FORMATS: &[Format] = &[
 
 const BK_SCREEN_LEN: usize = 16384;
 
-/// 256x256 colour screen in the BK-0010 colours (BK-0011M palette 0).
+/// 256x256 color screen in the BK-0010 colors (BK-0011M palette 0).
 fn decode_bk_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != BK_SCREEN_LEN {
         return Err(DecodeError::Unrecognized);
@@ -38,7 +38,7 @@ fn decode_bk_pic(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// BKS: one or two screens (two are shown in alternation), followed in
-/// colour files by one palette number (0-15) per screen.
+/// color files by one palette number (0-15) per screen.
 fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
     let screens = data.len() / BK_SCREEN_LEN;
     let (pixels, palettes) = data.split_at(screens.min(2) * BK_SCREEN_LEN);
@@ -71,7 +71,7 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(Image::blend(&frames))
 }
 
-/// BK-0011M palettes: colours of pixel values 1-3 (0 is black).
+/// BK-0011M palettes: colors of pixel values 1-3 (0 is black).
 const BK_PALETTES: [[u32; 3]; 16] = [
     [0x0000ff, 0x00ff00, 0xff0000],
     [0xffff00, 0xff00ff, 0xff0000],

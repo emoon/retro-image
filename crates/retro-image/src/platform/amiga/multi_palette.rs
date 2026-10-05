@@ -3,14 +3,14 @@
 //! Sources:
 //! - PCHG: ILBM spec, "PCHG" section
 //!   (<https://wiki.amigaos.net/wiki/ILBM_IFF_Interleaved_Bitmap>): header,
-//!   line mask, SmallLineChanges (register in the top 4 bits, 12-bit colour)
+//!   line mask, SmallLineChanges (register in the top 4 bits, 12-bit color)
 //!   and BigLineChanges. Huffman compression: the tree layout and bit rules
 //!   described there; the compressed header (tree size and unpacked size as
 //!   longwords) was reverse engineered from a sample.
 //! - SHAM, CTBL, BEAM: the IFF chunk registry
 //!   (<https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>) names CTBL
 //!   an array of `0RGB` words. The per-line layout (SHAM: a version word,
-//!   then one 16-colour table per line or line pair) was reverse engineered
+//!   then one 16-color table per line or line pair) was reverse engineered
 //!   from samples and verified against `recoil2png` output.
 
 use alloc::vec::Vec;
@@ -21,7 +21,7 @@ use crate::bytes::{be16, be32};
 use crate::image::rgb444;
 
 pub(super) enum LinePalettes<'a> {
-    /// Complete colour tables of `colors` `0RGB` words, each used for
+    /// Complete color tables of `colors` `0RGB` words, each used for
     /// `lines_per_table` lines.
     Tables {
         words: &'a [u8],

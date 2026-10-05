@@ -68,7 +68,7 @@ pub(super) fn decode_ins(data: &[u8]) -> Result<Image, DecodeError> {
     packed(data, &[16004], interlace::decode_inp)
 }
 
-/// HPS: Hard Interlace Picture with its colour registers.
+/// HPS: Hard Interlace Picture with its color registers.
 pub(super) fn decode_hps(data: &[u8]) -> Result<Image, DecodeError> {
     packed(data, &[16009], hip::decode_hip)
 }

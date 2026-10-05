@@ -188,7 +188,7 @@ mod tests {
         assert_eq!(Line::new(&[4, 4], 1, false).samples, [192]);
         // Phase B skips the first pixel; an unpaired last pixel is zero.
         assert_eq!(Line::new(&[0, 8, 8, 5], 0, true).samples, [192, 0]);
-        // Grey: a steady 192 is (192 - 64) * 8 / 5 = 204.
+        // Gray: a steady 192 is (192 - 64) * 8 / 5 = 204.
         assert_eq!(line.luma(1), 204);
         assert_eq!(line.chroma(), [48, 48]);
     }

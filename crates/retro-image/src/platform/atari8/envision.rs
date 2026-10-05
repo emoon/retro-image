@@ -3,23 +3,23 @@
 //!
 //! Sources:
 //! - EnvisionPC manual, "MAP file format" (ANTIC mode, map width and height,
-//!   five colours, map data, font data)
+//!   five colors, map data, font data)
 //!   (<http://ftp.pigwa.net/stuff/collections/holmes%20cd/Holmes%202/PC%20Atari%20Programming%20Utils/EnvisionPC%20V0.5/envision.txt>).
 //!   Only that prose manual was read; the C source in the same zip has no
-//!   stated licence and was not opened. Just Solve "Envision"
+//!   stated license and was not opened. Just Solve "Envision"
 //!   (<http://fileformats.archiveteam.org/wiki/Envision>).
 //! - ANTIC text modes 2 to 7 (glyph size, 2-bit and 1-bit glyph pixels, the
-//!   inverse bit, mode 3 descenders, colours by the top code bits in modes 6
+//!   inverse bit, mode 3 descenders, colors by the top code bits in modes 6
 //!   and 7): De Re Atari ch. 2 (<https://www.atariarchives.org/dere/chapt02.php>).
 //! - The layout is reverse engineered from the corpus samples PRYLL.MAP,
 //!   ISLAND.MAP (mode 7) and NCC1701.MAP (mode 2, six fonts) and from
 //!   `recoil2png` probing of synthetic files: the mode byte (bit 7 is
-//!   ignored), width-1, height-1, five colour registers (playfield 0-3,
+//!   ignored), width-1, height-1, five color registers (playfield 0-3,
 //!   background), the map, a 256-byte table RECOIL ignores, a 208-byte table
 //!   (entry `y` is the font number of map row `y`; entry 206 the number of
 //!   fonts, entry 207 must be 1), an 8-byte name and 1024-byte font, then per
 //!   further font its number, an 8-byte name and 1024 bytes. The map height is
-//!   at most 204. The glyph and colour details of every mode were checked
+//!   at most 204. The glyph and color details of every mode were checked
 //!   against `recoil2png` with random synthetic files.
 
 use super::antic::fill;
@@ -42,9 +42,9 @@ const EXTRA_FONT: usize = 1 + 8 + FONT;
 enum Mode {
     /// 8x8 and 8x10 monochrome (the latter with descenders).
     Hires { tall: bool },
-    /// 4 colours from 2-bit pixels, 8x8 or 8x16.
+    /// 4 colors from 2-bit pixels, 8x8 or 8x16.
     Multi { tall: bool },
-    /// 5 colours chosen by the code, 16x8 or 16x16 of 1-bit pixels.
+    /// 5 colors chosen by the code, 16x8 or 16x16 of 1-bit pixels.
     Colored { tall: bool },
 }
 
@@ -112,7 +112,7 @@ pub(super) fn decode_map(data: &[u8]) -> Result<Image, DecodeError> {
     })
 }
 
-/// EnvisionPC: the mode, width and height (16 bits each), the colour
+/// EnvisionPC: the mode, width and height (16 bits each), the color
 /// registers background and playfield 0-3, the map, one font, then
 /// optionally zero padding (any other byte after the font is rejected).
 /// There is no sample: this was probed with synthetic files only, where
@@ -209,7 +209,7 @@ fn draw_cell(
     let glyph_at = |index: u8| &font[usize::from(index) * 8..][..8];
     for out_line in 0..cell_height / line_height {
         let line = out_line as usize;
-        // Per pixel column: the colour for each glyph pixel value.
+        // Per pixel column: the color for each glyph pixel value.
         let (bits, palette, pixel_bits): (u8, [u32; 4], u32) = match mode {
             Mode::Hires { tall } => {
                 let glyph = glyph_at(code & 0x7f);
@@ -257,7 +257,7 @@ mod tests {
     use alloc::vec::Vec;
 
     /// An EnvisionPC file of one mode 4 cell showing glyph `code`, with
-    /// colours background and playfield 0-3 and a font whose glyph 1 starts
+    /// colors background and playfield 0-3 and a font whose glyph 1 starts
     /// with the pixels 0, 1, 2, 3.
     fn pc_file(tail: &[u8]) -> Vec<u8> {
         let mut data = vec![4, 1, 0, 1, 0, 0x00, 0x22, 0x44, 0x66, 0x88, 1];

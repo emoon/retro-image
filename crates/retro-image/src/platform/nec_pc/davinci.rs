@@ -11,7 +11,7 @@
 //! line. A control byte with bit 7 set repeats the next triple `c & 0x7f` times;
 //! otherwise `c` literal triples follow. The stream must be followed by exactly 35
 //! more bytes (RECOIL ignores their content and refuses any other length).
-//! Colours are the 8 digital PC-88 colours (0 or 255 per component).
+//! Colors are the 8 digital PC-88 colors (0 or 255 per component).
 
 use alloc::vec::Vec;
 

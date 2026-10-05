@@ -1,4 +1,4 @@
-//! Mapletown Network `NL3` pictures (NEC PC-98, 160x100, 64 colours), a text
+//! Mapletown Network `NL3` pictures (NEC PC-98, 160x100, 64 colors), a text
 //! format.
 //!
 //! Layout reverse engineered from `YOUKO.NL3` (Shift-JIS) and
@@ -13,7 +13,7 @@
 //!   96..158 (one byte 0xA1..0xDF in Shift-JIS, three bytes in UTF-8).
 //!   Anything else is rejected.
 //! - The first 128 symbols are 64 palette entries of two symbols: `v = s0 +
-//!   128 * s1` (below 729), a base-9 colour with red `v / 81`, green
+//!   128 * s1` (below 729), a base-9 color with red `v / 81`, green
 //!   `v / 9 % 9` and blue `v % 9`, each level `L` shown as `L * 255 / 8`.
 //! - Then pixels, column by column (x outer, y inner): a symbol below 64 is
 //!   one pixel of that palette entry; 64..127 starts a run of entry `s - 64`
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn runs_fill_columns_first() {
-        // Colour 1 is v = 728 (white): low symbol 728 % 128 = 88, high 5.
+        // Color 1 is v = 728 (white): low symbol 728 % 128 = 88, high 5.
         let mut body = Vec::new();
         run(&mut body, 1, 100); // the whole first column
         run(&mut body, 0, 15900);

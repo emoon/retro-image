@@ -2,7 +2,7 @@
 //!
 //! Sources: reverse engineered from `titleScreen.flf` by black-box probing
 //! of `recoil2png`; TRSE's GPL-3 source was not read. Container:
-//! [`crate::codec::flf`]. Firmware colour numbers:
+//! [`crate::codec::flf`]. Firmware color numbers:
 //! [`super::hardware::firmware_color`].
 //!
 //! Type 0x18 (mode 0): byte 12 is `0x0b`, then 160x200 pen numbers (one per

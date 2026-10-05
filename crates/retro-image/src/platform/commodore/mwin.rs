@@ -1,16 +1,16 @@
-//! Art Studio window (`.mwin`, `.mwi`): a multicolour clip of an Art Studio
+//! Art Studio window (`.mwin`, `.mwi`): a multicolor clip of an Art Studio
 //! picture.
 //!
 //! Sources: reverse engineered from the five `artstudio2-*.mwin` samples by
 //! black-box probing of `recoil2png`; no format description was found.
 //! - Header of 5 bytes: one ignored byte, the window's x position in
-//!   multicolour pixels (a multiple of 4) and y position (a multiple of 8),
-//!   the width in multicolour pixels and the height in lines. Neither
+//!   multicolor pixels (a multiple of 4) and y position (a multiple of 8),
+//!   the width in multicolor pixels and the height in lines. Neither
 //!   position is used and no bounds are checked.
 //! - Then one record per character cell, left to right and top to bottom
 //!   (`ceil(width / 4)` by `ceil(height / 8)` cells): screen RAM byte,
-//!   colour RAM byte (low nibble) and 8 bitmap bytes. The background is black.
-//! - Each multicolour pixel is drawn two pixels wide. `recoil2png` wants the
+//!   color RAM byte (low nibble) and 8 bitmap bytes. The background is black.
+//! - Each multicolor pixel is drawn two pixels wide. `recoil2png` wants the
 //!   length to be exact and a nonzero width and height.
 
 use super::vic2;

@@ -6,25 +6,25 @@
 //!   control sequence syntax (ESC [, parameter bytes, a final byte 40h-7Eh),
 //!   CUU/CUD/CUF/CUB, CUP/HVP, ED, EL, SGR.
 //! - Deark `modules/ansiart.c` (<https://github.com/jsummers/deark>, MIT
-//!   licence): the behaviour art viewers settled on. A line feed also
+//!   license): the behavior art viewers settled on. A line feed also
 //!   returns the cursor to column 0; SGR bold brightens the foreground and,
 //!   in non-blink mode, blink brightens the background, both applied as the
 //!   character is written, before reverse video swaps them; erased cells are
-//!   light grey spaces on black; `ESC [ ? 33 h` turns non-blink mode on;
-//!   PabloDraw's 24-bit colour sequence `ESC [ 0|1 ; r ; g ; b t`
+//!   light gray spaces on black; `ESC [ ? 33 h` turns non-blink mode on;
+//!   PabloDraw's 24-bit color sequence `ESC [ 0|1 ; r ; g ; b t`
 //!   (<http://picoe.ca/2014/03/07/24-bit-ansi/>) and SGR 38/48 `;2;r;g;b`;
-//!   SGR 90-97 and 100-107 select bright colours; the SAUCE width is used
+//!   SGR 90-97 and 100-107 select bright colors; the SAUCE width is used
 //!   only from 40 to 2048 columns. Like Deark, the picture is as tall as the
 //!   lowest row written to.
 //! - The SAUCE specification (<https://www.acid.org/info/sauce/sauce.htm>):
 //!   the EOF character (1Ah) ends the text.
-//! - DOS console behaviour, as in FSC-0037 (<http://ftsc.org/docs/fsc-0037.001>)
+//! - DOS console behavior, as in FSC-0037 (<http://ftsc.org/docs/fsc-0037.001>)
 //!   for Avatar: BEL makes no mark, backspace moves left, tab moves to the
 //!   next multiple of 8. ANSI.SYS keeps the cursor on screen: moves stop at
 //!   the edges and a row or column of 0 means 1.
 
-// The behaviour listed above as taken from Deark follows Deark
-// `modules/ansiart.c`, under this licence:
+// The behavior listed above as taken from Deark follows Deark
+// `modules/ansiart.c`, under this license:
 //
 // Copyright (C) 2016-2026 Jason Summers
 // <jason1@pobox.com>
@@ -58,7 +58,7 @@ const ANSI_FILE_TYPES: [u8; 3] = [0, 1, 2];
 /// Most parameters read from one control sequence.
 const MAX_PARAMS: usize = 16;
 
-/// ANSI colour numbers (SGR 30-37) to PC attribute colours.
+/// ANSI color numbers (SGR 30-37) to PC attribute colors.
 const ANSI_TO_PC: [u8; 8] = [0, 4, 2, 6, 1, 5, 3, 7];
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
@@ -71,7 +71,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     ansi.terminal.finish(&sauce::style_of(sauce.as_ref()))
 }
 
-/// A colour: one of the 16 palette entries or 24-bit RGB.
+/// A color: one of the 16 palette entries or 24-bit RGB.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Color {
     Index(u8),
@@ -249,7 +249,7 @@ impl Ansi {
                 90..=97 => r.fg = Color::Index(ANSI_TO_PC[code as usize - 90] | 8),
                 100..=107 => r.bg = Color::Index(ANSI_TO_PC[code as usize - 100] | 8),
                 38 | 48 => {
-                    // 38;2;r;g;b sets 24-bit colour; 38;5;n (256 colours) is skipped.
+                    // 38;2;r;g;b sets 24-bit color; 38;5;n (256 colors) is skipped.
                     let mode = values.get(i).copied().flatten();
                     let len = match mode {
                         Some(2) => 4,
@@ -286,7 +286,7 @@ impl Ansi {
     }
 }
 
-/// A colour from three parameters (red, green, blue), each modulo 256.
+/// A color from three parameters (red, green, blue), each modulo 256.
 fn rgb(values: &[Option<u32>]) -> Color {
     let channel = |i: usize| values.get(i).copied().flatten().unwrap_or(0) & 0xff;
     Color::Rgb(channel(0) << 16 | channel(1) << 8 | channel(2))

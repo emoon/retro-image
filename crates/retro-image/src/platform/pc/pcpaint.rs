@@ -10,14 +10,14 @@
 //!   <http://fileformats.archiveteam.org/wiki/PCPaint_PIC>,
 //!   <http://fileformats.archiveteam.org/wiki/PCPaint_CLP> (CC0).
 //! - Deark `pcpaint.c` and `fmtutil-rle.c` (<https://github.com/jsummers/deark>,
-//!   MIT licence) for the palette descriptor types, the CGA palette selection,
+//!   MIT license) for the palette descriptor types, the CGA palette selection,
 //!   the 8-bit palette heuristic and the exact block rules. It is also the
 //!   oracle for the sample files (all 25 in the corpus).
 //!
-//! Decoded: bilevel, 4-colour CGA (2 bits per pixel), 16-colour EGA/VGA
-//! (nibbles or 4 planes), 4-colour planar and 256-colour pictures, with the
+//! Decoded: bilevel, 4-color CGA (2 bits per pixel), 16-color EGA/VGA
+//! (nibbles or 4 planes), 4-color planar and 256-color pictures, with the
 //! palette descriptors 0 (default), 1 (CGA code), 2 and 3 (indices into the
-//! 16 and 64 colour EGA palettes), 4 and 5 (RGB). Rows are stored bottom-up.
+//! 16 and 64 color EGA palettes), 4 and 5 (RGB). Rows are stored bottom-up.
 //! Text-mode pictures (video modes `0` to `3`: rows of character and
 //! attribute bytes, width counted in bytes) are drawn with the text-mode art
 //! fonts; the one sample, `WSSCREEN.PIC`, is an 80x60 screen. 24-bit variants
@@ -67,7 +67,7 @@ const HAS_PALETTE_BLOCK: u8 = 0xff;
 const PALETTE_AT: usize = 17;
 const V1_PALETTE_LEN: usize = 10;
 
-/// The CGA 4-colour palettes selectable by the palette descriptor; any other
+/// The CGA 4-color palettes selectable by the palette descriptor; any other
 /// code falls back to the third.
 pub(super) const CGA_4: [[u32; 4]; 6] = [
     cga_set([3, 5, 7]),
@@ -124,7 +124,7 @@ impl Layout {
     }
 }
 
-/// How the palette block describes the colours.
+/// How the palette block describes the colors.
 struct PaletteInfo<'a> {
     /// The palette descriptor.
     kind: u16,
@@ -333,7 +333,7 @@ fn palette(colors: usize, info: &PaletteInfo) -> [u32; 256] {
     let block = info.block;
     match info.kind {
         1 => {
-            // CGA palette code and border colour.
+            // CGA palette code and border color.
             let code = usize::from(block.first().copied().unwrap_or(0));
             let border = usize::from(block.get(1).copied().unwrap_or(0));
             pal[..4].copy_from_slice(CGA_4.get(code).unwrap_or(&CGA_4[2]));
@@ -352,7 +352,7 @@ fn palette(colors: usize, info: &PaletteInfo) -> [u32; 256] {
         4 | 5 => rgb_palette(&mut pal[..colors], block),
         _ => {}
     }
-    // PCPaint drew its CGA and EGA 2-colour modes in light grey.
+    // PCPaint drew its CGA and EGA 2-color modes in light gray.
     if colors == 2 && info.kind == 0 && matches!(info.video_mode, 0x43 | 0x45) {
         pal[1] = 0xaaaaaa;
     }
@@ -414,7 +414,7 @@ pub(super) const VGA_PALETTE: [u32; 256] = [
 mod tests {
     use super::*;
 
-    /// A 4x2 16-colour picture whose palette block maps index `i` to colour
+    /// A 4x2 16-color picture whose palette block maps index `i` to color
     /// `15 - i`, with the given block count and body.
     fn pic(block_count: u16, body: &[u8]) -> Vec<u8> {
         let mut file = alloc::vec![0x34, 0x12, 4, 0, 2, 0, 0, 0, 0, 0, 0x04, 0xff, b'L'];
@@ -430,7 +430,7 @@ mod tests {
     fn rows_are_bottom_up_and_palette_indices_apply() {
         let image = decode_pic(&pic(0, &[0x01, 0x23, 0x45, 0x67])).unwrap();
         assert_eq!((image.width(), image.height()), (4, 2));
-        // The top row is the second stored row: 4, 5, 6, 7 -> colours 11 to 8.
+        // The top row is the second stored row: 4, 5, 6, 7 -> colors 11 to 8.
         assert_eq!(image.get(0, 0), CGA_PALETTE[11]);
         assert_eq!(image.get(3, 0), CGA_PALETTE[8]);
         assert_eq!(image.get(0, 1), CGA_PALETTE[15]);
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn a_clip_that_expands_to_too_little_is_rejected() {
-        // 4x4 planar 16-colour clip (0x31) whose packed body is a single byte.
+        // 4x4 planar 16-color clip (0x31) whose packed body is a single byte.
         let mut clip = alloc::vec![0, 0, 4, 0, 4, 0, 0, 0, 0, 0, 0xff, 0x31, 0xfe, 1];
         clip[0] = clip.len() as u8;
         assert!(decode_clp(&clip).is_err());

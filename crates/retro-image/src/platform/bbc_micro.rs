@@ -4,8 +4,8 @@
 //! - Screen modes, memory sizes, character-cell layout (8 bytes per cell,
 //!   cells left to right, then the next character row) and pixel packing:
 //!   dfstudios, <https://www.dfstudios.co.uk/articles/retro-computing/bbc-micro-screen-formats/>.
-//! - Default logical colours (2: black/white; 4: black/red/yellow/white;
-//!   16: the 8 physical colours, then flashing ones): the same article.
+//! - Default logical colors (2: black/white; 4: black/red/yellow/white;
+//!   16: the 8 physical colors, then flashing ones): the same article.
 //! - LdPic header, bit order, run-length coding and address stepping:
 //!   <https://nerdoftheherd.com/projects/libbeebimage/ldpic/> (prose spec).
 //! - Mode 7 teletext (raw screens, TTI, EP1): see `teletext.rs`.
@@ -64,7 +64,7 @@ pub(super) static FORMATS: &[Format] = &[
 ];
 
 struct Mode {
-    /// Default physical colour of each logical colour.
+    /// Default physical color of each logical color.
     palette: [u8; 16],
     /// Bytes per character row (80 cells of 8 bytes, or 40).
     row_bytes: usize,
@@ -124,7 +124,7 @@ fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
     render(data, mode, &mode.palette)
 }
 
-/// Renders screen memory with a logical-to-physical colour mapping.
+/// Renders screen memory with a logical-to-physical color mapping.
 fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Result<Image, DecodeError> {
     let pixels_per_byte = 8 / mode.bits_per_pixel;
     let width = mode.row_bytes / 8 * pixels_per_byte;
@@ -141,7 +141,7 @@ fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Result<Image, DecodeE
     image.scaled(sx, sy)
 }
 
-/// Logical colour of pixel `n` in a byte: its bits are interleaved, with
+/// Logical color of pixel `n` in a byte: its bits are interleaved, with
 /// pixel 0 in the top bit of each group (bits 7, 5, 3, 1 for 4 bpp; bits
 /// 7, 3 for 2 bpp; bit 7 for 1 bpp).
 fn pixel(byte: u8, n: usize, bits_per_pixel: usize) -> u8 {
@@ -152,8 +152,8 @@ fn pixel(byte: u8, n: usize, bits_per_pixel: usize) -> u8 {
     })
 }
 
-/// Physical colour bits: 0 red, 1 green, 2 blue. Colours 8-15 flash and
-/// are shown in their first phase, colour & 7.
+/// Physical color bits: 0 red, 1 green, 2 blue. Colors 8-15 flash and
+/// are shown in their first phase, color & 7.
 fn physical_color(physical: u8) -> u32 {
     let channel = |bit: u8| if physical & bit != 0 { 0xff } else { 0 };
     channel(1) << 16 | channel(2) << 8 | channel(4)
@@ -161,8 +161,8 @@ fn physical_color(physical: u8) -> u32 {
 
 /// LdPic (Acorn User, 1986): a bit stream whose fields are read MSB first
 /// from each byte but have their bits reversed. Header: bits per stored
-/// value (A, 8 bits), mode (8), 16 x 4-bit logical-to-physical colours from
-/// colour 15 down (64), address step (D, 8) and repeat-count width (E, 8).
+/// value (A, 8 bits), mode (8), 16 x 4-bit logical-to-physical colors from
+/// color 15 down (64), address step (D, 8) and repeat-count width (E, 8).
 /// Then runs: flag 1 = E-bit count and A-bit value, flag 0 = one A-bit
 /// value. Values are written from screen offset D - 1, stepping by D; when
 /// the address leaves the screen, writing restarts one byte lower (D - 2,

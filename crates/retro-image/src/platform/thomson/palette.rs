@@ -1,9 +1,9 @@
-//! Thomson colours: palette values and how they look on screen.
+//! Thomson colors: palette values and how they look on screen.
 //!
 //! Sources:
 //! - Palette values are 12 bits, `0BGR` with 4 bits per channel (the
 //!   operand of BASIC `PALETTE`), and the 16 power-on entries (black, red,
-//!   green, yellow, blue, magenta, cyan, white, grey, then the pastel
+//!   green, yellow, blue, magenta, cyan, white, gray, then the pastel
 //!   shades and orange) that the TO8/TO9+/MO6 set up and the TO7/70 has in
 //!   ROM: MAME `src/mame/thomson/thomson_m.cpp` (`thom_pal_init`),
 //!   <https://github.com/mamedev/mame/blob/master/src/mame/thomson/thomson_m.cpp>.
@@ -13,7 +13,7 @@
 //!   curve for the TO7/70's fixed palette.
 //!
 //! The palette values and the gamma curve come from MAME's
-//! `src/mame/thomson/thomson_m.cpp`, used under its licence:
+//! `src/mame/thomson/thomson_m.cpp`, used under its license:
 //!
 //! ```text
 //! license:BSD-3-Clause
@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(rgb(0xf00), 0x0000ff);
         // Orange: R 11, G 7, B 0; mid levels are lifted by the gamma.
         assert_eq!(rgb(0x07b), 0xe4c200);
-        // Bits above the 12 colour bits are ignored.
+        // Bits above the 12 color bits are ignored.
         assert_eq!(rgb(0x1fff), 0xffffff);
     }
 

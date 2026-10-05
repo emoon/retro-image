@@ -12,7 +12,7 @@
 //!   in each band the first four are the lower layer and the next four the
 //!   upper layer, one sprite per 24-pixel column, 21 lines per band. Lines
 //!   84-87 have no sprites.
-//! - `3238`, `3239`: colours of the lower and the upper layer.
+//! - `3238`, `3239`: colors of the lower and the upper layer.
 //! - 10 more ignored bytes: the file is exactly 3250 bytes.
 //!
 //! The upper sprite layer wins over the lower one, which wins over the
@@ -44,7 +44,7 @@ pub(super) fn decode_she(data: &[u8]) -> Result<Image, DecodeError> {
                 let start = SPRITES + sprite * 64 + y % 21 * 3;
                 bit(&data[start..start + 3], x % 24)
             };
-            // The upper layer's colour is stored second.
+            // The upper layer's color is stored second.
             if sprite_set(1) {
                 return data[COLORS + 1];
             }

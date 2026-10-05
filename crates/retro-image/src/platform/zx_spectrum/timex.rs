@@ -1,16 +1,16 @@
-//! Timex 2048 hi-colour and hi-res screens, and the ULAplus palette screen.
+//! Timex 2048 hi-color and hi-res screens, and the ULAplus palette screen.
 //!
 //! Sources:
-//! - Timex modes (hi-colour attribute bitmap at 0x6000, hi-res column
-//!   alternation, port 0xFF colour pairs): WoS Timex technical reference,
+//! - Timex modes (hi-color attribute bitmap at 0x6000, hi-res column
+//!   alternation, port 0xFF color pairs): WoS Timex technical reference,
 //!   <https://worldofspectrum.org/faq/reference/tmxreference.htm>.
-//! - File sizes (12288 hi-colour, 12289 hi-res, 24578 HRG = two hi-res
+//! - File sizes (12288 hi-color, 12289 hi-res, 24578 HRG = two hi-res
 //!   screens) and ULAplus SCR (6912 + 64-byte palette): zx-image README (CC0)
 //!   (<https://github.com/moroz1999/zx-image>) and SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT), ULA+
 //!   section, <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
 //! - ULAplus GRB332 palette and CLUT selection: ULAplus specification,
 //!   <https://sinclair.wiki.zxnet.co.uk/wiki/ULAplus>.
-//! - Hi-res colours at bright intensity, rows doubled to 512x384, and the
+//! - Hi-res colors at bright intensity, rows doubled to 512x384, and the
 //!   2-bit blue scaled by 0x55: observed from `recoil2png` output.
 
 use super::screen::{
@@ -23,7 +23,7 @@ use crate::{DecodeError, Image};
 const HICOLOR_LEN: usize = 2 * BITMAP_LEN;
 const HIRES_LEN: usize = 2 * BITMAP_LEN + 1;
 
-/// Hi-colour: interleaved bitmap, then 8x1 attributes in the same interleave.
+/// Hi-color: interleaved bitmap, then 8x1 attributes in the same interleave.
 pub(super) fn decode_hicolor(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HICOLOR_LEN {
         return Err(DecodeError::Unrecognized);

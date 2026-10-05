@@ -52,7 +52,7 @@ const PICTURE: usize = 40 * 256;
 const PICTURE_PAGE: u8 = 0x4f;
 const FIRST_PAGE: u8 = 0x4d;
 
-/// A4R: 80x256 greys.
+/// A4R: 80x256 grays.
 pub(super) fn decode_a4r(data: &[u8]) -> Result<Image, DecodeError> {
     let Some((&[b0, b1, 0x00, 0x90, page], stream)) = data.split_first_chunk() else {
         return Err(DecodeError::Unrecognized);

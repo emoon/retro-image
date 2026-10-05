@@ -3,7 +3,7 @@
 //!
 //! Source: reverse engineered from `_REMSM4.IMG` and `REMSM3.IMG` by black-box
 //! probing of `recoil2png` (see `docs/research/msx-japanese.md`, "Wave 5:
-//! Japanese"): bit 0 of the colour is blue, bit 1 red, bit 2 green, each shown
+//! Japanese"): bit 0 of the color is blue, bit 1 red, bit 2 green, each shown
 //! as 0 or 255, and every line is drawn twice.
 
 use alloc::vec::Vec;
@@ -16,7 +16,7 @@ pub(super) const LINES: usize = 200;
 /// Bytes in one bit plane.
 pub(super) const PLANE_BYTES: usize = WIDTH / 8 * LINES;
 
-/// The eight digital colours: bit 0 of the index is blue, bit 1 red, bit 2 green.
+/// The eight digital colors: bit 0 of the index is blue, bit 1 red, bit 2 green.
 pub(super) fn palette() -> Vec<u32> {
     (0..8u32)
         .map(|c| {

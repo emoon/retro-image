@@ -2,7 +2,7 @@
 //! platforms.
 //!
 //! Sources:
-//! - Header, delta table (per-colour move-to-front), variable-length delta and
+//! - Header, delta table (per-color move-to-front), variable-length delta and
 //!   length codes, the five repeat locations: Kirinn Bunnylin, "Pi and PIC
 //!   graphics formats" (<https://mooncore.eu/bunny/txt/pi-pic.htm>).
 //! - Observed from `recoil2png` output (samples and synthesized files): a repeat
@@ -10,8 +10,8 @@
 //!   picture restarts at byte 0 or 1 for each pair; aspect 2:1 doubles the
 //!   height except for `X68K` and `TOWN` (FM Towns, probed by patching the
 //!   model of PC-98 files: 5-bit palette components); palette precision by saver model (`X68K` the
-//!   X68000 colour word, `MSX2` 3 bits, `PCVA` 4 bits at 2:1 and R5 G6 B5
-//!   otherwise, else 4 bits for 16 colours and 8 bits for 256); the mode byte
+//!   X68000 color word, `MSX2` 3 bits, `PCVA` 4 bits at 2:1 and R5 G6 B5
+//!   otherwise, else 4 bits for 16 colors and 8 bits for 256); the mode byte
 //!   must be 0, the depth 4 or 8, and the stream must not end early.
 
 use alloc::vec;
@@ -110,7 +110,7 @@ impl Bits<'_> {
     }
 
     /// Delta code: `1x`, `00x`, then `01` + unary + binary, capped by the
-    /// number of colours.
+    /// number of colors.
     fn delta(&mut self, colours: usize) -> Option<usize> {
         if self.bit()? == 1 {
             return self.bit();
@@ -152,7 +152,7 @@ struct Decoder<'a> {
     pos: usize,
     width: usize,
     colours: usize,
-    /// `table[a * colours + i]`: i-th most recent colour to follow colour `a`.
+    /// `table[a * colours + i]`: i-th most recent color to follow color `a`.
     table: Vec<u8>,
 }
 
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn delta_codes() {
-        // 1x, 00x, 010xx, 011xxx for 16 colours.
+        // 1x, 00x, 010xx, 011xxx for 16 colors.
         let data = [0b1100_1010, 0b1101_1111];
         let mut bits = Bits {
             data: &data,
@@ -324,7 +324,7 @@ mod tests {
             decode_pi(&data, Machine::Pc98),
             Err(DecodeError::Unrecognized)
         );
-        // Two deltas (colour 15, 15), a first repeat of 1 pair (shortened to 0),
+        // Two deltas (color 15, 15), a first repeat of 1 pair (shortened to 0),
         // then an end marker.
         data.extend([0b1110_0000, 0b0000_0000]);
         let image = decode_pi(&data, Machine::Pc98).unwrap();

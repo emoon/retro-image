@@ -2,7 +2,7 @@
 //! platforms.
 //!
 //! Sources:
-//! - Header, machine types and colour formats, the length code, the colour cache
+//! - Header, machine types and color formats, the length code, the color cache
 //!   (128 entries, least recently used replaced) and the chain code that carries a
 //!   change point down to following lines: Yanagisawa, "PICのフォーマットについて"
 //!   (`pic_fmt.txt` in PIC_FMT, <https://www.vector.co.jp/soft/data/art/se003198.html>;
@@ -11,11 +11,11 @@
 //!   - accepted type bytes: 0x00 and 0x1F (X68000), 0x02 and 0xC2 (FM Towns),
 //!     0x11 and 0x21 (PC-88 VA, 16 bits only); types 0x02 and 0x1F carry the
 //!     6-byte extended header (save position and aspect);
-//!   - decoding starts before the first pixel, the first new colour goes to
+//!   - decoding starts before the first pixel, the first new color goes to
 //!     cache entry 1 and entry 0 is the last to be replaced;
-//!   - palettes are X68000 colour words (FM Towns: 5 bits per component, no
+//!   - palettes are X68000 color words (FM Towns: 5 bits per component, no
 //!     intensity); a comment starting with `/MM/` (MSX) keeps 3 bits;
-//!   - PC-88 VA type 0x21 packs two 256-colour `GGGRRRBB` pixels per word and
+//!   - PC-88 VA type 0x21 packs two 256-color `GGGRRRBB` pixels per word and
 //!     two lines side by side, so the height doubles; blue levels step by 0x55.
 
 use alloc::vec;
@@ -59,7 +59,7 @@ struct Header<'a> {
     stream: &'a [u8],
 }
 
-/// X68000 colour word `GGGGGRRRRRBBBBBI`: 5 bits per component plus intensity.
+/// X68000 color word `GGGGGRRRRRBBBBBI`: 5 bits per component plus intensity.
 fn x68000(word: u32) -> u32 {
     let i = word & 1;
     let six = |shift: u32| widen_channel((word >> shift & 31) << 1 | i, 6);
@@ -172,7 +172,7 @@ impl Bits<'_> {
     }
 }
 
-/// 128 recently used colours; `order` runs from the next to be replaced to the
+/// 128 recently used colors; `order` runs from the next to be replaced to the
 /// most recently used.
 struct Cache {
     colours: [u32; 128],
@@ -209,7 +209,7 @@ impl Cache {
 const MAX_PIXELS: usize = 1 << 22;
 const NO_MARK: u32 = u32::MAX;
 
-/// Decodes the change-point stream into one colour value per pixel.
+/// Decodes the change-point stream into one color value per pixel.
 fn unpack(header: &Header) -> Option<Vec<u32>> {
     let (width, total) = (header.width, header.width * header.height);
     let mut out = vec![0u32; total];
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn single_colour_picture() {
-        // Length 1, new colour 0x7c00 (green), no chain, then the rest (length 4).
+        // Length 1, new color 0x7c00 (green), no chain, then the rest (length 4).
         let mut data = b"PICx\x1a\0\0\0\0\x0f\0\x02\0\x02".to_vec();
         data.extend([0b0001_1111, 0, 0b0001_0010, 0]);
         let image = decode_pic(&data, Machine::X68000).unwrap();

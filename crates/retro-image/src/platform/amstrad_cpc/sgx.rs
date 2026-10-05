@@ -3,7 +3,7 @@
 //! Sources: SGX chunks, pixel encodings and fixed palettes: SymbOS wiki,
 //! <https://github.com/Prodatron/symbos-wiki/wiki/Format-SGX-(Graphic)>
 //! (documentation only). The 4-bit to 8-bit level
-//! mapping (0, 0x80, 0xFF) and grey levels: observed from `recoil2png`
+//! mapping (0, 0x80, 0xFF) and gray levels: observed from `recoil2png`
 //! output. ZX0-compressed chunks are not supported (no sample).
 
 use alloc::vec::Vec;
@@ -91,12 +91,12 @@ pub(super) fn decode_sgx(data: &[u8]) -> Result<Image, DecodeError> {
     Ok(image)
 }
 
-/// Fixed 16-colour palette (CPC Plus 4-bit RGB, 8 shown as 0x80).
+/// Fixed 16-color palette (CPC Plus 4-bit RGB, 8 shown as 0x80).
 const SGX_COLORS: [u32; 16] = [
     0xffff80, 0x000000, 0xff8000, 0x800000, 0x00ffff, 0x000080, 0x8080ff, 0x0000ff, 0xffffff,
     0x008000, 0x00ff00, 0xff00ff, 0xffff00, 0x808080, 0xff8080, 0xff0000,
 ];
-/// Fixed 4-colour palette: white, black, light grey, dark grey.
+/// Fixed 4-color palette: white, black, light gray, dark gray.
 const SGX_GREYS: [u32; 4] = [0xffffff, 0x000000, 0xaaaaaa, 0x555555];
 
 fn draw_part(image: &mut Image, part: &Part) {

@@ -4,11 +4,11 @@
 //! Sources:
 //! - SEUCK sprites: 127 sprites of 64 bytes after a load address,
 //!   <http://fileformats.archiveteam.org/wiki/Shoot_'Em_Up_Construction_Kit>;
-//!   all multicolour, the shared colours and the sheet width (keeping the
+//!   all multicolor, the shared colors and the sheet width (keeping the
 //!   gap after the last column) observed from `recoil2png` output.
-//! - SpritePad format (headerless and `SPD` version 1: colours, then 63
-//!   bytes plus an attribute byte per sprite, attribute bits 0-3 colour and
-//!   bit 7 multicolour): CSDb forum thread "SPD format",
+//! - SpritePad format (headerless and `SPD` version 1: colors, then 63
+//!   bytes plus an attribute byte per sprite, attribute bits 0-3 color and
+//!   bit 7 multicolor): CSDb forum thread "SPD format",
 //!   <https://csdb.dk/forums/?roomid=7&topicid=125812>.
 //! - SpritePad 2 files (`SPD` versions 3 to 5): reverse engineered from 45
 //!   sample files in `corpus/extra/spritepad-spd45/`. Header field order
@@ -18,10 +18,10 @@
 //!   file sizes in all samples, and the sprite attribute bits are the same
 //!   as in version 1. Rendered sheets were reviewed visually. `recoil2png`
 //!   rejects these versions.
-//! - Sprite pixel semantics (multicolour `01` = multicolour 1, `10` = sprite
-//!   colour, `11` = multicolour 2): <https://www.cebix.net/VIC-Article.txt>.
+//! - Sprite pixel semantics (multicolor `01` = multicolor 1, `10` = sprite
+//!   color, `11` = multicolor 2): <https://www.cebix.net/VIC-Article.txt>.
 //! - Sheet layout (16 sprites per row, 2-pixel gaps, everything else in the
-//!   background colour) observed from `recoil2png` output.
+//!   background color) observed from `recoil2png` output.
 
 use super::vic2::rgb;
 use crate::bytes::le16;
@@ -36,7 +36,7 @@ const ANIMATION_LEN: usize = 6;
 const SPRITE_WIDTH: usize = 24;
 const SPRITE_HEIGHT: usize = 21;
 
-/// Shared colours of a sprite collection.
+/// Shared colors of a sprite collection.
 struct Colors {
     background: u8,
     multi1: u8,
@@ -86,7 +86,7 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Result<Image, 
 }
 
 /// SpritePad `SPD`. Version 1: magic, sprite count minus one, animation
-/// count, the three shared colours, then the sprites. Versions 3 to 5: see
+/// count, the three shared colors, then the sprites. Versions 3 to 5: see
 /// [`decode_spd_v3`].
 pub(super) fn decode_spd(data: &[u8]) -> Result<Image, DecodeError> {
     match data {
@@ -114,7 +114,7 @@ pub(super) fn decode_spd(data: &[u8]) -> Result<Image, DecodeError> {
 /// SpritePad `SPD` versions 3 to 5 (SpritePad 2): after the version byte come
 /// flags (2 = animations present), the 16-bit sprite and tile counts, the
 /// sprite and tile animation counts minus one, tile width and height, the
-/// three shared colours and, from version 4 on, four bytes of overlay
+/// three shared colors and, from version 4 on, four bytes of overlay
 /// distances (16 bytes before them, 20 with). The sprites follow, then
 /// 6 bytes per sprite animation when flags say so. The size must match
 /// exactly; files with tiles are not decoded because no sample shows where
@@ -144,7 +144,7 @@ fn decode_spd_v3(data: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
-/// Headerless SpritePad: the three shared colours, then the sprites.
+/// Headerless SpritePad: the three shared colors, then the sprites.
 pub(super) fn decode_spd_raw(data: &[u8]) -> Result<Image, DecodeError> {
     let [background, multi1, multi2, sprites @ ..] = data else {
         return Err(DecodeError::Unrecognized);
@@ -171,8 +171,8 @@ fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
     )
 }
 
-/// SEUCK sprites: load address and 127 multicolour sprites. The file has no
-/// shared colours; `recoil2png` uses dark grey, black and white.
+/// SEUCK sprites: load address and 127 multicolor sprites. The file has no
+/// shared colors; `recoil2png` uses dark gray, black and white.
 pub(super) fn decode_seuck(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + 127 * 64 {
         return Err(DecodeError::Unrecognized);

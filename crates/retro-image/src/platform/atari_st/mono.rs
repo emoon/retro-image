@@ -1,6 +1,6 @@
 //! Monochrome formats: Public Painter (`CMP`), STAD (`PAC`), MegaPaint
 //! (`BLD`), DEGAS Elite and GDOS fonts (`FNT`), brushes (`BRU`) and icons
-//! (`ICN`), Picworks (`CP3`), ColorSTar objects (`OBJ`, also in colour) and
+//! (`ICN`), Picworks (`CP3`), ColorSTar objects (`OBJ`, also in color) and
 //! Calamus Raster Graphic (`CRG`). Further sources are given per decoder.
 //!
 //! Sources:
@@ -21,7 +21,7 @@
 //! - DEGAS Elite icon: <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Icon_file_format>
 //! - ColorSTar objects: no documentation found; reverse engineered from
 //!   sample files and `recoil2png` output.
-//! - Sheet layouts, colours and the details noted on each decoder: observed
+//! - Sheet layouts, colors and the details noted on each decoder: observed
 //!   from `recoil2png` output.
 
 use alloc::vec::Vec;
@@ -347,7 +347,7 @@ fn parse_hex(token: &str) -> Option<usize> {
 }
 
 /// ColorSTar / MonoSTar object: width - 1, height - 1, plane count, then
-/// word-aligned rows. Monochrome objects start with the header; colour ones
+/// word-aligned rows. Monochrome objects start with the header; color ones
 /// (4 planes, word-interleaved) are preceded by 16 ST palette words written
 /// as decimal text lines. Derived from sample files and `recoil2png` output
 /// (the survey found no documentation).
@@ -379,7 +379,7 @@ pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
 }
 
-/// The 16 decimal palette lines (CR LF) of a colour object, as colours,
+/// The 16 decimal palette lines (CR LF) of a color object, as colors,
 /// and the data after them.
 fn obj_text_palette(data: &[u8]) -> Option<(Vec<u32>, &[u8])> {
     let mut words = Vec::with_capacity(16);
@@ -441,7 +441,7 @@ mod tests {
         for i in 0..16u16 {
             data.extend_from_slice(alloc::format!("{}\r\n", (i % 8) * 0x111).as_bytes());
         }
-        // 1x1 pixel, 4 planes: colour 3 (planes 0 and 1 set).
+        // 1x1 pixel, 4 planes: color 3 (planes 0 and 1 set).
         data.extend_from_slice(&[0, 0, 0, 0, 0, 4, 0x80, 0, 0x80, 0, 0, 0, 0, 0]);
         let image = decode_obj(&data).unwrap();
         assert_eq!(image.get(0, 0), 0x6d6d6d);

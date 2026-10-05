@@ -1,17 +1,17 @@
 //! Apple IIGS Super Hi-Res pictures: screen dump ($C1/0000), Brooks
-//! 3200-colour ($C1/0002), compressed 3200-colour (`.3201`), Apple Preferred
+//! 3200-color ($C1/0002), compressed 3200-color (`.3201`), Apple Preferred
 //! Format ($C0/0002) and Paintworks ($C0/0000).
 //!
 //! Sources:
-//! - Screen memory (160-byte lines, SCBs at $7D00, sixteen 16-colour palettes
-//!   at $7E00, colour word `0RGB` little-endian; 320 and 640 modes, fill
+//! - Screen memory (160-byte lines, SCBs at $7D00, sixteen 16-color palettes
+//!   at $7E00, color word `0RGB` little-endian; 320 and 640 modes, fill
 //!   mode, 640-mode palette per pixel column): CiderPress II Super Hi-Res
 //!   notes (<https://ciderpress2.com/formatdoc/SuperHiRes-notes.html>) and
 //!   the Apple IIGS Hardware Reference
 //!   (<https://archive.org/details/Apple_IIgs_Hardware_Reference>).
 //! - Brooks: File Type Note $C1/0002
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c1.0002>):
-//!   200 palettes after the pixels, colour 15 stored first.
+//!   200 palettes after the pixels, color 15 stored first.
 //! - `.3201`: CiderPress II notes (high-ASCII "APP", 200 palettes, PackBytes).
 //! - APF: File Type Note $C0/0002
 //!   (<https://mirrors.apple2.org.za/ftp.gno.org/doc/apple/filetypes/ftn.c0.0002>):
@@ -51,7 +51,7 @@ struct Line<'a> {
     palette: Palette,
 }
 
-/// 16 colour words, optionally stored colour 15 first.
+/// 16 color words, optionally stored color 15 first.
 fn read_palette(words: &[u8], reversed: bool) -> Palette {
     let mut palette = [0; 16];
     for (i, word) in words.as_chunks::<2>().0.iter().take(16).enumerate() {
@@ -126,7 +126,7 @@ pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// A screen dump under an extension shared with other platforms (`.SCR`).
 /// Besides the exact size, it must not carry an AMSDOS header (a CPC file)
-/// and every colour in the palettes the SCBs select must be a valid `0RGB`
+/// and every color in the palettes the SCBs select must be a valid `0RGB`
 /// word: the high nibble of its high byte is zero. Random data, other
 /// machines' screens and the padded CPC overscan files fail that.
 /// Observed from the corpus; the rule is not in the File Type Note.
@@ -202,7 +202,7 @@ pub(super) fn decode_3201(data: &[u8]) -> Result<Image, DecodeError> {
 /// PackBytes lines in 320 mode.
 pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
     const PIXELS_AT: usize = 0x222;
-    // Colour words are `0RGB`: the high nibble of each high byte is zero.
+    // Color words are `0RGB`: the high nibble of each high byte is zero.
     if data.len() <= PIXELS_AT || data[..32].iter().skip(1).step_by(2).any(|&b| b > 15) {
         return Err(DecodeError::Unrecognized);
     }

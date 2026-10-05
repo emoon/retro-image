@@ -10,7 +10,7 @@
 //!   in `docs/research/sinclair-cpc-bbc-misc.md`.
 //! - Byte layout (kind 3 = R, 4 = B0, 5 = B1; width in mode 1 pixels and
 //!   height as u16; the number of palette zones, then per zone its pens as
-//!   firmware colours followed by its line count, none after the last), the
+//!   firmware colors followed by its line count, none after the last), the
 //!   frame blend, and which frame is shifted on which line: reverse
 //!   engineered from samples and `recoil2png` output.
 
@@ -90,7 +90,7 @@ struct Zone {
     lines: usize,
 }
 
-/// Palette zones: per zone 16 (mode 0) or 4 (mode 1) firmware colours and,
+/// Palette zones: per zone 16 (mode 0) or 4 (mode 1) firmware colors and,
 /// except after the last, a line count. Must fill `data` exactly.
 fn parse_zones(
     data: &[u8],

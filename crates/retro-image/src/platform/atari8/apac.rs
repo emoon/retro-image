@@ -1,6 +1,6 @@
 //! Pictures whose scanlines alternate between luminance lines and GTIA mode
-//! 11 hue lines, so the eye mixes them into more colours: APAC (Any Point,
-//! Any Colour, 256 colours) and Champions' Interlace (CIN).
+//! 11 hue lines, so the eye mixes them into more colors: APAC (Any Point,
+//! Any Colour, 256 colors) and Champions' Interlace (CIN).
 //!
 //! Sources:
 //! - Mode descriptions: AtariWiki "APAC Graphics Mode"
@@ -15,13 +15,13 @@
 //!   AtariWiki File Suffix
 //!   (<https://atariwiki.org/wiki/Wiki.jsp?page=File+Suffix>).
 //! - Observed from `recoil2png` output: the plane layouts below, and how
-//!   colours are formed. A luminance line takes its hue from the hue line
+//!   colors are formed. A luminance line takes its hue from the hue line
 //!   above; a hue line takes the average (rounded down) of the luminance
 //!   lines above and below; missing neighbours count as 0. Interlaced
 //!   pictures show both line parities, one per frame, and are drawn as the
 //!   average (rounded down) of the two frames' RGB values. In CIN the
 //!   luminance lines are Graphics 15 lines; on scanline 0, which has no hue
-//!   line above, the Graphics 15 colour is shown unchanged.
+//!   line above, the Graphics 15 color is shown unchanged.
 
 use super::antic;
 use super::palette::{register_rgb, rgb};
@@ -72,7 +72,7 @@ pub(super) fn decode_interlaced(data: &[u8]) -> Result<Image, DecodeError> {
 /// Champions' Interlace: Graphics 15 luminance lines, then GTIA mode 11 hue
 /// lines, interlaced. 16004 bytes: 200 lines of each, then background and
 /// playfield 0-2. 16384 bytes: 192 lines of each, then four 256-byte
-/// tables of per-line colours. 15360 bytes: 192 lines of each in greys.
+/// tables of per-line colors. 15360 bytes: 192 lines of each in grays.
 pub(super) fn decode_cin(data: &[u8]) -> Result<Image, DecodeError> {
     let (lines, colors): (usize, &dyn Fn(usize, u8) -> u8) = match data.len() {
         16004 => (200, &|_, value| data[16000 + usize::from(value)]),
@@ -126,7 +126,7 @@ pub(super) fn nibble(plane: &[u8], y: usize, x: usize) -> u8 {
 
 /// A picture of `lines` scanlines, 160 half-pixels wide (2 output pixels
 /// each). `luminance` and `hue` give the values of half-pixel `x` on
-/// scanline `y` when shown as that kind of line; `top` gives the colour of
+/// scanline `y` when shown as that kind of line; `top` gives the color of
 /// scanline 0 shown as a luminance line.
 pub(super) struct Scanlines<L, H, T> {
     pub lines: usize,
@@ -161,7 +161,7 @@ where
         Image::blend(&frames).scaled(2, 1)
     }
 
-    /// Colour of half-pixel `x` on scanline `y`, shown as a hue or luminance line.
+    /// Color of half-pixel `x` on scanline `y`, shown as a hue or luminance line.
     fn color(&self, y: usize, x: usize, hue_line: bool) -> u32 {
         let luminance = |y: usize| {
             if y < self.lines {

@@ -8,16 +8,16 @@
 //! character glyphs: the C64 character ROM, see [`super::petscii`].
 //!
 //! Types, with absolute file offsets:
-//! - 1: 15-byte header, then 1000 colour cells (40x25). 4 and 5: the same
-//!   with an 18-byte header. Cells are multicolour. 6: as 4 and 5 but hires
+//! - 1: 15-byte header, then 1000 color cells (40x25). 4 and 5: the same
+//!   with an 18-byte header. Cells are multicolor. 6: as 4 and 5 but hires
 //!   (found with synthetic cells only; no sample).
 //! - 7: text mode. Byte 15 and 16 are the width and height in characters
-//!   (1-255), byte 13 the background colour, then colour RAM and screen
+//!   (1-255), byte 13 the background color, then color RAM and screen
 //!   codes (one byte per character each) from offset 29, then 16 bytes that
 //!   `recoil2png` ignores. Characters are the C64 upper case/graphics ROM
-//!   set; colours use the low 4 bits.
+//!   set; colors use the low 4 bits.
 //! - 9 (VIC-20): 20-byte header with the width and height in cells at
-//!   offsets 18 and 19, then that many multicolour cells with colours 0-7.
+//!   offsets 18 and 19, then that many multicolor cells with colors 0-7.
 
 use super::petscii::{CHARGEN, TextScreen};
 use super::{vic2, vic20};

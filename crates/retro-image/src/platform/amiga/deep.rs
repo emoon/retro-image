@@ -1,4 +1,4 @@
-//! TVPaint DEEP: chunky true-colour IFF (FORM DEEP and FORM TVPP).
+//! TVPaint DEEP: chunky true-color IFF (FORM DEEP and FORM TVPP).
 //!
 //! Source: <https://wiki.amigaos.net/wiki/DEEP_IFF_Chunky_Pixel_Image>
 //! (DGBL, DPEL, DLOC, DBOD chunks; TVDC delta decompression). How RLE

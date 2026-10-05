@@ -5,7 +5,7 @@
 //! - Just Solve "ICE (Atari)"
 //!   (<http://fileformats.archiveteam.org/wiki/ICE_(Atari)>) and "Super IRG"
 //!   (<http://fileformats.archiveteam.org/wiki/Super_IRG>) name the formats
-//!   and their colour counts; atari-owner.com "Atari Software Graphic Modes"
+//!   and their color counts; atari-owner.com "Atari Software Graphic Modes"
 //!   (<https://atari-owner.com/club/articles/atari-software-graphic-modes.17/>)
 //!   and the AtariAge "Super IRG modes" thread
 //!   (<https://forums.atariage.com/topic/186653-super-irg-modes-using-graphics-1/>)
@@ -17,7 +17,7 @@
 //!   (`AMSTERDM.IMN`, `EFOREST.ICN`, `HEMAN.IPC`, `WATER.IP2`,
 //!   `XPHOENIX.IRG`, `ODDIE.IR2`, `CASTLE.DIN`) and by black-box probing of
 //!   `recoil2png` with hand-made files (one glyph byte or one header byte
-//!   changed at a time, the output colours read back). Findings:
+//!   changed at a time, the output colors read back). Findings:
 //!   - Every file is a header, then 16 character sets of 1024 bytes, then
 //!     one 40x24 screen of character codes (two screens in IRG and IR2).
 //!     The 24 text rows form 8 bands of 3 rows; band `b` shows character
@@ -27,15 +27,15 @@
 //!   - The two frames are blended by averaging (rounded down), as for the
 //!     other interlace formats.
 //!   - The header starts with a version byte (1, or 3 for DIN) followed by
-//!     colour registers whose meaning depends on the format (see the
-//!     decoders). A mode 4 frame takes 4 colours from the header plus the
+//!     color registers whose meaning depends on the format (see the
+//!     decoders). A mode 4 frame takes 4 colors from the header plus the
 //!     background; code bit 7 selects playfield 3 for pixel value 3. In
 //!     DIN's hires frame bit 7 is ignored.
 //!   - GTIA frames: mode 9 (IMN) shows the luminance given by the pixel
 //!     ORed into the background; mode 11 (ICN) shows hue = pixel with the
 //!     background's luminance, pixel 0 keeping only the background hue;
-//!     mode 10 (IPC, IP2) shows the 9 colours of the header.
-//!   - Colour registers ignore luminance bit 0, also in the GTIA frames.
+//!     mode 10 (IPC, IP2) shows the 9 colors of the header.
+//!   - Color registers ignore luminance bit 0, also in the GTIA frames.
 
 use super::gtia;
 use super::palette::{average, register_rgb, rgb};
@@ -49,7 +49,7 @@ const BAND_ROWS: usize = 3;
 
 /// How one frame turns the bytes of a glyph into 8 output pixels.
 pub(super) enum Frame {
-    /// ANTIC mode 4: 4 pixels of 2 bits, 2 output pixels wide. The colours
+    /// ANTIC mode 4: 4 pixels of 2 bits, 2 output pixels wide. The colors
     /// are the background and playfield 0-3; playfield 3 shows for pixel
     /// value 3 when bit 7 of the character code is set.
     Antic4([u32; 5]),
@@ -60,7 +60,7 @@ pub(super) enum Frame {
 }
 
 impl Frame {
-    /// Mode 4 frame from colour registers: background, playfield 0-3.
+    /// Mode 4 frame from color registers: background, playfield 0-3.
     pub(super) fn antic4(registers: [u8; 5]) -> Self {
         Self::Antic4(registers.map(register_rgb))
     }
@@ -227,7 +227,7 @@ pub(super) fn decode_ipc(data: &[u8]) -> Result<Image, DecodeError> {
     )))
 }
 
-/// ICE PCIN+ (`.IP2`): like PCIN, but the playfield colours of the two
+/// ICE PCIN+ (`.IP2`): like PCIN, but the playfield colors of the two
 /// frames are stored interleaved (frame 1 playfield 0, frame 2 playfield 0,
 /// ...) so they can differ; COLBK comes last.
 pub(super) fn decode_ip2(data: &[u8]) -> Result<Image, DecodeError> {
@@ -268,7 +268,7 @@ pub(super) fn decode_irg(data: &[u8]) -> Result<Image, DecodeError> {
     ]))
 }
 
-/// Super IRG 2 (`.IR2`): like IRG, but the playfield colours of the two
+/// Super IRG 2 (`.IR2`): like IRG, but the playfield colors of the two
 /// frames are stored interleaved (frame 1 playfield 0, frame 2 playfield 0,
 /// ...).
 pub(super) fn decode_ir2(data: &[u8]) -> Result<Image, DecodeError> {
@@ -301,7 +301,7 @@ pub(super) fn din_frames(header: &[u8]) -> [Frame; 2] {
 /// Builds the two frames from a header.
 type FrameMaker = fn(&[u8]) -> [Frame; 2];
 
-/// ICE character-set files (`.ICE`): a mode byte, colour registers (the
+/// ICE character-set files (`.ICE`): a mode byte, color registers (the
 /// header length depends on the mode), then the two character sets of the
 /// mode's two frames. The first byte picks how the sets are drawn:
 /// 0 two hires frames (header: luminance 1, luminance 2, hue/background 1

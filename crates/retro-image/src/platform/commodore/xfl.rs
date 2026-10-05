@@ -1,4 +1,4 @@
-//! X-FLI Editor (`.xfl`): a 192×167 hires FLI picture with eight multicolour
+//! X-FLI Editor (`.xfl`): a 192×167 hires FLI picture with eight multicolor
 //! sprites behind it.
 //!
 //! Sources: no documentation found (see `docs/research/commodore.md`, "Wave 6:
@@ -14,13 +14,13 @@
 //! - Eight screen RAMs at `1024 * n` and a hires bitmap at `$2000`. Picture
 //!   line `y` is bitmap line `y + 1` and uses screen `(y + 7) % 8`; only cell
 //!   columns 16..39 are shown. Set bits take the screen's high nibble.
-//! - Where a bitmap bit is clear, eight multicolour sprites (24 pixels each,
+//! - Where a bitmap bit is clear, eight multicolor sprites (24 pixels each,
 //!   side by side) show through; their pair `00` is the screen's low nibble.
 //!   Line `y` takes the sprites of set `y % 8` (see [`block`]), row
 //!   `(y - FIRST_LINE[set]) / 2` mod 21.
-//! - Colour registers: index 1 and 2 are the pair `01` and `11` colours, 3..10
-//!   the pair `10` colours of sprites 0..7. They start at screen 7's offsets
-//!   `1005 + index`. Screens 0..2 each hold 28 changes, the new colour at
+//! - Color registers: index 1 and 2 are the pair `01` and `11` colors, 3..10
+//!   the pair `10` colors of sprites 0..7. They start at screen 7's offsets
+//!   `1005 + index`. Screens 0..2 each hold 28 changes, the new color at
 //!   `960 + k` and the register index (low nibble) at `988 + k`; they take
 //!   effect from line `3 + 56 * screen + 2 * k`. Indexes 0 and 11..15 do
 //!   nothing.
@@ -37,11 +37,11 @@ const SCREEN_STRIDE: usize = 1024;
 const BITMAP: usize = 0x2000;
 /// First shown cell column.
 const FIRST_COLUMN: usize = 16;
-/// Colour registers: unused, pair 01, pair 11, then sprites 0..7.
+/// Color registers: unused, pair 01, pair 11, then sprites 0..7.
 const REGISTERS: usize = 11;
 /// Screen 7 offset of the initial register values.
 const INITIAL: usize = 7 * SCREEN_STRIDE + 1005;
-/// Screens holding colour changes, and changes per screen.
+/// Screens holding color changes, and changes per screen.
 const CHANGE_SCREENS: usize = 3;
 const CHANGES: usize = 28;
 /// Per sprite set (`y % 8`): a line where its row 0 shows.
@@ -90,7 +90,7 @@ fn render(mem: &[u8]) -> Image {
     image(WIDTH, HEIGHT, colors)
 }
 
-/// Applies the colour changes that take effect on line `y`.
+/// Applies the color changes that take effect on line `y`.
 fn apply_changes(mem: &[u8], y: usize, registers: &mut [u8; REGISTERS]) {
     let Some(rel) = y.checked_sub(3).filter(|rel| rel % 2 == 0) else {
         return;

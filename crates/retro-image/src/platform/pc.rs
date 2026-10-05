@@ -6,12 +6,12 @@
 //!   "DanM" uncompressed version 1, "LinS" version 2 with a per-line size
 //!   map and RLE). Set bit = white: observed from `recoil2png` output.
 //! - Award BIOS logo (EPA): Deark `awbm.c` (<https://github.com/jsummers/deark>,
-//!   MIT licence): version 1 is a grid of 8x14 character cells (width and
+//!   MIT license): version 1 is a grid of 8x14 character cells (width and
 //!   height in cells, one attribute byte per cell, then the cell bitmaps);
 //!   version 2 ("AWBM") is a 4-bit planar or 8-bit chunky bitmap followed by
 //!   "RGB " and a 6-bit VGA palette (RGB order, as observed from
 //!   `recoil2png` output).
-//! - Handy Scanner HS2: Deark `misc2.c` (MIT licence): headerless 1-bit
+//! - Handy Scanner HS2: Deark `misc2.c` (MIT license): headerless 1-bit
 //!   bitmap, 105 bytes (840 pixels) per row.
 //! - PCX, Targa, Dr. Halo, BMP and GIF: see `pc/pcx.rs`, `pc/tga.rs`, `pc/halo.rs`,
 //!   `pc/bmp.rs`, `pc/gif.rs`, `pc/colorix.rs`
@@ -244,14 +244,14 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Raw CGA screen", &["cga"], raw_cga::decode_raw_cga),
 ];
 
-/// The 16 colours of the IBM CGA/EGA text palette, by attribute value.
+/// The 16 colors of the IBM CGA/EGA text palette, by attribute value.
 /// Also used by the text-mode art formats.
 pub(super) const CGA_PALETTE: [u32; 16] = [
     0x000000, 0x0000aa, 0x00aa00, 0x00aaaa, 0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa, 0x555555,
     0x5555ff, 0x55ff55, 0x55ffff, 0xff5555, 0xff55ff, 0xffff55, 0xffffff,
 ];
 
-/// A CGA 4-colour set: black, then three `CGA_PALETTE` entries.
+/// A CGA 4-color set: black, then three `CGA_PALETTE` entries.
 pub(super) const fn cga_set(colours: [usize; 3]) -> [u32; 4] {
     [
         CGA_PALETTE[0],
@@ -418,7 +418,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }
 
-/// One of the 64 EGA colours: bits 0-2 are blue, green, red at 2/3 intensity
+/// One of the 64 EGA colors: bits 0-2 are blue, green, red at 2/3 intensity
 /// and bits 3-5 the same at 1/3.
 pub(super) fn ega_64(index: u8) -> u32 {
     let level = |high: u8, low: u8| {
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn awbm_larger_than_the_pixel_cap_is_rejected() {
-        // 16-colour planar: 65535 x 1025 pixels in 32 MiB of planes.
+        // 16-color planar: 65535 x 1025 pixels in 32 MiB of planes.
         let (width, height) = (65535usize, 1025usize);
         let bitmap_len = width.div_ceil(8) * 4 * height;
         let mut data = vec![0u8; 8 + bitmap_len + 4 + 16 * 3];

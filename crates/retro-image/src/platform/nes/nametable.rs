@@ -22,8 +22,8 @@ pub(super) struct Nametable<'a> {
     /// One byte per 4x4 tiles, as a raster of `ceil(width / 4)` by
     /// `ceil(height / 4)` bytes; two bits per 2x2 tiles, top-left lowest.
     pub attributes: &'a [u8],
-    /// Colour numbers `$00-$3F` of the four background palettes: the shared
-    /// background colour, then three colours for each of the four.
+    /// Color numbers `$00-$3F` of the four background palettes: the shared
+    /// background color, then three colors for each of the four.
     pub palette: &'a [u8],
     /// The `0xRRGGBB` value of each color number `$00-$3F`.
     pub master: &'a [u32; 64],

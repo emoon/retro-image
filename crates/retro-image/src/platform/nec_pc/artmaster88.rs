@@ -18,7 +18,7 @@
 //! - Three run-length packed bit planes of 80 * 200 bytes in the order blue,
 //!   red, green, MSB first. Two equal bytes in a row are followed by a count
 //!   (0 meaning 256) of copies of that byte; any other byte is a literal.
-//! - Colours are the 8 digital PC-88 colours (0 or 255 per component). Bytes
+//! - Colors are the 8 digital PC-88 colors (0 or 255 per component). Bytes
 //!   after the green plane are ignored.
 
 use alloc::vec::Vec;

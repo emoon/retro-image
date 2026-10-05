@@ -40,7 +40,7 @@ pub(super) fn line_palette_words(records: &[u8], height: usize) -> Option<Vec<u1
     Some(out)
 }
 
-/// Colours for [`line_palette_words`]: `RAST` chunks switch to STE colours
+/// Colors for [`line_palette_words`]: `RAST` chunks switch to STE colors
 /// when any word uses an STE bit, `.RST` files are always plain ST
 /// (both observed from `recoil2png` output).
 pub(super) fn line_colors(words: &[u16], ste_detection: bool) -> Vec<u32> {

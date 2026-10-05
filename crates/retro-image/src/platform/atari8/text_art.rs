@@ -5,7 +5,7 @@
 //! (<http://fileformats.archiveteam.org/wiki/Ascii-Art_Editor>) and "Graph"
 //! (<http://fileformats.archiveteam.org/wiki/Graph>), the RECOIL formats list
 //! (<https://recoil.sourceforge.net/formats.html>; up to 64x24 characters
-//! mono, 160x192 5 colours) and De Re Atari ch. 2-3 for the ANTIC mode 2 and 4
+//! mono, 160x192 5 colors) and De Re Atari ch. 2-3 for the ANTIC mode 2 and 4
 //! character rules (<https://www.atariarchives.org/dere/chapt02.php>). The
 //! file layouts were reverse engineered from the corpus samples (DEBIL1, SIANO,
 //! PRODIGY.ART; OBCY.ALL) and probed with hand-made files fed to `recoil2png`
@@ -17,7 +17,7 @@
 //!
 //! ALL: 24 bytes naming the font of each character row, `n` fonts of 1024 bytes
 //! (`n` is the file length minus 989, over 1024), 40x24 screen codes, then the
-//! colours COLOR0-3 and COLOR4 (background). It is shown in ANTIC mode 4: pixel
+//! colors COLOR0-3 and COLOR4 (background). It is shown in ANTIC mode 4: pixel
 //! values 1-3 are playfield 0-2 and 3 in a glyph whose code has bit 7 set is
 //! playfield 3. A row naming a font that is not in the file is an error.
 

@@ -3,7 +3,7 @@
 //! bitmap's clear pixels.
 //!
 //! Sources:
-//! - Parts and memory map (sprites from `$4000`, sprite colour `$4FF0`,
+//! - Parts and memory map (sprites from `$4000`, sprite color `$4FF0`,
 //!   four screen RAMs, bitmap `$6000`): Codebase64 "C64 Graphics File Format
 //!   Specs" (UFLI),
 //!   <http://codebase.c64.org/doku.php?id=base:c64_grafix_files_specs_list_v0.03>,

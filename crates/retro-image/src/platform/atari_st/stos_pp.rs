@@ -18,7 +18,7 @@
 //! lumps of `lines per lump` lines, each lump column by column. The resolution
 //! word cannot tell the Picture Packer variants apart (medium res covers PP1,
 //! PP2 and PP3), so the file extension chooses:
-//! - PP1: 320x200, 16 colours, but only 2 planes are stored per 8 pixels:
+//! - PP1: 320x200, 16 colors, but only 2 planes are stored per 8 pixels:
 //!   planes 0-1 of columns 0, 1, 4, 5, ... and planes 2-3 two columns on.
 //! - PP2: ordinary medium resolution, 2 planes.
 //! - PP3: 640x400 monochrome stored as 2 planes of 200 lines; the first half

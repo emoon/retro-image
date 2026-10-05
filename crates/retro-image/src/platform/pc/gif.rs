@@ -2,9 +2,9 @@
 //!
 //! Sources:
 //! - GIF89a specification, W3C: <https://www.w3.org/Graphics/GIF/spec-gif89a.txt>
-//!   (logical screen descriptor, colour tables, image descriptor, interlace
+//!   (logical screen descriptor, color tables, image descriptor, interlace
 //!   passes, variable-width LZW with clear and end codes, extension blocks).
-//! - Deark `gif.c` (<https://github.com/jsummers/deark>, MIT licence) for how
+//! - Deark `gif.c` (<https://github.com/jsummers/deark>, MIT license) for how
 //!   real files deviate, and as the oracle for the sample files.
 //! - Fractint FRA: <http://fileformats.archiveteam.org/wiki/FRA_(Fractint)>
 //!   (parameters follow the trailer or sit in an application extension).
@@ -151,8 +151,8 @@ fn is_gif(data: &[u8]) -> bool {
     (data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a")) && data.len() >= 13
 }
 
-/// Reads the colour table at `at` sized by the low bits of `flags`; returns
-/// the colours and the offset after the table.
+/// Reads the color table at `at` sized by the low bits of `flags`; returns
+/// the colors and the offset after the table.
 fn read_palette(data: &[u8], at: usize, flags: u8) -> Result<(Vec<u32>, usize), DecodeError> {
     let len = 3usize << ((flags & 7) + 1);
     let bytes = data.get(at..at + len).ok_or(FAIL)?;
@@ -318,7 +318,7 @@ fn deinterlace(indices: &[u8], width: usize, height: usize) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    /// A 2x2 GIF with a 4-colour global table; `lzw` is the image data.
+    /// A 2x2 GIF with a 4-color global table; `lzw` is the image data.
     fn gif(lzw: &[u8], frame_flags: u8) -> Vec<u8> {
         let mut g = b"GIF89a".to_vec();
         g.extend_from_slice(&[2, 0, 2, 0, 0x81, 0, 0]);

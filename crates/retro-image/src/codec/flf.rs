@@ -14,7 +14,7 @@
 //!   `40 45 00 00`; the pen/ink table is at its offset 192.
 //!
 //! This module holds the parts several platforms share: the container
-//! check, the paletted 8-bit layout and the 8x8 colour-cell layout.
+//! check, the paletted 8-bit layout and the 8x8 color-cell layout.
 
 use crate::{DecodeError, Image};
 use alloc::vec::Vec;
@@ -79,7 +79,7 @@ pub(crate) fn trailer(rest: &[u8], required: bool) -> Result<&[u8], DecodeError>
     }
 }
 
-/// A picture of one palette index per pixel from offset 13, then a colour
+/// A picture of one palette index per pixel from offset 13, then a color
 /// count byte (0 means 256) and that many RGB triples, then the optional
 /// closing block. Indices past the palette are black.
 pub(crate) fn decode_paletted(
@@ -102,20 +102,20 @@ pub(crate) fn decode_paletted(
     Image::from_indexed(width as u32, height as u32, pixels, &palette)
 }
 
-/// Bytes of one colour cell: 8 bitmap rows, then 4 colour numbers.
+/// Bytes of one color cell: 8 bitmap rows, then 4 color numbers.
 pub(crate) const CELL_LEN: usize = 12;
 
-/// How a cell's bitmap bits select its colours.
+/// How a cell's bitmap bits select its colors.
 #[derive(Clone, Copy)]
 pub(crate) enum CellMode {
-    /// One bit per pixel; bit `b` selects colour number `b` (0 or 1).
+    /// One bit per pixel; bit `b` selects color number `b` (0 or 1).
     Hires,
     /// Two bits per pixel, the leftmost pixel in the low bits and each
-    /// drawn twice as wide; value `v` selects colour number `v`.
+    /// drawn twice as wide; value `v` selects color number `v`.
     Multicolor,
 }
 
-/// `cols` x `rows` cells of 8x8 pixels, row by row. A colour number only
+/// `cols` x `rows` cells of 8x8 pixels, row by row. A color number only
 /// has to be a valid palette index if a pixel uses it (unused numbers are
 /// `$ff` in the samples).
 pub(crate) fn decode_cells(

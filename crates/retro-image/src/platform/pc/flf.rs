@@ -2,14 +2,14 @@
 //!
 //! Sources: reverse engineered from `image2cga.flf` and `image2.flf` by
 //! black-box probing of `recoil2png`; TRSE's GPL-3 source was not read.
-//! Container: [`crate::codec::flf`]. CGA palettes: the IBM CGA 4-colour
+//! Container: [`crate::codec::flf`]. CGA palettes: the IBM CGA 4-color
 //! palettes (green/red/brown, cyan/magenta/white, each low and high
 //! intensity), <https://en.wikipedia.org/wiki/Color_Graphics_Adapter>,
 //! with the levels `recoil2png` draws.
 //!
-//! - Type 0x0b (CGA): byte 12 selects the palette (2: cyan/magenta/grey,
+//! - Type 0x0b (CGA): byte 12 selects the palette (2: cyan/magenta/gray,
 //!   3: the same bright, 4: green/red/brown, 5: the same bright), then
-//!   320x200 colour numbers (one per byte) from offset 13, then the closing
+//!   320x200 color numbers (one per byte) from offset 13, then the closing
 //!   block, which is required. Numbers 4 and up draw black.
 //! - Type 0x1b (VGA): 320x200 paletted, see `codec::flf::decode_paletted`.
 

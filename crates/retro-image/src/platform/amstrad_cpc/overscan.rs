@@ -4,7 +4,7 @@
 //! Sources:
 //! - AMSDOS header (type at byte 18, load address at 21-22, entry at
 //!   26-27): <https://cpctech.cpcwiki.de/docs/allhead.html>.
-//! - Gate Array colours, firmware inks and the CRTC screen addressing:
+//! - Gate Array colors, firmware inks and the CRTC screen addressing:
 //!   <https://cpctech.cpcwiki.de/docs/garray.html>,
 //!   <https://cpctech.cpcwiki.de/docs/screen.html>. The ASIC palette word
 //!   (low byte `R<<4 | B`, high byte `G`, 4 bits each) is the CPC Plus
@@ -79,7 +79,7 @@ impl Memory<'_> {
     }
 }
 
-/// Colour of a CPC Plus palette word: 4 bits per channel.
+/// Color of a CPC Plus palette word: 4 bits per channel.
 fn plus_color(low: u8, high: u8) -> u32 {
     let scale = |n: u8| widen_channel(u32::from(n & 15), 4);
     scale(low >> 4) << 16 | scale(high) << 8 | scale(low)

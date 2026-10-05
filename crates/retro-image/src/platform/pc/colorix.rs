@@ -8,7 +8,7 @@
 //!   filter) and the 4-bit planar image type: Deark `colorix.c`
 //!   (<https://github.com/jsummers/deark>, MIT license, notice below). The compressed path is checked against
 //!   the `colorix-compressed-sci` and `colorix-ega-scr` samples.
-//! - Palette type 0 (a 256-colour palette whose last entries are the only
+//! - Palette type 0 (a 256-color palette whose last entries are the only
 //!   non-black ones) and the file sizes: reverse engineered from the sample
 //!   `HELPKEYS.SCI`, whose size is exactly `10 + 768 + width * height`.
 //!

@@ -1,6 +1,6 @@
 //! CoCoMax III CM3 pictures.
 //!
-//! Sources: the KAOS Toolkit by Chet Simpson, MIT licence (notice below),
+//! Sources: the KAOS Toolkit by Chet Simpson, MIT license (notice below),
 //! <https://github.com/ChetSimpson/KAOSToolkit>:
 //! - `AssetFoo/docs/images/cm3.dox`: the 29-byte header, the optional
 //!   243-byte pattern table and the page layout. Its page on compression is
@@ -25,10 +25,10 @@
 //! rows: read as 160 literal bytes each, the file ends exactly after row 192
 //! and the picture is clean, so they are drawn like any other row here.
 //! Patterns and the animation and cycling fields are skipped. No sample has
-//! a second page (320x384). The colour space is not stored and is assumed
+//! a second page (320x384). The color space is not stored and is assumed
 //! to be RGB222, as for the other CoCo 3 formats.
 //!
-//! The KAOS Toolkit licence:
+//! The KAOS Toolkit license:
 //!
 //! > MIT License
 //! >
@@ -166,7 +166,7 @@ mod tests {
 
     use super::*;
 
-    /// A header with the colour map left black and no patterns.
+    /// A header with the color map left black and no patterns.
     fn header() -> Vec<u8> {
         let mut data = vec![NO_PATTERNS];
         data.resize(HEADER_LEN, 0);
@@ -177,7 +177,7 @@ mod tests {
     fn rows_repeat_the_byte_above_and_the_previous_byte() {
         let mut data = header();
         data[1..=COLORMAP_LEN].copy_from_slice(&[0x3f; COLORMAP_LEN]);
-        data[2] = 0; // colour 1 black
+        data[2] = 0; // color 1 black
         data.push(PAGE_ROWS as u8);
         // Row 0: all horizontal and vertical bits set, 160 new bytes.
         data.push(20);
@@ -199,9 +199,9 @@ mod tests {
         let image = decode(&data).unwrap();
         assert_eq!((image.width(), image.height()), (320, 192));
         let pixel = |x: usize, y: usize| image.rgb()[(y * 320 + x) * 3];
-        // Row 0 and row 1 start with colour 1 (black), then colour 0.
+        // Row 0 and row 1 start with color 1 (black), then color 0.
         assert_eq!((pixel(0, 0), pixel(1, 0), pixel(0, 1)), (0, 255, 0));
-        // Row 2 repeats row 1's last byte (colour 0 pair), so it is white.
+        // Row 2 repeats row 1's last byte (color 0 pair), so it is white.
         assert_eq!((pixel(0, 2), pixel(319, 191)), (255, 255));
         data.extend_from_slice(&[0; 9]);
         assert!(decode(&data).is_ok(), "zero padding is allowed");

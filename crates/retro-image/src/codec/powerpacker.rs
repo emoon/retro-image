@@ -5,7 +5,7 @@
 //! layout (offset-width table in the header, 24-bit raw length and start
 //! shift in the footer, backward LSB-first words) follows Ancient's
 //! `PPDecompressor` (<https://github.com/temisu/ancient>,
-//! src/PPDecompressor.cpp), which is distributed under this licence:
+//! src/PPDecompressor.cpp), which is distributed under this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

@@ -5,7 +5,7 @@
 //! Sources:
 //! - Star Painter: GoDot StarPntr loader page,
 //!   <https://www.godot64.de/german/l_starp.htm> (width and height in tiles,
-//!   then the bitmap in tiles); tile order and colours checked against
+//!   then the bitmap in tiles); tile order and colors checked against
 //!   `recoil2png` output.
 //! - GoDot PFoxSelect loader page, <https://www.godot64.de/german/l_pfoxs.htm>:
 //!   type byte (`B`, `G`, `P`), sizes in 8×8 tiles, `$9B count value` RLE

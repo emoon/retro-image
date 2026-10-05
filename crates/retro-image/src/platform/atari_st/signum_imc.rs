@@ -4,7 +4,7 @@
 //! Sources:
 //! - Layout and algorithm: "The Signum! image format (IMC)",
 //!   <https://sdo.dseiler.eu/formats/bimc> (reverse engineered from a
-//!   disassembly of another program; no licence stated, facts only).
+//!   disassembly of another program; no license stated, facts only).
 //! - Cross-check of the sub-chunk bit order and the XOR passes: the `signum`
 //!   crate of sdo-tool, `src/images/imc.rs`
 //!   (<https://github.com/Xiphoseer/sdo-tool>; its `Cargo.toml` declares

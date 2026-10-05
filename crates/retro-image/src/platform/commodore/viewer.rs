@@ -1,17 +1,17 @@
-//! Multicolour pictures wrapped in a self-displaying viewer: a BASIC
+//! Multicolor pictures wrapped in a self-displaying viewer: a BASIC
 //! `SYS 2061` line, a machine code viewer, then the picture in Koala order
-//! (bitmap, screen RAM, colour RAM) at a fixed offset.
+//! (bitmap, screen RAM, color RAM) at a fixed offset.
 //!
 //! Sources: reverse engineered from CSDb samples (416 files of 10500 bytes,
 //! 387 of 10608 bytes), no decoder code used. The viewers' operands give the
 //! layout: both copy the bitmap to `$6000`, the screen to `$4400` and the
-//! colours to `$D800`, set `$D016` bit 4 (multicolour) and `$D011` bit 5
-//! (bitmap), and read the border and background colours (`$D020`/`$D021`)
+//! colors to `$D800`, set `$D016` bit 4 (multicolor) and `$D011` bit 5
+//! (bitmap), and read the border and background colors (`$D020`/`$D021`)
 //! from bytes in the file. In the 10500-byte viewer these are at
 //! `$09E6`/`$09E7`, followed by the bitmap at `$09F2`; in the 10608-byte
-//! viewer the bitmap is at `$0A38` and the colours follow it at
+//! viewer the bitmap is at `$0A38` and the colors follow it at
 //! `$2978`/`$2979`. Both layouts were checked by rendering samples with
-//! different backgrounds; the pictures are standard Koala multicolour
+//! different backgrounds; the pictures are standard Koala multicolor
 //! bitmaps.
 
 use super::bitmap::Multicolor;
@@ -54,7 +54,7 @@ const TAIL_10608: &[u8] = &[
 /// Both viewers load at `$0801`: file offset = address - `$0801` + 2.
 const LOAD: u16 = 0x0801;
 
-/// Bitmap at offset 499 (`$09F2`), then screen and colours; border and
+/// Bitmap at offset 499 (`$09F2`), then screen and colors; border and
 /// background are bytes 487 and 488.
 const VIEWER_10500: Viewer = Viewer {
     size: 10500,
@@ -71,7 +71,7 @@ const VIEWER_10500: Viewer = Viewer {
 };
 
 /// Bitmap at offset 569 (`$0A38`), then border, background, screen and
-/// colours; 37 bytes of viewer code end the file.
+/// colors; 37 bytes of viewer code end the file.
 const VIEWER_10608: Viewer = Viewer {
     size: 10608,
     code: CODE_10608,

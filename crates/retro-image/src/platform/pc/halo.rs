@@ -13,12 +13,12 @@
 //!
 //! The CUT file has no magic, so it is chosen by extension and validated by
 //! structure: every line must decode to exactly the width. Without a PAL the
-//! picture is a grey ramp stretched to the highest index used (as Deark does). PAL values are scaled from their declared maxima
+//! picture is a gray ramp stretched to the highest index used (as Deark does). PAL values are scaled from their declared maxima
 //! (`MaxRed` etc.) to 8 bits.
 //!
 //! The Dr. Halo PIC variant is in `halo_pic.rs`.
 //!
-//! The PAL layout (16-bit samples, 512-byte block rule) and the grey stretch
+//! The PAL layout (16-bit samples, 512-byte block rule) and the gray stretch
 //! were checked against Deark's output on the Dr. Halo samples in the corpus.
 
 // Parts of this file follow Deark's modules/drhalo.c
@@ -80,7 +80,7 @@ pub(super) fn decode_cut(data: &[u8], companions: &dyn Companions) -> Result<Ima
     Image::from_indexed(width as u32, height as u32, &pixels, &palette)
 }
 
-/// Grey ramp stretched so the highest index in use is white. The files carry
+/// Gray ramp stretched so the highest index in use is white. The files carry
 /// no palette, and raw indices (often 0 and 1) would render near black.
 fn grey_ramp(pixels: &[u8]) -> Vec<u32> {
     let max = u32::from(pixels.iter().copied().max().unwrap_or(1)).max(1);

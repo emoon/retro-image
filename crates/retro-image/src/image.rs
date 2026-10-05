@@ -133,7 +133,7 @@ impl Image {
         }
     }
 
-    /// An image from `0xRRGGBB` colours in row-major order; pixels the
+    /// An image from `0xRRGGBB` colors in row-major order; pixels the
     /// iterator doesn't reach stay black.
     pub(crate) fn from_colors(width: u32, height: u32, colors: impl Iterator<Item = u32>) -> Self {
         let mut image = Self::new(width, height);

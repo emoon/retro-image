@@ -13,11 +13,11 @@
 //!   [`super::nufli`]: bitmap `$6000` (5120 bytes) + `$3400`, screen RAM and
 //!   sprite pointers per line pair (reusing its `screen` and `sprite_rows`),
 //!   sprite data through the pointers (bytes 1-6 of each bank's pointer
-//!   row), the six colour tables of NUFLI. The FLI-bug sprites are not
+//!   row), the six color tables of NUFLI. The FLI-bug sprites are not
 //!   drawn: the picture starts at column 3.
 //! - A page of masks at `$3300`: entry `ceil(y / 2)` of a line has bit
 //!   `s + 1` set to paint the sprite `s` (0-5) pixels of that line white,
-//!   whatever the colour table says.
+//!   whatever the color table says.
 //! - `.mup`: two ignored bytes, an escape byte, then the frame packed
 //!   backwards (`value count escape`, count 0 = 256). `.muf`: two ignored
 //!   bytes, the frame and 64 ignored bytes (checked by building synthetic
@@ -78,7 +78,7 @@ impl Frame<'_> {
         Some(self.byte(bitmap_addr(x, y))? & (0x80 >> (x % 8)) != 0)
     }
 
-    /// Colour of underlay sprite `s` on line `y`: white when the line's
+    /// Color of underlay sprite `s` on line `y`: white when the line's
     /// entry in the mask table at `$3300` has bit `s + 1` set.
     fn sprite_color(&self, colors: &[[u8; HEIGHT]; 6], s: usize, y: usize) -> Option<u8> {
         let mask = self.byte(0x3300 + y.div_ceil(2))?;

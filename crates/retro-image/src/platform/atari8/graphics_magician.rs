@@ -1,6 +1,6 @@
 //! The Graphics Magician Picture Painter, Atari 8-bit version (`.SPC`): a
 //! vector picture of line, fill and brush commands drawn on a 160 x 192
-//! four-colour canvas and shown 320 x 192.
+//! four-color canvas and shown 320 x 192.
 //!
 //! Sources:
 //! - Command set and fill idea: the Apple II Picture Painter data format and
@@ -14,7 +14,7 @@
 //! - Layout: `LE16` length (file size - 3), command stream, `00` as the last
 //!   byte. The opcode is the whole first byte (no argument in its low
 //!   nibble, unlike the Apple II): `00` end (rest ignored), `20`-`23` line
-//!   colour, `40`-`47` brush, `60 n` fill pattern 0-70, `70` + 6 bytes
+//!   color, `40`-`47` brush, `60 n` fill pattern 0-70, `70` + 6 bytes
 //!   palette band, `80 x y` move, `A0 x y` line to, `C0 x y` stamp the brush,
 //!   `E0 x y` fill. Coordinates are 160 x 192 pixels, any byte is accepted
 //!   and clipped, except a fill start, which must be on the canvas. Text
@@ -22,21 +22,21 @@
 //! - Lines: major axis stepped one pixel at a time, minor axis rounded to
 //!   nearest with ties going down when both axes run the same way and up
 //!   when they run opposite ways (matches random lines exactly).
-//! - Fill: pixels of colour 0 only. Scan up from the start until a nonzero
+//! - Fill: pixels of color 0 only. Scan up from the start until a nonzero
 //!   pixel, then per row fill both ways to the nearest nonzero pixel, move to
 //!   `(left + right + 1) / 2` (right capped at 158) on the next row and stop
 //!   at a nonzero pixel. It is not a true flood fill: concave shapes are left
 //!   partly empty (matches random polygons with 25 patterns exactly).
 //! - Patterns: 71 tiles of 4 x 2 pixels, anchored to the canvas, read back
-//!   by filling the screen with each. Default pattern 5, line colour 3,
+//!   by filling the screen with each. Default pattern 5, line color 3,
 //!   brush 0.
 //! - Brushes: 7 x 14 masks read back by stamping each with a solid pattern.
 //!   The top-left corner is `(x, y)`: recoil2png clips by that corner but
 //!   paints every stamp at (0, 0).
-//! - Palette band: `70 a b c0 c1 c2 c3` recolours rows `2a ..= 2b + 1` with
-//!   Atari colour bytes for pixel values 0-3 (luminance bit 0 ignored), later
+//! - Palette band: `70 a b c0 c1 c2 c3` recolors rows `2a ..= 2b + 1` with
+//!   Atari color bytes for pixel values 0-3 (luminance bit 0 ignored), later
 //!   bands over earlier ones, independent of drawing order. It is an error
-//!   when `b >= a` and `b > 95`. Default colours `00 14 94 36`.
+//!   when `b >= a` and `b > 95`. Default colors `00 14 94 36`.
 
 use super::palette::register_rgb;
 use crate::bytes::le16;
@@ -200,7 +200,7 @@ impl Painter {
         Some(())
     }
 
-    /// `70 a b c0 c1 c2 c3`: colours for rows `2a ..= 2b + 1`.
+    /// `70 a b c0 c1 c2 c3`: colors for rows `2a ..= 2b + 1`.
     fn band(&mut self, first: u8, last: u8, colors: [u8; 4]) -> Option<()> {
         if first > last {
             return Some(());

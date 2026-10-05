@@ -14,7 +14,7 @@
 //! | ECI Graphic Editor (ECI) | CB "ECI Graphic Editor v1.0" |
 //! | Flash FLI (FFLI), Big FLI (BFLI) | Pasi Ojala's `ffli.doc`, `bfli.doc` and "BFLI - New graphics modes 2" (linecrunch counter wrap-around) in C64Gfx, <http://www.zimmers.net/anonftp/pub/cbm/crossplatform/graphics/Amiga/C64Gfx.lha> (documentation only) |
 //!
-//! Observed from `recoil2png` output: the second frame of the multicolour
+//! Observed from `recoil2png` output: the second frame of the multicolor
 //! formats is shown one pixel to the right, so the FLI bug's background
 //! enters the first visible column; Gunpaint's `$D021` table is split
 //! between `$7F4F` (177 lines) and `$87E8`; Funpaint uses black.
@@ -162,17 +162,17 @@ pub(super) fn decode_ffli(data: &[u8]) -> Result<Image, DecodeError> {
     FFLI.decode(data)
 }
 
-/// Big FLI: a 400-line multicolour FLI picture shown with linecrunch. The
+/// Big FLI: a 400-line multicolor FLI picture shown with linecrunch. The
 /// top half uses the bank at `$4000`, the bottom half the bank at `$8000`;
 /// as the VIC-II's counters run on past the end of the first bank, the
-/// bottom half's video matrix, colour RAM and bitmap offsets continue
+/// bottom half's video matrix, color RAM and bitmap offsets continue
 /// from 1000 (8000 for the bitmap) and wrap at 1024 (8192).
 pub(super) fn decode_bfli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 33795 || data[..3] != [0xff, 0x3b, b'b'] {
         return Err(DecodeError::Unrecognized);
     }
     let memory = &data[3..];
-    // Offsets from $3C00: colour RAM, then two banks of screens and bitmap.
+    // Offsets from $3C00: color RAM, then two banks of screens and bitmap.
     let color = &memory[..1024];
     let frame = Frame::from_fn(400, |x, y| {
         let bank = &memory[1024 + y / 200 * 0x4000..];

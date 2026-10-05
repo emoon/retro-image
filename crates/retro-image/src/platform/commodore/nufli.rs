@@ -1,13 +1,13 @@
 //! NUFLI (`.nuf`, packed `.nup`; Crest's NUFLI Editor / mufflon): 320×200 hires FLI with a
 //! new screen RAM every second line, six X-expanded hires sprites under the
-//! bitmap for a third colour, and two more sprites (hires and multicolour)
+//! bitmap for a third color, and two more sprites (hires and multicolor)
 //! covering the FLI bug in the leftmost 24 pixels.
 //!
 //! Sources:
 //! - Memory map (bitmap split between `$6000` and `$3400`, the screen RAM
 //!   and the sprite pointers of each line pair, the six 101-entry sprite
-//!   colour tables, the sprite row counter, the FLI-bug sprites and their
-//!   colour switch codes and initial colours): pynuvie,
+//!   color tables, the sprite row counter, the FLI-bug sprites and their
+//!   color switch codes and initial colors): pynuvie,
 //!   <https://github.com/anarkiwi/pynuvie>, files `src/nuvie/nufli.py`
 //!   (<https://github.com/anarkiwi/pynuvie/blob/main/src/nuvie/nufli.py>) and
 //!   `src/nuvie/_flibug.py`
@@ -19,13 +19,13 @@
 //!   three pynuvie sample files and with random data: sprite data is fetched
 //!   through the pointers in each line pair's screen RAM (`recoil2png`
 //!   rejects files whose fetched sprite data lies outside `$2000-$79FF`, but
-//!   only where a pixel needs it); a colour table entry with a nonzero high
-//!   nibble keeps the previous sprite colour (entry 0 always sets it);
-//!   entry `k` colours lines `2k-1` and `2k`; FLI-bug colour switches (high
-//!   nibble 7: hires sprite, 5/6/E: multicolour `01`/`11`/`10`) apply from
+//!   only where a pixel needs it); a color table entry with a nonzero high
+//!   nibble keeps the previous sprite color (entry 0 always sets it);
+//!   entry `k` colors lines `2k-1` and `2k`; FLI-bug color switches (high
+//!   nibble 7: hires sprite, 5/6/E: multicolor `01`/`11`/`10`) apply from
 //!   line `2k` (from `2k-1` when in the first table); in the FLI-bug
-//!   columns lines 2-7 of each character row show light grey for both
-//!   bitmap colours.
+//!   columns lines 2-7 of each character row show light gray for both
+//!   bitmap colors.
 //! - `.nup` (packed): reverse engineered from the 13 NUP files on the
 //!   Crest Slide Story tool disk and the Deadly Chords disk
 //!   (<https://csdb.dk/release/?id=81153>, <https://csdb.dk/release/?id=243096>)
@@ -34,7 +34,7 @@
 //!   copies (the byte at offset 2 must be `$FD`).
 //!
 //! The tables below were translated from pynuvie into Rust and restructured
-//! (the screen table became a formula); the FLI-bug decoding and the colour
+//! (the screen table became a formula); the FLI-bug decoding and the color
 //! timing are new. pynuvie's notice:
 //!
 //! ```text
@@ -62,13 +62,13 @@ const LOAD: usize = 0x2000;
 const END: usize = 0x7a00;
 pub(super) const HEIGHT: usize = 200;
 const BUG: usize = vic2::FLI_BUG;
-/// Colour tables of the six underlay sprites, one entry per line pair plus
-/// the initial colour.
+/// Color tables of the six underlay sprites, one entry per line pair plus
+/// the initial color.
 pub(super) const COLOR_TABLES: [usize; 6] = [0x2400, 0x2480, 0x2800, 0x2880, 0x2c00, 0x2c80];
-/// Initial colours of the FLI-bug sprites: hires, then multicolour bit
+/// Initial colors of the FLI-bug sprites: hires, then multicolor bit
 /// pairs `01`, `11`, `10`.
 const BUG_COLORS: [usize; 4] = [0x3ff7, 0x3ff1, 0x3ff0, 0x3ff6];
-/// High nibbles of colour-table entries that switch a FLI-bug colour, in
+/// High nibbles of color-table entries that switch a FLI-bug color, in
 /// the order of [`BUG_COLORS`].
 const BUG_SWITCHES: [u8; 4] = [0x7, 0x5, 0x6, 0xe];
 
@@ -96,9 +96,9 @@ pub(super) fn bitmap_addr(x: usize, y: usize) -> usize {
     }
 }
 
-/// Colour of underlay sprite `s` for each line, reading memory through
-/// `byte`: entry 0 is the initial colour, a nonzero high nibble keeps the
-/// previous colour, entry `k` colours lines `2k-1` and `2k`.
+/// Color of underlay sprite `s` for each line, reading memory through
+/// `byte`: entry 0 is the initial color, a nonzero high nibble keeps the
+/// previous color, entry `k` colors lines `2k-1` and `2k`.
 pub(super) fn underlay_colors(
     byte: impl Fn(usize) -> Option<u8>,
     s: usize,
@@ -164,7 +164,7 @@ impl Nufli<'_> {
             .unwrap_or_else(|| unreachable!("table addresses lie inside the frame"))
     }
 
-    /// FLI-bug sprite colours (in [`BUG_COLORS`] order) for each line.
+    /// FLI-bug sprite colors (in [`BUG_COLORS`] order) for each line.
     fn bug_colors(&self) -> Vec<[u8; 4]> {
         let mut colors = BUG_COLORS.map(|addr| self.byte(addr) & 15);
         let switch = |colors: &mut [u8; 4], entry: u8| {
@@ -190,7 +190,7 @@ impl Nufli<'_> {
 
     fn pixel(&self, x: usize, y: usize, underlay: &[[u8; HEIGHT]], bug: &[u8; 4]) -> Option<u8> {
         let color = self.byte(screen(y / 2) + x / 8);
-        // The FLI bug shows light grey, except on a character row's first
+        // The FLI bug shows light gray, except on a character row's first
         // line pair, where the VIC fetches the screen RAM normally.
         let (ink, paper) = if x < BUG && y % 8 >= 2 {
             (15, 15)

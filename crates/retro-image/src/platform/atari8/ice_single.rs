@@ -7,14 +7,14 @@
 //! from black-box probing of `recoil2png` with hand-made files (one glyph or
 //! header byte changed at a time); see `docs/research/gaps-corpus-misc.md`
 //! section 1. Mode names come from the ICE editor threads on AtariAge.
-//! GTIA colour behaviour (header byte is COLBK, pixel ORed into hue or
+//! GTIA color behavior (header byte is COLBK, pixel ORed into hue or
 //! luminance, register luminance bit 0 dropped): De Re Atari App. E
 //! (<https://www.atariarchives.org/dere/chaptE.php>).
 //!
 //! Layout: mode byte, mode-dependent header (the mode byte is header byte
 //! 0), one 1024-byte set of 128 glyphs. The sheet is nine 256x32 blocks.
 //! Block `3i + j` has 64 cells of 16x8; cell `n` blends glyph `n` drawn
-//! with colour set `j` and glyph `n + 64` with colour set `i`. Glyphs are 4
+//! with color set `j` and glyph `n + 64` with color set `i`. Glyphs are 4
 //! pixels of 2 bits per row, 4 output pixels wide.
 
 use super::palette::{average, register_rgb, rgb};
@@ -43,7 +43,7 @@ fn header_len(mode: u8) -> Option<usize> {
     }
 }
 
-/// Mode 0x1f colours, with `h` the header and `set` the colour set 0-2.
+/// Mode 0x1f colors, with `h` the header and `set` the color set 0-2.
 fn irg(h: &[u8], set: usize, v: u8) -> u32 {
     register_rgb(match v {
         0 => h[1],
@@ -53,7 +53,7 @@ fn irg(h: &[u8], set: usize, v: u8) -> u32 {
     })
 }
 
-/// Mode 0x20 colours: like 0x1f, with colours of its own per glyph.
+/// Mode 0x20 colors: like 0x1f, with colors of its own per glyph.
 fn super10(h: &[u8], glyph: Glyph, set: usize, v: u8) -> u32 {
     let w = glyph as usize;
     register_rgb(match v {
@@ -64,12 +64,12 @@ fn super10(h: &[u8], glyph: Glyph, set: usize, v: u8) -> u32 {
     })
 }
 
-/// GTIA 9 colour: the background ORed with the pixel's luminance.
+/// GTIA 9 color: the background ORed with the pixel's luminance.
 fn gtia9(background: u8, set: usize, v: u8) -> u32 {
     rgb(background & 0xfe | (SPREAD[usize::from(v)] * (set as u8 + 1)))
 }
 
-/// GTIA 11 colour: the pixel as hue, the background's luminance.
+/// GTIA 11 color: the pixel as hue, the background's luminance.
 fn gtia11(background: u8, set: usize, v: u8) -> u32 {
     if v == 0 {
         rgb(background & 0xf0)
@@ -78,7 +78,7 @@ fn gtia11(background: u8, set: usize, v: u8) -> u32 {
     }
 }
 
-/// Colour of pixel value `v` of `glyph` drawn with colour set `set`.
+/// Color of pixel value `v` of `glyph` drawn with color set `set`.
 fn color(mode: u8, h: &[u8], glyph: Glyph, set: usize, v: u8) -> u32 {
     match (mode, glyph) {
         (0x1f, _) => irg(h, set, v),

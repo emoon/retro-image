@@ -30,7 +30,7 @@
 //! screen address comes from the last LMS and advances by 32, 40 or 48
 //! bytes (DMACTL bits 0-1) within a 4K block. Scanlines after the list are
 //! blank. Mode F lines draw COLPF2 with COLPF1's luminance on set pixels;
-//! with PRIOR bit 6 they are Graphics 9. A 40-byte screen is centred in the
+//! with PRIOR bit 6 they are Graphics 9. A 40-byte screen is centered in the
 //! 336-pixel picture, a 32-byte one has wider borders, a 48-byte one is
 //! cropped.
 //!
@@ -337,7 +337,7 @@ fn pmg(r: &Registers) -> Pmg {
 /// moment and then shows the graphics of that moment, so a write that lands
 /// after the start leaves it alone, and one that lands after the new
 /// position was passed does not start it. A size write stretches the bits of
-/// an object still being drawn, from one colour clock after the write.
+/// an object still being drawn, from one color clock after the write.
 fn line_objects(start: &Registers, writes: &[Write]) -> [u8; WIDTH] {
     let mut pixels = [0; WIDTH];
     let mut registers = *start;
@@ -436,7 +436,7 @@ fn render_span(
         playfield: [r[0x16], r[0x17], r[0x18], r[0x19]],
         background: r[0x1a],
     };
-    // Output pixel of the first screen byte, so that 40 bytes are centred.
+    // Output pixel of the first screen byte, so that 40 bytes are centered.
     let left = 8 * (bytes_per_line as isize / 2 - 21);
     for x in span {
         let objs = objects[x];

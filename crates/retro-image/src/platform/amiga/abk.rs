@@ -4,7 +4,7 @@
 //! - Bank layout: <http://alvyn.sourceforge.net/amos_file_formats.html>
 //!   (count, per-object width in words, height, depth, hot spot, planar data,
 //!   then 32 `0RGB` palette words).
-//! - Objects drawn side by side, top-aligned, on colour 0: observed from
+//! - Objects drawn side by side, top-aligned, on color 0: observed from
 //!   `recoil2png` output.
 
 use alloc::vec::Vec;
@@ -51,7 +51,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .map(|i| be16(data, pos + i * 2))
         .collect::<Option<_>>()
         .ok_or(fail)?;
-    // 6-plane objects use Extra Half-Brite: colours 32-63 are colours 0-31
+    // 6-plane objects use Extra Half-Brite: colors 32-63 are colors 0-31
     // at half brightness (Amiga Hardware Reference Manual, "Extra Half Brite
     // Mode"), rounded as in ILBM. RECOIL rejects such banks.
     let colors: Vec<u32> = (0..64)
@@ -66,7 +66,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     check_size(width, height)?;
-    // Colour 0 where no object reaches.
+    // Color 0 where no object reaches.
     let mut indices = alloc::vec![0u8; width * height];
     let mut left = 0;
     for object in &objects {

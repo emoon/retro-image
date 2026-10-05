@@ -1,16 +1,16 @@
-//! Loadstar SHP pictures (C64): hires or multicolour bitmaps packed in
+//! Loadstar SHP pictures (C64): hires or multicolor bitmaps packed in
 //! chunks with a different escape byte each.
 //!
 //! Sources:
 //! - GoDot Loadstar loader page, <https://www.godot64.de/german/l_loadstar.htm>:
-//!   load `$4000`; new format (mode `$80` hires / `$00` multicolour, bitmap
-//!   escape byte, background; bitmap, screen with escape `$00`, colour with
-//!   escape `$FF`) and old format (mode `$A8` hires / `$E8` multicolour,
+//!   load `$4000`; new format (mode `$80` hires / `$00` multicolor, bitmap
+//!   escape byte, background; bitmap, screen with escape `$00`, color with
+//!   escape `$FF`) and old format (mode `$A8` hires / `$E8` multicolor,
 //!   height in cells, background, bitmap escape; bitmap, screen with escape
-//!   `$00`, `$FF`, colour with escape `$D8`); runs are `ESC count value`.
+//!   `$00`, `$FF`, color with escape `$D8`); runs are `ESC count value`.
 //! - Old format details found in sample files and checked against
 //!   `recoil2png` output: the low 6 bits of the mode byte are the width in
-//!   cells, and the `$FF` separator comes right before the colour chunk.
+//!   cells, and the `$FF` separator comes right before the color chunk.
 //!   Some `.shp` samples are Advanced Art Studio pictures and decode as such.
 
 use super::unpack::{Run, escape_rle_counted};

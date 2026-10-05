@@ -1,4 +1,4 @@
-//! Indexed-colour screens of the ZX Evolution TS-Conf (SXG).
+//! Indexed-color screens of the ZX Evolution TS-Conf (SXG).
 //!
 //! Sources:
 //! - SXG header: hype.retroscene.org sXg article,
@@ -15,7 +15,7 @@ use crate::{DecodeError, Image};
 const SXG_HEADER_LEN: usize = 16;
 
 /// SXG: `\x7FSXG`, version, background, packing (0 only), format (1: 16
-/// colours, 2: 256 colours), width, height, then the palette and bitmap
+/// colors, 2: 256 colors), width, height, then the palette and bitmap
 /// offsets, each relative to the end of its own field.
 pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() < SXG_HEADER_LEN || !data.starts_with(b"\x7fSXG") || data[6] != 0 {

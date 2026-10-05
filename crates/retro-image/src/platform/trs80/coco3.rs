@@ -2,7 +2,7 @@
 //! Graphics Design Package RAT and OS-9 VEF.
 //!
 //! Sources: the KAOS Toolkit image format documents, written by Chet
-//! Simpson and published under the MIT licence:
+//! Simpson and published under the MIT license:
 //! - `AssetFoo/docs/images/hrs.dox`, `mge.dox`, `rat.dox` and `vef.dox` at
 //!   <https://github.com/ChetSimpson/KAOSToolkit/tree/main/AssetFoo/docs/images>
 //!   (headers, sizes, run-length schemes). They in turn cite The Rainbow,
@@ -12,7 +12,7 @@
 //! - The GIME palette byte, `R1 G1 B1 R0 G0 B0` in bits 5..0 (RGB222):
 //!   Lomont, "Color Computer 1/2/3 Hardware Programming",
 //!   <https://www.lomont.org/software/misc/coco/Lomont_CoCoHardware.pdf>.
-//!   The KAOS page for the colour format is a TODO stub.
+//!   The KAOS page for the color format is a TODO stub.
 //! - Pixel shape (640 wide: lines doubled, 160 wide: columns doubled): our
 //!   choice, so every VEF mode comes out near 8:5.
 //! - Checked against the KAOS test data (`corpus/extra/coco3`): the MGE
@@ -24,11 +24,11 @@
 //! was learned from the KAOS Toolkit reader (MIT, notice in that file).
 //!
 //! Not decoded: MGE files whose
-//! colour space is composite C4I2 (the KAOS page for it is a TODO stub and
-//! no sample uses it). HRS, RAT and VEF don't record their colour space, so
+//! color space is composite C4I2 (the KAOS page for it is a TODO stub and
+//! no sample uses it). HRS, RAT and VEF don't record their color space, so
 //! RGB222 is assumed.
 //!
-//! The KAOS Toolkit licence applies to its documents:
+//! The KAOS Toolkit license applies to its documents:
 //!
 //! > MIT License
 //! >
@@ -62,7 +62,7 @@ use crate::{DecodeError, Image};
 
 const COLORMAP_LEN: usize = 16;
 
-/// The palette from a colour map of RGB222 bytes.
+/// The palette from a color map of RGB222 bytes.
 fn palette(colormap: &[u8]) -> Vec<u32> {
     colormap
         .iter()
@@ -95,7 +95,7 @@ fn picture(
     Image::from_indexed(width, height, &unpack(packed, bits), &palette(colormap))
 }
 
-/// Davinci HRS: a colour map and 320x192 4-bit pixels.
+/// Davinci HRS: a color map and 320x192 4-bit pixels.
 pub(super) fn decode_hrs(data: &[u8]) -> Result<Image, DecodeError> {
     const PIXELS: usize = 320 / 2 * 192;
     if data.len() != COLORMAP_LEN + PIXELS {
@@ -113,7 +113,7 @@ pub(super) fn decode_mge(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
     let (header, body) = data.split_at_checked(HEADER).ok_or(fail)?;
     let (image_type, colorspace, compression) = (header[0], header[17], header[18]);
-    // Composite C4I2 (colour space 1) is not documented, so not decoded.
+    // Composite C4I2 (color space 1) is not documented, so not decoded.
     if image_type != 0 || colorspace != 0 {
         return Err(fail);
     }

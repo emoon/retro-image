@@ -4,13 +4,13 @@
 //! Sources:
 //! - Layouts (`ICNFILE`: 32-byte header with the table count at 12, 32-byte
 //!   tables from offset 32 with icon count at +2 and icon-header offset at
-//!   +8, 48-byte icon headers with width, height, colour count, size and
+//!   +8, 48-byte icon headers with width, height, color count, size and
 //!   pixel offset; `CRI-FJ2 ` little-endian and `CRI-FUJI` big-endian: 16-byte
 //!   header with bits per pixel, width, height and icon count, then icons of a
 //!   16-bit id and 32x32 4-bit pixels; 1-bit icons are rows of whole bytes
 //!   with a set bit black, 4-bit rows are padded to 32 bits; the low nibble is
-//!   the left pixel; the 16-colour palette): Deark's `modules/misc2.c`,
-//!   `fmtowns_icn` (<https://github.com/jsummers/deark>, MIT licence, notice
+//!   the left pixel; the 16-color palette): Deark's `modules/misc2.c`,
+//!   `fmtowns_icn` (<https://github.com/jsummers/deark>, MIT license, notice
 //!   below). Signatures: Just Solve the Computer, ICN (FM Towns),
 //!   <http://justsolve.archiveteam.org/wiki/ICN_(FM_Towns)>.
 //! - The sheet is this crate's own choice, in `sheet.rs`. No FM Towns
@@ -207,7 +207,7 @@ mod tests {
         let h = 64;
         data[h + 6] = 8; // width
         data[h + 8] = 8; // height
-        data[h + 10] = 2; // colours
+        data[h + 10] = 2; // colors
         data[h + 14] = 8; // size
         data[h + 20] = 112; // pixels at 112
         data[112] = 0x80;

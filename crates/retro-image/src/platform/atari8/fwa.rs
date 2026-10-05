@@ -1,17 +1,17 @@
-//! FWA: Fun with Art pictures, 160x192 in 4 colours with colours changed by
+//! FWA: Fun with Art pictures, 160x192 in 4 colors with colors changed by
 //! display list interrupts.
 //!
 //! Sources:
 //! - Just Solve "Fun with Art" (<http://fileformats.archiveteam.org/wiki/Fun_with_Art>)
 //!   and ANTIC magazine's "Rapid Graphics Converter"
 //!   (<https://www.atarimagazines.com/v4n7/rapidgraphicsconverter.html>):
-//!   a Graphics 15 screen with per-line colours changed by DLIs.
+//!   a Graphics 15 screen with per-line colors changed by DLIs.
 //! - De Re Atari ch. 2 (display lists, <https://www.atariarchives.org/dere/chapt02.php>)
-//!   and the GTIA colour register addresses, Mapping the Atari App. 15
+//!   and the GTIA color register addresses, Mapping the Atari App. 15
 //!   (<https://www.atariarchives.org/mapping/appendix15.php>).
 //! - The layout was reverse engineered from the corpus samples and
 //!   `recoil2png` output on modified copies. The file is a memory image:
-//!   `FE FE`, the colours (background, playfield 0-2), a 202-byte display
+//!   `FE FE`, the colors (background, playfield 0-2), a 202-byte display
 //!   list at offset 6 (three 8-line blanks, an `LMS $5000` mode E line, 101
 //!   mode E lines, `LMS $6000`, 89 more lines, `JVB`; any line may have the
 //!   DLI bit), 54 bytes of viewer code that nothing reads, the screen (4080
@@ -42,7 +42,7 @@ const SPLIT: usize = 102;
 const DISPLAY_LIST: usize = 6;
 
 /// COLPF2, COLPF1, COLPF0, COLBK: the registers' low address bytes, in the
-/// order a handler writes them, and the colour of each pixel value.
+/// order a handler writes them, and the color of each pixel value.
 const REGISTERS: [u8; 4] = [0x18, 0x17, 0x16, 0x1a];
 
 pub(super) fn decode_fwa(data: &[u8]) -> Result<Image, DecodeError> {
@@ -56,7 +56,7 @@ pub(super) fn decode_fwa(data: &[u8]) -> Result<Image, DecodeError> {
     if handlers.len() < interrupts.iter().filter(|&&dli| dli).count() {
         return Err(DecodeError::Unrecognized);
     }
-    // Registers COLBK, COLPF0, COLPF1, COLPF2 as colour values.
+    // Registers COLBK, COLPF0, COLPF1, COLPF2 as color values.
     let mut colors = [data[2], data[3], data[4], data[5]];
     let mut handlers = handlers.into_iter();
     let mut image = Image::new(320, LINES as u32);
@@ -116,11 +116,11 @@ fn interrupt_lines(data: &[u8]) -> Option<Vec<bool>> {
     (*data.get(pos)? == 0x41).then_some(lines)
 }
 
-/// The registers (as indexes into [`REGISTERS`]) and colours a handler writes.
+/// The registers (as indexes into [`REGISTERS`]) and colors a handler writes.
 type Writes = Vec<(usize, u8)>;
 
 /// The DLI handlers up to the end of `data`, each as (register index in
-/// [`REGISTERS`], colour) writes. `None` if the data isn't exactly handlers.
+/// [`REGISTERS`], color) writes. `None` if the data isn't exactly handlers.
 fn parse_handlers(data: &[u8]) -> Option<Vec<Writes>> {
     let mut handlers = Vec::new();
     let mut pos = 0;

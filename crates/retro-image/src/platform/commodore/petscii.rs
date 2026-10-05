@@ -5,27 +5,27 @@
 //! Sources:
 //! - Greg Naçu, "Image File Formats", <https://c64os.com/post/imageformats>:
 //!   C64 OS `.pet` (`PET` in PETSCII and a version digit, three 17-byte
-//!   strings, 1000 screen codes, 1000 colours, border, background; version
+//!   strings, 1000 screen codes, 1000 colors, border, background; version
 //!   0 uses the ROM upper case/graphics set, version 1 the lower/upper case
 //!   set, version 2 carries a 2048-byte set) and PETSCII BOT (70 or 384
-//!   bytes: colours then screen codes for 5×7 or 12×16 characters, ROM upper
+//!   bytes: colors then screen codes for 5×7 or 12×16 characters, ROM upper
 //!   case/graphics set).
-//! - Text mode semantics (set character pixels in the colour RAM colour,
+//! - Text mode semantics (set character pixels in the color RAM color,
 //!   clear ones in the background): <https://www.cebix.net/VIC-Article.txt>.
 //! - PETSCII Editor `.pet`: reverse engineered from samples. A memory dump
-//!   of `$3000-$37E7`: screen codes at `$3000`, the background colour at
-//!   `$33E9`, colour RAM at `$3400`. `.scr`/`.col`: the screen codes and the
-//!   colours as two 1002-byte files. Character set (upper case/graphics),
+//!   of `$3000-$37E7`: screen codes at `$3000`, the background color at
+//!   `$33E9`, color RAM at `$3400`. `.scr`/`.col`: the screen codes and the
+//!   colors as two 1002-byte files. Character set (upper case/graphics),
 //!   black background for `.scr`+`.col` and PETSCII BOT, and the accepted
 //!   sizes were checked against `recoil2png` output.
 //! - PetDraw64 `.pdr` (2029 bytes): reverse engineered from five CSDb
 //!   samples and the pictures on the PetDraw disk by black-box probing of
 //!   `recoil2png`. Two load address bytes, three header bytes of which only
-//!   the second (background colour, low nibble) matters, 1000 screen codes,
-//!   24 ignored bytes, 1000 colours. Upper case/graphics set.
+//!   the second (background color, low nibble) matters, 1000 screen codes,
+//!   24 ignored bytes, 1000 colors. Upper case/graphics set.
 //! - Self-displaying PETSCII PRG (`SYS 2061` stub, 2098 bytes): reverse
 //!   engineered from 1,882 CSDb samples by reading the stub's operands (a
-//!   copy loop from `$0861` to screen RAM and from `$0C49` to colour RAM,
+//!   copy loop from `$0861` to screen RAM and from `$0C49` to color RAM,
 //!   `$D018`, `$D020` and `$D021` immediates); no decoder code was used.
 //! - Character glyphs: the C64 character ROM, see [`CHARGEN`].
 
@@ -60,7 +60,7 @@ impl RomCharset {
     }
 }
 
-/// A character screen: `columns`×`rows` screen codes and colours.
+/// A character screen: `columns`×`rows` screen codes and colors.
 pub(super) struct TextScreen<'a> {
     pub(super) columns: usize,
     pub(super) rows: usize,
@@ -139,7 +139,7 @@ pub(super) fn decode_c64os(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// PETSCII Editor: load address `$3000`, screen codes, 24 bytes holding
-/// the border and background colours, colour RAM from `$3400`.
+/// the border and background colors, color RAM from `$3400`.
 pub(super) fn decode_petscii_editor(data: &[u8]) -> Result<Image, DecodeError> {
     const COLORS: usize = 2 + 0x400;
     if data.len() != COLORS + SCREEN_LEN {
@@ -154,8 +154,8 @@ pub(super) fn decode_petscii_editor(data: &[u8]) -> Result<Image, DecodeError> {
     .render()
 }
 
-/// PETSCII Editor screen codes (`.scr`) with their colours in the `.col`
-/// companion; both have a load address. Without the colours there is no
+/// PETSCII Editor screen codes (`.scr`) with their colors in the `.col`
+/// companion; both have a load address. Without the colors there is no
 /// picture to show.
 pub(super) fn decode_scr_col(
     data: &[u8],
@@ -178,8 +178,8 @@ pub(super) fn decode_scr_col(
     .render()
 }
 
-/// PetDraw64: load address, three header bytes (background colour second),
-/// screen codes, 24 unused bytes, colour RAM.
+/// PetDraw64: load address, three header bytes (background color second),
+/// screen codes, 24 unused bytes, color RAM.
 pub(super) fn decode_petdraw(data: &[u8]) -> Result<Image, DecodeError> {
     const SCREEN: usize = 5;
     const COLORS: usize = SCREEN + SCREEN_LEN + 24;
@@ -195,8 +195,8 @@ pub(super) fn decode_petdraw(data: &[u8]) -> Result<Image, DecodeError> {
     .render()
 }
 
-/// The part of the PETSCII PRG stub after the background colour: the loop
-/// that copies the screen and colour data and starts the program.
+/// The part of the PETSCII PRG stub after the background color: the loop
+/// that copies the screen and color data and starts the program.
 const PRG_STUB_TAIL: [u8; 67] = [
     0x8d, 0x21, 0xd0, 0xa2, 0x00, 0xa0, 0xfa, 0xbd, 0x61, 0x08, 0x9d, 0x00, 0x04, 0xbd, 0x5b, 0x09,
     0x9d, 0xfa, 0x04, 0xbd, 0x55, 0x0a, 0x9d, 0xf4, 0x05, 0xbd, 0x4f, 0x0b, 0x9d, 0xee, 0x06, 0xbd,
@@ -208,7 +208,7 @@ const PRG_STUB_TAIL: [u8; 67] = [
 /// Self-displaying PETSCII program (as exported by PETSCII editors): a
 /// BASIC `SYS 2061` line, a 98-byte machine code stub that sets `$D018`
 /// (character set), `$D020` and `$D021` and copies the data, then 1000
-/// screen codes and 1000 colour RAM bytes. The BASIC line number varies.
+/// screen codes and 1000 color RAM bytes. The BASIC line number varies.
 pub(super) fn decode_petscii_prg(data: &[u8]) -> Result<Image, DecodeError> {
     const SCREEN: usize = 98;
     const COLORS: usize = SCREEN + SCREEN_LEN;
@@ -240,7 +240,7 @@ pub(super) fn decode_petscii_prg(data: &[u8]) -> Result<Image, DecodeError> {
     .render()
 }
 
-/// PETSCII BOT: 5×7 or 12×16 colours, then as many screen codes.
+/// PETSCII BOT: 5×7 or 12×16 colors, then as many screen codes.
 pub(super) fn decode_pbot(data: &[u8]) -> Result<Image, DecodeError> {
     let (columns, rows) = match data.len() {
         70 => (5, 7),

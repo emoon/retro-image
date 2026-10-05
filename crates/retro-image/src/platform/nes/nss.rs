@@ -17,7 +17,7 @@
 //!   (`VarBankActive=4096`) yet only the first bank gives a coherent picture
 //!   (checked by rendering both), so the selection is not followed.
 //! - `Palette`: 64 bytes; the first 16 are the four background palettes, the
-//!   first byte of each being the shared background colour.
+//!   first byte of each being the shared background color.
 //! - `VarNameW`, `VarNameH`: nametable size in tiles (32x30, or 64x60 for four
 //!   screens), default 32x30. `NameTable` is a raster of that size, one tile
 //!   number per byte.

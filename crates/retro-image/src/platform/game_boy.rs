@@ -6,8 +6,8 @@
 //!   <https://gbdev.io/pandocs/Gameboy_Camera.html> (CC0).
 //! - The platform surveys are `docs/research/next-zx-misc.md` and
 //!   `docs/research/gaps-nintendo.md`.
-//! - Palette: the four shades of a Game Boy colour number, lightest first,
-//!   as grey levels. The real LCD tints are greenish and differ per model, so
+//! - Palette: the four shades of a Game Boy color number, lightest first,
+//!   as gray levels. The real LCD tints are greenish and differ per model, so
 //!   a neutral ramp is used (our choice, not taken from any program).
 //!
 //! RECOIL does not decode any of these formats, so there is no oracle run;
@@ -22,8 +22,8 @@ mod rgbgfx;
 use crate::Format;
 use crate::tiles::TileLayout;
 
-/// Colour numbers 0-3 as `0xRRGGBB`, lightest first (the Game Boy's default
-/// background palette maps colour 0 to white).
+/// Color numbers 0-3 as `0xRRGGBB`, lightest first (the Game Boy's default
+/// background palette maps color 0 to white).
 const SHADES: [u32; 4] = [0xff_ffff, 0xaa_aaaa, 0x55_5555, 0x00_0000];
 
 /// A hardware tile: 16 bytes, two bytes per row (low bit plane, then high

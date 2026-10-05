@@ -1,4 +1,4 @@
-//! Shared Spectrum screen pieces: bitmap interleave, attribute colours,
+//! Shared Spectrum screen pieces: bitmap interleave, attribute colors,
 //! frames and frame blending.
 //!
 //! Sources:
@@ -7,7 +7,7 @@
 //!   <http://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/screen-memory-layout>
 //!   and SpectraLab `ZX_SPECTRUM_GRAPHICS_GUIDE.md` (MIT),
 //!   <https://github.com/Bedazzle/SpectraLab/blob/main/ZX_SPECTRUM_GRAPHICS_GUIDE.md>.
-//! - Colour levels (normal 0xCD, bright 0xFF) and gigascreen blending (the
+//! - Color levels (normal 0xCD, bright 0xFF) and gigascreen blending (the
 //!   per-channel average, rounded down): observed from `recoil2png` output.
 
 use alloc::vec::Vec;
@@ -36,14 +36,14 @@ pub(super) fn bitmap_byte(bitmap: &[u8], column: usize, y: usize) -> u8 {
     bitmap[bitmap_offset(y) + column]
 }
 
-/// Spectrum colour: index bits 0 blue, 1 red, 2 green; normal intensity
+/// Spectrum color: index bits 0 blue, 1 red, 2 green; normal intensity
 /// 0xCD, bright 0xFF (observed from `recoil2png` output).
 pub(super) fn color(index: u8, bright: bool) -> u32 {
     let level = if bright { 0xff } else { 0xcd };
     rgb_bits(index, level)
 }
 
-/// GRB colour index scaled to `level` per set bit.
+/// GRB color index scaled to `level` per set bit.
 pub(super) fn rgb_bits(index: u8, level: u32) -> u32 {
     let channel = |bit: u8| if index & bit != 0 { level } else { 0 };
     channel(2) << 16 | channel(4) << 8 | channel(1)
@@ -82,7 +82,7 @@ impl Frame {
     }
 
     /// Draws a 256x192 attribute screen at (`left`, `top`). `pixels(column, y)`
-    /// gives the bitmap byte and `colors(column, y, ink)` the colour of set
+    /// gives the bitmap byte and `colors(column, y, ink)` the color of set
     /// (`ink`) or clear bits for that 8x1 cell.
     pub(super) fn draw_screen(
         &mut self,

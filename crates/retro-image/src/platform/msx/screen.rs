@@ -188,7 +188,7 @@ fn draw_bitmap_sprites(mode: Bitmap, vram: &Vram, image: &mut Image, palette: &P
             let Some(index) = index else { continue };
             let index = index as usize;
             match mode {
-                // Graphic 5 shows colour bits 3-2 on even and 1-0 on odd dots.
+                // Graphic 5 shows color bits 3-2 on even and 1-0 on odd dots.
                 Bitmap::Graphic5 => {
                     image.set(2 * x, y, palette[index >> 2]);
                     image.set(2 * x + 1, y, palette[index & 3]);
@@ -368,7 +368,7 @@ fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Result<Image, DecodeErr
 fn palette_file(mode: Bitmap, companions: &dyn Companions) -> Option<Palette> {
     let data = companions.get(mode.palette_extension()?)?;
     // MSX-FAN saved the VRAM palette table with BSAVE (`FE`, start, start +
-    // 31, exec); RECOIL reads the header as colours, which is clearly wrong.
+    // 31, exec); RECOIL reads the header as colors, which is clearly wrong.
     let table = match bsave_range(&data) {
         Some((start, end)) if end.checked_sub(start) == Some(31) => data.get(7..39)?,
         _ => data.get(..32)?,
@@ -517,7 +517,7 @@ pub(super) fn decode_copy(
 /// Pattern-based screens of the TMS9918 and V9938.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Tiled {
-    /// Screen 2: 256x192, 8x1 pixel colour attributes.
+    /// Screen 2: 256x192, 8x1 pixel color attributes.
     Graphic2,
     /// Screen 3: 64x48 blocks of 4x4 pixels.
     Multicolour,
@@ -684,7 +684,7 @@ mod tests {
     fn copy_file_takes_bank_0_of_palette_file() {
         let data = [2, 0, 1, 0, 0x10];
         let mut palette = [0u8; 256];
-        palette[2..4].copy_from_slice(&[0x70, 0x07]); // colour 1: red 7, green 7
+        palette[2..4].copy_from_slice(&[0x70, 0x07]); // color 1: red 7, green 7
         palette[32..34].copy_from_slice(&[0x07, 0]); // bank 1 is ignored
         let image = decode_copy(Bitmap::Graphic4, &data, &Files(&[("pl5", &palette)])).unwrap();
         assert_eq!(image.rgb(), &[0xff, 0xff, 0, 0, 0, 0]);
@@ -699,7 +699,7 @@ mod tests {
         let data = [2, 0, 1, 0, 0x10];
         let mut palette = vec![0xfe, 0x80, 0x76, 0x9f, 0x76, 0x80, 0x76];
         palette.extend([0u8; 32]);
-        palette[7 + 2..7 + 4].copy_from_slice(&[0x70, 0x07]); // colour 1: yellow
+        palette[7 + 2..7 + 4].copy_from_slice(&[0x70, 0x07]); // color 1: yellow
         let image = decode_copy(Bitmap::Graphic4, &data, &Files(&[("pl5", &palette)])).unwrap();
         assert_eq!(image.rgb(), &[0xff, 0xff, 0, 0, 0, 0]);
     }

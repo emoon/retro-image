@@ -17,9 +17,9 @@
 //!   2 KB wrap of a normal 16K screen, free-running counter when R12 bits
 //!   3-2 select a 32K screen; each scan line is 0x800 further):
 //!   <https://cpctech.cpcwiki.de/docs/screen.html> and
-//!   <https://www.cpcwiki.eu/index.php/CRTC>. The 32K behaviour agrees with
+//!   <https://www.cpcwiki.eu/index.php/CRTC>. The 32K behavior agrees with
 //!   the overscan screens in `overscan.rs`, which were read from loaders.
-//! - Colours and pixel packing: `hardware.rs`.
+//! - Colors and pixel packing: `hardware.rs`.
 //! - There is no RECOIL support for snapshots; the render was checked by eye
 //!   on the samples in `corpus/extra/cpc-snapshots`.
 //!

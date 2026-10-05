@@ -1,5 +1,5 @@
 //! PHO digitised photos: MAP files holding a bitmap 4 screen, shown in
-//! four greys.
+//! four grays.
 //!
 //! Sources:
 //! - PHO files are MAP files whose mode byte says 40 columns (the byte
@@ -8,7 +8,7 @@
 //!   (A.S.C.I., 1991), <http://dcmoto.free.fr/programmes/teo-drive-3/index.html>,
 //!   compared with the dcmoto screenshots published on that page
 //!   (14.png to 22.png).
-//! - The greys: the screenshots show colours 0-3 at levels 249, 219, 183
+//! - The grays: the screenshots show colors 0-3 at levels 249, 219, 183
 //!   and 122, which are palette values `EEE`, `AAA`, `666` and `222`
 //!   through the EF9369 gamma curve (`palette.rs`) to within 2 levels.
 //! - Prehisto, "Les fichiers graphiques Thomson",
@@ -19,7 +19,7 @@
 use super::map::{self, Screen};
 use crate::{DecodeError, Image};
 
-/// Colours 0-3 as the Teo-Drive viewer sets them; the rest stay black.
+/// Colors 0-3 as the Teo-Drive viewer sets them; the rest stay black.
 const PALETTE: [u16; 16] = [
     0xeee, 0xaaa, 0x666, 0x222, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn bitmap4_in_greys_lightest_first() {
-        // 1 column, 8 lines: RAMA 0x30, RAMB 0x50 -> colours 0, 1, 2, 3.
+        // 1 column, 8 lines: RAMA 0x30, RAMB 0x50 -> colors 0, 1, 2, 3.
         let data = map::file(&[0x00, 0x00, 0x00, 0x08, 0x30, 0, 0, 0x08, 0x50, 0, 0]);
         let image = decode_pho(&data).unwrap();
         let row: [u32; 4] = core::array::from_fn(|x| image.get(x as u32, 0));

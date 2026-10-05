@@ -2,7 +2,7 @@
 //! the MSX, NEC PC-80/88/98 and Sharp X68000 platforms.
 //!
 //! Sources:
-//! - Header layouts, flag A / flag B / colour stream decompression, the 15 copy
+//! - Header layouts, flag A / flag B / color stream decompression, the 15 copy
 //!   positions, MKI mask and XOR filter, MSX model flags and YJK:
 //!   Kirinn Bunnylin, "Maki-chan Graphics" (<https://mooncore.eu/bunny/txt/makichan.htm>).
 //! - YJK conversion: grauw, "The YJK screen modes" (<https://map.grauw.nl/articles/yjk/>).
@@ -10,18 +10,18 @@
 //!   - palette precision per machine code: MSX 3 bits; PC-98/PC-88 (codes 0x00,
 //!     0x88) 4 bits in 200-line mode, otherwise R5 G6 B5; X68000 (0x68) 5 bits
 //!     per channel plus an intensity bit taken from green bit 2; PC-80 (0x80) and
-//!     Mac (0x99) 8 bits; 0x62 and 0x70 4 bits (8 bits in 256-colour mode); other
+//!     Mac (0x99) 8 bits; 0x62 and 0x70 4 bits (8 bits in 256-color mode); other
 //!     codes 3 bits;
 //!   - which images are stretched: 200-line mode (codes 0x00, 0x88 and unknown
 //!     codes), always for 0x80, never for 0x62/0x68/0x70/0x99; MSX doubles
 //!     height of non-interlaced 512-wide modes and width of interlaced 256-wide
 //!     modes; MSX model flag high nibbles 3 and 7+, and bit 3 set, are rejected;
 //!   - output starts at the 4-byte aligned left edge and ends at the right edge;
-//!   - YJK groups cut by the right edge show their Y as grey;
+//!   - YJK groups cut by the right edge show their Y as gray;
 //!   - MKI: names `X68K` and `MSX2` select X68000 and 3-bit palettes, others 4 bits.
 //! - Reverse engineered from samples (Punincess Maker, X68000 game data): a
 //!   variant with no machine name (`0x1A` right after the signature) and every
-//!   header field big-endian; flag and colour streams then match their stated
+//!   header field big-endian; flag and color streams then match their stated
 //!   sizes exactly. Its machine byte varies, so it is treated as X68000 (whose
 //!   68000 CPU is big-endian); palette bytes are 5-bit values filled with ones.
 
@@ -401,7 +401,7 @@ mod tests {
         for v in [0u16, 0, right, 0] {
             data.extend(v.to_le_bytes());
         }
-        // Flag A: 2 bytes of zeros, flag B empty, then colours.
+        // Flag A: 2 bytes of zeros, flag B empty, then colors.
         for v in [flag_a, flag_a + 2, 0, flag_a + 2, streams.len() as u32] {
             data.extend(v.to_le_bytes());
         }
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn mag_reads_colour_stream() {
         let mut palette = [0u8; 48];
-        palette[3..6].copy_from_slice(&[0, 0xff, 0]); // colour 1: red
+        palette[3..6].copy_from_slice(&[0, 0xff, 0]); // color 1: red
         let data = mag(0x00, 0, 0, 7, &palette, &[0x10, 0x01, 0, 0]);
         let image = decode_mag(&data, Machine::Pc98).unwrap();
         assert_eq!((image.width(), image.height()), (8, 1));
@@ -452,12 +452,12 @@ mod tests {
         for v in [0u16, 0, 7, 0] {
             data.extend(v.to_be_bytes());
         }
-        // Flag A: 2 bytes of zeros, flag B empty, then 4 colour bytes.
+        // Flag A: 2 bytes of zeros, flag B empty, then 4 color bytes.
         for v in [80u32, 82, 0, 82, 4] {
             data.extend(v.to_be_bytes());
         }
         let mut palette = [0u8; 48];
-        palette[3..6].copy_from_slice(&[0, 0xff, 0]); // colour 1: red
+        palette[3..6].copy_from_slice(&[0, 0xff, 0]); // color 1: red
         data.extend(palette);
         data.extend([0, 0, 0x10, 0x01, 0, 0]);
         let image = decode_mag(&data, Machine::X68000).unwrap();

@@ -2,8 +2,8 @@
 //! palette (PAL) as a companion file.
 //!
 //! Sources:
-//! - PAL layout (mode, animation flag and delay, then 12 animation colours
-//!   of each of the 16 pens as `0x40 | hardware colour`, border colours,
+//! - PAL layout (mode, animation flag and delay, then 12 animation colors
+//!   of each of the 16 pens as `0x40 | hardware colour`, border colors,
 //!   excluded and protected inks; 239 bytes), MJH compression and the WIN
 //!   trailer: OCP Art Studio file formats,
 //!   <https://cpctech.cpcwiki.de/docs/artstud.html>.
@@ -13,7 +13,7 @@
 //!   4 bytes from the end, height at 2 bytes from the end, data padded to
 //!   whole bytes per line), the raw screen sizes (16384, or 16336 without
 //!   the unused tail) and the PAL checks (exactly 239 bytes, mode 0-2, the
-//!   first colour of every pen in 0x40-0x5F): reverse engineered from
+//!   first color of every pen in 0x40-0x5F): reverse engineered from
 //!   samples and `recoil2png` output.
 //!
 //! Without a usable PAL file, pictures are shown the way the CPC shows a
@@ -158,7 +158,7 @@ impl Palette {
             })
     }
 
-    /// Mode, then the first animation colour of each pen.
+    /// Mode, then the first animation color of each pen.
     fn parse(pal: &[u8]) -> Option<Self> {
         if pal.len() != PAL_LEN {
             return None;

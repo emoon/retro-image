@@ -4,12 +4,12 @@
 //! Sources:
 //! - GoDot file formats, <https://godot64.de/german/4bitformate.htm>, and
 //!   <https://www.godot64.de/german/4bit.htm> (tile layout, `$AD` RLE).
-//! - GoDot's colour order (C64 colour to 4-bit index): the `dnib` table in
+//! - GoDot's color order (C64 color to 4-bit index): the `dnib` table in
 //!   GoDot's MIT-licensed Koala loader,
 //!   <https://github.com/godot64/GoDot/blob/master/loaders/l_Koala.a>.
 //! - Left pixel in the high nibble: checked against `recoil2png` output.
 //!
-//! The colour order table is taken from GoDot (`loaders/l_Koala.a`), whose
+//! The color order table is taken from GoDot (`loaders/l_Koala.a`), whose
 //! notice is:
 //!
 //! ```text
@@ -42,7 +42,7 @@ use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Image};
 use alloc::vec::Vec;
 
-/// C64 colour of each GoDot 4-bit index (brightness order).
+/// C64 color of each GoDot 4-bit index (brightness order).
 const COLORS: [u8; 16] = [0, 6, 9, 11, 2, 4, 8, 12, 14, 10, 5, 15, 3, 7, 13, 1];
 
 /// A tile: 32 bytes, 4 bytes per row, the left pixel in the high nibble.

@@ -12,7 +12,7 @@
 //!   320x256, 16 bytes after 640x256): reverse engineered from the
 //!   moroz1999/zx-image samples `sl2-320x256.sl2` and `sl2-640x256.sl2`
 //!   (<https://github.com/moroz1999/zx-image/tree/master/example>); each
-//!   byte is an RGB332 colour.
+//!   byte is an RGB332 color.
 //! - +3DOS header (`PLUS3DOS`, 0x1A, issue, version, 32-bit LE total length,
 //!   checksum in byte 127 = sum of bytes 0-126 modulo 256): Spectrum +3
 //!   manual, <https://worldofspectrum.org/ZXSpectrum128+3Manual/chapter8pt27.html>.
@@ -56,7 +56,7 @@ enum Mode {
 
 #[derive(Clone, Copy)]
 enum Palette<'a> {
-    /// Index is an RGB332 colour.
+    /// Index is an RGB332 color.
     Default,
     /// 2 bytes per entry, RGB333.
     Rgb333(&'a [u8]),
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn wide_columns_put_left_pixel_in_high_nibble() {
         let mut data = vec![0u8; COLUMNS_LEN + 16];
-        data[0] = 0x10; // x 0 colour 1, x 1 colour 0
+        data[0] = 0x10; // x 0 color 1, x 1 color 0
         data[COLUMNS_LEN + 1] = 0xff;
         let image = decode_sl2(&data).unwrap();
         assert_eq!(&image.rgb()[..3], &[255, 255, 255]);

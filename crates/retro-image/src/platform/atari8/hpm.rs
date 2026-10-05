@@ -1,5 +1,5 @@
 //! HPM pictures of Grass' Slideshow (a 1996 Atari 8-bit slideshow): 160x192,
-//! four colours.
+//! four colors.
 //!
 //! Sources: reverse engineered from the original program, with the
 //! maintainer's permission to disassemble it. `SLIDESHO.W` from
@@ -13,10 +13,10 @@
 //!   each of 192 lines in ANTIC mode E (2 bits per pixel; pixel value 0 is
 //!   the background register, 1-3 are playfield registers 0-2). Every one
 //!   of the 15 pictures on the disk unpacks to 7681 bytes, the last being a
-//!   copy of colour register 0 (`COLOR0`): the program never reads it, but
+//!   copy of color register 0 (`COLOR0`): the program never reads it, but
 //!   it is the first byte of the picture's entry in the program's palette
 //!   table.
-//! - The other colours are not in the file. The program sets `COLOR0`,
+//! - The other colors are not in the file. The program sets `COLOR0`,
 //!   `COLOR1`, `COLOR2` and the background from a table of four bytes per
 //!   picture (at `$23DC`, in reverse order of the file list). The table
 //!   entry belongs to the picture, not to the `COLOR0` value, but the values
@@ -25,9 +25,9 @@
 //!   uses `$38`, `$3C`. A stand-alone file can't say which, so the entry is
 //!   picked by `COLOR0`, and `JORDAN.HPM` by its file length (3494 bytes),
 //!   as `recoil2png` does (observed: a repacked copy of the same picture
-//!   shows the common colours).
+//!   shows the common colors).
 //! - A `COLOR0` that is not in the table, or a missing trailer, gives the
-//!   grey ramp `$00 $04 $08 $0C` (observed from `recoil2png`).
+//!   gray ramp `$00 $04 $08 $0C` (observed from `recoil2png`).
 //! - Observed from `recoil2png`: at least 7680 bytes must unpack, whatever
 //!   follows the 7681st byte is ignored, and the stream may end in the
 //!   middle of a run.
@@ -44,7 +44,7 @@ use alloc::vec::Vec;
 const SCREEN: usize = 40 * 192;
 
 /// The table entries of the program, as `[background, COLOR0, COLOR1, COLOR2]`
-/// (the register order of a four-colour screen), by `COLOR0`.
+/// (the register order of a four-color screen), by `COLOR0`.
 const PALETTES: [[u8; 4]; 8] = [
     [0x00, 0x34, 0xc8, 0x7c],
     [0x00, 0xe4, 0xc8, 0xbe],
@@ -55,7 +55,7 @@ const PALETTES: [[u8; 4]; 8] = [
     [0x00, 0x35, 0xc8, 0x7c],
     [0x0e, 0x30, 0xc7, 0x7b],
 ];
-/// `JORDAN.HPM`, the one picture whose colours differ from its `COLOR0`'s.
+/// `JORDAN.HPM`, the one picture whose colors differ from its `COLOR0`'s.
 const JORDAN_LEN: usize = 3494;
 const JORDAN: [u8; 4] = [0x00, 0x34, 0x38, 0x3c];
 

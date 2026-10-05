@@ -1,7 +1,7 @@
 //! CharPad projects (`.ctm`, versions 4 to 9): a character set, tiles built
 //! from characters and a map of tiles, rendered as the whole map. Text
-//! modes (hires and multicolour characters) and, from version 8, the hires
-//! and multicolour bitmap modes, where each "character" is one 8x8 bitmap
+//! modes (hires and multicolor characters) and, from version 8, the hires
+//! and multicolor bitmap modes, where each "character" is one 8x8 bitmap
 //! cell.
 //!
 //! Sources:
@@ -11,11 +11,11 @@
 //!   (documentation only).
 //! - Version 5 differences, found by matching section sizes in sample files
 //!   and checked against `recoil2png` output: a 20-byte header with a
-//!   16-bit tile count, 16-bit tile cells and map entries, colours taken
+//!   16-bit tile count, 16-bit tile cells and map entries, colors taken
 //!   from the character attributes; bit 2 of the flags byte makes every
-//!   character multicolour (`01`/`10` the shared multicolours, `11` the
-//!   attribute colour bits 0-2).
-//! - Bitmap modes: how colours are stored and ordered is described under
+//!   character multicolor (`01`/`10` the shared multicolors, `11` the
+//!   attribute color bits 0-2).
+//! - Bitmap modes: how colors are stored and ordered is described under
 //!   `blocks.rs`.
 //! - Versions 6 to 9 are block based; `blocks.rs` lists their sources.
 //!   The `tests/divergences/commodore.tsv` entries record how the CharPad
@@ -61,8 +61,8 @@ fn sizes_in_range(
         && map_height <= MAX_MAP_SIDE
 }
 
-/// A table of colour bytes, `stride` bytes per entry with the colour at
-/// `offset` (the prerelease version 8 stores four colours per entry).
+/// A table of color bytes, `stride` bytes per entry with the color at
+/// `offset` (the prerelease version 8 stores four colors per entry).
 #[derive(Clone, Copy)]
 struct ColorTable<'a> {
     data: &'a [u8],
@@ -87,7 +87,7 @@ impl<'a> ColorTable<'a> {
             .then(|| self.data.len() / self.stride)
     }
 
-    /// The colour bytes of entry `index`, up to three, zero padded. Bitmap
+    /// The color bytes of entry `index`, up to three, zero padded. Bitmap
     /// modes keep two or three per entry; the other modes use the byte at
     /// `offset`.
     fn colors(&self, index: usize, mode: Mode) -> [u8; 3] {
@@ -124,7 +124,7 @@ impl Mode {
         matches!(self, Mode::BitmapHires | Mode::BitmapMulticolor)
     }
 
-    /// Colour bytes per entry of a per-character or per-tile colour block.
+    /// Color bytes per entry of a per-character or per-tile color block.
     fn color_bytes(self) -> usize {
         match self {
             Mode::BitmapHires => 2,
@@ -134,10 +134,10 @@ impl Mode {
     }
 }
 
-/// Where the colour of each character comes from.
+/// Where the color of each character comes from.
 #[derive(Clone, Copy)]
 enum Colors<'a> {
-    /// One colour for the whole project.
+    /// One color for the whole project.
     Global(u8),
     PerTile(ColorTable<'a>),
     PerChar(ColorTable<'a>),
@@ -193,7 +193,7 @@ impl Project<'_> {
         let chars = self.chars.len() / 8;
         let map_entries = self.map_width * self.map_height;
         let colors_fit = match self.colors {
-            // Bitmap colours are per cell; one shared colour can't describe them.
+            // Bitmap colors are per cell; one shared color can't describe them.
             Colors::Global(_) => !self.mode.is_bitmap(),
             Colors::PerTile(colors) => colors.len() == Some(self.tile_count),
             Colors::PerChar(colors) => colors.len() == Some(chars),
@@ -233,7 +233,7 @@ impl Project<'_> {
         }
     }
 
-    /// The colour bytes of one character cell (see [`ColorTable::colors`]).
+    /// The color bytes of one character cell (see [`ColorTable::colors`]).
     fn color_at(&self, tile: usize, cell: usize, char: usize) -> [u8; 3] {
         let mode = self.mode;
         match self.colors {
@@ -271,9 +271,9 @@ impl Project<'_> {
         Some(vic2::image(width, height, pixels))
     }
 
-    /// Colour bytes: text modes use `color[0]` as the character colour. Bitmap
-    /// modes use them as (colour RAM, screen RAM low nybble, screen RAM high
-    /// nybble) for multicolour, and as (paper, ink) for hires.
+    /// Color bytes: text modes use `color[0]` as the character color. Bitmap
+    /// modes use them as (color RAM, screen RAM low nybble, screen RAM high
+    /// nybble) for multicolor, and as (paper, ink) for hires.
     fn draw_row(&self, byte: u8, color: [u8; 3], out: &mut [u8]) {
         let [c0, c1, c2] = color.map(|c| c & 15);
         for (x, pixel) in out.iter_mut().enumerate() {
@@ -334,11 +334,11 @@ mod tests {
     use alloc::vec::Vec;
 
     /// A version 9 project with one character (top row `0x80`), no tiles
-    /// and a 2x1 map, global colouring: background 6, character colour 1.
+    /// and a 2x1 map, global coloring: background 6, character color 1.
     fn version9(mode: u8) -> Vec<u8> {
         let mut data = b"CTM\x09".to_vec();
-        data.extend([mode, 0, 0, 0, 0, 0, 0, 0]); // mode, colouring, flags, flexigrid, unused
-        data.extend([6, 0, 0, 0, 1, 0, 0]); // screen, MC1, MC2, bg4, three colour bases
+        data.extend([mode, 0, 0, 0, 0, 0, 0, 0]); // mode, coloring, flags, flexigrid, unused
+        data.extend([6, 0, 0, 0, 1, 0, 0]); // screen, MC1, MC2, bg4, three color bases
         data.extend([0xda, 0xb0, 0, 0, 0x80, 0, 0, 0, 0, 0, 0, 0]); // characters
         data.extend([0xda, 0xb1, 0]); // materials
         data.extend([0xda, 0xb2, 2, 0, 1, 0, 0, 0, 0, 0]); // map
@@ -359,7 +359,7 @@ mod tests {
 
     #[test]
     fn extended_and_global_bitmap_modes_are_rejected() {
-        // Mode 2 isn't decoded; the bitmap modes need per-cell colours.
+        // Mode 2 isn't decoded; the bitmap modes need per-cell colors.
         for mode in [2, 3, 4] {
             assert!(decode_ctm(&version9(mode)).is_err());
         }

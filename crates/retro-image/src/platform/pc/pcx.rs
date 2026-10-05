@@ -6,7 +6,7 @@
 //!   <https://moddingwiki.shikadi.net/wiki/PCX_Format> and
 //!   <https://en.wikipedia.org/wiki/PCX>: 128-byte header, byte-wise RLE
 //!   (`0xC0 | count` then a value), rows of `planes * bytes_per_line` bytes
-//!   with the planes stored one after another, an optional 256-colour VGA
+//!   with the planes stored one after another, an optional 256-color VGA
 //!   palette behind a `0x0C` marker in the last 769 bytes.
 //! - The EGA header palette is 16 RGB entries; older EGA writers keep the
 //!   2-bit channel in the top bits (0, 64, 128, 192), and some VGA writers
@@ -16,7 +16,7 @@
 //! Layouts handled: 1, 2, 4 and 8 bits per pixel in one plane; 1 bit per
 //! pixel in 2 to 4 planes (EGA); 8 bits in 3 planes (24-bit RGB) or 4
 //! planes (RGB, alpha ignored). Version 3 files and others with no usable
-//! palette get the CGA/EGA default colours, or greys for 8-bit.
+//! palette get the CGA/EGA default colors, or grays for 8-bit.
 //! A bounding box one pixel wider than the rows is cut to the row width
 //! (observed on fax pages, see `dcx.rs`).
 //!
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn ega_planes_use_header_palette() {
-        // 8x1, planes 0 and 2 set on the leftmost pixel: colour 5.
+        // 8x1, planes 0 and 2 set on the leftmost pixel: color 5.
         let mut data = header(1, 4, 8, 1, 2);
         data[16 + 15..16 + 18].copy_from_slice(&[1, 2, 3]);
         data[16 + 5 * 3..16 + 5 * 3 + 3].copy_from_slice(&[7, 8, 9]);

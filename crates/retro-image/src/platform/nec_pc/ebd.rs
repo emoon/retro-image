@@ -1,4 +1,4 @@
-//! `EBD` pictures (NEC PC-98, 640 pixels wide, 16 colours).
+//! `EBD` pictures (NEC PC-98, 640 pixels wide, 16 colors).
 //!
 //! Nothing is published about this format (see `docs/research/msx-japanese.md`);
 //! the layout was reverse engineered from `BKG008.EBD` by black-box probing of

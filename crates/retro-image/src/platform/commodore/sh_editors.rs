@@ -16,18 +16,18 @@
 //!   `recoil2png` and watching the pixels, then checked on random data
 //!   (a Python model of the layout below matched `recoil2png` on every
 //!   pixel). The memory is a hires bitmap of 8x8 cells, sprite layers
-//!   drawn as strips of bytes, the screen RAM and the sprite colours:
+//!   drawn as strips of bytes, the screen RAM and the sprite colors:
 //!   - the bitmap: cells row by row, eight bytes per cell;
 //!   - each sprite layer: one strip of 168 bytes (a byte per line, bit 7
 //!     leftmost) for every 8 pixels of width, left to right;
 //!   - the screen RAM, one byte per cell: set pixels use the high nibble,
 //!     clear ones the low nibble;
-//!   - a colour byte for every 24 pixels (one sprite column): the low
-//!     nibble colours the first layer, the high nibble the second.
+//!   - a color byte for every 24 pixels (one sprite column): the low
+//!     nibble colors the first layer, the high nibble the second.
 //!
 //!   SH1 has two layers (the second wins), SH2 has one. Sprite pixels hide
 //!   the bitmap. The strips of three columns form one 24-pixel-wide sprite,
-//!   hence a colour per three columns.
+//!   hence a color per three columns.
 
 use super::superhires::{bit, hires, render};
 use super::unpack::escape_first_rle;

@@ -9,20 +9,20 @@
 //!
 //! - A "palette line" starts with a 16-pixel cookie: `a 2 f 5 8 4 d c 6 d b 0 7 f 1`
 //!   and then a mode pixel, 4 for register mode or 8 for hold-and-modify.
-//!   The rest of the line carries 64 colours: 192 bytes, one byte per pixel
-//!   pair (high nibble first), as R, G, B. Colours load into 4 banks in turn,
+//!   The rest of the line carries 64 colors: 192 bytes, one byte per pixel
+//!   pair (high nibble first), as R, G, B. Colors load into 4 banks in turn,
 //!   one bank per palette line, wrapping after 4; the palette lines in an
 //!   interlaced picture appear twice, one per field, and each field keeps its
 //!   own banks. A palette line shows as black.
 //! - Every other line is data: pixel pairs form bytes. Register mode takes the
-//!   byte as an index into the 256 colours of the 4 banks. Hold-and-modify
+//!   byte as an index into the 256 colors of the 4 banks. Hold-and-modify
 //!   takes the top 2 bits as a control and the low 6 as data, like HAM8:
-//!   0 = colour `data` of bank 0, 1 = blue, 2 = red, 3 = green set to `data << 2`.
+//!   0 = color `data` of bank 0, 1 = blue, 2 = red, 3 = green set to `data << 2`.
 //!   Each line starts from black.
 //! - The picture is half as wide as the bitmap; interlaced pictures are shown
 //!   with the width doubled again.
 //! - The Amiga palette (CMAP) in these files is a fixed table that lets the
-//!   hardware read the pixel value back from the colour; it carries nothing
+//!   hardware read the pixel value back from the color; it carries nothing
 //!   we need.
 //! - Only hires pictures without the HAM flag are taken for HAM-E.
 
@@ -62,7 +62,7 @@ fn palette_line_mode(row: &[u32]) -> Option<Mode> {
     }
 }
 
-/// The colours and mode a field has loaded so far.
+/// The colors and mode a field has loaded so far.
 struct Field {
     banks: [[u32; BANK_SIZE]; BANKS],
     loaded: usize,
@@ -151,7 +151,7 @@ mod tests {
             mode: Mode::Register,
         };
         for line in 0..5u32 {
-            // First colour red = `line + 1`: bytes 0x0N in nibbles 16 and 17.
+            // First color red = `line + 1`: bytes 0x0N in nibbles 16 and 17.
             let mut row = [COOKIE.as_slice(), &[REGISTER]].concat();
             row.resize(16 + 2 * 192, 0);
             row[17] = line + 1;

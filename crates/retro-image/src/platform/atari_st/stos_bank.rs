@@ -5,21 +5,21 @@
 //! - Sprite bank header, frame table and the `PALT` palette block: the Atari
 //!   Forum Wiki page "STOS Memory Bank file format",
 //!   <https://temlib.org/AtariForumWiki/index.php?title=STOS_Memory_Bank_file_format>
-//!   (prose, no licence stated; facts only).
+//!   (prose, no license stated; facts only).
 //! - Reverse engineered from the samples in `corpus/extra/stos-mbk` (ggnkua's
 //!   Atari ST sources archive, see its `MANIFEST.tsv`):
 //!   - the file starts `Lionpoubnk`, a `u16` bank number at 12, then a `u32`
 //!     at 14 holding flags in the top byte and the bank length (without this
 //!     18-byte header) in the low 24 bits; the bank follows at 18;
 //!   - a sprite frame holds its 1-bit mask first (`height` lines of `width`
-//!     words, a set bit is transparent), then the colour data, 4 planes
+//!     words, a set bit is transparent), then the color data, 4 planes
 //!     interleaved per word like an ST screen;
 //!   - frame data offsets count from the start of the frame table.
 //! - A screen bank is the packed screen of `stos_pp.rs`.
 //!
 //! The wiki lists one frame table per resolution; only low resolution (4
 //! planes) is read, as no sample has medium or high resolution frames. A
-//! transparent pixel is drawn in palette colour 0. Hotspots are ignored.
+//! transparent pixel is drawn in palette color 0. Hotspots are ignored.
 //! Multi-bank `.MBS` files and banks of other kinds (music, data) are
 //! rejected.
 

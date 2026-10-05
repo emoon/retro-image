@@ -3,35 +3,35 @@
 //! blocks from 0).
 //!
 //! Sources:
-//! - Header fields, block order, colouring methods and screen modes:
+//! - Header fields, block order, coloring methods and screen modes:
 //!   c64lib's CharPad reader (`CTM6Processor`, `CTM7Processor`,
 //!   `CTM8Processor`, `CTM9Processor` and `BlockBasedCTMProcessor`),
 //!   <https://github.com/c64lib/gradle-retro-assembler-plugin/tree/master/processors/charpad>,
 //!   MIT licensed; its notice is below.
 //! - Which of the two version 8 headers a file has (a prerelease has a
-//!   fourth colour byte) is told by the byte after the third colour: the
-//!   next block marker starts with `DA`, a colour is below 16.
+//!   fourth color byte) is told by the byte after the third color: the
+//!   next block marker starts with `DA`, a color is below 16.
 //! - Checked on the 31 c64lib test projects and 12 Martin Piper projects in
 //!   the corpus. The c64lib projects hold the same picture in versions 5 to
 //!   8.2; every version renders like the version 5 file, which `recoil2png`
 //!   decodes.
 //! - Bitmap modes (versions 8 and 9, screen modes 3 and 4): c64lib's readers
-//!   say a per-character or per-tile colour entry has 2 bytes in hires and 3
-//!   in multicolour bitmap mode (1 byte otherwise), but their combining
-//!   code doesn't name which byte is which pixel colour. The order was found
+//!   say a per-character or per-tile color entry has 2 bytes in hires and 3
+//!   in multicolor bitmap mode (1 byte otherwise), but their combining
+//!   code doesn't name which byte is which pixel color. The order was found
 //!   by rendering the 14 bitmap projects in `corpus/extra/charpad-ctm9/` and
 //!   `corpus/extra/charpad-bitmap-modes/` both ways: with byte 0 as the
-//!   colour RAM colour (`11`) and bytes 1 and 2 as the low and high screen
-//!   RAM nybbles (`10`, `01`), the multicolour pictures (a Tony title
-//!   screen, a California Games logo, photographs) show correct colours;
+//!   color RAM color (`11`) and bytes 1 and 2 as the low and high screen
+//!   RAM nybbles (`10`, `01`), the multicolor pictures (a Tony title
+//!   screen, a California Games logo, photographs) show correct colors;
 //!   the swapped order gives wrong ones. Hires bitmaps use byte 1 as the
-//!   set-pixel colour and byte 0 as the clear one (a black-on-white logo
+//!   set-pixel color and byte 0 as the clear one (a black-on-white logo
 //!   where the other order gives a negative). `recoil2png` decodes none of
 //!   them.
 //!
-//! Extended background colour mode (2) is not decoded: the samples don't
+//! Extended background color mode (2) is not decoded: the samples don't
 //! show how CharPad stores the four backgrounds. Bitmap projects with one
-//! global colouring method are rejected, as the header colours can't
+//! global coloring method are rejected, as the header colors can't
 //! describe every cell. Version 9 was checked on 25 real projects.
 //!
 //! c64lib's notice:
@@ -78,20 +78,20 @@ struct Header {
     background: u8,
     multi1: u8,
     multi2: u8,
-    /// The colour of every character with a global colouring method.
+    /// The color of every character with a global coloring method.
     char_color: u8,
     /// Version 8 and later keep the character materials in a block of
-    /// their own and the colours in another; before, one attribute byte
+    /// their own and the colors in another; before, one attribute byte
     /// holds both.
     separate_materials: bool,
-    /// Bytes per entry of the per-character and per-tile colour blocks, and
-    /// the position of the colour in an entry.
+    /// Bytes per entry of the per-character and per-tile color blocks, and
+    /// the position of the color in an entry.
     color_stride: usize,
     color_offset: usize,
 }
 
-/// Screen modes 0 and 1 are hires and multicolour text, 3 and 4 hires and
-/// multicolour bitmap. Mode 2 (extended background colour) is not decoded.
+/// Screen modes 0 and 1 are hires and multicolor text, 3 and 4 hires and
+/// multicolor bitmap. Mode 2 (extended background color) is not decoded.
 /// Versions before 8 have no bitmap modes.
 fn screen_mode(mode: u8, bitmap_allowed: bool) -> Option<Mode> {
     match mode {
@@ -155,11 +155,11 @@ fn tile_system_flag(flags: u8) -> Option<bool> {
     }
 }
 
-/// Version 8 (and 8.2) after the mode, colouring and flags bytes.
+/// Version 8 (and 8.2) after the mode, coloring and flags bytes.
 fn header8(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header> {
     let [background, multi1, multi2, _, base0, _, _] = r.take(7)?.try_into().ok()?;
-    // A prerelease has a fourth colour base, which is the character colour;
-    // its colour blocks have four bytes per entry, the last one used.
+    // A prerelease has a fourth color base, which is the character color;
+    // its color blocks have four bytes per entry, the last one used.
     let prerelease = r.data.get(r.pos) != Some(&BLOCK_MARKER);
     let char_color = if prerelease { r.byte()? } else { base0 };
     let mode = screen_mode(mode, !prerelease)?;
@@ -183,7 +183,7 @@ fn header8(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header>
 }
 
 /// Version 9: a version 8 header with the flexigrid size and an unused byte
-/// before the colours.
+/// before the colors.
 fn header9(r: &mut Reader, mode: u8, colouring: u8, flags: u8) -> Option<Header> {
     let [_, _, _, _, _, background, multi1, multi2, _, base0, _, _] =
         r.take(12)?.try_into().ok()?;
@@ -258,9 +258,9 @@ pub(super) fn parse(data: &[u8]) -> Option<Project<'_>> {
 
     let chars = blocks.counted()?;
     let char_data = blocks.reader.take(chars * 8)?;
-    // Version 6 and 7 keep a colour (low nibble) and material (high nibble)
+    // Version 6 and 7 keep a color (low nibble) and material (high nibble)
     // in one attribute byte; later versions have a materials block, then
-    // the colours if every character has its own.
+    // the colors if every character has its own.
     let char_colors = if header.separate_materials {
         blocks.block(chars)?;
         match header.colouring {

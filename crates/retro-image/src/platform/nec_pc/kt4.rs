@@ -1,5 +1,5 @@
 //! `KT4` and `KTY` "Kitty" pictures (NEC PC-88 and PC-88 VA, 640x400 digital
-//! 8 colours; `KTY` is the 640x200 variant).
+//! 8 colors; `KTY` is the 640x200 variant).
 //!
 //! Sources:
 //! - The ftz article on note.com (<https://note.com/ftz/n/n84d9dd98c1e2>),
@@ -171,7 +171,7 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
         let (x, y) = (n % COLUMNS * 4, n / COLUMNS * halves * 2);
         for (half, tile) in cell.chunks(3).take(halves).enumerate() {
             for bit in 0..8 {
-                // Plane bytes are blue, red, green: colour bits 0, 1, 2.
+                // Plane bytes are blue, red, green: color bits 0, 1, 2.
                 let colour = tile
                     .iter()
                     .enumerate()

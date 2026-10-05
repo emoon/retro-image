@@ -1,13 +1,13 @@
 //! G9B pictures of the GFX9k library for the V9990 (GFX9000).
 //!
 //! Sources:
-//! - Header layout (`G9B`, header size, depth, colour type, colours, width,
+//! - Header layout (`G9B`, header size, depth, color type, colors, width,
 //!   height, compression, 24-bit data size, 3-byte palette entries): Team Bomba,
 //!   "G9B - GFX9000 Bitmap" (<https://www.teambomba.net/g9b.html>).
 //! - V9990 16-bit pixels (`GGGGGRRRRRBBBBB`) and the YUV conversion
 //!   (R = Y + J, B = Y + K, G = (5Y - 2J - K) / 4, rounding down): reverse
 //!   engineered from corpus samples against `recoil2png` output.
-//! - 256 fixed colours use the MSX Graphic 7 `GGGRRRBB` encoding and YJK the
+//! - 256 fixed colors use the MSX Graphic 7 `GGGRRRBB` encoding and YJK the
 //!   MSX2+ conversion: observed from `recoil2png` output.
 //! - BitBuster compression: see `bitbuster.rs`.
 

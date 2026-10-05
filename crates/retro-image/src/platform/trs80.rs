@@ -16,9 +16,9 @@
 //!   address), see the platform survey `docs/research/amiga-apple-misc.md`.
 //! - CLP: 40x56 1-bit clip with a 25-byte header: reverse engineered from a
 //!   sample.
-//! - Colours (set bit white, except black in CLP; the PMODE 1 colour set),
+//! - Colors (set bit white, except black in CLP; the PMODE 1 color set),
 //!   doubled lines on HR, doubled pixels on PMODE 1 and RLE pixels left over
-//!   at the end taking the last run's colour: observed from `recoil2png`
+//!   at the end taking the last run's color: observed from `recoil2png`
 //!   output.
 //! - Color Computer 3 HRS, MGE, RAT and VEF: see `coco3.rs`; survey
 //!   `docs/research/next-zx-misc.md`.
@@ -134,7 +134,7 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
         pos += run;
         foreground = !foreground;
     }
-    // Pixels left over take the last run's colour.
+    // Pixels left over take the last run's color.
     for p in pos..total {
         image.set(p as u32 % width, p as u32 / width, color);
     }
@@ -166,7 +166,7 @@ fn decode_pmode4(data: &[u8]) -> Result<Image, DecodeError> {
     mono(bitmap, 256, 192, WHITE)
 }
 
-/// Colour set 0 of the MC6847: green, yellow, blue, red.
+/// Color set 0 of the MC6847: green, yellow, blue, red.
 const PMODE1_COLORS: [u32; 4] = [0x07ff00, 0xffff00, 0x3b08ff, 0xcc003b];
 
 fn decode_pmode1(data: &[u8]) -> Result<Image, DecodeError> {

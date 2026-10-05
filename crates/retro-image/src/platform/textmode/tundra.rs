@@ -1,4 +1,4 @@
-//! TundraDraw (TND): a character stream with 24-bit colours.
+//! TundraDraw (TND): a character stream with 24-bit colors.
 //!
 //! Sources:
 //! - libansilove `src/loaders/tundra.c`
@@ -6,7 +6,7 @@
 //!   header (byte 24, "TUNDRA24"), then characters and four commands:
 //!   1 moves the cursor (row, then column, as big-endian 32-bit values);
 //!   2, 4 and 6 are followed by a character drawn with a new foreground,
-//!   background or both, each colour a big-endian 32-bit 0x00RRGGBB.
+//!   background or both, each color a big-endian 32-bit 0x00RRGGBB.
 //!   80 columns, wrapping at the right edge.
 //! - The SAUCE specification (<https://www.acid.org/info/sauce/sauce.htm>):
 //!   DataType 1, FileType 8 is TundraDraw, with the width in TInfo1 and no
@@ -16,12 +16,12 @@
 //!   wide, as its TInfo1 says.
 //! - Reverse engineered from samples: files may carry SAUCE, which
 //!   libansilove draws as characters (`tcf-shocktronics.tnd`, 200 columns,
-//!   from the dexvert samples). Text before the first colour command is
-//!   drawn like DOS text, light grey on black (libansilove starts with
+//!   from the dexvert samples). Text before the first color command is
+//!   drawn like DOS text, light gray on black (libansilove starts with
 //!   black on black).
 
 // The command layout follows libansilove `src/loaders/tundra.c`, under this
-// licence:
+// license:
 //
 // Copyright (c) 2011-2026, Stefan Vogt, Brian Cassidy, and Frederic Cambus
 // All rights reserved.
@@ -113,11 +113,11 @@ mod tests {
     #[test]
     fn draws_characters_with_24_bit_colours() {
         let data = tundra(&[
-            b'a', // default colours
+            b'a', // default colors
             2, b'b', 0, 0x12, 0x34, 0x56, // new foreground
             4, b'c', 0xff, 0, 0, 0x80, // new background, top byte ignored
             6, b'd', 0, 1, 2, 3, 0, 4, 5, 6,    // both
-            b'e', // keeps the last colours
+            b'e', // keeps the last colors
             1, 0, 0, 0, 2, 0, 0, 0, 79, b'f', // row 2, last column
         ]);
         let image = decode(&data).unwrap();

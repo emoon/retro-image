@@ -24,8 +24,8 @@
 //!
 //! geoPaint: records 0..45 are two card rows (16 lines) of a 640-pixel-wide
 //! page. A record unpacks to 640+640 bitmap bytes in card order, 8 unused
-//! bytes, then 80+80 colour bytes (foreground high nibble, background low).
-//! An empty record gets GEOS's default colour `$BF`. Trailing empty records
+//! bytes, then 80+80 color bytes (foreground high nibble, background low).
+//! An empty record gets GEOS's default color `$BF`. Trailing empty records
 //! are cropped.
 //!
 //! Photo Scrap: width in cards (1 byte), height in lines (16 bits), then

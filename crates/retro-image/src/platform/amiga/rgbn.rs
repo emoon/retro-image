@@ -24,9 +24,9 @@ use crate::{DecodeError, Image};
 /// Which of the two entry layouts a FORM uses.
 #[derive(Clone, Copy)]
 pub(super) enum Kind {
-    /// 16-bit entries: 12 colour bits, genlock, 3-bit count.
+    /// 16-bit entries: 12 color bits, genlock, 3-bit count.
     Rgbn,
-    /// 32-bit entries: 24 colour bits, genlock, 7-bit count.
+    /// 32-bit entries: 24 color bits, genlock, 7-bit count.
     Rgb8,
 }
 
@@ -82,7 +82,7 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
     image.scaled(sx, sy)
 }
 
-/// The colour, repeat count and byte length of the RGBN entry at `pos`.
+/// The color, repeat count and byte length of the RGBN entry at `pos`.
 fn rgbn_entry(body: &[u8], pos: usize) -> Option<(u32, usize, usize)> {
     let word = be16(body, pos)?;
     let expand = |n: u16| widen_channel(u32::from(n & 15), 4);
@@ -99,7 +99,7 @@ fn rgbn_entry(body: &[u8], pos: usize) -> Option<(u32, usize, usize)> {
     }
 }
 
-/// The colour, repeat count and byte length of the RGB8 entry at `pos`.
+/// The color, repeat count and byte length of the RGB8 entry at `pos`.
 fn rgb8_entry(body: &[u8], pos: usize) -> Option<(u32, usize, usize)> {
     let long = be32(body, pos)?;
     // A zero count is not defined for RGB8.

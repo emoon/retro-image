@@ -1,5 +1,5 @@
 //! C64 FLI formats: a bitmap with a separate screen RAM for each of the
-//! eight lines of a character row (multicolour FLI, hires AFLI), optionally
+//! eight lines of a character row (multicolor FLI, hires AFLI), optionally
 //! with a per-line background (`$D021`) table.
 //!
 //! Sources (memory maps):
@@ -16,8 +16,8 @@
 //! | Hires FLI Designer (HFC, HFD) | CB "Hires FLI" |
 //! | Flip (FBI), FLI Graph packed | GD Flip <https://www.godot64.de/german/l_flipr.htm>, CB "FLI Graph 2.2" |
 //! | Hires Manager (HIM) | CB "Hires Manager", GD HiManRaw; for the packed form, the exclusive end address and literal lengths were checked against a sample that exists both packed and unpacked |
-//! | FLI Profi (FPR) | CB "FLI-Profi" (load `$3780`, sprites from `$3780`, colour `$3C00`, screens `$4000`, bitmap `$6000`); how the leftmost 24 pixels are drawn was reverse engineered by probing `recoil2png` with modified and random files (see [`decode_fli_profi`]) |
-//! | Flimatic (FLM) | FLI Designer's memory map (colour RAM `$3C00`, screens `$4000`, bitmap `$6000`) plus 64 bytes, packed with the escape-last RLE ([`escape_last_rle`]). Read from the save and load routines of Flimatic 3.7, which pack `$3C00-$7F7F`; the background colour is the low nibble of `$7F7F` (the editor's own screen code reads it, and changing it in `recoil2png` input recolours the picture), and the bytes `$7F40-$7F7E` change nothing in `recoil2png` |
+//! | FLI Profi (FPR) | CB "FLI-Profi" (load `$3780`, sprites from `$3780`, color `$3C00`, screens `$4000`, bitmap `$6000`); how the leftmost 24 pixels are drawn was reverse engineered by probing `recoil2png` with modified and random files (see [`decode_fli_profi`]) |
+//! | Flimatic (FLM) | FLI Designer's memory map (color RAM `$3C00`, screens `$4000`, bitmap `$6000`) plus 64 bytes, packed with the escape-last RLE ([`escape_last_rle`]). Read from the save and load routines of Flimatic 3.7, which pack `$3C00-$7F7F`; the background color is the low nibble of `$7F7F` (the editor's own screen code reads it, and changing it in `recoil2png` input recolors the picture), and the bytes `$7F40-$7F7E` change nothing in `recoil2png` |
 //! | CFLI Designer (CFLI) | Reverse engineered from 3 samples: load `$4000`, eight screen RAMs and no bitmap; the picture is hires FLI over a bitmap of `$AA` bytes, so each pixel pair shows both screen nibbles. Checked against `recoil2png` output |
 //!
 //! Picture heights of Hires FLI Designer (112 lines) and Hires Manager
@@ -40,7 +40,7 @@ pub(super) struct Fli {
     pub sizes: &'static [usize],
     pub bitmap: u16,
     pub screens: u16,
-    /// Colour RAM; `None` for hires (AFLI).
+    /// Color RAM; `None` for hires (AFLI).
     pub color: Option<u16>,
     pub background: Bg,
     pub height: usize,
@@ -48,7 +48,7 @@ pub(super) struct Fli {
     pub skip: usize,
 }
 
-/// Where a FLI picture's background colour (`$D021`) comes from.
+/// Where a FLI picture's background color (`$D021`) comes from.
 #[derive(Clone, Copy)]
 pub(super) enum Bg {
     Black,
@@ -255,13 +255,13 @@ const FLI_PROFI: Fli = Fli {
     skip: 0,
 };
 
-/// FLI Profi: multicolour FLI shown at full width, with the FLI-bug columns
-/// covered by a multicolour sprite. Sprite rows alternate between two
+/// FLI Profi: multicolor FLI shown at full width, with the FLI-bug columns
+/// covered by a multicolor sprite. Sprite rows alternate between two
 /// streams of 64-byte blocks (21 rows each): lines `y % 4` = 0 or 3 read
 /// the next row from `$3780`, lines 1 and 2 from `$38C0`. Sprite bit pairs
-/// `01` take the line's colour from `$3A00 + y`, `10` the colour at
+/// `01` take the line's color from `$3A00 + y`, `10` the color at
 /// `$3BC8`, `11` the one at `$3BC9`, and cover the bitmap. Under the sprite
-/// the bitmap's `00` is black, `01` and `10` light grey (the FLI bug) and
+/// the bitmap's `00` is black, `01` and `10` light gray (the FLI bug) and
 /// `11` the high nibble of `$3B00 + y`.
 pub(super) fn decode_fli_profi(data: &[u8]) -> Result<Image, DecodeError> {
     if !FLI_PROFI.sizes.contains(&data.len()) {

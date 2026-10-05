@@ -6,22 +6,22 @@
 //! - Mad Studio file formats PDF (MIT-licensed project),
 //!   <https://raw.githubusercontent.com/Gury8/Mad-Studio/master/docs/mad-studio-file-formats.pdf>:
 //!   GR0 (960 screen bytes), AN2 (max X, max Y, screen), GR1 (480 bytes +
-//!   COLOR4, COLOR0-3), GR2 (240 bytes + 5 colours), AN4/AN5 (max X, max Y,
+//!   COLOR4, COLOR0-3), GR2 (240 bytes + 5 colors), AN4/AN5 (max X, max Y,
 //!   COLOR4, COLOR0-3, screen).
 //! - Character modes: De Re Atari ch. 2, ANTIC modes 2, 4-7
 //!   (<https://www.atariarchives.org/dere/chapt02.php>), and ch. 3,
 //!   character sets (<https://www.atariarchives.org/dere/chapt03.php>):
-//!   bits 6-7 of a mode 6/7 code select the colour register; bit 7 of a
+//!   bits 6-7 of a mode 6/7 code select the color register; bit 7 of a
 //!   mode 4/5 code selects playfield 3 for pixel value 3. Mapping the Atari
-//!   App. 15 for the colour registers
+//!   App. 15 for the color registers
 //!   (<https://www.atariarchives.org/mapping/appendix15.php>).
 //! - DLM: Just Solve "Dir Logo Maker"
 //!   (<http://fileformats.archiveteam.org/wiki/Dir_Logo_Maker>; 256 bytes,
 //!   11x16 characters): the file is 16 DOS 2 directory entries whose 11
 //!   name bytes are ATASCII.
 //! - Observed from `recoil2png` output: the accepted sizes, the default
-//!   colours (mode 2: background 0x00, foreground luminance 0x0E; modes
-//!   6/7 without colours: the OS power-up colours), no scaling for AN2,
+//!   colors (mode 2: background 0x00, foreground luminance 0x0E; modes
+//!   6/7 without colors: the OS power-up colors), no scaling for AN2,
 //!   AN4 and AN5 (ANTIC 5 lines doubled), and 16-pixel-wide characters in
 //!   GR1/GR2.
 
@@ -46,7 +46,7 @@ pub(super) fn mode2(codes: &[u8], columns: usize) -> Image {
     mode2_colored(codes, columns, register_rgb(0x00), register_rgb(0x0e))
 }
 
-/// [`mode2`] with the given background and foreground colours.
+/// [`mode2`] with the given background and foreground colors.
 pub(super) fn mode2_colored(
     codes: &[u8],
     columns: usize,
