@@ -13,16 +13,16 @@ are in [research/](research/README.md).
 ## Permissively licensed code
 
 Where code or tables derive from one of these projects, the module keeps the original
-copyright notice and licence text.
+copyright notice and license text.
 
-| Project | Licence | Used for |
+| Project | License | Used for |
 |---|---|---|
 | [Deark](https://github.com/jsummers/deark) | MIT | Amiga icons (classic, NewIcons, GlowIcons), RISC OS sprites, PC text-mode fonts, DOS clip-art libraries, icons and self-displaying pictures, the Psion and Palm formats, and many smaller details |
 | [GoDot](https://github.com/godot64/GoDot) | MIT | C64 loaders and GoDot's own 4-bit format |
 | [Ancient](https://github.com/temisu/ancient) | BSD-2-Clause | Depackers: Pack-Ice, PowerPacker, XPK (RLEN, FAST, MASH, NUKE), RNC, Imploder, Crunch-Mania |
 | [MAME](https://github.com/mamedev/mame) (Thomson driver) | BSD-3-Clause | Thomson palette and screen modes |
 | [pynuvie](https://github.com/anarkiwi/pynuvie) | Apache-2.0 | C64 NUFLI tables |
-| [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
+| [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard color codes |
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
 | [libsixel](https://github.com/saitoha/libsixel) | MIT | Sixel: what viewers do where the DEC manual is silent (the color drawn before any selection, HLS rounding, picture size), read in `fromsixel.c`; its `sixel2png`, built from source and run as a black box, is the oracle for the sample files |
@@ -30,6 +30,14 @@ copyright notice and licence text.
 | [RGBDS](https://github.com/gbdev/rgbds) | MIT | Game Boy rgbgfx files (tile data, maps, palettes) |
 | [NitroPaint](https://github.com/Garhoogin/NitroPaint) | BSD-2-Clause | Nintendo DS NCLR, NCGR, NSCR and BTX0 files |
 | [PuyoTools](https://github.com/nickworonekin/puyotools) | MIT | GameCube texture formats (GVR, TPL, banners), Dreamcast PVR and PVM layouts, PSP GIM |
+| [TIC-80](https://github.com/nesbox/TIC-80) | MIT | TIC-80 cartridges: which palette a cartridge gets, and the DB16 colors, from `src/cart.c` |
+| [X.Org](https://gitlab.freedesktop.org/xorg/proto/xorgproto) | MIT-style (The Open Group) | XWD header layout (`XWDFile.h`) and the X11 color names (`rgb.txt`) for XPM |
+
+A few more projects were read for facts only. Nothing was copied from them, so the code
+carries no notice for them: KallistiOS (the VMU file header and some sample files),
+NeoDC-Icondata-Tool, NeoSpriteConv, picotool (the `.p8` layout and its test files), Damian
+Yerrick's `pilbmp2nes.py` (the size prefix of packed NES tiles) and ImageMagick's HRZ
+coder (picture size, channel order, samples scaled by four).
 
 ## Documentation
 
