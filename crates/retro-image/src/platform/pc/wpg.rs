@@ -179,22 +179,30 @@ fn decode_bitmap(record: &[u8], color_map: Option<&[u8]>) -> Result<Image, Decod
     let coded = record.get(BITMAP_HEADER_LEN..).ok_or(FAIL)?;
     let min_row_len = (bits * width).div_ceil(8);
     // A row is `min_row_len` bytes, or one more where the writer padded it.
-    // Which one decides the repeat codes, so each is tried in turn, and the
-    // one that makes the data `row_len` bytes a row, give or take less than
-    // a row, wins.
-    let (row_len, rows) = [min_row_len, min_row_len + 1]
+    // Which one decides what the repeat codes copy, so each is unpacked and
+    // the data must come out as exactly `height` rows of that length. Only
+    // if neither does is the one that leaves less than a row over taken
+    // (`DARVADER.WPG` has 2 bytes too many).
+    let candidates: Vec<(usize, Vec<u8>)> = [min_row_len, min_row_len + 1]
         .into_iter()
-        .find_map(|row_len| {
-            // More than a longer row's worth of data cannot be a picture.
-            let rows = unpack(coded, row_len, (row_len + 1) * height)?;
-            (rows.len() / height == row_len).then_some((row_len, rows))
+        // More than a longer row's worth of data cannot be a picture.
+        .filter_map(|row_len| Some((row_len, unpack(coded, row_len, (row_len + 1) * height)?)))
+        .collect();
+    let (row_len, rows) = candidates
+        .iter()
+        .find(|(row_len, rows)| rows.len() == row_len * height)
+        .or_else(|| {
+            candidates
+                .iter()
+                .find(|(row_len, rows)| rows.len() / height == *row_len)
         })
         .ok_or(FAIL)?;
+    let row_len = *row_len;
     if bits == 1 {
         return Image::from_bits(
             width as u32,
             height as u32,
-            &rows,
+            rows,
             row_len,
             BitOrder::MsbFirst,
             [0x000000, 0xffffff],
@@ -304,6 +312,25 @@ mod tests {
         assert_eq!(decode_wpg(&plain).unwrap(), image);
         // The colors need a color map.
         assert!(decode_wpg(&file(&[bitmap(3, 2, 4, &[4, 1, 2, 3, 4])])).is_err());
+    }
+
+    #[test]
+    fn a_repeat_code_decides_the_padded_row_length() {
+        // 3 pixels at 4 bits: 2 bytes a row, 3 where padded. One literal row
+        // of 3 bytes, then "repeat the row above once". Read as 2-byte rows
+        // the repeat copies 2 bytes and the data is 5 bytes, which is
+        // `2 * 2` and a byte over; only 3-byte rows give exactly 2 rows.
+        let colors = alloc::vec![0, 0, 3, 0, 0, 0, 0, 255, 0, 0, 0, 255, 0];
+        let data = file(&[
+            (RECORD_COLOR_MAP, colors),
+            bitmap(3, 2, 4, &[3, 0x01, 0x20, 0, 0, 1]),
+        ]);
+        let image = decode_wpg(&data).unwrap();
+        let rows: Vec<Vec<u32>> = (0..2)
+            .map(|y| (0..3).map(|x| image.get(x, y)).collect())
+            .collect();
+        assert_eq!(rows[0], [0, 0xff0000, 0x00ff00]);
+        assert_eq!(rows[1], rows[0]);
     }
 
     #[test]
