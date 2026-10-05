@@ -3,13 +3,16 @@
 //! Each submodule lists the documents its layouts come from; the platform
 //! survey is `docs/research/amiga-apple-misc.md`. This file dispatches IFF
 //! pictures:
-//! - `FORM` kinds (ILBM, BBM, PBM, ACBM, RGBN/RGB8, DEEP/TVPP, ANIM): EA IFF 85 standard,
+//! - `FORM` kinds (ILBM, BBM, PBM, ACBM, RGBN/RGB8, DEEP/TVPP, ANIM, DPST): EA IFF 85 standard,
 //!   <https://wiki.amigaos.net/wiki/EA_IFF_85_Standard_for_Interchange_Format_Files>,
 //!   and the IFF FORM and chunk registry,
 //!   <https://wiki.amigaos.net/wiki/IFF_FORM_and_Chunk_Registry>.
-//! - ANIM shown as its first frame, a complete ILBM `FORM` nested at the
-//!   start of the ANIM: ANIM spec,
+//! - ANIM shown as its first frame, the first complete ILBM `FORM` nested in
+//!   the ANIM (chunks such as `ANNO` may come before it): ANIM spec,
 //!   <https://wiki.amigaos.net/wiki/ANIM_IFF_CEL_Animations>.
+//! - `FORM DPST` (DeluxePaint ST animation): a `DPAH` header chunk, a full
+//!   ILBM first frame, then `VDLT` delta frames. No public spec; the layout
+//!   is read from one sample, whose first frame matches `recoil2png`.
 //! - PowerPacker (`PP20`) and Pack-Ice wrappers around an IFF file are
 //!   unpacked first (one layer): PowerPacker file format,
 //!   <http://fileformats.archiveteam.org/wiki/PowerPacker>; the depackers
@@ -136,16 +139,17 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
         b"RGB8" => rgbn::decode(rgbn::Kind::Rgb8, contents),
         b"DEEP" | b"TVPP" => deep::decode(contents),
-        b"ANIM" => first_frame(contents),
+        b"ANIM" | b"DPST" => first_frame(contents),
         _ => Err(DecodeError::Unrecognized),
     }
 }
 
-/// The first frame of an animation FORM: a complete ILBM FORM nested at its
-/// start.
+/// The first frame of an animation FORM: the first nested FORM, a complete
+/// ILBM, after any header chunks (`ANNO` in Brilliance files, `DPAH` in
+/// DeluxePaint ST animations).
 fn first_frame(contents: &[u8]) -> Result<Image, DecodeError> {
-    match iff::chunks(contents).next() {
-        Some((id, body)) if &id == b"FORM" && body.len() >= 4 => {
+    match iff::chunks(contents).find(|(id, _)| id == b"FORM") {
+        Some((_, body)) if body.len() >= 4 => {
             let (kind, frame) = body.split_at(4);
             match kind {
                 b"ILBM" => ilbm::decode_ilbm(frame),
@@ -182,6 +186,29 @@ mod tests {
         form.extend_from_slice(b"CMAP\0\0\0\x06\0\0\0\xff\xff\xff");
         form.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
         form
+    }
+
+    /// An animation FORM of `kind` holding `header` chunks, then one frame.
+    fn animation(kind: &[u8; 4], header: &[u8]) -> Vec<u8> {
+        let mut body = [&kind[..], header, &tiny_ilbm()].concat();
+        let mut form = b"FORM".to_vec();
+        form.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        form.append(&mut body);
+        form
+    }
+
+    #[test]
+    fn animation_first_frame_follows_any_header_chunks() {
+        let plain = decode_iff(&tiny_ilbm()).unwrap();
+        let anno = b"ANNO\0\0\0\x03abc\0";
+        let dpah = b"DPAH\0\0\0\x04\0\x06\0\x10";
+        assert_eq!(decode_iff(&animation(b"ANIM", b"")).unwrap(), plain);
+        assert_eq!(decode_iff(&animation(b"ANIM", anno)).unwrap(), plain);
+        assert_eq!(decode_iff(&animation(b"DPST", dpah)).unwrap(), plain);
+        // Header chunks alone are no picture.
+        let mut headers_only = animation(b"ANIM", anno);
+        headers_only.truncate(8 + 4 + anno.len());
+        assert!(decode_iff(&headers_only).is_err());
     }
 
     #[test]
