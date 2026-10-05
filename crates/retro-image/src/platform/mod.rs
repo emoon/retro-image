@@ -18,6 +18,7 @@ mod hp48;
 mod msx;
 mod nec_pc;
 mod nes;
+mod nintendo_3ds;
 mod nintendo_ds;
 mod oric;
 mod pc;
@@ -50,6 +51,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     hp48::FORMATS,
     msx::FORMATS,
     nes::FORMATS,
+    nintendo_3ds::FORMATS,
     nintendo_ds::FORMATS,
     nec_pc::FORMATS,
     oric::FORMATS,
