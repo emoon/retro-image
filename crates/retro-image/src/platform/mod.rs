@@ -15,6 +15,7 @@ mod electronika;
 mod fm_towns;
 mod game_boy;
 mod hp48;
+mod kiss;
 mod msx;
 mod nec_pc;
 mod nes;
@@ -47,6 +48,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     fm_towns::FORMATS,
     game_boy::FORMATS,
     hp48::FORMATS,
+    kiss::FORMATS,
     msx::FORMATS,
     nes::FORMATS,
     nec_pc::FORMATS,
