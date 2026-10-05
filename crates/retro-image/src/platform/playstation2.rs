@@ -16,8 +16,12 @@
 //!   scramble when a GS swizzle is added); the spec's 16-bit RGBA word has
 //!   red in the low bits. The samples are the eleven pictures of the spec's
 //!   `tim2img_e.zip` (one cat in every storage variant, which must decode to
-//!   the same picture) and six game files from
-//!   <https://sembiance.com/fileFormatSamples/image/tim2/>.
+//!   the same picture) and five game files from
+//!   <https://sembiance.com/fileFormatSamples/image/tim2/>. A sixth file
+//!   there, a 512x256 4-bit picture with a 320-color CLUT, decodes as noise
+//!   with the first palette: 4-bit TIM2 files whose pixels are swizzled for
+//!   GS memory are not handled and come out as noise. The corpus does not
+//!   keep that file.
 //! - Platform survey: `docs/research/gaps-consoles.md` section 3.2.
 //!
 //! Pictures with mipmaps show their largest level; a file with several
