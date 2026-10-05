@@ -1,0 +1,46 @@
+# Divergences for Unix raster files (Netpbm, Sun, SGI, XBM, XPM, XWD, farbfeld, Utah RLE); see README.md.
+extra/unix-rasters/sembiance/pam/abydos.pam	800x600	1e7b1fc212f7bee8	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pam/input_truecolor10.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pam/input_truecolor12.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pam/input_truecolor16.pam	70x46	3f4c4d30d2a85c02	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pam/sample_1920x1280.pam	1920x1280	26505b067e88e55c	Netpbm PAM: RECOIL has no PNM support. Layout per the Netpbm PAM page. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pbm/BMAP_3684.pbm	512x342	21f31d3c2675b95b	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/PAT_21.pbm	8x8	81329862d4b4c37c	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/PAT_23_45.pbm	8x8	21e20f47e3ce4b7e	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/PAT_40.pbm	8x8	931017985d73def5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/PAT_9.pbm	8x8	92229c6b614312e5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/abydos.pbm	800x600	742ef3562bcd64e5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/dragon.pbm	320x200	91f6b63ae7fbbafd	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/dwsample-pbm-640.pbm	640x427	8362529789a95535	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/example.pbm	1200x800	072727f398f2dbe1	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/input_p1.pbm	70x46	57c4911793d3c115	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/input_p4.pbm	70x46	57c4911793d3c115	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/miniswhite-1c-1b.pbm	157x151	33cb0802ac96bbce	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pbm/sample_1920x1280.pbm	1920x1280	6b9368cd2bfd3b85	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/abydos.pgm	800x600	5fc2513fada8d105	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/align_c.ppm	20x20	8d6c3d81fd7ab225	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/bg.ppm	256x256	2f4ed16ff60e38c2	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/bild4.pgm	640x480	36c5c3d7a502a126	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/dragon.pgm	320x200	31f401b86ce98e65	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/example.pgm	1200x800	8b34b3936545ee05	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. 16-bit samples. Output matches Deark pixel for pixel
+extra/unix-rasters/sembiance/pgm/house.l.pgm	367x241	31892ab80e2745bd	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/input_p2.pgm	70x46	d06878dacdb42fb5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/input_p5.pgm	70x46	d06878dacdb42fb5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/lennasmall.pgm	128x120	a4210c40d8cc9f70	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/logo.pgm	180x140	0f6cfd837d146a16	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/minisblack-1c-8b.pgm	157x151	c9b908db012f9e4e	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/pgm/sample_1920x1280.pgm	1920x1280	bcfeb183b34f9f6b	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/1629906048_testimg.ppm	227x149	6636942c099383b0	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/BARNEY7.PPM	64x64	6b919a21923bd7c6	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/BARNICO3.PPM	32x28	8a878f8e83814c3e	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/Matisse-Small.ppm	227x237	68e2a60877ef7ad1	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/TESTIMG.PPM	125x125	116b19bdd1295657	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/abydos.ppm	800x600	745ea298707d029d	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/dragon.ppm	320x200	a84189fcbb46264f	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/example.ppm	1200x800	8b5b16467f32082e	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/input_p3.ppm	70x46	3f4c4d30d2a85c02	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/input_p6.ppm	70x46	3f4c4d30d2a85c02	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/lighthouse_rgb48.ppm	768x512	dd8af294f2b71df5	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. 16-bit samples scaled by rounding; output matches Pillow pixel for pixel, Deark takes the high byte and differs by at most 1 level
+extra/unix-rasters/sembiance/ppm/rgb-3c-8b.ppm	157x151	0b299ee566860693	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/sample_1920x1280.ppm	1920x1280	26505b067e88e55c	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
+extra/unix-rasters/sembiance/ppm/testimg.ppm	125x125	49a3f9cf83a9713f	Netpbm PBM/PGM/PPM: RECOIL has no PNM support. Layout per the Netpbm format pages. Output matches Pillow pixel for pixel
