@@ -10,6 +10,7 @@
 //! family needs: sample widths above 8 bits and an alpha channel, neither of
 //! which `Image` represents.
 
+mod c_source;
 mod pnm;
 mod sgi;
 mod sun;

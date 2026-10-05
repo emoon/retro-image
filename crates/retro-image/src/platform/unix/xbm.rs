@@ -35,57 +35,13 @@
 
 use alloc::vec::Vec;
 
+use super::c_source::Tokens;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
 const WHITE: u32 = 0xff_ffff;
 const BLACK: u32 = 0;
-
-/// A cursor over C source that yields words and single punctuation marks,
-/// skipping whitespace and comments.
-struct Tokens<'a> {
-    data: &'a [u8],
-    pos: usize,
-}
-
-impl<'a> Tokens<'a> {
-    fn skip_blank(&mut self) {
-        loop {
-            let rest = &self.data[self.pos..];
-            if rest.first().is_some_and(u8::is_ascii_whitespace) {
-                self.pos += 1;
-            } else if rest.starts_with(b"/*") {
-                let end = rest[2..].windows(2).position(|w| w == b"*/");
-                self.pos += end.map_or(rest.len(), |e| e + 4);
-            } else if rest.starts_with(b"//") {
-                let end = rest.iter().position(|&b| b == b'\n');
-                self.pos += end.map_or(rest.len(), |e| e + 1);
-            } else {
-                return;
-            }
-        }
-    }
-
-    fn next(&mut self) -> Option<&'a [u8]> {
-        self.skip_blank();
-        let rest = &self.data[self.pos..];
-        let first = *rest.first()?;
-        let len = if is_punctuation(first) {
-            1
-        } else {
-            rest.iter()
-                .position(|&b| b.is_ascii_whitespace() || is_punctuation(b))
-                .unwrap_or(rest.len())
-        };
-        self.pos += len;
-        Some(&rest[..len])
-    }
-}
-
-fn is_punctuation(byte: u8) -> bool {
-    matches!(byte, b',' | b'{' | b'}' | b'[' | b']' | b'=' | b';')
-}
 
 fn number(token: &[u8]) -> Option<u32> {
     let text = core::str::from_utf8(token).ok()?;
