@@ -19,7 +19,7 @@
 
 use alloc::vec::Vec;
 
-use super::SHADES;
+use super::{SHADES, TILE};
 use crate::{DecodeError, Image};
 
 const SAVE_LEN: usize = 0x2_0000;
@@ -30,8 +30,6 @@ const SLOT_BASE: usize = 0x2000;
 const SLOT_LEN: usize = 0x1000;
 const TILES_WIDE: usize = 16;
 const TILES_HIGH: usize = 14;
-const WIDTH: usize = TILES_WIDE * 8;
-const HEIGHT: usize = TILES_HIGH * 8;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SAVE_LEN || data.get(MAGIC_AT..MAGIC_AT + 5) != Some(b"Magic") {
@@ -39,20 +37,8 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let slot = first_photo_slot(&data[STATE_VECTOR..STATE_VECTOR + SLOTS])?;
     let start = SLOT_BASE + slot * SLOT_LEN;
-    let tiles = &data[start..start + TILES_WIDE * TILES_HIGH * 16];
-    let mut indices = alloc::vec![0u8; WIDTH * HEIGHT];
-    for (n, tile) in tiles.as_chunks::<16>().0.iter().enumerate() {
-        let (tx, ty) = (n % TILES_WIDE, n / TILES_WIDE);
-        for (y, row) in tile.as_chunks::<2>().0.iter().enumerate() {
-            for x in 0..8 {
-                // Low bit plane first; the leftmost pixel is bit 7.
-                let bit = 7 - x;
-                indices[(ty * 8 + y) * WIDTH + tx * 8 + x] =
-                    (row[0] >> bit & 1) | (row[1] >> bit & 1) << 1;
-            }
-        }
-    }
-    Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &SHADES)
+    let tiles = &data[start..start + TILES_WIDE * TILES_HIGH * TILE.tile_len()];
+    TILE.sheet(tiles, TILES_WIDE, &SHADES)
 }
 
 /// The slot holding the lowest-numbered photo. Entries must be a photo
