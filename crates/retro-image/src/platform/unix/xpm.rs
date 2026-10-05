@@ -13,16 +13,17 @@
 //!   the color lines and the pixel lines, unquoted. Checked on the sample
 //!   `two-triangles.txt`. XPM1 is not decoded.
 //! - Color names: the X11 color database `rgb.txt` (see the notice at the
-//!   end of this comment), for the names that occur in the samples plus the
-//!   basic eight and `gray`.
+//!   end of this comment): every name without a number, plus `gray0` to
+//!   `gray100` (and `grey`) worked out from the rule that `rgb.txt` follows.
+//!   The numbered variants of other colors (`red3`, `snow2`) are not included.
 //!
 //! The `c` color is used, or else `g`, `g4` or `m`. `None` is transparent and
 //! becomes the shared transparent-fill gray. A `#` color has one to four hex
 //! digits per channel. They are the top bits of a 16-bit value, so `#fff` is
 //! 0xf0f0f0 and `#3a7` is the same as `#3000a0007000`; the high byte is the
 //! 8-bit value (X(7), <https://www.x.org/releases/current/doc/man/man7/X.7.xhtml>,
-//! "Color Names"). A color name outside the small table,
-//! a pixel not in the color table, or a missing string fails the decode.
+//! "Color Names"). A color name outside those, a
+//! pixel not in the color table, or a missing string fails the decode.
 //! Names are matched ignoring case and spaces. Hotspots and extensions are
 //! ignored. The file must open with `/* XPM */` or `! XPM2`: that is the
 //! signature.
@@ -91,38 +92,153 @@ use crate::{DecodeError, Image};
 
 const FAIL: DecodeError = DecodeError::Unrecognized;
 
-/// X11 color names, lower case and without spaces.
+/// X11 color names from `rgb.txt` that have no number (`red3` and `gray50` do),
+/// lower case and without spaces, sorted for binary search.
 const NAMES: &[(&[u8], u32)] = &[
+    (b"aliceblue", 0xf0_f8ff),
+    (b"antiquewhite", 0xfa_ebd7),
+    (b"aquamarine", 0x7f_ffd4),
+    (b"azure", 0xf0_ffff),
+    (b"beige", 0xf5_f5dc),
+    (b"bisque", 0xff_e4c4),
     (b"black", 0x00_0000),
-    (b"white", 0xff_ffff),
-    (b"red", 0xff_0000),
-    (b"green", 0x00_ff00),
+    (b"blanchedalmond", 0xff_ebcd),
     (b"blue", 0x00_00ff),
-    (b"yellow", 0xff_ff00),
+    (b"blueviolet", 0x8a_2be2),
+    (b"brown", 0xa5_2a2a),
+    (b"burlywood", 0xde_b887),
+    (b"cadetblue", 0x5f_9ea0),
+    (b"chartreuse", 0x7f_ff00),
+    (b"chocolate", 0xd2_691e),
+    (b"coral", 0xff_7f50),
+    (b"cornflowerblue", 0x64_95ed),
+    (b"cornsilk", 0xff_f8dc),
     (b"cyan", 0x00_ffff),
-    (b"magenta", 0xff_00ff),
-    (b"gray", 0xbe_bebe),
-    (b"grey", 0xbe_bebe),
+    (b"darkblue", 0x00_008b),
+    (b"darkcyan", 0x00_8b8b),
+    (b"darkgoldenrod", 0xb8_860b),
+    (b"darkgray", 0xa9_a9a9),
+    (b"darkgreen", 0x00_6400),
+    (b"darkgrey", 0xa9_a9a9),
+    (b"darkkhaki", 0xbd_b76b),
+    (b"darkmagenta", 0x8b_008b),
+    (b"darkolivegreen", 0x55_6b2f),
+    (b"darkorange", 0xff_8c00),
+    (b"darkorchid", 0x99_32cc),
+    (b"darkred", 0x8b_0000),
+    (b"darksalmon", 0xe9_967a),
+    (b"darkseagreen", 0x8f_bc8f),
+    (b"darkslateblue", 0x48_3d8b),
     (b"darkslategray", 0x2f_4f4f),
+    (b"darkslategrey", 0x2f_4f4f),
+    (b"darkturquoise", 0x00_ced1),
+    (b"darkviolet", 0x94_00d3),
+    (b"debianred", 0xd7_0751),
+    (b"deeppink", 0xff_1493),
+    (b"deepskyblue", 0x00_bfff),
+    (b"dimgray", 0x69_6969),
+    (b"dimgrey", 0x69_6969),
     (b"dodgerblue", 0x1e_90ff),
     (b"firebrick", 0xb2_2222),
+    (b"floralwhite", 0xff_faf0),
+    (b"forestgreen", 0x22_8b22),
     (b"gainsboro", 0xdc_dcdc),
+    (b"ghostwhite", 0xf8_f8ff),
     (b"gold", 0xff_d700),
+    (b"goldenrod", 0xda_a520),
+    (b"gray", 0xbe_bebe),
+    (b"green", 0x00_ff00),
+    (b"greenyellow", 0xad_ff2f),
+    (b"grey", 0xbe_bebe),
+    (b"honeydew", 0xf0_fff0),
+    (b"hotpink", 0xff_69b4),
+    (b"indianred", 0xcd_5c5c),
+    (b"ivory", 0xff_fff0),
+    (b"khaki", 0xf0_e68c),
     (b"lavender", 0xe6_e6fa),
+    (b"lavenderblush", 0xff_f0f5),
+    (b"lawngreen", 0x7c_fc00),
     (b"lemonchiffon", 0xff_facd),
+    (b"lightblue", 0xad_d8e6),
+    (b"lightcoral", 0xf0_8080),
+    (b"lightcyan", 0xe0_ffff),
+    (b"lightgoldenrod", 0xee_dd82),
+    (b"lightgoldenrodyellow", 0xfa_fad2),
+    (b"lightgray", 0xd3_d3d3),
+    (b"lightgreen", 0x90_ee90),
+    (b"lightgrey", 0xd3_d3d3),
+    (b"lightpink", 0xff_b6c1),
+    (b"lightsalmon", 0xff_a07a),
+    (b"lightseagreen", 0x20_b2aa),
+    (b"lightskyblue", 0x87_cefa),
+    (b"lightslateblue", 0x84_70ff),
+    (b"lightslategray", 0x77_8899),
+    (b"lightslategrey", 0x77_8899),
+    (b"lightsteelblue", 0xb0_c4de),
+    (b"lightyellow", 0xff_ffe0),
     (b"limegreen", 0x32_cd32),
+    (b"linen", 0xfa_f0e6),
+    (b"magenta", 0xff_00ff),
+    (b"maroon", 0xb0_3060),
+    (b"mediumaquamarine", 0x66_cdaa),
+    (b"mediumblue", 0x00_00cd),
+    (b"mediumorchid", 0xba_55d3),
+    (b"mediumpurple", 0x93_70db),
+    (b"mediumseagreen", 0x3c_b371),
+    (b"mediumslateblue", 0x7b_68ee),
+    (b"mediumspringgreen", 0x00_fa9a),
+    (b"mediumturquoise", 0x48_d1cc),
+    (b"mediumvioletred", 0xc7_1585),
+    (b"midnightblue", 0x19_1970),
+    (b"mintcream", 0xf5_fffa),
+    (b"mistyrose", 0xff_e4e1),
+    (b"moccasin", 0xff_e4b5),
+    (b"navajowhite", 0xff_dead),
     (b"navy", 0x00_0080),
+    (b"navyblue", 0x00_0080),
+    (b"oldlace", 0xfd_f5e6),
+    (b"olivedrab", 0x6b_8e23),
     (b"orange", 0xff_a500),
+    (b"orangered", 0xff_4500),
+    (b"orchid", 0xda_70d6),
+    (b"palegoldenrod", 0xee_e8aa),
     (b"palegreen", 0x98_fb98),
+    (b"paleturquoise", 0xaf_eeee),
+    (b"palevioletred", 0xdb_7093),
+    (b"papayawhip", 0xff_efd5),
+    (b"peachpuff", 0xff_dab9),
     (b"peru", 0xcd_853f),
+    (b"pink", 0xff_c0cb),
+    (b"plum", 0xdd_a0dd),
+    (b"powderblue", 0xb0_e0e6),
+    (b"purple", 0xa0_20f0),
+    (b"red", 0xff_0000),
+    (b"rosybrown", 0xbc_8f8f),
+    (b"royalblue", 0x41_69e1),
+    (b"saddlebrown", 0x8b_4513),
+    (b"salmon", 0xfa_8072),
+    (b"sandybrown", 0xf4_a460),
     (b"seagreen", 0x2e_8b57),
+    (b"seashell", 0xff_f5ee),
     (b"sienna", 0xa0_522d),
     (b"skyblue", 0x87_ceeb),
+    (b"slateblue", 0x6a_5acd),
     (b"slategray", 0x70_8090),
+    (b"slategrey", 0x70_8090),
+    (b"snow", 0xff_fafa),
+    (b"springgreen", 0x00_ff7f),
+    (b"steelblue", 0x46_82b4),
     (b"tan", 0xd2_b48c),
+    (b"thistle", 0xd8_bfd8),
     (b"tomato", 0xff_6347),
+    (b"turquoise", 0x40_e0d0),
     (b"violet", 0xee_82ee),
+    (b"violetred", 0xd0_2090),
     (b"wheat", 0xf5_deb3),
+    (b"white", 0xff_ffff),
+    (b"whitesmoke", 0xf5_f5f5),
+    (b"yellow", 0xff_ff00),
+    (b"yellowgreen", 0x9a_cd32),
 ];
 
 pub(super) fn decode_xpm(data: &[u8]) -> Result<Image, DecodeError> {
@@ -291,11 +407,30 @@ fn color(words: &[&[u8]]) -> Result<u32, DecodeError> {
         }
         return Ok(color);
     }
-    NAMES
-        .iter()
-        .find(|(known, _)| *known == name)
-        .map(|&(_, color)| color)
-        .ok_or(FAIL)
+    named(&name).ok_or(FAIL)
+}
+
+/// The color of an X11 name: `grayN` and `greyN` for N up to 100, or an entry
+/// of [`NAMES`].
+fn named(name: &[u8]) -> Option<u32> {
+    let level = name
+        .strip_prefix(b"gray")
+        .or_else(|| name.strip_prefix(b"grey"))
+        .filter(|digits| !digits.is_empty() && digits.len() <= 3)
+        .filter(|digits| {
+            digits.iter().all(u8::is_ascii_digit) && (digits[0] != b'0' || digits.len() == 1)
+        })
+        .and_then(|digits| core::str::from_utf8(digits).ok()?.parse::<u32>().ok())
+        .filter(|&level| level <= 100);
+    if let Some(level) = level {
+        // rgb.txt rounds level * 2.55 in floating point: .5 falls to the
+        // lower value at 50 and 90 (127 and 229) but rises at 10 (26).
+        return Some((f64::from(level) * 2.55 + 0.5) as u32 * 0x01_0101);
+    }
+    let at = NAMES
+        .binary_search_by(|(known, _)| (*known).cmp(name))
+        .ok()?;
+    Some(NAMES[at].1)
 }
 
 #[cfg(test)]
@@ -322,6 +457,25 @@ mod tests {
         let image =
             decode_xpm(b"! XPM2\r\n2 1 2 2\r\n.. c #000000\r\n#  c #00ffff\r\n# ..\r\n").unwrap();
         assert_eq!((image.get(0, 0), image.get(1, 0)), (0x00ffff, 0));
+    }
+
+    #[test]
+    fn gray_levels_and_more_color_names() {
+        let name = |text: &str| color(&[text.as_bytes()]);
+        // grayN follows rgb.txt, whose 2.55 factor makes .5 round down at
+        // 50 and 90 but up at 10.
+        assert_eq!(name("gray0"), Ok(0x000000));
+        assert_eq!(name("gray10"), Ok(0x1a1a1a));
+        assert_eq!(name("gray50"), Ok(0x7f7f7f));
+        assert_eq!(name("Grey51"), Ok(0x828282));
+        assert_eq!(name("gray90"), Ok(0xe5e5e5));
+        assert_eq!(name("gray100"), Ok(0xffffff));
+        assert_eq!(name("gray101"), Err(FAIL));
+        assert_eq!(name("gray050"), Err(FAIL));
+        assert_eq!(name("gray"), Ok(0xbebebe));
+        assert_eq!(name("lightblue"), Ok(0xadd8e6));
+        assert_eq!(color(&[b"Dark", b"Green"]), Ok(0x006400));
+        assert!(NAMES.windows(2).all(|pair| pair[0].0 < pair[1].0), "sorted");
     }
 
     #[test]
