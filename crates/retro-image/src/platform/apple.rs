@@ -17,6 +17,7 @@ mod dreamgrafix;
 mod hires;
 mod macpaint;
 mod pack_bytes;
+mod printshop_gs;
 mod sprites;
 mod super_hires;
 
@@ -87,6 +88,13 @@ pub(super) static FORMATS: &[Format] = &[
     )
     .signature(),
     Format::new("Apple II", "Sprites", &["spr"], sprites::decode),
+    // ProDOS type $F8 has no extension on disk; `.psg` is this crate's own.
+    Format::new(
+        "Apple IIGS",
+        "Print Shop GS clip art",
+        &["psg"],
+        printshop_gs::decode,
+    ),
 ];
 
 /// Brooks pictures, also accepting the other 3200-colour and screen-dump
