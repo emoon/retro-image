@@ -66,7 +66,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{check_size, gray_ramp, over_fill_argb, widen_channel};
+use crate::image::{check_size, gray_ramp, over_fill_argb, rgb565, widen_channel, xrgb1555};
 use crate::morton::morton_index;
 use crate::{Companions, DecodeError, Image};
 
@@ -195,9 +195,9 @@ fn color(pixel_format: u8, bytes: &[u8]) -> Option<u32> {
     Some(match pixel_format {
         0 => {
             let alpha = if v & 0x8000 != 0 { 0xff } else { 0 };
-            alpha << 24 | channel(v, 10, 5) << 16 | channel(v, 5, 5) << 8 | channel(v, 0, 5)
+            alpha << 24 | xrgb1555(v)
         }
-        1 => 0xff << 24 | channel(v, 11, 5) << 16 | channel(v, 5, 6) << 8 | channel(v, 0, 5),
+        1 => 0xff << 24 | rgb565(v),
         _ => {
             channel(v, 12, 4) << 24
                 | channel(v, 8, 4) << 16

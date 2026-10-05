@@ -42,7 +42,7 @@
 
 use super::{Chunk, chunks};
 use crate::bytes::{be16, be32};
-use crate::image::{check_size, over_fill_argb, widen_channel};
+use crate::image::{check_size, over_fill_argb, xrgb1555};
 use crate::{DecodeError, Image};
 
 /// Widest cel: the cel engine counts the pixels of a row in 11 bits. Packed
@@ -229,13 +229,12 @@ fn palette(plut: Option<&[u8]>) -> [u16; 32] {
 /// `0xAARRGGBB` from a 15-bit color: transparent when it is zero and `bgnd`
 /// is not set.
 fn argb(color: u16, bgnd: bool) -> u32 {
-    let channel = |shift: u32| widen_channel(u32::from(color >> shift & 31), 5);
     let alpha = if color & 0x7fff == 0 && !bgnd {
         0
     } else {
         0xff
     };
-    alpha << 24 | channel(10) << 16 | channel(5) << 8 | channel(0)
+    alpha << 24 | xrgb1555(color)
 }
 
 /// Reads the bits of `data` most significant bit first.

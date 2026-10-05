@@ -22,6 +22,7 @@
 //! transparency exists, and RGB565 has no alpha, so the icon is opaque.
 
 use crate::bytes::le16;
+use crate::image::rgb565;
 use crate::morton::morton_index;
 use crate::{DecodeError, Image};
 
@@ -63,13 +64,6 @@ pub(super) fn icon(block: &[u8]) -> Result<Image, DecodeError> {
     ))
 }
 
-/// 16-bit color: red in bits 11-15, green 5-10, blue 0-4.
-fn rgb565(word: u16) -> u32 {
-    let word = u32::from(word);
-    let (r, g, b) = (word >> 11, word >> 5 & 63, word & 31);
-    (r << 3 | r >> 2) << 16 | (g << 2 | g >> 4) << 8 | (b << 3 | b >> 2)
-}
-
 /// An SMDH block whose large icon holds the given 16-bit words at the given
 /// word indices (counted from the start of the icon), and zeros elsewhere.
 #[cfg(test)]
@@ -86,15 +80,6 @@ pub(super) fn test_block(words: &[(usize, u16)]) -> alloc::vec::Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn rgb565_expands_each_channel_to_8_bits() {
-        assert_eq!(rgb565(0xffff), 0xff_ffff);
-        assert_eq!(rgb565(0xf800), 0xff_0000);
-        assert_eq!(rgb565(0x07e0), 0x00_ff00);
-        assert_eq!(rgb565(0x001f), 0x00_00ff);
-        assert_eq!(rgb565(0x0020), 0x00_0400);
-    }
 
     #[test]
     fn pixels_are_z_ordered_inside_tiles_laid_out_in_rows() {

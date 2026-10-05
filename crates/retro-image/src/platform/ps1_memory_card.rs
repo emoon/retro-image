@@ -32,9 +32,8 @@
 
 use alloc::vec::Vec;
 
-use super::playstation::color15;
 use crate::bytes::{le16, le32};
-use crate::image::TRANSPARENT_FILL;
+use crate::image::{TRANSPARENT_FILL, bgr555};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Format, Image};
 
@@ -64,7 +63,7 @@ fn color(word: u16) -> u32 {
     if word == 0 {
         TRANSPARENT_FILL
     } else {
-        color15(word)
+        bgr555(word)
     }
 }
 

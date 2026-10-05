@@ -31,12 +31,28 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
     }
 }
 
-/// A 15-bit color as the Game Boy Color, the Game Boy Advance and the DS store
-/// it, as `0xRRGGBB`: red in bits 0-4, green in bits 5-9, blue in bits 10-14,
-/// bit 15 ignored, each channel widened to 8 bits as `v << 3 | v >> 2`.
+/// A 15-bit color as the Game Boy Color, the Game Boy Advance, the DS and the
+/// PlayStation store it, as `0xRRGGBB`: red in bits 0-4, green in bits 5-9,
+/// blue in bits 10-14, bit 15 ignored, each channel widened by
+/// [`widen_channel`].
 pub(crate) fn bgr555(word: u16) -> u32 {
-    let widen = |bits: u16| u32::from(bits << 3 | bits >> 2);
-    widen(word & 31) << 16 | widen(word >> 5 & 31) << 8 | widen(word >> 10 & 31)
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 31), 5);
+    channel(0) << 16 | channel(5) << 8 | channel(10)
+}
+
+/// A 15-bit color with red high, as `0xRRGGBB`: red in bits 10-14, green in
+/// bits 5-9, blue in bits 0-4, bit 15 ignored.
+pub(crate) fn xrgb1555(word: u16) -> u32 {
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 31), 5);
+    channel(10) << 16 | channel(5) << 8 | channel(0)
+}
+
+/// A 16-bit color as `0xRRGGBB`: red in bits 11-15, green in bits 5-10, blue
+/// in bits 0-4.
+pub(crate) fn rgb565(word: u16) -> u32 {
+    let channel =
+        |shift: u32, bits: u32| widen_channel(u32::from(word >> shift) & ((1 << bits) - 1), bits);
+    channel(11, 5) << 16 | channel(5, 6) << 8 | channel(0, 5)
 }
 
 /// Colour shown where a picture is transparent. `Image` has no alpha channel,
@@ -362,6 +378,24 @@ mod tests {
         assert_eq!(bgr555(0x7c00), 0x00_00ff);
         // Channel 16 widens to 0x84, and bit 15 changes nothing.
         assert_eq!(bgr555(0x8010), 0x84_0000);
+    }
+
+    #[test]
+    fn xrgb1555_puts_red_highest_and_ignores_bit_15() {
+        assert_eq!(xrgb1555(0x7c00), 0xff_0000);
+        assert_eq!(xrgb1555(0x03e0), 0x00_ff00);
+        assert_eq!(xrgb1555(0x001f), 0x00_00ff);
+        assert_eq!(xrgb1555(0xc010), 0x84_0084);
+    }
+
+    #[test]
+    fn rgb565_widens_green_from_6_bits() {
+        assert_eq!(rgb565(0xffff), 0xff_ffff);
+        assert_eq!(rgb565(0xf800), 0xff_0000);
+        assert_eq!(rgb565(0x07e0), 0x00_ff00);
+        assert_eq!(rgb565(0x001f), 0x00_00ff);
+        assert_eq!(rgb565(0x0020), 0x00_0400);
+        assert_eq!(rgb565(0x0004), 0x00_0021);
     }
 
     #[test]

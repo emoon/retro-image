@@ -30,7 +30,7 @@
 //! test built from GBATEK's description.
 
 use crate::bytes::{le16, le32};
-use crate::image::TRANSPARENT_FILL;
+use crate::image::{TRANSPARENT_FILL, bgr555};
 use crate::tiles::TileLayout;
 use crate::{BitOrder, DecodeError, Image};
 
@@ -126,15 +126,6 @@ fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Image {
         height,
         (0..height).flat_map(|y| (0..width).map(move |x| source(x, y))),
     )
-}
-
-/// 15-bit color: red in bits 0-4, green 5-9, blue 10-14.
-fn bgr555(word: u16) -> u32 {
-    let channel = |shift: usize| {
-        let v = u32::from(word >> shift & 31);
-        v << 3 | v >> 2
-    };
-    channel(0) << 16 | channel(5) << 8 | channel(10)
 }
 
 /// CRC-16 as the DS BIOS computes it: start value `0xFFFF`, reflected

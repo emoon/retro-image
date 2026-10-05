@@ -51,7 +51,7 @@
 
 use alloc::vec::Vec;
 
-use crate::image::{check_size, over_fill_argb, widen_channel};
+use crate::image::{bgr555, check_size, over_fill_argb, widen_channel};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -110,7 +110,7 @@ fn color(endian: Endian, format: u16, bytes: &[u8]) -> Option<u32> {
         0 => 0xff << 24 | channel(0, 5) << 16 | channel(5, 6) << 8 | channel(11, 5),
         1 => {
             let alpha = if v & 0x8000 != 0 { 0xff } else { 0 };
-            alpha << 24 | channel(0, 5) << 16 | channel(5, 5) << 8 | channel(10, 5)
+            alpha << 24 | bgr555(v)
         }
         _ => channel(12, 4) << 24 | channel(0, 4) << 16 | channel(4, 4) << 8 | channel(8, 4),
     })

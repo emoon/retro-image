@@ -23,7 +23,7 @@
 
 use super::chunks;
 use crate::bytes::{be16, be32};
-use crate::image::{check_size, widen_channel};
+use crate::image::{check_size, xrgb1555};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
@@ -62,16 +62,10 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
                     y / 2 * 2 * row_len + (x * 2 + lower) * 2
                 }
             };
-            color15(be16(pixels, at).unwrap_or(0))
+            xrgb1555(be16(pixels, at).unwrap_or(0))
         })
     });
     Ok(Image::from_colors(width as u32, height as u32, colors))
-}
-
-/// `0xRRGGBB` from a 5-5-5 pixel, red in bits 10-14.
-fn color15(pixel: u16) -> u32 {
-    let channel = |shift: u32| widen_channel(u32::from(pixel >> shift & 31), 5);
-    channel(10) << 16 | channel(5) << 8 | channel(0)
 }
 
 #[cfg(test)]

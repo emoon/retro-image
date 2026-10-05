@@ -10,9 +10,9 @@
 use alloc::vec::Vec;
 
 use super::common::{planar_image, st_palette, vdi_palette, words};
-use super::falcon::{rgb565, videl_entries};
+use super::falcon::videl_entries;
 use crate::bytes::be16;
-use crate::image::check_size;
+use crate::image::{check_size, rgb565};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 14;
