@@ -23,8 +23,11 @@
 //! of a PNG and need a PNG decoder, which this crate does not have: they are
 //! not read.
 //!
-//! The 16 screen colors are used as they are; the 16 "secret" colors
-//! (128 to 143) cannot appear in a text cartridge, which has hex digits only.
+//! The 16 screen colors are used as they are. Pixels are hex digits, as in
+//! every sample. Newer PICO-8 versions may write other digits (`g` to `v`,
+//! for the "secret" colors 128 to 143) in a label; no sample has any, so that
+//! is unverified: a label with a digit that is not hex is left out and the
+//! sprite sheet is shown, while a sprite sheet with one is rejected.
 //!
 //! Detection: the first line is a signature, so `.signature()` is chained.
 
@@ -108,13 +111,21 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
                 Reading::Other => {}
             }
         } else if !line.is_empty() {
-            let section = match reading {
-                Reading::Gfx => gfx.as_mut(),
-                Reading::Label => label.as_mut(),
-                Reading::Other => None,
-            };
-            if let Some(section) = section {
-                section.push(line).ok_or(fail)?;
+            match reading {
+                Reading::Gfx => {
+                    if let Some(gfx) = gfx.as_mut() {
+                        gfx.push(line).ok_or(fail)?;
+                    }
+                }
+                Reading::Label => {
+                    // A label that cannot be read is left out, not a reason
+                    // to reject the cartridge.
+                    if label.as_mut().is_some_and(|l| l.push(line).is_none()) {
+                        label = None;
+                        reading = Reading::Other;
+                    }
+                }
+                Reading::Other => {}
             }
         }
     }
@@ -155,6 +166,15 @@ mod tests {
             PALETTE[1]
         );
         assert!(decode(&cart("__map__\n00\n")).is_err());
+    }
+
+    #[test]
+    fn a_label_with_other_digits_is_left_out() {
+        let cart = cart("__gfx__\n1\n__label__\n0\n3g\n__map__\n00\n");
+        // The sprite sheet is shown, and the lines after the label are not
+        // mistaken for its rows.
+        assert_eq!(decode(&cart).unwrap().get(0, 0), PALETTE[1]);
+        assert_eq!(decode(&cart).unwrap().get(0, 1), PALETTE[0]);
     }
 
     #[test]
