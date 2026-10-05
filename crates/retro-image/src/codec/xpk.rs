@@ -11,7 +11,7 @@
 //! bit streams follow Ancient's `XPKMain`, `RLENDecompressor`,
 //! `FASTDecompressor`, `MASHDecompressor` and `NUKEDecompressor`
 //! (<https://github.com/temisu/ancient>, src/), which are distributed under
-//! this licence:
+//! this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

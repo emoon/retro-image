@@ -6,7 +6,7 @@
 //! literal runs and distances are read in one intertwined sequence follow
 //! Ancient's `IMPDecompressor`
 //! (<https://github.com/temisu/ancient>, src/IMPDecompressor.cpp), which is
-//! distributed under this licence:
+//! distributed under this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

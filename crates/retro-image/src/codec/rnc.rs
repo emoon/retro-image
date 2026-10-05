@@ -8,7 +8,7 @@
 //! fixed code tables of the old streams and of method 2, and the Huffman
 //! tables of the new method 1 stream follow Ancient's `RNCDecompressor`
 //! (<https://github.com/temisu/ancient>, src/RNCDecompressor.cpp), which is
-//! distributed under this licence:
+//! distributed under this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

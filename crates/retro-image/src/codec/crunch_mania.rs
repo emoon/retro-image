@@ -6,7 +6,7 @@
 //! both bit-stream layouts, their code tables and the delta pass follow
 //! Ancient's `CRMDecompressor` and `DLTADecode`
 //! (<https://github.com/temisu/ancient>, src/), which are distributed under
-//! this licence:
+//! this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >

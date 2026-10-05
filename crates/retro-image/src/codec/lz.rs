@@ -7,7 +7,7 @@
 //! optional restarts, overlapping match copies) follow Ancient's
 //! `InputStream`, `OutputStream` and `VariableLengthCodeDecoder`
 //! (<https://github.com/temisu/ancient>, src/), which are distributed under
-//! this licence:
+//! this license:
 //!
 //! > Copyright (c) 2017-2026, Teemu Suutari. All rights reserved.
 //! >
