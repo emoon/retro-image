@@ -13,9 +13,9 @@
 //!   `fmtowns_icn` (<https://github.com/jsummers/deark>, MIT licence, notice
 //!   below). Signatures: Just Solve the Computer, ICN (FM Towns),
 //!   <http://justsolve.archiveteam.org/wiki/ICN_(FM_Towns)>.
-//! - The sheet (icons left to right, wrapped at 512 pixels, on the shared
-//!   transparent-fill grey) is this crate's own choice. No FM Towns icon sample was available, so the layouts
-//!   are checked only by unit tests built from the documented structure.
+//! - The sheet is this crate's own choice, in `icon_sheet.rs`. No FM Towns
+//!   icon sample was available, so the layouts are checked only by unit tests
+//!   built from the documented structure.
 
 // Parts of this file follow Deark's modules/misc2.c
 // (Deark, https://github.com/jsummers/deark):
@@ -44,7 +44,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{be16, le16, le32};
-use crate::image::{TRANSPARENT_FILL, check_size};
+use crate::icon_sheet::{self, Icon};
 use crate::{DecodeError, Image};
 
 const PALETTE: [u32; 16] = [
@@ -57,15 +57,6 @@ const MAX_ICONS: usize = 256;
 /// Icon headers visited across all tables, skipped ones included.
 const MAX_HEADERS: usize = 4096;
 const MAX_SIDE: usize = 512;
-const SHEET_WIDTH: usize = 512;
-const GAP: usize = 4;
-
-struct Icon {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-}
-
 /// Pixels of a `width` x `height` icon at `at`: 1-bit (set is black) or
 /// 4-bit (low nibble first) rows, 4-bit rows padded to 32 bits.
 fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -> Option<Icon> {
@@ -156,44 +147,6 @@ fn table_icons(data: &[u8]) -> Option<Vec<Icon>> {
     Some(icons)
 }
 
-/// All icons on one sheet, wrapped at [`SHEET_WIDTH`] pixels.
-fn sheet(icons: &[Icon]) -> Result<Image, DecodeError> {
-    let sheet_width = icons
-        .iter()
-        .map(|icon| icon.width + 2 * GAP)
-        .fold(SHEET_WIDTH, usize::max);
-    let (mut x, mut y, mut row_height) = (GAP, GAP, 0);
-    let mut places = Vec::with_capacity(icons.len());
-    for icon in icons {
-        if x + icon.width + GAP > sheet_width {
-            x = GAP;
-            y += row_height + GAP;
-            row_height = 0;
-        }
-        places.push((x, y));
-        x += icon.width + GAP;
-        row_height = row_height.max(icon.height);
-    }
-    let sheet_height = y + row_height + GAP;
-    check_size(sheet_width, sheet_height)?;
-    let mut image = Image::new(sheet_width as u32, sheet_height as u32);
-    for py in 0..sheet_height {
-        for px in 0..sheet_width {
-            image.set(px as u32, py as u32, TRANSPARENT_FILL);
-        }
-    }
-    for (icon, &(x, y)) in icons.iter().zip(&places) {
-        for (i, &color) in icon.pixels.iter().enumerate() {
-            image.set(
-                (x + i % icon.width) as u32,
-                (y + i / icon.width) as u32,
-                color,
-            );
-        }
-    }
-    Ok(image)
-}
-
 pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     let icons = if data.starts_with(b"ICNFILE\0\0\x1a") {
         table_icons(data)
@@ -205,7 +158,7 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
         None
     };
     match icons {
-        Some(icons) if !icons.is_empty() => sheet(&icons),
+        Some(icons) if !icons.is_empty() => icon_sheet::sheet(&icons),
         _ => Err(DecodeError::Unrecognized),
     }
 }
