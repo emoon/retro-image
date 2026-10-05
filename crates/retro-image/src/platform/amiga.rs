@@ -23,6 +23,7 @@ mod cdxl;
 mod chunky;
 mod dctv;
 mod deep;
+mod deep_ilbm;
 mod flf;
 mod ham_e;
 mod icon;
@@ -151,7 +152,8 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"BBM " => ilbm::decode_ilbm(contents),
         b"ILBM" => ilbm::decode_ilbm(contents)
             .or_else(|_| dctv::decode(contents))
-            .or_else(|_| ham_e::decode(contents)),
+            .or_else(|_| ham_e::decode(contents))
+            .or_else(|_| deep_ilbm::decode(contents)),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
