@@ -1,4 +1,4 @@
-//! Psion Series 3.
+//! Psion Series 3 pictures, and the Series 5 (EPOC) bitmaps of `psion/epoc.rs`.
 //!
 //! Sources:
 //! - PIC/ICN: Psionics files, `bitmap.fmt`
@@ -9,12 +9,25 @@
 //! - Only the first bitmap is shown, set bit = black: observed from
 //!   `recoil2png` output.
 
+mod epoc;
+
 use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Format, Image};
 
-pub(super) static FORMATS: &[Format] =
-    &[Format::new("Psion Series 3", "mono", &["pic", "icn"], decode_pic).signature()];
+pub(super) static FORMATS: &[Format] = &[
+    Format::new("Psion Series 3", "mono", &["pic", "icn"], decode_pic).signature(),
+    Format::new("Psion Series 5", "Multi-bitmap", &["mbm"], epoc::decode_mbm).signature(),
+    // Sketch files have no extension, only their UIDs.
+    Format::new("Psion Series 5", "Sketch", &[], epoc::decode_sketch).signature(),
+    Format::new(
+        "Psion Series 5",
+        "Application info",
+        &["aif"],
+        epoc::decode_aif,
+    )
+    .signature(),
+];
 
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let fail = DecodeError::Unrecognized;
