@@ -6,6 +6,7 @@
 
 mod amiga;
 mod amstrad_cpc;
+mod amstrad_pcw;
 mod apple;
 mod atari8;
 mod atari_st;
@@ -66,4 +67,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     trs80::FORMATS,
     vector06c::FORMATS,
     zx_spectrum::FORMATS,
+    // Last: its headerless `.cut`, `.grf` and `.spc` formats are recognised
+    // by size, so every other claimant of those extensions goes first.
+    amstrad_pcw::FORMATS,
 ];
