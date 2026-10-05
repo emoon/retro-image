@@ -36,11 +36,10 @@
 //! channels, which may differ slightly from the console's.
 //!
 //! Palettes are named separately and the file does not say which belongs to
-//! which texture. The match is a guess in this order: the same name, the
-//! name with `_pl` or `_p` added, a palette whose name begins or ends the
-//! texture's name (the longest, at least 3 letters), the palette with the
-//! texture's own number, the first palette. The first two are what Mario Kart
-//! DS does. A texture of a file with no palette uses grays.
+//! which texture. The match is a guess in this order: the palette with the
+//! same name, the palette with the texture's own number, and grays when
+//! there is neither. Mario Kart DS also names some palettes with a suffix or
+//! without a prefix (GBATEK), which is not tried.
 //!
 //! The textures are drawn at their size, left to right in rows 1024 pixels
 //! wide with 4 pixels between them, on a mid-gray background, in the order of
@@ -319,28 +318,11 @@ fn render(texture: &Texture, blocks: &Blocks, colors: &Colors) -> Option<Vec<[u8
     Some(pixels)
 }
 
-/// The first palette whose name `wanted` accepts.
-fn find_palette(palettes: &Dict, wanted: impl Fn(&[u8]) -> bool) -> Option<usize> {
-    (0..palettes.count).find(|&p| wanted(palettes.name(p)))
-}
-
-/// The palette that probably goes with texture number `index` named `name`.
+/// The palette that probably goes with texture number `index` named `name`:
+/// the one with the same name, else the one with the same number.
 fn match_palette(palettes: &Dict, name: &[u8], index: usize) -> Option<usize> {
-    let with_suffix =
-        |suffix: &[u8]| find_palette(palettes, |pal| pal.strip_prefix(name) == Some(suffix));
-    let longest_affix = (0..palettes.count)
-        .filter(|&p| {
-            let pal = palettes.name(p);
-            pal.len() >= 3 && (name.starts_with(pal) || name.ends_with(pal))
-        })
-        .max_by_key(|&p| palettes.name(p).len());
-    let same_number = (index < palettes.count).then_some(index);
-    with_suffix(b"")
-        .or_else(|| with_suffix(b"_pl"))
-        .or_else(|| with_suffix(b"_p"))
-        .or(longest_affix)
-        .or(same_number)
-        .or((palettes.count > 0).then_some(0))
+    let same_name = (0..palettes.count).find(|&p| palettes.name(p) == name);
+    same_name.or((index < palettes.count).then_some(index))
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
@@ -536,30 +518,31 @@ mod tests {
     }
 
     #[test]
-    fn palettes_are_matched_by_name_then_by_position() {
-        // Two 4-color textures. "sky" has the palette "sky_pl"; "bg_two"
-        // ends in the palette name "two". Pixel 0 = color 1 of the palette.
+    fn palettes_are_matched_by_name_then_by_number_then_gray() {
+        // Four 4-color textures whose pixel 0 is color 1; the palettes hold
+        // green, blue and red there, and only the last is named like a texture.
         let data = [0x01u8; 16];
-        let red = [0, 0x001f, 0, 0];
-        let blue = [0, 0x7c00, 0, 0];
         let green = [0, 0x03e0, 0, 0];
-        let textures = |names: [&'static str; 3]| -> Vec<u8> {
-            let tex = |name| Tex {
-                name,
-                param: param(PALETTE_4, 0, 0, false),
-                data: &data,
-                attributes: &[],
-            };
-            btx0(
-                &[tex(names[0]), tex(names[1]), tex(names[2])],
-                &[("other", &green), ("two", &blue), ("sky_pl", &red)],
-            )
+        let blue = [0, 0x7c00, 0, 0];
+        let red = [0, 0x001f, 0, 0];
+        let tex = |name| Tex {
+            name,
+            param: param(PALETTE_4, 0, 0, false),
+            data: &data,
+            attributes: &[],
         };
-        let image = decode(&textures(["sky", "bg_two", "zzz"])).unwrap();
-        assert_eq!(image.get(0, 0), 0xff_0000); // sky: sky_pl
-        assert_eq!(image.get(12, 0), 0x00_00ff); // bg_two: ends with "two"
-        // The third texture has no matching name: the palette with its number (2).
+        let file = btx0(
+            &[tex("sky"), tex("x1"), tex("x2"), tex("x3")],
+            &[("p0", &green), ("p1", &blue), ("sky", &red)],
+        );
+        let image = decode(&file).unwrap();
+        // "sky" takes the palette of that name, not the first (number 0).
+        assert_eq!(image.get(0, 0), 0xff_0000);
+        // "x1" and "x2" take the palettes with their numbers, 1 and 2.
+        assert_eq!(image.get(12, 0), 0x00_00ff);
         assert_eq!(image.get(24, 0), 0xff_0000);
+        // "x3" has neither a palette of its name nor one of its number: gray.
+        assert_eq!(image.get(36, 0), 85 * 0x01_0101);
     }
 
     #[test]
