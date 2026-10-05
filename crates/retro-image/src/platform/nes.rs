@@ -25,6 +25,7 @@ mod nametable;
 mod nss;
 
 use crate::Format;
+use crate::tiles::TileLayout;
 
 /// The 2C02 colour numbers `$00-$3F` as `0xRRGGBB`.
 #[rustfmt::skip]
@@ -39,16 +40,12 @@ const MASTER_PALETTE: [u32; 64] = [
     0xe4e594, 0xcfef96, 0xbdf4ab, 0xb3f3cc, 0xb5ebf2, 0xb8b8b8, 0x000000, 0x000000,
 ];
 
-/// Bytes of one pattern table: 256 tiles of 16 bytes.
-const PATTERN_TABLE_LEN: usize = 4096;
+/// A pattern table tile: the first 8 bytes are the low bit plane, the next 8
+/// the high plane, bit 7 is the leftmost pixel.
+const PATTERN: TileLayout = TileLayout::planar(2, 1);
 
-/// Colour number (0-3) of pixel (`x`, `y`) of `tile` in a pattern table that
-/// holds at least `tile + 1` tiles: the first 8 bytes of a tile are the low
-/// bit plane, the next 8 the high plane, bit 7 is the leftmost pixel.
-fn tile_pixel(table: &[u8], tile: usize, x: usize, y: usize) -> u8 {
-    let at = tile * 16 + y;
-    (table[at] >> (7 - x) & 1) | (table[at + 8] >> (7 - x) & 1) << 1
-}
+/// Bytes of one pattern table: 256 tiles.
+const PATTERN_TABLE_LEN: usize = 256 * PATTERN.tile_len();
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NES", "Pattern table", &["chr"], chr::decode),

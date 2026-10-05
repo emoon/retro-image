@@ -28,6 +28,7 @@ mod json;
 mod macbinary;
 mod platform;
 mod simd;
+mod tiles;
 
 pub use error::DecodeError;
 pub use format::{Companions, Format, NoCompanions, candidates, formats};

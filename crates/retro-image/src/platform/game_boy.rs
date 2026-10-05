@@ -16,10 +16,15 @@ mod camera;
 mod gbtd;
 
 use crate::Format;
+use crate::tiles::TileLayout;
 
 /// Colour numbers 0-3 as `0xRRGGBB`, lightest first (the Game Boy's default
 /// background palette maps colour 0 to white).
 const SHADES: [u32; 4] = [0xff_ffff, 0xaa_aaaa, 0x55_5555, 0x00_0000];
+
+/// A hardware tile: 16 bytes, two bytes per row (low bit plane, then high
+/// plane), bit 7 is the leftmost pixel.
+const TILE: TileLayout = TileLayout::planar(2, 2);
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("Game Boy", "Game Boy Camera save", &["sav"], camera::decode),

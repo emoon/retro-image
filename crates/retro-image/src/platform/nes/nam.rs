@@ -18,8 +18,8 @@
 //! flappy-paratroopa-nes use the second half and the others the first, so
 //! `background_table` guesses (see there). A 4 KiB `.chr` is used as is.
 
-use super::PATTERN_TABLE_LEN;
 use super::nametable::Nametable;
+use super::{PATTERN, PATTERN_TABLE_LEN};
 use crate::{Companions, DecodeError, Image};
 
 const WIDTH: usize = 32;
@@ -66,7 +66,10 @@ fn background_table<'a>(pattern: &'a [u8], names: &[u8]) -> &'a [u8] {
     }
     let commonest = (0..256).max_by_key(|&tile| uses[tile]).unwrap_or(0);
     let score = |table: &[u8]| {
-        let blank = |tile: usize| table[tile * 16..tile * 16 + 16].iter().all(|&b| b == 0);
+        let blank = |tile: usize| {
+            let len = PATTERN.tile_len();
+            table[tile * len..][..len].iter().all(|&b| b == 0)
+        };
         let drawn = (0..256).filter(|&tile| !blank(tile)).map(|tile| uses[tile]);
         (blank(commonest), drawn.sum::<usize>())
     };
