@@ -247,12 +247,23 @@ impl Image {
         self
     }
 
-    /// Sets the pixel at (`x`, `y`) to `0xRRGGBB`.
+    /// Sets the pixel at (`x`, `y`) to the opaque color `0xRRGGBB`.
     #[inline]
     pub(crate) fn set(&mut self, x: u32, y: u32, color: u32) {
+        self.set_argb(x, y, 0xff00_0000 | color);
+    }
+
+    /// Sets the pixel at (`x`, `y`) to straight `0xAARRGGBB`. The alpha plane
+    /// appears with the first pixel that is not opaque.
+    #[inline]
+    pub(crate) fn set_argb(&mut self, x: u32, y: u32, argb: u32) {
         let i = y as usize * self.width as usize + x as usize;
-        let [_, r, g, b] = color.to_be_bytes();
+        let [a, r, g, b] = argb.to_be_bytes();
         self.rgb.as_chunks_mut::<3>().0[i] = [r, g, b];
+        if a != 255 || self.alpha.is_some() {
+            let pixels = self.rgb.len() / 3;
+            self.alpha.get_or_insert_with(|| alloc::vec![255; pixels])[i] = a;
+        }
     }
 
     /// Row `y` as RGB bytes. Panics if `y` is outside the image.
@@ -550,6 +561,18 @@ mod tests {
         image.set(1, 1, 0x123456);
         assert_eq!(image.get(1, 1), 0x123456);
         assert_eq!(image.get(0, 1), 0);
+    }
+
+    #[test]
+    fn set_argb_adds_the_alpha_plane_on_the_first_clear_pixel() {
+        let mut image = Image::new(2, 1);
+        image.set_argb(0, 0, 0xff10_2030);
+        assert!(!image.has_alpha());
+        image.set_argb(1, 0, 0x4000_ff00);
+        assert_eq!(image.rgba(), [0x10, 0x20, 0x30, 255, 0, 255, 0, 0x40]);
+        // `set` draws an opaque pixel over whatever alpha was there.
+        image.set(1, 0, 0x000001);
+        assert_eq!(image.rgba()[7], 255);
     }
 
     #[test]
