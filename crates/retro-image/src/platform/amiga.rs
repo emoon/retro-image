@@ -89,7 +89,9 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Disney Animation Studio", &["cft"], cfast::decode).signature(),
     // Headerless: only the extension and a strict header check identify it.
     Format::new("Amiga", "CDXL video", &["cdxl", "xl"], cdxl::decode),
-    Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
+    // SuperView's older `.svg` files are found by their signature; claiming the
+    // extension would also catch the vector kind.
+    Format::new("Amiga", "SuperView Graphics", &["sgx"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
     Format::new(

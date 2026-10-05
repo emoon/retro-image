@@ -194,6 +194,19 @@ mod tests {
     }
 
     #[test]
+    fn svg_files_are_found_by_content_not_by_extension() {
+        let mut svg = sgx(&[1, 2, 3, 4]);
+        svg[..18].copy_from_slice(b"SVG Graphics File\0");
+        assert!(crate::decode("picture.svg", &svg).is_ok());
+        // A vector drawing is not ours, and nobody claims its extension.
+        let drawing = b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>";
+        assert_eq!(
+            crate::decode("drawing.svg", drawing),
+            Err(crate::DecodeError::UnknownFormat)
+        );
+    }
+
+    #[test]
     fn a_huge_row_length_is_rejected_before_unpacking() {
         // A 1x1 picture with 1 GiB rows and an XPK RLEN body that claims as
         // much: this used to allocate the gigabyte.
