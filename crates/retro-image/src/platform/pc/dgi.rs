@@ -65,8 +65,8 @@ const SCREENS: [(usize, usize, usize); 4] = [
 /// CGA palette 0 at low intensity.
 const PALETTE: [u32; 4] = CGA_4[1];
 
-/// The size and the magic in the middle of the file together make this a
-/// reliable signature.
+/// The size and the magic in the middle of the file together are the
+/// signature.
 pub(super) fn decode_dgi(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FILE_LEN || data[MAGIC_AT..][..MAGIC.len()] != MAGIC {
         return Err(FAIL);

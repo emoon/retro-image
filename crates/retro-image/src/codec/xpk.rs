@@ -109,8 +109,8 @@ pub(crate) fn is_packed(data: &[u8]) -> bool {
 }
 
 /// The most a chunk can expand: MASH reaches about 11,000 times on a run of
-/// one byte, the other packers less. A chunk claiming more is a lie told to
-/// make us allocate.
+/// one byte, the other packers less. A chunk claiming more is damaged or
+/// meant to force a large allocation.
 const MAX_EXPANSION: usize = 1 << 14;
 
 fn expands_plausibly(packed: usize, raw: usize) -> bool {

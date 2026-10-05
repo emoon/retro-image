@@ -45,8 +45,8 @@ const HEADER_LEN: usize = 8;
 /// Largest width or height accepted, as in Deark.
 const MAX_SIDE: usize = 2048;
 
-/// The file size is part of the check: with the magic it makes this a
-/// reliable signature.
+/// The file size is part of the check: it must be the header plus the rows of
+/// the declared size, which with the magic makes this a signature.
 pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(&MAGIC) {
         return Err(FAIL);
