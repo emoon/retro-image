@@ -5,6 +5,7 @@
 
 pub(crate) mod flf;
 pub(crate) mod inflate;
+mod lz;
 pub(crate) mod pack_ice;
 pub(crate) mod packbits;
 pub(crate) mod powerpacker;
