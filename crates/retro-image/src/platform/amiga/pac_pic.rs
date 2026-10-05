@@ -5,8 +5,7 @@
 //!   (id `$06071963`, bytes per row, lumps, planes, stream offsets), the
 //!   three-stream decompression and the lump/column pixel order: Deark's
 //!   `abk.c` and `fmtutil_decompress_stos_pictbank`
-//!   (<https://github.com/jsummers/deark>, MIT licence,
-//!   Copyright (C) 2016-2026 Jason Summers).
+//!   (<https://github.com/jsummers/deark>, MIT license, notice below).
 //! - The AmBk bank header: <http://alvyn.sourceforge.net/amos_file_formats.html>.
 //! - Files without the bank header, as the AMOS picture packer saves them
 //!   (Sembiance's `image/amosPicturePacker`, 11 files): five start with the
@@ -16,6 +15,31 @@
 //!   no palette anywhere in the file, so they are drawn in grays, a guess
 //!   (they could be HAM or half-bright; the screen header that would say so is
 //!   missing).
+
+// Parts of this file follow Deark's abk.c and
+// fmtutil_decompress_stos_pictbank
+// (Deark, https://github.com/jsummers/deark):
+//
+// Copyright (C) 2016-2026 Jason Summers
+// <jason1@pobox.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 use super::ilbm::{half_brite, ham};
 use crate::bytes::{be16, be32};
