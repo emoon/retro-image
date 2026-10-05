@@ -63,7 +63,8 @@ use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
 /// How the bytes of one tile encode its pixels. See the module header for
-/// the meaning of the fields; build one with [`TileLayout::planar`].
+/// the meaning of the fields; build one with [`TileLayout::planar`] or
+/// [`TileLayout::packed`].
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TileLayout {
     /// Pixels per row of a tile. `width * plane_bits` must be a multiple of 8.
@@ -122,6 +123,20 @@ impl TileLayout {
             plane_bits: 1,
             interleave,
             order: BitOrder::MsbFirst,
+        }
+    }
+
+    /// 8 x 8 tiles of packed pixels of `bpp` bits (1, 2, 4 or 8) each, the
+    /// leftmost pixel in the end of the byte that `order` names.
+    pub(crate) const fn packed(bpp: usize, order: BitOrder) -> Self {
+        assert!(matches!(bpp, 1 | 2 | 4 | 8));
+        Self {
+            width: 8,
+            height: 8,
+            bpp,
+            plane_bits: bpp,
+            interleave: 1,
+            order,
         }
     }
 
@@ -286,6 +301,46 @@ mod tests {
         assert_eq!(first_pixel(master_system, &[8 + 1, 8 + 2]), 2 | 4);
         // rgbgfx `.1bpp`: one byte per row.
         assert_eq!(first_pixel(TileLayout::planar(1, 1), &[2]), 1);
+    }
+
+    #[test]
+    fn packed_pixels_follow_the_pixel_order() {
+        let mut tile = [0u8; 32];
+        tile[0] = 0x21;
+        tile[5] = 0x43; // row 1 starts after 4 bytes
+        let high_first = TileLayout::packed(4, BitOrder::MsbFirst);
+        assert_eq!(high_first.tile_len(), 32);
+        assert_eq!(
+            decode_row(&high_first, &tile, 0, 0),
+            [2, 1, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            decode_row(&high_first, &tile, 0, 1),
+            [0, 0, 4, 3, 0, 0, 0, 0]
+        );
+        let low_first = TileLayout::packed(4, BitOrder::LsbFirst);
+        assert_eq!(
+            decode_row(&low_first, &tile, 0, 0),
+            [1, 2, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            decode_row(&low_first, &tile, 0, 1),
+            [0, 0, 3, 4, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn packed_two_and_eight_bit_pixels() {
+        let mut tile = [0u8; 64];
+        tile[1] = 0b1110_0100; // 2 bpp row 0, pixels 4 to 7
+        let two = TileLayout::packed(2, BitOrder::MsbFirst);
+        assert_eq!(two.tile_len(), 16);
+        assert_eq!(decode_row(&two, &tile, 0, 0), [0, 0, 0, 0, 3, 2, 1, 0]);
+        // 8 bpp is one byte per pixel; 8 bytes per row.
+        tile[8 + 3] = 200;
+        let linear = TileLayout::packed(8, BitOrder::LsbFirst);
+        assert_eq!(linear.tile_len(), 64);
+        assert_eq!(decode_row(&linear, &tile, 0, 1)[3], 200);
     }
 
     #[test]

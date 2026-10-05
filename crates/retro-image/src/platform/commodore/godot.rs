@@ -38,29 +38,24 @@
 
 use super::unpack::{Run, escape_rle};
 use super::vic2::rgb;
-use crate::{DecodeError, Image};
+use crate::tiles::TileLayout;
+use crate::{BitOrder, DecodeError, Image};
 use alloc::vec::Vec;
 
 /// C64 colour of each GoDot 4-bit index (brightness order).
 const COLORS: [u8; 16] = [0, 6, 9, 11, 2, 4, 8, 12, 14, 10, 5, 15, 3, 7, 13, 1];
+
+/// A tile: 32 bytes, 4 bytes per row, the left pixel in the high nibble.
+const TILE: TileLayout = TileLayout::packed(4, BitOrder::MsbFirst);
 
 /// Unpacks `$AD count value` runs (count 0 = 256) to exactly `len` bytes.
 fn unpack(packed: &[u8], len: usize) -> Option<Vec<u8>> {
     escape_rle(packed, 0xad, Run::CountValue, len).filter(|out| out.len() == len)
 }
 
-/// Renders `columns`×`rows` tiles stored row by row.
-fn render(tiles: &[u8], columns: usize, rows: usize) -> Image {
-    let mut image = Image::new((columns * 8) as u32, (rows * 8) as u32);
-    for (i, tile) in tiles.as_chunks::<32>().0.iter().enumerate() {
-        let (tx, ty) = (i % columns * 8, i / columns * 8);
-        for (j, &byte) in tile.iter().enumerate() {
-            let (x, y) = (tx + j % 4 * 2, ty + j / 4);
-            image.set(x as u32, y as u32, rgb(COLORS[usize::from(byte >> 4)]));
-            image.set(x as u32 + 1, y as u32, rgb(COLORS[usize::from(byte & 15)]));
-        }
-    }
-    image
+/// Draws the tiles, stored row by row, `columns` to a row.
+fn render(tiles: &[u8], columns: usize) -> Result<Image, DecodeError> {
+    TILE.sheet(tiles, columns, &COLORS.map(rgb))
 }
 
 /// `GOD0`, then 40×25 packed tiles.
@@ -68,8 +63,8 @@ pub(super) fn decode_4bt(data: &[u8]) -> Result<Image, DecodeError> {
     let packed = data
         .strip_prefix(b"GOD0")
         .ok_or(DecodeError::Unrecognized)?;
-    let tiles = unpack(packed, 40 * 25 * 32).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(&tiles, 40, 25))
+    let tiles = unpack(packed, 40 * 25 * TILE.tile_len()).ok_or(DecodeError::Unrecognized)?;
+    render(&tiles, 40)
 }
 
 /// `GOD1`, start row and column, width and height in tiles, packed tiles.
@@ -84,8 +79,9 @@ pub(super) fn decode_clp(data: &[u8]) -> Result<Image, DecodeError> {
     if columns == 0 || rows == 0 {
         return Err(DecodeError::Unrecognized);
     }
-    let tiles = unpack(packed, columns * rows * 32).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(&tiles, columns, rows))
+    let tiles =
+        unpack(packed, columns * rows * TILE.tile_len()).ok_or(DecodeError::Unrecognized)?;
+    render(&tiles, columns)
 }
 
 #[cfg(test)]
