@@ -18,6 +18,7 @@
 //!   AMOS file formats page, <http://alvyn.sourceforge.net/amos_file_formats.html>.
 
 mod abk;
+mod cdxl;
 mod chunky;
 mod dctv;
 mod deep;
@@ -65,6 +66,8 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amiga", "Icon", &["info"], icon::decode).signature(),
     Format::new("Amiga", "IFF-RGFX", &["rgfx", "rgx"], decode_iff),
     Format::new("Amiga", "YAFA animation", &["yafa"], decode_iff),
+    // Headerless: only the extension and a strict header check identify it.
+    Format::new("Amiga", "CDXL video", &["cdxl", "xl"], cdxl::decode),
     Format::new("Amiga", "SuperView Graphics", &["sgx", "svg"], sgx::decode).signature(),
     Format::new("Amiga", "TVPaint", &["deep"], decode_iff),
     Format::new("Amiga", "Sliced HAM", &["sham"], decode_iff),
