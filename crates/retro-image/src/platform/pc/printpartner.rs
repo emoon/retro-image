@@ -58,7 +58,7 @@
 
 use alloc::vec::Vec;
 
-use super::clipart::{MAX_PICTURES, Sheet, black_on_white, is_padding};
+use super::clipart::{Sheet, black_on_white, is_padding};
 use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
@@ -207,9 +207,6 @@ pub(super) fn decode_gph(data: &[u8]) -> Result<Image, DecodeError> {
     let (mut count, mut cell_width, mut cell_height) = (0, 0, 0);
     for record in records.by_ref() {
         count += 1;
-        if count > MAX_PICTURES {
-            return Err(FAIL);
-        }
         cell_width = cell_width.max(record.width());
         cell_height = cell_height.max(record.height);
     }

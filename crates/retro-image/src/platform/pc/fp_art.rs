@@ -15,10 +15,11 @@
 //!     not stored: it is the one of `ceil(width / 8)` to that plus 3 that
 //!     makes the unpacked data cover the whole input.
 //! - There is no signature. Standard-resolution files are recognized by
-//!   size: `8 + row_len * height`, or one row more. All 258 samples fit
-//!   (`corpus/extra/dos-clipart/`: the 17 Sembiance `pfsFirstPublisher`
-//!   files and 241 from the First Publisher clip-art disks on the textfiles
-//!   CD, `swinnund/disk3/CLIPART/`). The extra row is the Deark case
+//!   size: `8 + row_len * height`, or one row more. All 258 samples checked
+//!   fit (the 17 Sembiance `pfsFirstPublisher` files and 241 from the First
+//!   Publisher clip-art disks on the textfiles CD,
+//!   `swinnund/disk3/CLIPART/`); the corpus group `corpus/extra/dos-clipart/`
+//!   keeps 70 of them. The extra row is the Deark case
 //!   "`BANNER.ART` from version 3.0"; here 11 files of `ART_FPUB.EXE` have
 //!   it, always all white, and it is not part of the picture.
 //! - No sample is high resolution, so that path is checked only by a unit

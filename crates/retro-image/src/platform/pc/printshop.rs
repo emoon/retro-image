@@ -20,10 +20,12 @@
 //!   common an extension to claim them on the strength of a size.
 //! - A `.POG` file must be exactly `10 + 572 * count` bytes.
 //!   [`super::clipart`] lays the sheet out.
-//! - Checked on 21 `.DAT` and 25 `.POG` files (`corpus/extra/dos-clipart/`:
-//!   Sembiance `printShopDAT` and `pog`, and the Print Shop and New Print
-//!   Shop disks on the textfiles CD, `swinnund/disk3/CLIPART/`). Each picture
-//!   matches Deark's output pixel for pixel (see `dos-clipart.tsv`).
+//! - Checked on 21 `.DAT` and 25 `.POG` files (Sembiance `printShopDAT` and
+//!   `pog`, and the Print Shop and New Print Shop disks on the textfiles CD,
+//!   `swinnund/disk3/CLIPART/`). Each picture matches Deark's output pixel
+//!   for pixel (see `dos-clipart.tsv`). The corpus group
+//!   `corpus/extra/dos-clipart/` keeps 7 and 11 of them, and the two padded
+//!   `.DAT` files that are not accepted.
 
 // Parts of this file follow Deark's modules/printshop.c
 // (Deark, https://github.com/jsummers/deark):

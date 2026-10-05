@@ -35,7 +35,8 @@
 //!   also in the first set). The tiny `flag_b24.pix` and `tru256.pix` have
 //!   4 levels, and the color names drawn into the picture (`YEL`, `GRN`,
 //!   `RED`, `MAG`) match the colors the swap gives. All 40 files match Deark
-//!   pixel for pixel (see `dos-clipart.tsv`).
+//!   pixel for pixel (see `dos-clipart.tsv`); the corpus group
+//!   `corpus/extra/dos-clipart/` keeps 19 of them.
 //! - Other revisions exist (the survey note `docs/research/gaps-computers-extra.md`
 //!   C11 counts two incompatible ones) and are rejected. The aspect ratio
 //!   bytes are not applied.

@@ -35,7 +35,8 @@
 //! - Checked on 47 files (Sembiance `wpg`, 19, and `WP50ART1.EXE` on
 //!   cd.textfiles.com `swinnund/disk3/CLIPART/`, 28): 44 match Deark pixel for
 //!   pixel, `cup.wpg` is right where Deark is not, and the two exceptions above
-//!   are rejected.
+//!   are rejected. The corpus group `corpus/extra/dos-clipart/` keeps 27 of
+//!   them.
 
 // Parts of this file follow Deark's modules/wpg.c
 // (Deark, https://github.com/jsummers/deark):

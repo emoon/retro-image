@@ -28,9 +28,10 @@
 //!   rejected. PCPaint 3.1's own `.OVR` files (cursors and pattern clips)
 //!   use this container too, so eight of them in `corpus/extra/pcpaint-ovr/`
 //!   show their first clip.
-//! - Checked on all 47 samples: the member shown matches Deark's decode of
-//!   that member pixel for pixel (see `dos-clipart.tsv`). Pictures without a
-//!   palette of their own use the PCPaint defaults.
+//! - Checked on all 47 samples (the corpus group `corpus/extra/dos-clipart/`
+//!   keeps 24): the member shown matches Deark's decode of that member
+//!   pixel for pixel (see `dos-clipart.tsv`). Pictures without a palette of
+//!   their own use the PCPaint defaults.
 
 // Parts of this file follow Deark's modules/grasp.c
 // (Deark, https://github.com/jsummers/deark):

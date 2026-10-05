@@ -144,10 +144,11 @@ impl Screen {
         }
     }
 
+    /// Bit planes of the screens drawn as planes, which is not the
+    /// 256-color one (that is a byte a pixel and decoded on its own).
     fn planes(self) -> usize {
         match self {
             Self::Cga320x200 => 2,
-            Self::Vga640x480 => 8,
             _ => 4,
         }
     }
@@ -158,7 +159,8 @@ impl Screen {
 /// `need` bytes; data beyond them is left alone.
 fn unpack(data: &[u8], need: usize, long: bool, row_len: usize) -> Option<Vec<u8>> {
     let (last_copy, last_run) = if long { (0x7e, 0xfc) } else { (0x7f, 0xff) };
-    let mut out = Vec::with_capacity(need);
+    // The header may promise far more than the data can hold.
+    let mut out = Vec::with_capacity(need.min(data.len().saturating_mul(64)));
     let mut rest = data;
     while out.len() < need {
         let (&code, tail) = rest.split_first()?;
@@ -225,7 +227,8 @@ pub(super) fn decode_old(data: &[u8]) -> Result<Image, DecodeError> {
 /// Words: 0 ends the data, below `0x8000` that many bytes follow, else the
 /// next byte repeats `word - 0x8000` times. Returns `need` bytes.
 fn unpack_old(data: &[u8], need: usize) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(need);
+    // The header may promise far more than the data can hold.
+    let mut out = Vec::with_capacity(need.min(data.len().saturating_mul(64)));
     let mut rest = data;
     while out.len() < need {
         let count = usize::from(le16(rest, 0)?);

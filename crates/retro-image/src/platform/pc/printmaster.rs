@@ -16,10 +16,11 @@
 //!   128 bytes. Records must run exactly up to that padding, which with the
 //!   leading `0B` is what makes this a signature. [`super::clipart`] lays the
 //!   sheet out.
-//! - Checked on 31 files (`corpus/extra/dos-clipart/`: Sembiance
-//!   `printMasterShape` and the PrintMaster disks on the textfiles CD,
-//!   `swinnund/disk3/CLIPART/`). All pictures are 88x52, and each matches
-//!   Deark's output pixel for pixel (see `dos-clipart.tsv`).
+//! - Checked on 31 files (Sembiance `printMasterShape` and the PrintMaster
+//!   disks on the textfiles CD, `swinnund/disk3/CLIPART/`). All pictures are
+//!   88x52, and each matches Deark's output pixel for pixel (see
+//!   `dos-clipart.tsv`). The corpus group `corpus/extra/dos-clipart/` keeps
+//!   15 of them.
 
 // Parts of this file follow Deark's modules/printshop.c
 // (Deark, https://github.com/jsummers/deark):
@@ -45,7 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use super::clipart::{MAX_PICTURES, Sheet, black_on_white, is_padding};
+use super::clipart::{Sheet, black_on_white, is_padding};
 use crate::{DecodeError, Image};
 
 const RECORD_MARK: u8 = 0x0b;
@@ -93,9 +94,6 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
     let (mut count, mut cell_width, mut cell_height) = (0, 0, 0);
     for record in records.by_ref() {
         count += 1;
-        if count > MAX_PICTURES {
-            return Err(fail);
-        }
         cell_width = cell_width.max(record.width);
         cell_height = cell_height.max(record.height);
     }
