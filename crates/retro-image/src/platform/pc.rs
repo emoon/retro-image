@@ -23,6 +23,7 @@
 //! - The Print Shop and The New Print Shop libraries: see `pc/printshop.rs`
 //!   (the sheet layout is in `pc/clipart.rs`) and PrintMaster in
 //!   `pc/printmaster.rs`, PrintPartner in `pc/printpartner.rs`.
+//! - GRASP GL animation files (first picture): see `pc/grasp_gl.rs`.
 //! - CGA palette and the 6-bit to 8-bit palette scaling: observed from
 //!   `recoil2png` output.
 
@@ -36,6 +37,7 @@ mod flh;
 mod flic;
 mod fp_art;
 mod gif;
+mod grasp_gl;
 mod halo;
 mod halo_pic;
 mod ico;
@@ -68,6 +70,8 @@ pub(super) static FORMATS: &[Format] = &[
     // `.shp` is also Atari 8-bit and Commodore; the records must fill the file.
     Format::new("PC", "PrintMaster", &["shp"], printmaster::decode_shp).signature(),
     Format::new("PC", "PrintPartner", &["gph"], printpartner::decode_gph).signature(),
+    // The index and the chain of members make this safe to detect by content.
+    Format::new("PC", "GRASP GL animation", &["gl"], grasp_gl::decode_gl).signature(),
     Format::new("PC", "Microsoft Paint version 1 or 2", &["msp"], decode_msp).signature(),
     Format::new("PC", "ZSoft PC Paintbrush", &["pcx"], pcx::decode_pcx).signature(),
     Format::new("PC", "Windows and OS/2 bitmap", &["bmp"], bmp::decode_bmp).signature(),
