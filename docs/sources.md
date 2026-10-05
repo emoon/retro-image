@@ -17,7 +17,7 @@ copyright notice and licence text.
 
 | Project | Licence | Used for |
 |---|---|---|
-| [Deark](https://github.com/jsummers/deark) | MIT | Amiga icons (classic, NewIcons, GlowIcons), RISC OS sprites, PC text-mode fonts and many smaller details |
+| [Deark](https://github.com/jsummers/deark) | MIT | Amiga icons (classic, NewIcons, GlowIcons), RISC OS sprites, PC text-mode fonts, DOS clip-art libraries, icons and self-displaying pictures, the Psion and Palm formats, and many smaller details |
 | [GoDot](https://github.com/godot64/GoDot) | MIT | C64 loaders and GoDot's own 4-bit format |
 | [Ancient](https://github.com/temisu/ancient) | BSD-2-Clause | Depackers: Pack-Ice, PowerPacker, XPK (RLEN, FAST, MASH, NUKE), RNC, Imploder, Crunch-Mania |
 | [MAME](https://github.com/mamedev/mame) (Thomson driver) | BSD-3-Clause | Thomson palette and screen modes |
@@ -52,10 +52,12 @@ on almost every platform. Per platform, the most used were:
 - Acorn Archimedes: the RISC OS Programmer's Reference Manuals.
 - Sinclair QL: [Dilwyn Jones' QL pages](https://www.sinclairql.net).
 - Thomson: the [DCMOTO](http://dcmoto.free.fr) documentation.
-- Nintendo DS, 3DS, NES and Game Boy: [GBATEK](https://problemkaputt.de/gbatek.htm), [3dbrew](https://www.3dbrew.org), the [nesdev wiki](https://www.nesdev.org/wiki/) and [Pan Docs](https://gbdev.io/pandocs/). They describe layouts and little else, so each decoder was checked against real files, and against an independent render where one existed.
+- Nintendo handhelds and the NES: [GBATEK](https://problemkaputt.de/gbatek.htm),
+  [3dbrew](https://www.3dbrew.org), the [nesdev wiki](https://www.nesdev.org/wiki/) and
+  [Pan Docs](https://gbdev.io/pandocs/). They describe layouts and little else, so each
+  decoder was checked against real files, and against an independent render where one
+  existed.
 - PC text mode: the [SAUCE](https://www.acid.org/info/sauce/sauce.htm) specification.
-- Game Boy, GBA, DS and 3DS: [Pan Docs](https://gbdev.io/pandocs/) and
-  [GBATEK](https://problemkaputt.de/gbatek.htm).
 - Consoles: the web technology TIM2 specification (PlayStation 2), the 3DO Portfolio 2.5
   documentation, and YAGCD and the Custom Mario Kart wiki for GameCube and Wii files.
 
