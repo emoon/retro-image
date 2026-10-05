@@ -3,7 +3,7 @@
 //!
 //! Sources: GBATEK, "3DS Files - Video Texture Binary (CTXB)" and "3DS GPU
 //! Texture Formats" (the OpenTK constants that stand for each GPU format),
-//! <https://problemkaputt.de/gbatek.htm> (no licence, facts only), which also
+//! <https://problemkaputt.de/gbatek.htm> (no license, facts only), which also
 //! points to <https://wiki.cloudmodding.com/oot/3D:CTXB_format>. No sample
 //! file was available, so this is unverified.
 //!

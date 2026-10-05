@@ -1,7 +1,7 @@
 //! ETC1 and ETC1A4 blocks, as the 3DS GPU stores them.
 //!
 //! Sources: GBATEK, "3DS GPU Texture Formats" (ETC1 and ETC1A4,
-//! <https://problemkaputt.de/gbatek.htm>, no licence, facts only), and the
+//! <https://problemkaputt.de/gbatek.htm>, no license, facts only), and the
 //! Khronos extension `OES_compressed_ETC1_RGB8_texture`
 //! (<https://registry.khronos.org/OpenGL/extensions/OES/OES_compressed_ETC1_RGB8_texture.txt>),
 //! the format's specification, for the modifier tables and the meaning of each

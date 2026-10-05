@@ -5,7 +5,7 @@
 //! - The `rgbgfx(1)` manual, "OUTPUT FILES" and "REVERSE MODE"
 //!   (<https://rgbds.gbdev.io/docs/master/rgbgfx.1>), and the way `rgbgfx -r`
 //!   puts those files back together in `src/gfx/reverse.cpp`, both from
-//!   <https://github.com/gbdev/rgbds> (MIT licence, notice below).
+//!   <https://github.com/gbdev/rgbds> (MIT license, notice below).
 //! - Tile and attribute bit layouts: Pan Docs, "Tile Data" and "Tile Maps"
 //!   (<https://gbdev.io/pandocs/Tile_Data.html>,
 //!   <https://gbdev.io/pandocs/Tile_Maps.html>, CC0).

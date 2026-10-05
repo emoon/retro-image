@@ -4,7 +4,7 @@
 //! Sources: GBATEK, "3DS Files - Video Layout Images (CLIM/FLIM)", "Video
 //! Texture Package (CTPK)", "Video Texture Binary (CTXB)", "3DS GPU Texture
 //! Formats" and "3DS Video Texture Swizzling"
-//! (<https://problemkaputt.de/gbatek.htm>, no licence, facts only); see the
+//! (<https://problemkaputt.de/gbatek.htm>, no license, facts only); see the
 //! submodules for the layouts. The 3DS icon formats (SMDH) are not here.
 //!
 //! No sample of these formats could be found (no free ones are published), so

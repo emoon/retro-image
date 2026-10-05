@@ -5,7 +5,7 @@
 //! each pixel), "3DS Video Texture Swizzling" (Z-order inside 8 x 8 tiles) and
 //! "3DS GPU Internal Registers - Texturing registers" (texels in Z-order, mip
 //! levels after the base level), <https://problemkaputt.de/gbatek.htm> (no
-//! licence, facts only). No sample file was available, so the layouts are
+//! license, facts only). No sample file was available, so the layouts are
 //! unverified; they are checked by unit tests built from the documented layouts.
 //!
 //! A texture is a raster of 8 x 8 pixel tiles, left to right and top to

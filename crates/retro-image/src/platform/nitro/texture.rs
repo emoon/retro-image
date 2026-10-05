@@ -5,7 +5,7 @@
 //! `NitroPaint/object/NitroTexArc.c` (`TexarcReadNsbtx`, `readDictionary`)
 //! and `NitroPaint/texture.c` (`TxiSample*`, `TxiBlend`), and GBATEK, the
 //! pages "BTX0 (.NSBTX Texture Data)" and "DS 3D Texture Attributes" and
-//! "Formats" (<https://problemkaputt.de/gbatek.htm>, no licence, facts only).
+//! "Formats" (<https://problemkaputt.de/gbatek.htm>, no license, facts only).
 //! No sample file was available, so this is unverified: it is tested only on
 //! files built from those layouts.
 //!
@@ -495,7 +495,7 @@ mod tests {
         );
         let image = decode(&file).unwrap();
         assert_eq!(image.get(0, 0), 0xff_ffff);
-        // Alpha 33 of 255 over the grey 0xc0 gives (255 * 33 + 192 * 222 + 127) / 255.
+        // Alpha 33 of 255 over the gray 0xc0 gives (255 * 33 + 192 * 222 + 127) / 255.
         let low = |alpha: u32| (255 * alpha + 192 * (255 - alpha) + 127) / 255;
         assert_eq!(image.get(1, 0), low(33) * 0x01_0101);
         assert_eq!(image.get(12, 0), 0xff_ffff);

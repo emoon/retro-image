@@ -9,7 +9,7 @@
 //!   `NitroPalette.c` (`PalReadNclr`), `NitroCharacter.c` (`ChrReadNcgr`,
 //!   `ChrWriteNcgr`), `NitroScreen.c` (`ScrReadNscr`, `ScriReadScreenData`).
 //! - GBATEK, "DS Files - Video Palette/Character/Screen" (NCLR, NCGR, NSCR),
-//!   <https://problemkaputt.de/gbatek.htm> (no licence, facts only).
+//!   <https://problemkaputt.de/gbatek.htm> (no license, facts only).
 //!
 //! GBATEK and NitroPaint disagree in two places, and NitroPaint decides. In
 //! an NCGR, GBATEK reads the first two 16-bit fields of the character

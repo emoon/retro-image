@@ -3,7 +3,7 @@
 //!
 //! Sources:
 //! - Tile and palette layouts: GBATEK, "LCD VRAM Character Data" and "LCD
-//!   Color Palettes" (<https://problemkaputt.de/gbatek.htm>, no licence, facts
+//!   Color Palettes" (<https://problemkaputt.de/gbatek.htm>, no license, facts
 //!   only; the DS uses the same layouts). A 4 bpp tile is 32 bytes, 4 bytes a
 //!   row, with the left pixel in the low nibble. An 8 bpp tile is 64 bytes, a
 //!   byte a pixel. A palette is 16-bit little-endian BGR555 colors, 16 to a
@@ -11,7 +11,7 @@
 //! - The extensions: the `pret` decompilations (for example
 //!   <https://github.com/pret/pokeemerald>) build tile data to `.4bpp` and
 //!   `.8bpp` and palettes to `.gbapal`; those names are read from the
-//!   repository's `.gitignore` (the repositories show no licence, so nothing
+//!   repository's `.gitignore` (the repositories show no license, so nothing
 //!   else of them was read), and Tilemap Studio's help names `.4bpp` and
 //!   `.8bpp` tilesets too (<https://github.com/Rangi42/tilemap-studio>, its
 //!   `res/help.html`, prose only).

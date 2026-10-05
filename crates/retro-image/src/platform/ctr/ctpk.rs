@@ -1,7 +1,7 @@
 //! CTPK (`.ctpk`): a 3DS texture package; its first 2D texture is drawn.
 //!
 //! Sources: GBATEK, "3DS Files - Video Texture Package (CTPK)"
-//! (<https://problemkaputt.de/gbatek.htm>, no licence, facts only). No sample
+//! (<https://problemkaputt.de/gbatek.htm>, no license, facts only). No sample
 //! file was available, so this is unverified.
 //!
 //! The header is `CTPK`, the version 1 (16 bits), the number of textures (16

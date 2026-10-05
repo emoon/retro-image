@@ -2,7 +2,7 @@
 //! the file.
 //!
 //! Sources: GBATEK, "3DS Files - Video Layout Images (CLIM/FLIM)"
-//! (<https://problemkaputt.de/gbatek.htm>, no licence, facts only). FLIM, the
+//! (<https://problemkaputt.de/gbatek.htm>, no license, facts only). FLIM, the
 //! Wii U and eShop variant, is mirrored and rotated and is not decoded. No
 //! sample file was available, so this is unverified.
 //!
