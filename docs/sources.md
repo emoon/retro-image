@@ -25,6 +25,7 @@ copyright notice and licence text.
 | [libansilove](https://github.com/ansilove/libansilove) | BSD-2-Clause | PCBoard colour codes |
 | [monobit](https://github.com/robhagemans/monobit) | MIT | Daisy-Dot fonts (Atari 8-bit) |
 | [CiderPress II](https://ciderpress2.com) | Apache-2.0 (docs CC BY-SA 4.0) | Apple II and IIGS formats, PackBytes |
+| [flipnote.js](https://github.com/jaames/flipnote.js) | MIT | The 16-color thumbnail palette of Flipnote Studio files. Its renderer also served as a black-box check on our thumbnails |
 
 ## Documentation
 
@@ -46,6 +47,7 @@ on almost every platform. Per platform, the most used were:
 - Acorn Archimedes: the RISC OS Programmer's Reference Manuals.
 - Sinclair QL: [Dilwyn Jones' QL pages](https://www.sinclairql.net).
 - Thomson: the [DCMOTO](http://dcmoto.free.fr) documentation.
+- Nintendo DS, 3DS, NES and Game Boy: [GBATEK](https://problemkaputt.de/gbatek.htm), [3dbrew](https://www.3dbrew.org), the [nesdev wiki](https://www.nesdev.org/wiki/) and [Pan Docs](https://gbdev.io/pandocs/). They describe layouts and little else, so each decoder was checked against real files, and against an independent render where one existed.
 - PC text mode: the [SAUCE](https://www.acid.org/info/sauce/sauce.htm) specification.
 
 The other platforms rely on hardware manuals and old magazine articles.

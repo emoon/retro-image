@@ -1,5 +1,6 @@
-//! Nintendo Entertainment System: pattern tables (`.chr`), nametables (`.nam`)
-//! and NES Screen Tool sessions (`.nss`).
+//! Nintendo Entertainment System: pattern tables (`.chr`, `.pkb`), nametables
+//! (`.nam`, `.rle`), NES Screen Tool sessions (`.nss`) and the CHR-ROM of ROM
+//! images (`.nes`, `.unf`).
 //!
 //! Sources (details per format in each submodule):
 //! - Pattern table encoding (16 bytes per 8x8 tile, two bit planes):
@@ -14,10 +15,12 @@
 //!   does not define RGB values, so this is a choice, not a fact of the
 //!   hardware. Entries `$0D`-`$0F`, `$1D`-`$1F`, `$2E`-`$2F`, `$3E`-`$3F`
 //!   are black.
-//! - The platform survey is `docs/research/next-zx-misc.md`.
+//! - The platform surveys are `docs/research/next-zx-misc.md` and
+//!   `docs/research/gaps-nintendo.md`.
 //!
 //! RECOIL does not decode any of these formats, so there is no oracle run;
-//! the renders are recorded in `tests/divergences/gameboy-nes.tsv`.
+//! the renders are recorded in `tests/divergences/gameboy-nes.tsv` and
+//! `tests/divergences/nintendo-rom-icons.tsv`.
 
 mod chr;
 mod nam;
