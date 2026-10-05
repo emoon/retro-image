@@ -5,7 +5,7 @@ rejects, or misrenders a valid file, retro-image decodes it properly and the
 file is recorded here. The oracle test then checks our output against the
 recorded fingerprint instead of RECOIL's.
 
-One `.tsv` file per platform group (`amiga-apple-misc.tsv`, `amiga-packers.tsv`, `atari-st.tsv`, `atari-st-stos-signum.tsv`, `atari8.tsv`, `bbc-teletext.tsv`, `c64-petdraw-she.tsv`, `c64-self-displaying.tsv`, `coco3.tsv`, `commodore.tsv`, `commodore-charpad.tsv`, `commodore-geos.tsv`, `commodore-petmate.tsv`, `commodore-printshop.tsv`, `commodore-spritepad.tsv`, `gameboy-nes.tsv`, `msx-japanese.tsv`, `pc-bmp-gif.tsv`, `pc-colorix.tsv`, `pc-dos-raster.tsv`, `pc-ico.tsv`, `riscos-ql.tsv`, `sinclair-cpc-misc.tsv`, `textmode.tsv`, `thomson.tsv`, `zx-snapshots.tsv`), so work on different platforms
+One `.tsv` file per platform group (`amiga-apple-misc.tsv`, `amiga-iff-fixes.tsv`, `amiga-packers.tsv`, `atari-st.tsv`, `atari-st-stos-signum.tsv`, `atari8.tsv`, `bbc-teletext.tsv`, `c64-petdraw-she.tsv`, `c64-self-displaying.tsv`, `coco3.tsv`, `commodore.tsv`, `commodore-charpad.tsv`, `commodore-geos.tsv`, `commodore-petmate.tsv`, `commodore-printshop.tsv`, `commodore-spritepad.tsv`, `gameboy-nes.tsv`, `msx-japanese.tsv`, `pc-bmp-gif.tsv`, `pc-colorix.tsv`, `pc-dos-raster.tsv`, `pc-ico.tsv`, `riscos-ql.tsv`, `sinclair-cpc-misc.tsv`, `textmode.tsv`, `thomson.tsv`, `zx-snapshots.tsv`), so work on different platforms
 doesn't conflict.
 
 Formats RECOIL doesn't support at all (e.g. ANSI art, RISC OS sprites, Thomson)

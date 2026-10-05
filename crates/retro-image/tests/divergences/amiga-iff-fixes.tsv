@@ -1,0 +1,2 @@
+# Divergences for amiga-iff-fixes; see README.md.
+extra/amiga-iff-fixes/sembiance/iffANIM/shotanim.iff	128x64	fa23e37c4117e2ce	RECOIL rejects this ANIM written by Brilliance 1.0, which has an ANNO chunk before its first frame. The ANIM spec nests the frames as FORMs, so we skip to the first one. Cutting that FORM ILBM out as a plain file, recoil2png renders it pixel for pixel like our output. Output reviewed: eight blue glowing orbs in a 4x2 grid.
