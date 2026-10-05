@@ -36,6 +36,7 @@ mod rgfx;
 mod sgx;
 mod vdat;
 mod yafa;
+mod yuvn;
 
 use crate::codec::{crunch_mania, imploder, pack_ice, powerpacker, rnc};
 use crate::{DecodeError, Format, Image};
@@ -161,6 +162,7 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"DEEP" | b"TVPP" => deep::decode(contents),
         b"RGFX" => rgfx::decode(contents),
         b"YAFA" => yafa::decode(contents),
+        b"YUVN" => yuvn::decode(contents),
         // ANIM: the first frame is a complete ILBM.
         b"ANIM" => match iff::chunks(contents).next() {
             Some((id, body)) if &id == b"FORM" && body.len() >= 4 => {
