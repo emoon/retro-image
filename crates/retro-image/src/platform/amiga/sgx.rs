@@ -32,7 +32,7 @@
 //! latter in the same channel order as 32-bit) and the HAM/EHB reading of
 //! 8-bit chunky data follow the spec but have no sample file.
 
-use super::chunky::{Direct, Fourth, Packing, Pixels, Rows, bitmap_bytes, render};
+use super::chunky::{Alpha, Direct, Fourth, Packing, Pixels, Rows, bitmap_bytes, render};
 use crate::bytes::{be16, be32};
 use crate::codec::{powerpacker, xpk};
 use crate::{DecodeError, Image};
@@ -98,7 +98,7 @@ fn direct(wide: bool, fourth: Option<bool>) -> Pixels {
         wide,
         fourth: fourth.map(|has_alpha| Fourth {
             first: false,
-            alpha: has_alpha,
+            alpha: has_alpha.then_some(Alpha::Straight),
         }),
     })
 }

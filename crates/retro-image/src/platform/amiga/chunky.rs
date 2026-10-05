@@ -39,6 +39,9 @@ pub(super) enum Pixels {
     Ham8,
     /// Red, green, blue channels, possibly with a fourth.
     Direct(Direct),
+    /// Big-endian 16-bit words of 5-bit red, green, blue, with the top bit
+    /// transparency (1 is opaque) if `Some`.
+    Rgb555(Option<Alpha>),
 }
 
 /// Red, green and blue channels one after another per pixel.
@@ -55,8 +58,27 @@ pub(super) struct Direct {
 pub(super) struct Fourth {
     /// Stored before red instead of after blue.
     pub first: bool,
-    /// Transparency (0 is transparent, the maximum opaque) instead of padding.
-    pub alpha: bool,
+    /// What it holds if it is transparency instead of padding.
+    pub alpha: Option<Alpha>,
+}
+
+/// What the values of a transparency channel mean.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum Alpha {
+    /// 0 is transparent and the maximum opaque.
+    Straight,
+    /// The other way round.
+    Inverse,
+}
+
+impl Alpha {
+    /// The opacity (0-255) of a stored 8-bit `value`.
+    pub fn opacity(self, value: u32) -> u32 {
+        match self {
+            Self::Straight => value,
+            Self::Inverse => 255 - value,
+        }
+    }
 }
 
 impl Pixels {
@@ -77,6 +99,7 @@ impl Pixels {
             Self::Mono => width.div_ceil(8),
             Self::Indexed8 | Self::ExtraHalfBrite | Self::Ham6 | Self::Ham8 => width,
             Self::Direct(direct) => width * direct.pixel_len(),
+            Self::Rgb555(_) => width * 2,
         }
     }
 }
@@ -96,11 +119,30 @@ impl Direct {
         let colors = usize::from(self.fourth.is_some_and(|f| f.first)) * step;
         let [r, g, b] = [0, 1, 2].map(|i| u32::from(bytes[colors + i * step]));
         let color = r << 16 | g << 8 | b;
-        let Some(Fourth { first, alpha: true }) = self.fourth else {
+        let Some(Fourth {
+            first,
+            alpha: Some(alpha),
+        }) = self.fourth
+        else {
             return color;
         };
-        let opacity = u32::from(bytes[if first { 0 } else { 3 * step }]);
-        over_fill(color, opacity)
+        let value = u32::from(bytes[if first { 0 } else { 3 * step }]);
+        over_fill(color, alpha.opacity(value))
+    }
+}
+
+/// A 5-5-5 color word, `high` byte first; the 5-bit fields expand by
+/// repeating their top bits.
+fn rgb555(high: u8, low: u8, alpha: Option<Alpha>) -> u32 {
+    let word = u32::from(high) << 8 | u32::from(low);
+    let wide = |field: u32| field << 3 | field >> 2;
+    let color = wide(word >> 10 & 31) << 16 | wide(word >> 5 & 31) << 8 | wide(word & 31);
+    match alpha {
+        Some(alpha) => over_fill(
+            color,
+            alpha.opacity(if word & 0x8000 != 0 { 255 } else { 0 }),
+        ),
+        None => color,
     }
 }
 
@@ -139,7 +181,7 @@ pub(super) fn bitmap_bytes(
 }
 
 /// `color` at `opacity` (0-255) over [`TRANSPARENT_FILL`].
-fn over_fill(color: u32, opacity: u32) -> u32 {
+pub(super) fn over_fill(color: u32, opacity: u32) -> u32 {
     let mix = |shift: u32| {
         let (c, f) = (color >> shift & 0xff, TRANSPARENT_FILL >> shift & 0xff);
         (c * opacity + f * (255 - opacity) + 127) / 255
@@ -212,6 +254,7 @@ fn draw_row(pixels: Pixels, row: &[u8], palette: &[u32; 256], out: &mut [[u8; 3]
                 ham(held, v >> 6, data << 2 | data >> 4, palette[data as usize])
             }
             Pixels::Direct(direct) => direct.pixel(&row[x * direct.pixel_len()..]),
+            Pixels::Rgb555(alpha) => rgb555(row[x * 2], row[x * 2 + 1], alpha),
         };
         held = color;
         let [_, r, g, b] = color.to_be_bytes();
@@ -235,7 +278,10 @@ mod tests {
     fn rgba(first: bool, wide: bool) -> Pixels {
         Pixels::Direct(Direct {
             wide,
-            fourth: Some(Fourth { first, alpha: true }),
+            fourth: Some(Fourth {
+                first,
+                alpha: Some(Alpha::Straight),
+            }),
         })
     }
 
@@ -250,6 +296,45 @@ mod tests {
         };
         let image = render(Pixels::Indexed8, rows, &data, &grays()).unwrap();
         assert_eq!(image.rgb(), &[1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]);
+    }
+
+    #[test]
+    fn inverse_alpha_counts_down_from_opaque() {
+        let rows = Rows {
+            width: 2,
+            height: 1,
+            bytes_per_line: 8,
+        };
+        let inverse = Pixels::Direct(Direct {
+            wide: false,
+            fourth: Some(Fourth {
+                first: true,
+                alpha: Some(Alpha::Inverse),
+            }),
+        });
+        // Alpha 0 is opaque, 255 is transparent.
+        let data = [0, 1, 2, 3, 255, 1, 2, 3];
+        let image = render(inverse, rows, &data, &grays()).unwrap();
+        let fill = TRANSPARENT_FILL.to_be_bytes();
+        assert_eq!(image.rgb(), &[1, 2, 3, fill[1], fill[2], fill[3]]);
+    }
+
+    #[test]
+    fn five_bit_colors_expand_to_the_full_range() {
+        let rows = Rows {
+            width: 2,
+            height: 1,
+            bytes_per_line: 4,
+        };
+        // 0x7c1f is red 31, green 0, blue 31; 0xfc1f is the same with the top
+        // bit set. As ARGB the first (clear bit) is transparent.
+        let data = [0x7c, 0x1f, 0xfc, 0x1f];
+        let image = render(Pixels::Rgb555(None), rows, &data, &grays()).unwrap();
+        assert_eq!(image.rgb(), &[255, 0, 255, 255, 0, 255]);
+        let argb = Pixels::Rgb555(Some(Alpha::Straight));
+        let image = render(argb, rows, &data, &grays()).unwrap();
+        let fill = TRANSPARENT_FILL.to_be_bytes();
+        assert_eq!(image.rgb(), &[fill[1], fill[2], fill[3], 255, 0, 255]);
     }
 
     #[test]
