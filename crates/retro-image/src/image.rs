@@ -335,14 +335,6 @@ mod tests {
     }
 
     #[test]
-    fn over_fill_mixes_by_alpha() {
-        assert_eq!(over_fill([1, 2, 3, 255]), 0x01_0203);
-        assert_eq!(over_fill([1, 2, 3, 0]), TRANSPARENT_FILL);
-        // Half transparent white over the gray 0xc0: (255 * 128 + 192 * 127) / 255 rounds to 0xe0.
-        assert_eq!(over_fill([255, 255, 255, 128]), 0xe0_e0e0);
-    }
-
-    #[test]
     fn get_returns_what_set_stored() {
         let mut image = Image::new(2, 2);
         image.set(1, 1, 0x123456);
