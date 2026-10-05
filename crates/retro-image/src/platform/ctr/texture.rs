@@ -93,9 +93,10 @@ impl Format {
         }
     }
 
-    /// Bytes of a `width` x `height` texture (both multiples of 8).
-    pub(super) fn data_len(self, width: usize, height: usize) -> usize {
-        width * height * self.bits() / 8
+    /// Bytes of a `width` x `height` texture (both multiples of 8), or `None`
+    /// if that does not fit in memory.
+    fn data_len(self, width: usize, height: usize) -> Option<usize> {
+        Some(width.checked_mul(height)?.checked_mul(self.bits())? / 8)
     }
 
     /// Pixel number `index` of `data`, as red, green, blue and alpha.
@@ -219,7 +220,10 @@ impl Texture<'_> {
             && height % TILE == 0
             && visible_width <= width
             && visible_height <= height
-            && self.data.len() >= self.format.data_len(width, height);
+            && self
+                .format
+                .data_len(width, height)
+                .is_some_and(|len| self.data.len() >= len);
         if !sound {
             return Err(DecodeError::Unrecognized);
         }
