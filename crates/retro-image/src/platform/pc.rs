@@ -67,7 +67,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("PC", "Award BIOS logo version 2", &["epa"], decode_awbm).signature(),
     Format::new("PC", "Award BIOS logo", &["epa"], decode_epa_cells),
     Format::new("PC", "Handy Scanner 2000 POSTERING", &["hs2"], decode_hs2),
-    // Recognised by size alone; `.art` is also used by Atari and Commodore
+    // Recognized by size alone; `.art` is also used by Atari and Commodore
     // formats, which come earlier in the registry.
     Format::new("PC", "PFS: First Publisher", &["art"], fp_art::decode_art),
     // `.dat` is a size rule (whole 572-byte pictures); Atari ST comes first.

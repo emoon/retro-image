@@ -5,13 +5,12 @@
 //! on a fixed grid, left to right, top to bottom, each in a cell as large as
 //! the largest picture, with a gutter between cells. The grid is as close to
 //! square as the whole columns allow, so a thumbnail of the sheet stays
-//! readable. Empty space is the shared transparent-fill grey. All pictures
+//! readable. Empty space is the shared transparent-fill gray. All pictures
 //! are 1-bit, black on white: the libraries store a set bit as black.
 //!
 //! A library of more than [`MAX_PICTURES`] pictures is rejected, not cut
-//! short. The largest sample has 235. The cap also keeps the size-only
-//! formats from claiming big files of other kinds: a ColoRIX picture named
-//! `DATA.DAT` is 1629 pictures long and ends in zero fill.
+//! short. The largest sample has 235. For the headerless `.DAT`, which only
+//! its size identifies, the cap also limits what the size rule can claim.
 
 use crate::image::{TRANSPARENT_FILL, check_size};
 use crate::{BitOrder, DecodeError, Image};
