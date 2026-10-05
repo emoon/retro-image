@@ -69,7 +69,7 @@ const V1_PALETTE_LEN: usize = 10;
 
 /// The CGA 4-colour palettes selectable by the palette descriptor; any other
 /// code falls back to the third.
-const CGA_4: [[u32; 4]; 6] = [
+pub(super) const CGA_4: [[u32; 4]; 6] = [
     cga_set([3, 5, 7]),
     cga_set([2, 4, 6]),
     cga_set([3, 4, 7]),
@@ -220,7 +220,7 @@ fn dimensions(data: &[u8]) -> Result<(usize, usize), DecodeError> {
 
 /// Joins the blocks (`u16` packed size including this 5-byte header, `u16`
 /// unpacked size, run marker byte, data) into `need` bytes of pixel data.
-fn unpack_blocks(data: &[u8], count: usize, need: usize) -> Option<Vec<u8>> {
+pub(super) fn unpack_blocks(data: &[u8], count: usize, need: usize) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     let mut pos = 0;
     for _ in 0..count {
@@ -378,7 +378,7 @@ fn rgb_palette(pal: &mut [u32], block: &[u8]) {
 
 /// The default VGA BIOS palette (mode 13h), as listed in Deark's standard
 /// palettes (see the notice in the module documentation).
-const VGA_PALETTE: [u32; 256] = [
+pub(super) const VGA_PALETTE: [u32; 256] = [
     0x000000, 0x0000aa, 0x00aa00, 0x00aaaa, 0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa, 0x555555,
     0x5555ff, 0x55ff55, 0x55ffff, 0xff5555, 0xff55ff, 0xffff55, 0xffffff, 0x000000, 0x141414,
     0x202020, 0x2d2d2d, 0x393939, 0x454545, 0x515151, 0x616161, 0x717171, 0x828282, 0x929292,

@@ -22,10 +22,10 @@ use alloc::vec::Vec;
 use super::common::{
     line_planes_to_interleaved, palette_words, planar_image, st_palette, vdi_palette,
 };
-use super::falcon::{rgb565, videl_palette};
+use super::falcon::videl_palette;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::check_size;
+use crate::image::{check_size, rgb565};
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {

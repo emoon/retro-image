@@ -9,7 +9,7 @@
 //!   observed from `recoil2png` output.
 
 use super::screen::Frame;
-use crate::image::check_size;
+use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 const SXG_HEADER_LEN: usize = 16;
@@ -65,7 +65,7 @@ fn tsconf_color(entry: u16) -> u32 {
     let channel = |shift: u16| {
         let v = u32::from((entry >> shift) & 31);
         if direct {
-            v << 3 | v >> 2
+            widen_channel(v, 5)
         } else {
             v.min(24) * 255 / 24
         }

@@ -57,6 +57,7 @@ pub(super) mod cm3;
 
 use alloc::vec::Vec;
 
+use crate::image::widen_channel;
 use crate::{DecodeError, Image};
 
 const COLORMAP_LEN: usize = 16;
@@ -66,8 +67,9 @@ fn palette(colormap: &[u8]) -> Vec<u32> {
     colormap
         .iter()
         .map(|&c| {
-            let channel =
-                |high: u8, low: u8| u32::from(((c >> high) & 1) << 1 | ((c >> low) & 1)) * 85;
+            let channel = |high: u8, low: u8| {
+                widen_channel(u32::from(((c >> high) & 1) << 1 | ((c >> low) & 1)), 2)
+            };
             channel(5, 2) << 16 | channel(4, 1) << 8 | channel(3, 0)
         })
         .collect()

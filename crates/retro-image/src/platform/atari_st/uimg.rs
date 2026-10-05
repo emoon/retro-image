@@ -10,9 +10,9 @@
 use alloc::vec::Vec;
 
 use super::common::{planar_image, st_palette, vdi_palette, words};
-use super::falcon::{rgb565, videl_entries};
+use super::falcon::videl_entries;
 use crate::bytes::be16;
-use crate::image::check_size;
+use crate::image::{check_size, rgb444, rgb565};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 14;
@@ -67,7 +67,7 @@ fn palette(data: &[u8], kind: u16, bits: usize) -> Option<(Vec<u32>, &[u8])> {
     let table = data.get(HEADER_LEN..HEADER_LEN + len)?;
     let palette = match kind {
         1 => st_palette(&words(table)),
-        2 => words(table).into_iter().map(super::tt::tt_rgb).collect(),
+        2 => words(table).into_iter().map(rgb444).collect(),
         3 => videl_entries(table, entries)?,
         _ => vdi_palette(table, entries)?,
     };

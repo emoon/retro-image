@@ -1,5 +1,6 @@
-//! Nintendo Entertainment System: pattern tables (`.chr`), nametables (`.nam`)
-//! and NES Screen Tool sessions (`.nss`).
+//! Nintendo Entertainment System: pattern tables (`.chr`, `.pkb`), nametables
+//! (`.nam`, `.rle`), NES Screen Tool sessions (`.nss`) and the CHR-ROM of ROM
+//! images (`.nes`, `.unf`, `.unif`).
 //!
 //! Sources (details per format in each submodule):
 //! - Pattern table encoding (16 bytes per 8x8 tile, two bit planes):
@@ -14,17 +15,23 @@
 //!   does not define RGB values, so this is a choice, not a fact of the
 //!   hardware. Entries `$0D`-`$0F`, `$1D`-`$1F`, `$2E`-`$2F`, `$3E`-`$3F`
 //!   are black.
-//! - The platform survey is `docs/research/next-zx-misc.md`.
+//! - The platform surveys are `docs/research/next-zx-misc.md` and
+//!   `docs/research/gaps-nintendo.md`.
 //!
 //! RECOIL does not decode any of these formats, so there is no oracle run;
-//! the renders are recorded in `tests/divergences/gameboy-nes.tsv`.
+//! the renders are recorded in `tests/divergences/gameboy-nes.tsv` and
+//! `tests/divergences/nintendo-rom-icons.tsv`.
 
 mod chr;
 mod nam;
 mod nametable;
 mod nss;
+mod pkb;
+mod rle;
+mod rom;
 
 use crate::Format;
+use crate::tiles::TileLayout;
 
 /// The 2C02 colour numbers `$00-$3F` as `0xRRGGBB`.
 #[rustfmt::skip]
@@ -39,19 +46,18 @@ const MASTER_PALETTE: [u32; 64] = [
     0xe4e594, 0xcfef96, 0xbdf4ab, 0xb3f3cc, 0xb5ebf2, 0xb8b8b8, 0x000000, 0x000000,
 ];
 
-/// Bytes of one pattern table: 256 tiles of 16 bytes.
-const PATTERN_TABLE_LEN: usize = 4096;
+/// A pattern table tile: the first 8 bytes are the low bit plane, the next 8
+/// the high plane, bit 7 is the leftmost pixel.
+const PATTERN: TileLayout = TileLayout::planar(2, 1);
 
-/// Colour number (0-3) of pixel (`x`, `y`) of `tile` in a pattern table that
-/// holds at least `tile + 1` tiles: the first 8 bytes of a tile are the low
-/// bit plane, the next 8 the high plane, bit 7 is the leftmost pixel.
-fn tile_pixel(table: &[u8], tile: usize, x: usize, y: usize) -> u8 {
-    let at = tile * 16 + y;
-    (table[at] >> (7 - x) & 1) | (table[at + 8] >> (7 - x) & 1) << 1
-}
+/// Bytes of one pattern table: 256 tiles.
+const PATTERN_TABLE_LEN: usize = 256 * PATTERN.tile_len();
 
 pub(super) static FORMATS: &[Format] = &[
     Format::new("NES", "Pattern table", &["chr"], chr::decode),
+    Format::new("NES", "Pattern table (PackBits)", &["pkb"], pkb::decode),
     Format::with_companions("NES", "Nametable", &["nam"], nam::decode),
+    Format::with_companions("NES", "Nametable (RLE)", &["rle"], rle::decode),
     Format::new("NES", "NES Screen Tool session", &["nss"], nss::decode).signature(),
+    Format::new("NES", "ROM CHR tiles", &["nes", "unf", "unif"], rom::decode).signature(),
 ];

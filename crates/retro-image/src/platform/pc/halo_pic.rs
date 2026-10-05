@@ -25,8 +25,32 @@
 //! Verification: no RECOIL oracle for this format; the CGA output was compared
 //! pixel for pixel with Deark's PNG output, the EGA output was checked by eye.
 
+// Parts of this file follow Deark's modules/drhalo.c
+// (Deark, https://github.com/jsummers/deark):
+//
+// Copyright (C) 2017 Jason Summers
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 use alloc::vec::Vec;
 
+use super::cga::{BANK_STRIDE, deinterlace};
 use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
 use crate::image::planar_pixels;
@@ -128,8 +152,8 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let pixels = match found.interlace {
         Interlace::None => planes,
-        Interlace::Cga => deinterlace(&planes, 200, 80, 2),
-        Interlace::Hercules => deinterlace(&planes, 348, 90, 4),
+        Interlace::Cga => deinterlace(&planes, 200, 80, 2, BANK_STRIDE),
+        Interlace::Hercules => deinterlace(&planes, 348, 90, 4, BANK_STRIDE),
     };
     let row_len = found.width * found.bits_per_pixel / 8;
     let (width, height) = (found.width as u32, found.height as u32);
@@ -209,17 +233,6 @@ fn unpack_plane(data: &[u8], mut pos: usize, len: usize, out: &mut Vec<u8>) -> O
     Some(pos)
 }
 
-/// Rows `0..rows` of `row_len` bytes, row `i` taken from bank `i % banks`
-/// (banks are 8192 bytes apart) at row `i / banks` of that bank.
-fn deinterlace(planes: &[u8], rows: usize, row_len: usize, banks: usize) -> Vec<u8> {
-    let mut out = Vec::with_capacity(rows * row_len);
-    for i in 0..rows {
-        let at = (i / banks) * row_len + (i % banks) * 8192;
-        out.extend_from_slice(planes.get(at..at + row_len).unwrap_or(&[]));
-    }
-    out
-}
-
 /// The CGA palette from header bytes 12 and 14: bit 4 of the first selects
 /// high intensity, bit 0 of the second the cyan/magenta set, and the low
 /// nibble of the first is the background colour.
@@ -276,16 +289,6 @@ mod tests {
     fn a_truncated_literal_is_rejected() {
         let mut out = Vec::new();
         assert_eq!(unpack_plane(&[5, 1, 2], 0, 8, &mut out), None);
-    }
-
-    #[test]
-    fn cga_banks_are_interleaved() {
-        let mut planes = vec![0u8; 16384];
-        planes[0] = 1; // row 0
-        planes[8192] = 2; // row 1
-        planes[80] = 3; // row 2
-        let rows = deinterlace(&planes, 200, 80, 2);
-        assert_eq!([rows[0], rows[80], rows[160]], [1, 2, 3]);
     }
 
     #[test]

@@ -15,8 +15,9 @@
 
 use super::screen::{
     BITMAP_LEN, COLUMNS, Frame, HEIGHT, SCR_LEN, WIDTH, attribute_color, bitmap_byte,
-    bitmap_offset, blend, rgb_bits, widen3,
+    bitmap_offset, blend, rgb_bits,
 };
+use crate::image::widen_channel;
 use crate::{DecodeError, Image};
 
 const HICOLOR_LEN: usize = 2 * BITMAP_LEN;
@@ -111,11 +112,11 @@ pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 /// GRB332 palette byte: 3-bit green and red widen by repeating their bits,
-/// 2-bit blue by multiplying by 0x55.
+/// 2-bit blue by repeating its bits.
 pub(super) fn grb332(value: u8) -> u32 {
-    let green = widen3(value >> 5);
-    let red = widen3((value >> 2) & 7);
-    let blue = u32::from(value & 3) * 0x55;
+    let green = widen_channel(u32::from(value >> 5), 3);
+    let red = widen_channel(u32::from((value >> 2) & 7), 3);
+    let blue = widen_channel(u32::from(value & 3), 2);
     red << 16 | green << 8 | blue
 }
 

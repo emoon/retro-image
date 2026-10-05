@@ -6,8 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/emoon/retro-image/blob/main/LICENSE)
 
 retro-image opens pictures from old computers, so you can view them on a modern machine. It
-reads 593 formats from 54 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum,
-Amstrad CPC, MSX, PC-98 and a long tail of rarer machines. Every format is listed in
+reads 688 formats from 75 platforms: Atari 8-bit and ST, Amiga, Commodore, ZX Spectrum,
+Amstrad CPC, MSX, PC-98, several game consoles and a long tail of rarer machines. Every
+format is listed in
 [docs/formats.md](https://github.com/emoon/retro-image/blob/main/docs/formats.md).
 
 [RECOIL](https://recoil.sourceforge.net) inspired the project, and the tests compare the
@@ -38,7 +39,7 @@ let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
 ```
 
 The file name tells it which formats to try. Many formats also have a reliable signature,
-so those still decode if the extension is wrong. A few formats keep their colours in a
+so those still decode if the extension is wrong. A few formats keep their colors in a
 second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass the
 extra file in.
 
@@ -57,6 +58,11 @@ retro-image --mime-xml    > ~/.local/share/mime/packages/retro-image.xml
 retro-image --thumbnailer > ~/.local/share/thumbnailers/retro-image.thumbnailer
 update-mime-database ~/.local/share/mime
 ```
+
+The package gives the formats' extensions the type `image/x-retro-image` at a low priority, so
+a system type for `.pbm` or `.xpm` still wins. Names that ordinary files often carry (`.cnf`,
+`.tpl`, `.srm` and a few more) are left out. Those formats still decode from the command line,
+but file managers won't thumbnail them.
 
 ## Documentation
 

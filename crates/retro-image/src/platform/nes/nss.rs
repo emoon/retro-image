@@ -26,8 +26,8 @@
 
 use alloc::vec::Vec;
 
-use super::PATTERN_TABLE_LEN;
 use super::nametable::Nametable;
+use super::{MASTER_PALETTE, PATTERN_TABLE_LEN};
 use crate::{DecodeError, Image};
 
 const MAGIC: &[u8] = b"NSTssTXT";
@@ -66,6 +66,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         names: &names,
         attributes: &attributes,
         palette: &palette,
+        master: &MASTER_PALETTE,
     }
     .draw()
 }

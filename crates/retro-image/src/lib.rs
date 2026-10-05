@@ -26,8 +26,11 @@ mod format;
 mod image;
 mod json;
 mod macbinary;
+mod morton;
 mod platform;
+mod sheet;
 mod simd;
+mod tiles;
 
 pub use error::DecodeError;
 pub use format::{Companions, Format, NoCompanions, candidates, formats};

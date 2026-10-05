@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 
 use super::super::nec_pc::Machine;
 use crate::bytes::be16;
-use crate::image::check_size;
+use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -59,15 +59,10 @@ struct Header<'a> {
     stream: &'a [u8],
 }
 
-const fn level(v: u32, bits: u32) -> u32 {
-    let v = v << (8 - bits);
-    (v | v >> bits | v >> (2 * bits)) & 0xff
-}
-
 /// X68000 colour word `GGGGGRRRRRBBBBBI`: 5 bits per component plus intensity.
 fn x68000(word: u32) -> u32 {
     let i = word & 1;
-    let six = |shift: u32| level((word >> shift & 31) << 1 | i, 6);
+    let six = |shift: u32| widen_channel((word >> shift & 31) << 1 | i, 6);
     six(6) << 16 | six(11) << 8 | six(1)
 }
 
@@ -110,10 +105,10 @@ impl<'a> Header<'a> {
             for i in 0..1usize << bits {
                 let word = u32::from(be16(data, at + 2 * i)?);
                 palette.push(if msx {
-                    let three = |shift: u32| level(word >> (shift + 2) & 7, 3);
+                    let three = |shift: u32| widen_channel(word >> (shift + 2) & 7, 3);
                     three(6) << 16 | three(11) << 8 | three(1)
                 } else if towns {
-                    let five = |shift: u32| level(word >> shift & 31, 5);
+                    let five = |shift: u32| widen_channel(word >> shift & 31, 5);
                     five(6) << 16 | five(11) << 8 | five(1)
                 } else {
                     x68000(word)
@@ -288,9 +283,10 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
             for (half, byte) in [word & 0xff, word >> 8].into_iter().enumerate() {
                 let joined = x + half;
                 let (column, line) = (joined % width, y + joined / width);
-                let colour =
-                    level(byte >> 2 & 7, 3) << 16 | level(byte >> 5, 3) << 8 | ((byte & 3) * 0x55);
-                image.set(column as u32, line as u32, colour);
+                let color = widen_channel(byte >> 2 & 7, 3) << 16
+                    | widen_channel(byte >> 5, 3) << 8
+                    | widen_channel(byte & 3, 2);
+                image.set(column as u32, line as u32, color);
             }
         }
         return Ok(image);
@@ -303,7 +299,11 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
     let colors = values.iter().map(|&value| match header.colour {
         Colour::X68000Rgb15 => x68000(value << 1),
         Colour::X68000Rgb16 => x68000(value),
-        _ => level(value >> 5 & 31, 5) << 16 | level(value >> 10, 6) << 8 | level(value & 31, 5),
+        _ => {
+            widen_channel(value >> 5 & 31, 5) << 16
+                | widen_channel(value >> 10, 6) << 8
+                | widen_channel(value & 31, 5)
+        }
     });
     Ok(Image::from_colors(width as u32, height as u32, colors))
 }
@@ -313,11 +313,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn levels() {
-        assert_eq!(level(31, 5), 0xff);
-        assert_eq!(level(17, 5), 0x8c);
-        assert_eq!(level(62, 6), 0xfb);
-        assert_eq!(level(4, 3), 0x92);
+    fn the_intensity_bit_is_the_lowest_of_six_green_red_and_blue_bits() {
         assert_eq!(x68000(0x8c62), 0x8a8a8a);
     }
 

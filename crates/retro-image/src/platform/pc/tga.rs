@@ -20,7 +20,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::le16;
-use crate::image::check_size;
+use crate::image::{check_size, xrgb1555};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 18;
@@ -29,14 +29,7 @@ const HEADER_LEN: usize = 18;
 fn rgb_of(pixel: &[u8]) -> u32 {
     match *pixel {
         [b, g, r] | [b, g, r, _] => u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b),
-        [lo, hi] => {
-            let v = u32::from(u16::from_le_bytes([lo, hi]));
-            let c = |shift: u32| {
-                let five = (v >> shift) & 31;
-                (five << 3) | (five >> 2)
-            };
-            c(10) << 16 | c(5) << 8 | c(0)
-        }
+        [lo, hi] => xrgb1555(u16::from_le_bytes([lo, hi])),
         _ => 0,
     }
 }

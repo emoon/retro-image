@@ -6,11 +6,11 @@
 //!   and the Kaitai `psx_tim.ksy` spec (CC0, <https://formats.kaitai.io/psx_tim/>):
 //!   id `$10`, flags (bits 0-2 depth, bit 3 CLUT), blocks of
 //!   `[length, x, y, width in halfwords, height, data]`, 15-bit BGR colours.
-//! - 5-bit to 8-bit scaling (`v << 3 | v >> 2`): observed from `recoil2png`
-//!   output.
+//! - 5-bit to 8-bit scaling (`v << 3 | v >> 2`, which is `image::bgr555`):
+//!   observed from `recoil2png` output.
 
 use crate::bytes::{le16, le32};
-use crate::image::check_size;
+use crate::image::{bgr555, check_size};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -22,15 +22,6 @@ fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
     let (width, height) = (usize::from(le16(data, 8)?), usize::from(le16(data, 10)?));
     let body = data.get(12..12 + width * height * 2)?;
     Some((width, height, body, len))
-}
-
-/// 15-bit colour: red in bits 0-4, green 5-9, blue 10-14.
-fn color15(word: u16) -> u32 {
-    let channel = |shift: usize| {
-        let v = (word >> shift & 31) as u32;
-        v << 3 | v >> 2
-    };
-    channel(0) << 16 | channel(5) << 8 | channel(10)
 }
 
 fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
@@ -70,7 +61,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     };
     check_size(width, height)?;
     let row_len = w * 2;
-    let lookup = |i: usize| le16(clut, i * 2).map_or(0, color15);
+    let lookup = |i: usize| le16(clut, i * 2).map_or(0, bgr555);
     let mut image = Image::new(width as u32, height as u32);
     for y in 0..height {
         let row = &pixels[y * row_len..(y + 1) * row_len];
@@ -78,7 +69,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
             let color = match depth {
                 0 => lookup(usize::from(row[x / 2] >> (x % 2 * 4) & 15)),
                 1 => lookup(usize::from(row[x])),
-                2 => color15(u16::from_le_bytes([row[x * 2], row[x * 2 + 1]])),
+                2 => bgr555(u16::from_le_bytes([row[x * 2], row[x * 2 + 1]])),
                 _ => {
                     let p = &row[x * 3..x * 3 + 3];
                     u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2])

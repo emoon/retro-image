@@ -9,9 +9,9 @@
 
 use alloc::vec::Vec;
 
-use super::ilbm::{half_brite, rgb12};
+use super::ilbm::half_brite;
 use crate::bytes::be16;
-use crate::image::check_size;
+use crate::image::{check_size, rgb444};
 use crate::{DecodeError, Image};
 
 struct Object<'a> {
@@ -56,7 +56,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     // Mode"), rounded as in ILBM. RECOIL rejects such banks.
     let colors: Vec<u32> = (0..64)
         .map(|i| {
-            let color = rgb12(palette[i % 32]);
+            let color = rgb444(palette[i % 32]);
             if i >= 32 { half_brite(color) } else { color }
         })
         .collect();

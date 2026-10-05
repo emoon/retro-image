@@ -17,6 +17,8 @@
 //! pixel in 2 to 4 planes (EGA); 8 bits in 3 planes (24-bit RGB) or 4
 //! planes (RGB, alpha ignored). Version 3 files and others with no usable
 //! palette get the CGA/EGA default colours, or greys for 8-bit.
+//! A bounding box one pixel wider than the rows is cut to the row width
+//! (observed on fax pages, see `dcx.rs`).
 //!
 //! Verification: no oracle exists (RECOIL has no PCX). Output was rendered
 //! to PNG and viewed, and compared pixel for pixel with Python PIL's PCX
@@ -27,7 +29,7 @@ use alloc::vec::Vec;
 
 use super::{CGA_PALETTE, cga_set};
 use crate::bytes::le16;
-use crate::image::{check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 128;
@@ -66,6 +68,11 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     }
     let (width, height) = (x1 - x0 + 1, y1 - y0 + 1);
     let row_len = word(66)?;
+    // Fax software writes x_max as the width, one pixel more than a row
+    // holds (1729 for the 1728 pixels of a fax line): the picture is as wide
+    // as its rows.
+    let stored = row_len * 8 / bits;
+    let width = if width == stored + 1 { stored } else { width };
     if row_len < (width * bits).div_ceil(8) {
         return Err(fail);
     }
@@ -85,7 +92,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
 
 /// Expands the RLE stream from `data` into exactly `len` bytes.
 /// Fails on truncated data; a final run reaching past `len` is cut off.
-fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
+pub(super) fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
     // A two-byte run yields at most 63 bytes.
     if len > data.len().saturating_mul(32) {
         return Err(DecodeError::Unrecognized);
@@ -111,10 +118,12 @@ fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
 fn scale_levels(rgb: &mut [u8]) {
     if rgb.iter().all(|&v| v & 0x3f == 0) {
         for v in rgb.iter_mut() {
-            *v = (u32::from(*v >> 6) * 85) as u8;
+            *v = widen_channel(u32::from(*v >> 6), 2) as u8;
         }
     } else if rgb.iter().all(|&v| v < 64) {
         for v in rgb.iter_mut() {
+            // Not `widen_channel`: this differs from bit replication for 30
+            // of the 64 values.
             *v = (u32::from(*v) * 255 / 63) as u8;
         }
     }
@@ -272,6 +281,19 @@ mod tests {
         let image = decode_pcx(&data).unwrap();
         // Values below 64 are 6-bit and get scaled.
         assert_eq!(&image.rgb()[..3], &[28, 32, 36]);
+    }
+
+    #[test]
+    fn width_one_pixel_past_the_rows_is_cut_to_the_rows() {
+        // x_max = 16 gives 17 pixels, but a row holds 16.
+        let mut data = header(1, 1, 17, 1, 2);
+        data.extend_from_slice(&[0x80, 0x01]);
+        let image = decode_pcx(&data).unwrap();
+        assert_eq!((image.width(), image.height()), (16, 1));
+        // Two pixels too many is still a bad header.
+        let mut wide = header(1, 1, 18, 1, 2);
+        wide.extend_from_slice(&[0x80, 0x01]);
+        assert!(decode_pcx(&wide).is_err());
     }
 
     #[test]

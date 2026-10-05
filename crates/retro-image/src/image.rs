@@ -31,6 +31,90 @@ pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError>
     }
 }
 
+/// A 15-bit color as the Game Boy Color, the Game Boy Advance, the DS and the
+/// PlayStation store it, as `0xRRGGBB`: red in bits 0-4, green in bits 5-9,
+/// blue in bits 10-14, bit 15 ignored, each channel widened by
+/// [`widen_channel`].
+pub(crate) fn bgr555(word: u16) -> u32 {
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 31), 5);
+    channel(0) << 16 | channel(5) << 8 | channel(10)
+}
+
+/// A 15-bit color with red high, as `0xRRGGBB`: red in bits 10-14, green in
+/// bits 5-9, blue in bits 0-4, bit 15 ignored.
+pub(crate) fn xrgb1555(word: u16) -> u32 {
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 31), 5);
+    channel(10) << 16 | channel(5) << 8 | channel(0)
+}
+
+/// A 12-bit `0RGB` color as `0xRRGGBB`, as the Amiga, the Atari TT and the
+/// Apple IIGS store a palette entry: red in bits 8-11, green in bits 4-7, blue
+/// in bits 0-3, bits 12-15 ignored.
+pub(crate) fn rgb444(word: u16) -> u32 {
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 15), 4);
+    channel(8) << 16 | channel(4) << 8 | channel(0)
+}
+
+/// A 16-bit color as `0xRRGGBB`: red in bits 11-15, green in bits 5-10, blue
+/// in bits 0-4.
+pub(crate) fn rgb565(word: u16) -> u32 {
+    let channel =
+        |shift: u32, bits: u32| widen_channel(u32::from(word >> shift) & ((1 << bits) - 1), bits);
+    channel(11, 5) << 16 | channel(5, 6) << 8 | channel(0, 5)
+}
+
+/// Color shown where a picture is transparent. `Image` has no alpha channel,
+/// so every decoder whose format carries transparency composites onto this
+/// light gray, which stays visible against both white and black artwork.
+pub(crate) const TRANSPARENT_FILL: u32 = 0xc0_c0c0;
+
+/// `color` drawn over `base` (both `0xRRGGBB`) with `alpha`, 0 for fully
+/// transparent and 255 for opaque, rounded to the nearest level.
+pub(crate) fn over(base: u32, color: u32, alpha: u8) -> u32 {
+    let alpha = u32::from(alpha);
+    let channel = |shift: u32| {
+        let (above, below) = (color >> shift & 0xff, base >> shift & 0xff);
+        (above * alpha + below * (255 - alpha) + 127) / 255
+    };
+    channel(16) << 16 | channel(8) << 8 | channel(0)
+}
+
+/// `color` drawn over [`TRANSPARENT_FILL`] with `alpha`.
+pub(crate) fn over_fill(color: u32, alpha: u8) -> u32 {
+    over(TRANSPARENT_FILL, color, alpha)
+}
+
+/// `0xAARRGGBB` over [`TRANSPARENT_FILL`] as `0xRRGGBB`: the form the texture
+/// formats decode to.
+pub(crate) fn over_fill_argb(argb: u32) -> u32 {
+    over_fill(argb & 0xff_ffff, (argb >> 24) as u8)
+}
+
+/// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
+/// repeating its high bits, so that the largest value becomes 255.
+#[inline]
+pub(crate) const fn widen_channel(value: u32, bits: u32) -> u32 {
+    debug_assert!(matches!(bits, 1..=8), "a channel has 1 to 8 bits");
+    let mut wide = value << (8 - bits);
+    let mut have = bits;
+    while have < 8 {
+        wide |= wide >> have;
+        have *= 2;
+    }
+    wide
+}
+
+/// `len` opaque grays (`0xAARRGGBB`) from black to white: the palette shown
+/// for indexed pictures whose palette file is not at hand.
+pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
+    (0..len)
+        .map(|i| {
+            let gray = (i * 255 / (len - 1).max(1)) as u32;
+            0xff00_0000 | gray << 16 | gray << 8 | gray
+        })
+        .collect()
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -297,6 +381,41 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bgr555_puts_red_lowest_and_ignores_bit_15() {
+        assert_eq!(bgr555(0x001f), 0xff_0000);
+        assert_eq!(bgr555(0x03e0), 0x00_ff00);
+        assert_eq!(bgr555(0x7c00), 0x00_00ff);
+        // Channel 16 widens to 0x84, and bit 15 changes nothing.
+        assert_eq!(bgr555(0x8010), 0x84_0000);
+    }
+
+    #[test]
+    fn rgb444_repeats_each_nibble_and_ignores_the_top_one() {
+        assert_eq!(rgb444(0x0f00), 0xff_0000);
+        assert_eq!(rgb444(0x00f0), 0x00_ff00);
+        assert_eq!(rgb444(0x000f), 0x00_00ff);
+        assert_eq!(rgb444(0xf123), 0x11_2233);
+    }
+
+    #[test]
+    fn xrgb1555_puts_red_highest_and_ignores_bit_15() {
+        assert_eq!(xrgb1555(0x7c00), 0xff_0000);
+        assert_eq!(xrgb1555(0x03e0), 0x00_ff00);
+        assert_eq!(xrgb1555(0x001f), 0x00_00ff);
+        assert_eq!(xrgb1555(0xc010), 0x84_0084);
+    }
+
+    #[test]
+    fn rgb565_widens_green_from_6_bits() {
+        assert_eq!(rgb565(0xffff), 0xff_ffff);
+        assert_eq!(rgb565(0xf800), 0xff_0000);
+        assert_eq!(rgb565(0x07e0), 0x00_ff00);
+        assert_eq!(rgb565(0x001f), 0x00_00ff);
+        assert_eq!(rgb565(0x0020), 0x00_0400);
+        assert_eq!(rgb565(0x0004), 0x00_0021);
+    }
+
+    #[test]
     fn get_returns_what_set_stored() {
         let mut image = Image::new(2, 2);
         image.set(1, 1, 0x123456);
@@ -371,6 +490,61 @@ mod tests {
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    #[test]
+    fn over_blends_channel_by_channel() {
+        assert_eq!(over(0x102030, 0xf0e0d0, 0), 0x102030);
+        assert_eq!(over(0x102030, 0xf0e0d0, 255), 0xf0e0d0);
+        // Halfway between 0x10 and 0xf0 is 0x80, and 0x20 and 0xe0 as well.
+        assert_eq!(over(0x102030, 0xf0e0d0, 128) >> 16, 0x80);
+    }
+
+    #[test]
+    fn over_fill_blends_toward_the_transparent_fill() {
+        assert_eq!(over_fill(0x123456, 255), 0x123456);
+        assert_eq!(over_fill(0x123456, 0), TRANSPARENT_FILL);
+        // Black at 127/255 over 0xc0 is 96.38, which rounds to 0x60.
+        assert_eq!(over_fill(0x000000, 127), 0x606060);
+    }
+
+    #[test]
+    fn widen_channel_repeats_the_high_bits() {
+        assert_eq!(widen_channel(0x1f, 5), 0xff);
+        assert_eq!(widen_channel(0, 5), 0);
+        assert_eq!(widen_channel(0b100, 3), 0b1001_0010);
+        assert_eq!(widen_channel(0x3f, 6), 0xff);
+        assert_eq!(widen_channel(0xa, 4), 0xaa);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "1 to 8 bits")]
+    fn widen_channel_refuses_a_zero_bit_channel() {
+        // Without the check this would loop forever.
+        widen_channel(0, 0);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "1 to 8 bits")]
+    fn widen_channel_refuses_more_than_eight_bits() {
+        widen_channel(0, 9);
+    }
+
+    #[test]
+    fn gray_ramp_runs_from_black_to_white() {
+        assert_eq!(gray_ramp(2), [0xff00_0000, 0xffff_ffff]);
+        assert_eq!(gray_ramp(16)[1], 0xff11_1111);
+        assert_eq!(gray_ramp(1), [0xff00_0000]);
+    }
+
+    #[test]
+    fn over_fill_argb_flattens_alpha_over_the_fill() {
+        assert_eq!(over_fill_argb(0xff12_3456), 0x123456);
+        assert_eq!(over_fill_argb(0x0012_3456), TRANSPARENT_FILL);
+        // Half of white over 0xc0 is 0xdf.5, rounded up.
+        assert_eq!(over_fill_argb(0x80ff_ffff), 0xe0e0e0);
     }
 
     #[test]

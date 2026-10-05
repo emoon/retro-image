@@ -16,6 +16,7 @@ use super::common::{
     interleaved_index, separate_planes_to_interleaved, st_rgb, uses_ste_bits, words,
 };
 use crate::bytes::{be16, be32};
+use crate::image::widen_channel;
 use crate::{DecodeError, Image};
 
 const LINES: usize = 199;
@@ -42,7 +43,7 @@ fn color(word: u16, depth: ColorDepth) -> u32 {
             let component = |nibble: u16, low: u16| {
                 // nibble bits: 3 = bit 1, 2..0 = bits 4..2; `low` holds bit 0.
                 let v = u32::from((nibble & 7) << 2 | (nibble >> 3 & 1) << 1 | (word >> low) & 1);
-                (v << 3) | (v >> 2)
+                widen_channel(v, 5)
             };
             component(word >> 8, 14) << 16 | component(word >> 4, 13) << 8 | component(word, 12)
         }

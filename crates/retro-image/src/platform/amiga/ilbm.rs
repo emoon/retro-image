@@ -31,7 +31,7 @@ use super::multi_palette::LinePalettes;
 use super::vdat;
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::{check_size, planar_pixels};
+use crate::image::{check_size, planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 pub(super) const CAMG_LACE: u32 = 0x4;
@@ -225,12 +225,6 @@ pub(super) fn half_brite(rgb: u32) -> u32 {
     (rgb >> 1) & 0x7f7f7f
 }
 
-/// Expands a 12-bit `0RGB` colour word.
-pub(super) fn rgb12(word: u16) -> u32 {
-    let word = u32::from(word);
-    ((word & 0xf00) << 8 | (word & 0xf0) << 4 | (word & 0xf)) * 0x11
-}
-
 /// Unpacks BODY into exactly `len` bytes.
 fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
     match header.compression {
@@ -337,10 +331,10 @@ impl Mode {
                 Self::Indexed => lookup(v),
                 Self::ExtraHalfBrite if v >= 32 => palette.half(v - 32),
                 Self::ExtraHalfBrite => lookup(v),
-                Self::Ham6 => ham(held, v >> 4, (v & 15) * 0x11, lookup(v & 15)),
+                Self::Ham6 => ham(held, v >> 4, widen_channel(v & 15, 4), lookup(v & 15)),
                 Self::Ham8 => {
                     let data = v & 63;
-                    ham(held, v >> 6, data << 2 | data >> 4, lookup(data))
+                    ham(held, v >> 6, widen_channel(data, 6), lookup(data))
                 }
                 Self::TrueColor => (v & 0xff) << 16 | (v & 0xff00) | (v >> 16 & 0xff),
             };

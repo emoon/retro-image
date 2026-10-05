@@ -34,18 +34,11 @@ use alloc::vec::Vec;
 
 use super::common::{planar_image, separate_planes_to_interleaved};
 use crate::bytes::{be16, be32};
-use crate::image::check_size;
+use crate::image::{check_size, rgb565};
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
     image.ok_or(DecodeError::Unrecognized)
-}
-
-/// Falcon high-colour word `RRRRRGGG GGGBBBBB` to `0xRRGGBB`.
-pub(super) fn rgb565(word: u16) -> u32 {
-    let word = u32::from(word);
-    let (r, g, b) = (word >> 11, word >> 5 & 0x3f, word & 0x1f);
-    (r << 3 | r >> 2) << 16 | (g << 2 | g >> 4) << 8 | (b << 3 | b >> 2)
 }
 
 /// Renders big-endian RGB565 pixels, each repeated `x_scale` times.
@@ -394,14 +387,6 @@ fn decode_iim_inner(data: &[u8]) -> Option<Image> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn rgb565_replicates_bits() {
-        assert_eq!(rgb565(0xffff), 0xffffff);
-        assert_eq!(rgb565(0x0001), 0x000008);
-        assert_eq!(rgb565(0x0020), 0x000400);
-        assert_eq!(rgb565(0x0004), 0x000021);
-    }
 
     #[test]
     fn dc1_runs() {

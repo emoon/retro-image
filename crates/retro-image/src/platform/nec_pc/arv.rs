@@ -25,7 +25,7 @@ use alloc::vec::Vec;
 
 use super::artmaster88::unpack_plane;
 use crate::bytes::le16;
-use crate::image::planar_pixels;
+use crate::image::{planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 const SIGNATURE: &[u8] = b"SS_SIF    0.0";
@@ -60,7 +60,7 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
     let palette = (0..16)
         .map(|i| {
             let component = |c: usize| match le16(data, palette_at + (i * 3 + c) * 2) {
-                Some(v @ 0..=15) => Ok(u32::from(v) * 17),
+                Some(v @ 0..=15) => Ok(widen_channel(u32::from(v), 4)),
                 _ => Err(bad),
             };
             Ok(component(0)? << 16 | component(1)? << 8 | component(2)?)

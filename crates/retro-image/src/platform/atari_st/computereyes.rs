@@ -8,6 +8,7 @@
 //!   medium resolution lines are doubled.
 
 use crate::bytes::{be16, be32};
+use crate::image::widen_channel;
 use crate::{DecodeError, Image};
 
 const HEADER_LEN: usize = 22;
@@ -27,7 +28,8 @@ fn decode(data: &[u8]) -> Option<Image> {
             for x in 0..320 {
                 for y in 0..200 {
                     let i = x * 200 + y;
-                    let level = |plane: usize| scale6(body[plane * 64000 + i]);
+                    let level =
+                        |plane: usize| widen_channel(u32::from(body[plane * 64000 + i] & 0x3f), 6);
                     image.set(
                         x as u32,
                         y as u32,
@@ -43,7 +45,7 @@ fn decode(data: &[u8]) -> Option<Image> {
                 for y in 0..200 {
                     let i = (x * 200 + y) * 2;
                     let word = u32::from(u16::from_be_bytes([body[i], body[i + 1]]));
-                    let level = |shift: u32| scale5(word >> shift & 0x1f);
+                    let level = |shift: u32| widen_channel(word >> shift & 0x1f, 5);
                     let color = level(10) << 16 | level(5) << 8 | level(0);
                     image.set(x as u32, y as u32 * 2, color);
                     image.set(x as u32, y as u32 * 2 + 1, color);
@@ -65,13 +67,4 @@ fn decode(data: &[u8]) -> Option<Image> {
         }
         _ => None,
     }
-}
-
-fn scale6(v: u8) -> u32 {
-    let v = u32::from(v & 0x3f);
-    v << 2 | v >> 4
-}
-
-fn scale5(v: u32) -> u32 {
-    v << 3 | v >> 2
 }

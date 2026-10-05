@@ -43,6 +43,7 @@ use super::common::{
     Resolution, SCREEN_LEN, decode_screen, palette_words, planar_image, st_palette, vdi_palette,
 };
 use crate::bytes::{be16, be32};
+use crate::image::widen_channel;
 use crate::{Companions, DecodeError, Image};
 
 const NEO_HEADER_LEN: usize = 128;
@@ -483,7 +484,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
         for x in 0..320 {
             let level = |plane: &[u8]| {
                 let line = &plane[start..start + 160];
-                super::common::interleaved_index(line, x, 4) as u32 * 0x11
+                widen_channel(super::common::interleaved_index(line, x, 4) as u32, 4)
             };
             image.set(x, y, level(red) << 16 | level(green) << 8 | level(blue));
         }

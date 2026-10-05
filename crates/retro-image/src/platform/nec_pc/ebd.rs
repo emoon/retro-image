@@ -10,7 +10,7 @@
 
 use alloc::vec::Vec;
 
-use crate::image::planar_pixels;
+use crate::image::{planar_pixels, widen_channel};
 use crate::{DecodeError, Image};
 
 const WIDTH: usize = 640;
@@ -32,7 +32,7 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
             if c.iter().any(|&v| v > 15) {
                 return Err(DecodeError::Unrecognized);
             }
-            let [r, g, b] = c.map(|v| u32::from(v) * 17);
+            let [r, g, b] = c.map(|v| widen_channel(u32::from(v), 4));
             Ok(r << 16 | g << 8 | b)
         })
         .collect::<Result<Vec<u32>, _>>()?;

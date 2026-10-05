@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
 use crate::codec::packbits;
-use crate::image::check_size;
+use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
@@ -89,7 +89,7 @@ fn decode(data: &[u8]) -> Option<Image> {
                     .0
                     .iter()
                     .map(|c| {
-                        let level = |v: u8| u32::from(v >> 4) * 0x11;
+                        let level = |v: u8| widen_channel(u32::from(v >> 4), 4);
                         level(c[0]) << 16 | level(c[1]) << 8 | level(c[2])
                     })
                     .collect();
