@@ -33,15 +33,18 @@ mod flf;
 mod flh;
 mod flic;
 mod gif;
+mod gifexe;
 mod halo;
 mod halo_pic;
 mod hp_icn;
 mod ico;
 mod image72;
 mod kips;
+mod optiks;
 mod os2_icon;
 mod pcpaint;
 mod pcx;
+mod pixit;
 mod tga;
 
 use alloc::vec;
@@ -84,6 +87,27 @@ pub(super) static FORMATS: &[Format] = &[
     )
     .signature(),
     Format::new("PC", "CompuServe GIF", &["gif", "fra"], gif::decode_gif).signature(),
+    Format::new(
+        "PC",
+        "GIFEXE self-displaying GIF",
+        &["exe"],
+        gifexe::decode_gifexe,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "OPTIKS self-displaying picture",
+        &["com"],
+        optiks::decode_optiks,
+    )
+    .signature(),
+    Format::new(
+        "PC",
+        "PIXIT self-displaying picture",
+        &["com", "exe", "pix"],
+        pixit::decode_pixit,
+    )
+    .signature(),
     Format::new(
         "PC",
         "ColoRIX VGA Paint",
