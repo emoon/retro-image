@@ -181,7 +181,9 @@ fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(fail);
     }
     let pixels = image.get(DATA_AT..).ok_or(fail)?;
-    pixels.get(..stride * rows).ok_or(fail)?;
+    pixels
+        .get(..stride.checked_mul(rows).ok_or(fail)?)
+        .ok_or(fail)?;
 
     let colors = match (format, palette) {
         (4 | 5, Some(palette)) => Some(palette_colors(endian, palette.data).ok_or(fail)?),

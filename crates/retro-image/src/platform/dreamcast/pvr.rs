@@ -21,7 +21,7 @@
 //!   `0GDTEX.PVR`); a VQ codebook entry stores its 2x2 texels in column order
 //!   (upper left, lower left, upper right, lower right; checked on
 //!   `Font.pvr`); with mipmaps the levels run from 1x1 up and the largest
-//!   comes last (checked on four samples, among them VQ at 128 and 256
+//!   comes last (checked on five samples, among them VQ at 128 and 256
 //!   pixels, whose base level starts 1366 and 5462 bytes after the codebook).
 //!   The `GBIX` and `PVRT` length fields are zero in KallistiOS's `star.pvr`,
 //!   so they are not used: the data is sized from the dimensions and format.

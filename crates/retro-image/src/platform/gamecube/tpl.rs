@@ -36,25 +36,27 @@ pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
     if be32(data, 0) != Some(MAGIC) || be32(data, 4).ok_or(fail)? == 0 {
         return Err(fail);
     }
+    // Offsets come from the file: add to them without overflowing.
+    let word = |base: usize, offset: usize| be32(data, base.checked_add(offset)?);
+    let half = |base: usize, offset: usize| be16(data, base.checked_add(offset)?);
     let table = be32(data, 8).ok_or(fail)? as usize;
-    let image_header = be32(data, table).ok_or(fail)? as usize;
-    let palette_header = be32(data, table.checked_add(4).ok_or(fail)?).ok_or(fail)? as usize;
+    let image_header = word(table, 0).ok_or(fail)? as usize;
+    let palette_header = word(table, 4).ok_or(fail)? as usize;
 
-    let height = usize::from(be16(data, image_header).ok_or(fail)?);
-    let width = usize::from(be16(data, image_header + 2).ok_or(fail)?);
-    let format = Texels::from_code(be32(data, image_header + 4).ok_or(fail)?).ok_or(fail)?;
-    let pixels_at = be32(data, image_header + 8).ok_or(fail)? as usize;
+    let height = usize::from(half(image_header, 0).ok_or(fail)?);
+    let width = usize::from(half(image_header, 2).ok_or(fail)?);
+    let format = Texels::from_code(word(image_header, 4).ok_or(fail)?).ok_or(fail)?;
+    let pixels_at = word(image_header, 8).ok_or(fail)? as usize;
     check_size(width, height)?;
 
     let palette = match format.palette_len() {
         None => Vec::new(),
         Some(len) if palette_header == 0 => gray_ramp(len),
         Some(len) => {
-            let count = usize::from(be16(data, palette_header).ok_or(fail)?).min(len);
+            let count = usize::from(half(palette_header, 0).ok_or(fail)?).min(len);
             let palette_format =
-                PaletteFormat::from_code(be32(data, palette_header + 4).ok_or(fail)?)
-                    .ok_or(fail)?;
-            let colors_at = be32(data, palette_header + 8).ok_or(fail)? as usize;
+                PaletteFormat::from_code(word(palette_header, 4).ok_or(fail)?).ok_or(fail)?;
+            let colors_at = word(palette_header, 8).ok_or(fail)? as usize;
             let colors = data.get(colors_at..).ok_or(fail)?;
             gx::decode_palette(palette_format, colors, count).ok_or(fail)?
         }
