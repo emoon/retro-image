@@ -2,7 +2,8 @@
 //!
 //! Each format cites its own sources in its submodule: `unix/pnm.rs`, `unix/sun.rs`,
 //! `unix/sgi.rs`, `unix/xbm.rs`,
-//! `unix/xpm.rs`, `unix/xwd.rs`.
+//! `unix/xpm.rs`, `unix/xwd.rs`,
+//! `unix/farbfeld.rs`.
 //! Survey: `docs/research/gaps-computers-extra.md` (candidate C4). These are
 //! general-purpose formats, like GIF and BMP on the PC, so no machine of the
 //! RECOIL list owns them; the platform is named `Unix`.
@@ -12,6 +13,7 @@
 //! which `Image` represents.
 
 mod c_source;
+mod farbfeld;
 mod pnm;
 mod sgi;
 mod sun;
@@ -47,6 +49,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Unix", "X bitmap", &["xbm"], xbm::decode_xbm).signature(),
     Format::new("Unix", "X pixmap", &["xpm"], xpm::decode_xpm).signature(),
     Format::new("Unix", "X window dump", &["xwd"], xwd::decode_xwd).signature(),
+    Format::new("Unix", "farbfeld", &["ff"], farbfeld::decode_farbfeld).signature(),
 ];
 
 /// Scales a sample of `0..=max` to `0..=255`, rounding to nearest. Values
