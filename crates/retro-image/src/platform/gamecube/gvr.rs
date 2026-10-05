@@ -57,7 +57,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, le32};
 use crate::codec::gx::{self, Format as Texels, PaletteFormat};
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, gray_ramp, over_fill};
 use crate::{Companions, DecodeError, Image};
 
 /// Flag in the low nibble of byte 10: the palette follows the header.
@@ -109,7 +109,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             body = &body[len * 2..];
             palette
         }
-        Some(len) => external_palette(companions, len).unwrap_or_else(|| gx::gray_ramp(len)),
+        Some(len) => external_palette(companions, len).unwrap_or_else(|| gray_ramp(len)),
     };
     let argb = gx::decode(format, width, height, body, &palette).ok_or(fail)?;
     Ok(Image::from_colors(

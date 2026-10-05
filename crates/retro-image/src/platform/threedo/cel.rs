@@ -28,7 +28,7 @@
 
 use super::{Chunk, chunks};
 use crate::bytes::{be16, be32};
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, over_fill, widen_channel};
 use crate::{DecodeError, Image};
 
 const PACKED: u32 = 1 << 9;
@@ -189,10 +189,7 @@ fn palette(plut: Option<&[u8]>) -> [u16; 32] {
 /// `0xAARRGGBB` from a 15-bit color: transparent when it is zero and `bgnd`
 /// is not set.
 fn argb(color: u16, bgnd: bool) -> u32 {
-    let channel = |shift: u32| {
-        let v = u32::from(color >> shift & 31);
-        v << 3 | v >> 2
-    };
+    let channel = |shift: u32| widen_channel(u32::from(color >> shift & 31), 5);
     let alpha = if color & 0x7fff == 0 && !bgnd {
         0
     } else {

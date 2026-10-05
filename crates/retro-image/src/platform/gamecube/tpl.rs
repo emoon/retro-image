@@ -26,7 +26,7 @@ use alloc::vec::Vec;
 
 use crate::bytes::{be16, be32};
 use crate::codec::gx::{self, Format as Texels, PaletteFormat};
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, gray_ramp, over_fill};
 use crate::{DecodeError, Image};
 
 const MAGIC: u32 = 0x0020_af30;
@@ -48,7 +48,7 @@ pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
 
     let palette = match format.palette_len() {
         None => Vec::new(),
-        Some(len) if palette_header == 0 => gx::gray_ramp(len),
+        Some(len) if palette_header == 0 => gray_ramp(len),
         Some(len) => {
             let count = usize::from(be16(data, palette_header).ok_or(fail)?).min(len);
             let palette_format =

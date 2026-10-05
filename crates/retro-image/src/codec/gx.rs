@@ -46,6 +46,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::be16;
+use crate::image::widen_channel as widen;
 
 /// How a texture's pixels are stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,17 +157,6 @@ fn argb(alpha: u32, r: u32, g: u32, b: u32) -> u32 {
     alpha << 24 | r << 16 | g << 8 | b
 }
 
-/// A `bits`-bit value stretched to 8 bits by repeating its high bits.
-fn widen(value: u32, bits: u32) -> u32 {
-    let mut wide = value << (8 - bits);
-    let mut have = bits;
-    while have < 8 {
-        wide |= wide >> have;
-        have *= 2;
-    }
-    wide
-}
-
 /// The color of a 16-bit palette entry or RGB565/RGB5A3 pixel.
 fn color16(format: PaletteFormat, word: u16) -> u32 {
     let word = u32::from(word);
@@ -201,17 +191,6 @@ fn color16(format: PaletteFormat, word: u16) -> u32 {
 pub(crate) fn decode_palette(format: PaletteFormat, data: &[u8], count: usize) -> Option<Vec<u32>> {
     (0..count)
         .map(|i| be16(data, i * 2).map(|word| color16(format, word)))
-        .collect()
-}
-
-/// A palette of `len` grays from black to white, for indexed textures whose
-/// palette is not at hand.
-pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
-    (0..len)
-        .map(|i| {
-            let gray = (i * 255 / (len - 1).max(1)) as u32;
-            argb(255, gray, gray, gray)
-        })
         .collect()
 }
 
@@ -350,15 +329,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn widening_repeats_the_high_bits() {
-        assert_eq!(widen(0x1f, 5), 0xff);
-        assert_eq!(widen(0, 5), 0);
-        assert_eq!(widen(0b100, 3), 0b1001_0010);
-        assert_eq!(widen(0x3f, 6), 0xff);
-        assert_eq!(widen(0xa, 4), 0xaa);
-    }
-
-    #[test]
     fn rgb5a3_has_an_opaque_and_a_translucent_branch() {
         // Opaque: red 31, green 0, blue 15.
         assert_eq!(color16(PaletteFormat::Rgb5A3, 0xfc0f), 0xffff_007b);
@@ -400,7 +370,7 @@ mod tests {
         data[0] = 0x1f;
         let pixels = decode(Format::I4, 8, 8, &data, &[]).unwrap();
         assert_eq!((pixels[0] & 0xff, pixels[1] & 0xff), (0x11, 0xff));
-        let palette = gray_ramp(16);
+        let palette = crate::image::gray_ramp(16);
         let pixels = decode(Format::C4, 8, 8, &data, &palette).unwrap();
         assert_eq!((pixels[0] & 0xff, pixels[1] & 0xff), (17, 255));
     }
@@ -415,7 +385,7 @@ mod tests {
         );
         data[1] = 3;
         assert!(decode(Format::C8, 8, 4, &data, &[0, 0]).is_none());
-        assert!(decode(Format::C8, 8, 4, &data, &gray_ramp(256)).is_some());
+        assert!(decode(Format::C8, 8, 4, &data, &crate::image::gray_ramp(256)).is_some());
     }
 
     #[test]

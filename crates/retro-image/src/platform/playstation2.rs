@@ -27,7 +27,7 @@
 use alloc::vec::Vec;
 
 use crate::bytes::{le16, le32};
-use crate::image::{check_size, over_fill};
+use crate::image::{check_size, over_fill, widen_channel};
 use crate::{DecodeError, Format, Image};
 
 pub(super) static FORMATS: &[Format] =
@@ -87,10 +87,7 @@ fn pixel_storage(image_type: u8) -> Option<Pixels> {
 /// `0xAARRGGBB` from a 16-bit word: red in bits 0-4, green 5-9, blue 10-14,
 /// and a set bit 15 means opaque.
 fn color16(word: u16) -> u32 {
-    let channel = |shift: u32| {
-        let v = u32::from(word >> shift & 31);
-        v << 3 | v >> 2
-    };
+    let channel = |shift: u32| widen_channel(u32::from(word >> shift & 31), 5);
     let alpha = if word & 0x8000 != 0 { 0xff } else { 0 };
     alpha << 24 | channel(0) << 16 | channel(5) << 8 | channel(10)
 }

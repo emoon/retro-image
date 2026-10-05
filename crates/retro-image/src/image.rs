@@ -47,6 +47,29 @@ pub(crate) fn over_fill(argb: u32) -> u32 {
     mix(r, fr) << 16 | mix(g, fg) << 8 | mix(b, fb)
 }
 
+/// A `bits`-bit channel value (at most 8 bits) stretched to 8 bits by
+/// repeating its high bits, so that the largest value becomes 255.
+pub(crate) fn widen_channel(value: u32, bits: u32) -> u32 {
+    let mut wide = value << (8 - bits);
+    let mut have = bits;
+    while have < 8 {
+        wide |= wide >> have;
+        have *= 2;
+    }
+    wide
+}
+
+/// `len` opaque grays (`0xAARRGGBB`) from black to white: the palette shown
+/// for indexed pictures whose palette file is not at hand.
+pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
+    (0..len)
+        .map(|i| {
+            let gray = (i * 255 / (len - 1).max(1)) as u32;
+            0xff00_0000 | gray << 16 | gray << 8 | gray
+        })
+        .collect()
+}
+
 /// A decoded picture: 8-bit RGB, row-major, top row first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -387,6 +410,22 @@ mod tests {
         assert_eq!((big.width(), big.height()), (4, 3));
         assert_eq!(big.get(1, 2), 0x000000);
         assert_eq!(big.get(2, 0), 0xffffff);
+    }
+
+    #[test]
+    fn widen_channel_repeats_the_high_bits() {
+        assert_eq!(widen_channel(0x1f, 5), 0xff);
+        assert_eq!(widen_channel(0, 5), 0);
+        assert_eq!(widen_channel(0b100, 3), 0b1001_0010);
+        assert_eq!(widen_channel(0x3f, 6), 0xff);
+        assert_eq!(widen_channel(0xa, 4), 0xaa);
+    }
+
+    #[test]
+    fn gray_ramp_runs_from_black_to_white() {
+        assert_eq!(gray_ramp(2), [0xff00_0000, 0xffff_ffff]);
+        assert_eq!(gray_ramp(16)[1], 0xff11_1111);
+        assert_eq!(gray_ramp(1), [0xff00_0000]);
     }
 
     #[test]
