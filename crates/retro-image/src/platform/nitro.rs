@@ -33,10 +33,10 @@
 //! detection, so the three formats have signatures.
 //!
 //! Not decoded: the older G2D layout whose section sizes leave out the section
-//! headers (its sizes do not add up, so it fails the checks), palettes with a
-//! `PCMP` compression table (read as if uncompressed they would put colors in
-//! the wrong palettes, so they are rejected), and files wrapped in BIOS
-//! compression.
+//! headers (its sizes do not add up, so it fails the checks), and files wrapped
+//! in BIOS compression. A palette with a `PCMP` compression table still shows
+//! its colors as swatches, but is not used to color character data or
+//! screens, since the colors would land in the wrong palettes.
 //!
 //! Colors are BGR555 (`v << 3 | v >> 2` widens a channel, as elsewhere in
 //! this crate; NitroPaint uses a rounding table that differs by one level).
@@ -155,7 +155,7 @@ impl Palette {
     /// the body at 0xC, then the 16-bit colors.
     fn parse(data: &[u8]) -> Option<Self> {
         let body = section(data, b"RLCN", b"TTLP")?;
-        if !matches!(le32(body, 0)?, 3 | 4) || section(data, b"RLCN", b"PMCP").is_some() {
+        if !matches!(le32(body, 0)?, 3 | 4) {
             return None;
         }
         let size = le32(body, 8)? as usize;
@@ -193,9 +193,13 @@ fn pixel_color(palette: Option<&Palette>, bits: usize, number: usize, index: u8)
     }
 }
 
-/// The palette of the `.nclr` companion, if there is a sound one.
+/// The palette of the `.nclr` companion, if there is a sound one. A palette
+/// with a compression table (`PCMP`) is not used: its colors are not in the
+/// slots the character data counts on.
 fn companion_palette(companions: &dyn Companions) -> Option<Palette> {
-    Palette::parse(&companions.get("nclr")?)
+    let file = companions.get("nclr")?;
+    let compressed = section(&file, b"RLCN", b"PMCP").is_some();
+    Palette::parse(&file).filter(|_| !compressed)
 }
 
 /// The colors of palette 0 for pixel values of `bits` bits.
@@ -296,7 +300,7 @@ mod tests {
         compressed[8] += 8;
         compressed[0xe] = 2;
         assert!(decode_palette(&nclr(3, &[0; 16])).is_ok());
-        assert!(decode_palette(&compressed).is_err());
+        assert!(decode_palette(&compressed).is_ok());
         assert!(decode_palette(&good[..0x20]).is_err());
         // Trailing data after the file size is ignored.
         let mut padded = good;
@@ -333,6 +337,13 @@ mod tests {
         let with = decode_character(&characters, &Files(&palette, &screen)).unwrap();
         assert_eq!((with.width(), with.height()), (8, 8));
         assert_eq!(with.get(3, 3), 0x00ff00);
+        // A palette with a compression table is not used to color the screen.
+        let mut compressed = palette.clone();
+        compressed.extend_from_slice(b"PMCP\x08\0\0\0");
+        compressed[8] += 8;
+        compressed[0xe] = 2;
+        let gray = decode_character(&characters, &Files(&compressed, &screen)).unwrap();
+        assert_eq!(gray.get(3, 3), 0x11_1111);
         // The screen alone needs the character data.
         assert!(decode_screen(&screen, &NoCompanions).is_err());
     }
