@@ -22,6 +22,7 @@ mod neo_geo;
 mod nes;
 mod oric;
 mod pc;
+mod pico8;
 mod playstation;
 mod psion;
 mod risc_os;
@@ -57,6 +58,7 @@ pub(crate) static ALL: &[&[Format]] = &[
     nec_pc::FORMATS,
     oric::FORMATS,
     pc::FORMATS,
+    pico8::FORMATS,
     playstation::FORMATS,
     psion::FORMATS,
     risc_os::FORMATS,
