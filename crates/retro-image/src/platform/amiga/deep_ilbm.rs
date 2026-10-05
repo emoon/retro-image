@@ -11,12 +11,12 @@
 //! - 32, 48 and 64 planes: Andreas R. Kleinert, "IFF-ILBM 32/48/64 Bit
 //!   extensions" v1.2 (<https://aminet.net/docs/misc/ILBM64.readme>): RGBA
 //!   8:8:8:8, RGB 16:16:16 and RGBA 16:16:16:16, the channels following one
-//!   another as in the 24-plane order, alpha counted in the planes and
-//!   marked by `mskHasAlpha` in BMHD with no transparent color. 16-bit
-//!   values are shown by their high byte, as the readme says for alpha.
-//!   The numeric value 4 for `mskHasAlpha` is not in the AmigaOS wiki table
-//!   (0 to 3); it is taken from memory of the ILBM64 extension. Without it the
-//!   fourth channel is ignored.
+//!   another as in the 24-plane order. 16-bit values are shown by their high
+//!   byte, as the readme says for alpha.
+//! - The alpha channel is not drawn: the readme says `mskHasAlpha` marks it
+//!   in BMHD but gives no value for it (the AmigaOS wiki table and libilbm
+//!   list masking values 0 to 3 only), so 32- and 64-plane pictures are
+//!   shown opaque, the fourth channel ignored.
 //! - The 21-plane NewTek order of the same spec is not decoded: its text
 //!   lists 24 bit positions for a "21-bit" format.
 //!
@@ -26,7 +26,6 @@
 
 use alloc::vec::Vec;
 
-use super::chunky::over_fill;
 use super::iff::find;
 use super::ilbm::scale_factors;
 use crate::bytes::{be16, be32};
@@ -35,15 +34,14 @@ use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
 const MASK_HAS_MASK: u8 = 1;
-const MASK_HAS_ALPHA: u8 = 4;
 
-/// Bits per channel and number of channels for a plane count.
-fn channels(planes: usize) -> Option<(usize, usize)> {
+/// Bits per channel for a plane count: red, green and blue follow one another,
+/// then a fourth channel (alpha) in the 32- and 64-plane kinds.
+fn channels(planes: usize) -> Option<usize> {
     match planes {
-        12 => Some((4, 3)),
-        32 => Some((8, 4)),
-        48 => Some((16, 3)),
-        64 => Some((16, 4)),
+        12 => Some(4),
+        32 => Some(8),
+        48 | 64 => Some(16),
         _ => None,
     }
 }
@@ -67,7 +65,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         usize::from(be16(bmhd, 2).ok_or(fail)?),
     );
     let (planes, masking, compression) = (usize::from(bmhd[8]), bmhd[9], bmhd[10]);
-    let (bits, count) = channels(planes).ok_or(fail)?;
+    let bits = channels(planes).ok_or(fail)?;
     check_size(width, height)?;
 
     let stored = planes + usize::from(masking == MASK_HAS_MASK);
@@ -89,14 +87,8 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         })
     };
     let (red, green, blue) = (channel(0), channel(1), channel(2));
-    let alpha = (count == 4 && masking == MASK_HAS_ALPHA).then(|| channel(3));
     let colors = (0..width * height).map(|i| {
-        let color =
-            to_byte(red[i], bits) << 16 | to_byte(green[i], bits) << 8 | to_byte(blue[i], bits);
-        match &alpha {
-            Some(alpha) => over_fill(color, to_byte(alpha[i], bits)),
-            None => color,
-        }
+        to_byte(red[i], bits) << 16 | to_byte(green[i], bits) << 8 | to_byte(blue[i], bits)
     });
     let image = Image::from_colors(width as u32, height as u32, colors);
     let camg = find(contents, b"CAMG")
@@ -109,7 +101,6 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::image::TRANSPARENT_FILL;
 
     fn chunk(id: &[u8; 4], body: &[u8]) -> Vec<u8> {
         let mut out = id.to_vec();
@@ -127,7 +118,7 @@ mod tests {
         bmhd[2..4].copy_from_slice(&1u16.to_be_bytes());
         bmhd[8] = planes;
         bmhd[9] = masking;
-        let (bits, _) = channels(usize::from(planes)).unwrap();
+        let bits = channels(usize::from(planes)).unwrap();
         // Plane `p` of channel `c` is bit `p` of that channel's value; one
         // row of 2 bytes per plane, the pixels in the top two bits.
         let mut body = Vec::new();
@@ -162,20 +153,16 @@ mod tests {
     }
 
     #[test]
-    fn the_fourth_channel_is_alpha_only_when_flagged() {
-        let pixels: [&[u32]; 2] = [&[10, 20, 30, 255], &[40, 50, 60, 0]];
-        let plain = decode(&picture(32, 0, pixels)).unwrap();
-        assert_eq!(
-            plain.rgb(),
-            &[10, 20, 30, 40, 50, 60],
-            "padding without the flag"
-        );
-        let fill = TRANSPARENT_FILL.to_be_bytes();
-        let alpha = decode(&picture(32, MASK_HAS_ALPHA, pixels)).unwrap();
-        assert_eq!(alpha.rgb(), &[10, 20, 30, fill[1], fill[2], fill[3]]);
-        let wide: [&[u32]; 2] = [&[0, 0, 0, 0xffff], &[0, 0, 0, 0]];
-        let image = decode(&picture(64, MASK_HAS_ALPHA, wide)).unwrap();
-        assert_eq!(image.rgb(), &[0, 0, 0, fill[1], fill[2], fill[3]]);
+    fn the_fourth_channel_is_not_drawn() {
+        let pixels: [&[u32]; 2] = [&[10, 20, 30, 0], &[40, 50, 60, 255]];
+        // Whatever BMHD masking says, 32 and 64 planes show opaque colors.
+        for masking in [0, 4] {
+            let image = decode(&picture(32, masking, pixels)).unwrap();
+            assert_eq!(image.rgb(), &[10, 20, 30, 40, 50, 60]);
+        }
+        let wide: [&[u32]; 2] = [&[0x1200, 0, 0, 0xffff], &[0, 0, 0, 0]];
+        let image = decode(&picture(64, 4, wide)).unwrap();
+        assert_eq!(image.rgb(), &[0x12, 0, 0, 0, 0, 0]);
     }
 
     #[test]
