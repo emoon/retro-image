@@ -46,6 +46,15 @@ pub use limits::{DEFAULT_MAX_IMAGE_BYTES, Limits};
 #[doc(hidden)]
 pub use simd::check_levels as fuzz_check_simd_levels;
 
+// What 1.0 promises about thread safety: pictures, formats and errors can be
+// sent to and shared between threads.
+const _: () = {
+    const fn is_send_sync<T: Send + Sync>() {}
+    is_send_sync::<Image>();
+    is_send_sync::<Format>();
+    is_send_sync::<DecodeError>();
+};
+
 /// Decodes `data` on its own. See [`decode_with`].
 pub fn decode(filename: &str, data: &[u8]) -> Result<Image, DecodeError> {
     decode_with(filename, data, &NoCompanions)

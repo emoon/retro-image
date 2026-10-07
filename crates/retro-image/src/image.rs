@@ -6,6 +6,7 @@
 //! `recoil2png` output).
 
 use alloc::vec::Vec;
+use core::fmt;
 
 use crate::{DecodeError, limits, simd};
 
@@ -117,12 +118,25 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
 /// Alpha is straight (not premultiplied): 0 is transparent, 255 opaque.
 /// Decoded images are canonical: an image whose pixels are all opaque has no
 /// alpha plane, and a fully transparent pixel is black.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Image {
     width: u32,
     height: u32,
     rgb: Vec<u8>,
     alpha: Option<Vec<u8>>,
+}
+
+/// Prints the size and whether there is an alpha plane, not the pixels: a
+/// picture can be millions of bytes, and `unwrap` and `assert_eq!` print
+/// their operands.
+impl fmt::Debug for Image {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Image")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("has_alpha", &self.has_alpha())
+            .finish_non_exhaustive()
+    }
 }
 
 impl Image {
@@ -174,11 +188,13 @@ impl Image {
     }
 
     /// Width in pixels.
+    #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
     /// Height in pixels.
+    #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -193,25 +209,29 @@ impl Image {
     }
 
     /// The color channels, 3 bytes (R, G, B) per pixel, ignoring alpha.
-    /// Use [`flatten`](Self::flatten) first for the picture as seen over a
+    /// Use [`flattened`](Self::flattened) first for the picture as seen over a
     /// background, or [`rgba`](Self::rgba) to keep the transparency.
+    #[must_use]
     pub fn rgb(&self) -> &[u8] {
         &self.rgb
     }
 
     /// Takes the color channels, 3 bytes (R, G, B) per pixel, dropping alpha.
+    #[must_use]
     pub fn into_rgb(self) -> Vec<u8> {
         self.rgb
     }
 
     /// Whether some pixel is not fully opaque, so that [`rgb`](Self::rgb) is
     /// not the whole picture.
+    #[must_use]
     pub fn has_alpha(&self) -> bool {
         self.alpha.is_some()
     }
 
     /// The pixels as straight RGBA, 4 bytes (R, G, B, A) per pixel; opaque
     /// (255) when the image has no alpha. Allocates a copy.
+    #[must_use]
     pub fn rgba(&self) -> Vec<u8> {
         let pixels = self.rgb.as_chunks::<3>().0;
         let mut out = Vec::with_capacity(pixels.len() * 4);
@@ -230,9 +250,12 @@ impl Image {
         out
     }
 
-    /// The picture drawn over an opaque `background` (R, G, B): an image
-    /// without alpha, for consumers that cannot show transparency.
-    pub fn flatten(&self, background: [u8; 3]) -> Self {
+    /// A new image: the picture drawn over an opaque `background` (R, G, B),
+    /// which has no alpha plane, for consumers that cannot show transparency.
+    /// This image is left as it is; an image without alpha comes back as a
+    /// copy.
+    #[must_use]
+    pub fn flattened(&self, background: [u8; 3]) -> Self {
         let Some(alpha) = &self.alpha else {
             return self.clone();
         };
@@ -800,6 +823,12 @@ mod tests {
     }
 
     #[test]
+    fn debug_shows_the_size_and_not_the_pixels() {
+        let shown = alloc::format!("{:?}", red_green([0, 128]));
+        assert_eq!(shown, "Image { width: 2, height: 1, has_alpha: true, .. }");
+    }
+
+    #[test]
     fn rgba_adds_the_alpha_plane_or_full_opacity() {
         let opaque = Image::from_indexed(2, 1, &[0, 1], &[0x102030, 0x405060]).unwrap();
         assert!(!opaque.has_alpha());
@@ -814,15 +843,15 @@ mod tests {
     }
 
     #[test]
-    fn flatten_draws_over_the_background() {
-        let flat = red_green([0, 255]).flatten([10, 20, 30]);
+    fn flattened_draws_over_the_background() {
+        let flat = red_green([0, 255]).flattened([10, 20, 30]);
         assert!(!flat.has_alpha());
         assert_eq!(flat.rgb(), [10, 20, 30, 0, 255, 0]);
         // Without alpha it is a plain copy.
-        assert_eq!(flat.flatten([1, 2, 3]), flat);
+        assert_eq!(flat.flattened([1, 2, 3]), flat);
         // Half of green over black: 255 * 128 / 255 = 128.
         assert_eq!(
-            red_green([0, 128]).flatten([0, 0, 0]).rgb()[3..],
+            red_green([0, 128]).flattened([0, 0, 0]).rgb()[3..],
             [0, 128, 0]
         );
     }

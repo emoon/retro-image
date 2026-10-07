@@ -40,7 +40,7 @@ let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
 
 If a picture has transparency, `image.has_alpha()` is true. `rgb()` still returns only the color
 channels, and they are black wherever a pixel is fully transparent. `rgba()` copies the pixels
-with straight (not premultiplied) alpha, and `flatten([r, g, b])` draws the picture over a
+with straight (not premultiplied) alpha, and `flattened([r, g, b])` draws the picture over a
 background color. For these pictures the command line writes a PNG with an alpha channel.
 
 The file name tells it which formats to try. Many formats also have a reliable signature,
