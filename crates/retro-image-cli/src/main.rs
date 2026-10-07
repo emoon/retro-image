@@ -202,15 +202,17 @@ impl SiblingFiles<'_> {
 }
 
 impl retro_image::Companions for SiblingFiles<'_> {
-    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+    fn get_named(&self, file_name: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let name = file_name.rsplit(['/', '\\']).next()?;
         if matches!(name, "" | "." | "..") {
             return None;
         }
-        read_input(&self.directory().join(name)).ok()
+        read_input(&self.directory().join(name))
+            .ok()
+            .map(Into::into)
     }
 
-    fn get(&self, extension: &str) -> Option<Vec<u8>> {
+    fn get(&self, extension: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let stem = self.0.file_stem()?.to_str()?;
         let wanted = format!("{stem}.{extension}");
         std::fs::read_dir(self.directory())
@@ -223,6 +225,7 @@ impl retro_image::Companions for SiblingFiles<'_> {
                     .is_some_and(|n| n.eq_ignore_ascii_case(&wanted))
             })
             .and_then(|entry| read_input(&entry.path()).ok())
+            .map(Into::into)
     }
 }
 

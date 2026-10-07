@@ -293,11 +293,11 @@ mod tests {
     struct Colors(Vec<u8>);
 
     impl Companions for Colors {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "col").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "col").then(|| self.0.clone()).map(Into::into)
         }
     }
 

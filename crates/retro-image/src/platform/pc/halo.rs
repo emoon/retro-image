@@ -176,22 +176,24 @@ mod tests {
     fn pal_companion_is_scaled() {
         struct Pal;
         impl Companions for Pal {
-            fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
-            fn get(&self, ext: &str) -> Option<Vec<u8>> {
-                (ext == "pal").then(|| {
-                    let mut p = alloc::vec![0u8; PAL_HEADER_LEN];
-                    p[..2].copy_from_slice(b"AH");
-                    p[6] = 0x0a;
-                    p[0x0c] = 3;
-                    p[0x0e] = 63;
-                    p[0x10] = 63;
-                    p[0x12] = 63;
-                    p.extend_from_slice(&[0; 18]);
-                    p.extend_from_slice(&[63, 0, 0, 0, 21, 0]);
-                    p
-                })
+            fn get(&self, ext: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+                (ext == "pal")
+                    .then(|| {
+                        let mut p = alloc::vec![0u8; PAL_HEADER_LEN];
+                        p[..2].copy_from_slice(b"AH");
+                        p[6] = 0x0a;
+                        p[0x0c] = 3;
+                        p[0x0e] = 63;
+                        p[0x10] = 63;
+                        p[0x12] = 63;
+                        p.extend_from_slice(&[0; 18]);
+                        p.extend_from_slice(&[63, 0, 0, 0, 21, 0]);
+                        p
+                    })
+                    .map(Into::into)
             }
         }
         let image = decode_cut(&cut(), &Pal).unwrap();

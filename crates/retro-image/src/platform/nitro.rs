@@ -317,14 +317,14 @@ mod tests {
         assert_eq!(image.get(0, 0), 0x11_1111);
         struct Files<'a>(&'a [u8], &'a [u8]);
         impl Companions for Files<'_> {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 match extension {
-                    "nclr" => Some(self.0.to_vec()),
-                    "nscr" => Some(self.1.to_vec()),
+                    "nclr" => Some(self.0.to_vec().into()),
+                    "nscr" => Some(self.1.to_vec().into()),
                     _ => None,
                 }
             }
-            fn get_named(&self, _name: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

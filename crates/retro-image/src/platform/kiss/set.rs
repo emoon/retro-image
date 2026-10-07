@@ -128,6 +128,7 @@ fn fetch(companions: &dyn Companions, name: &str) -> Option<Vec<u8>> {
     ]
     .iter()
     .find_map(|spelling| companions.get_named(spelling))
+    .map(alloc::borrow::Cow::into_owned)
 }
 
 fn parse(data: &[u8]) -> Set {
@@ -267,15 +268,16 @@ mod tests {
     struct Files(Vec<(&'static str, Vec<u8>)>);
 
     impl Companions for Files {
-        fn get(&self, _extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, _extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
 
-        fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             self.0
                 .iter()
                 .find(|(name, _)| *name == file_name)
                 .map(|(_, data)| data.clone())
+                .map(Into::into)
         }
     }
 

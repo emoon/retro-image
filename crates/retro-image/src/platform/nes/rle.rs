@@ -72,11 +72,11 @@ mod tests {
     struct Chr;
 
     impl Companions for Chr {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "chr").then(|| alloc::vec![0; 4096])
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "chr").then(|| alloc::vec![0; 4096].into())
         }
 
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }

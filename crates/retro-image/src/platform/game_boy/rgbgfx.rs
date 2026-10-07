@@ -393,13 +393,13 @@ mod tests {
     struct Files<'a>(&'a [(&'a str, &'a [u8])]);
 
     impl Companions for Files<'_> {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
 
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             let (_, data) = self.0.iter().find(|(e, _)| *e == extension)?;
-            Some(data.to_vec())
+            Some(data.to_vec().into())
         }
     }
 

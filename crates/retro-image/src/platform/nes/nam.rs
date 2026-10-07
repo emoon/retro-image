@@ -137,15 +137,15 @@ mod tests {
     }
 
     impl Companions for Beside {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             match extension {
-                "chr" => Some(self.chr.clone()),
-                "pal" => self.pal.clone(),
+                "chr" => Some(self.chr.clone().into()),
+                "pal" => self.pal.clone().map(Into::into),
                 _ => None,
             }
         }
 
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }

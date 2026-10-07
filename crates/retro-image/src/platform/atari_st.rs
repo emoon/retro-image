@@ -274,11 +274,11 @@ mod tests {
     struct Any(alloc::vec::Vec<u8>);
 
     impl crate::Companions for Any {
-        fn get_named(&self, _file_name: &str) -> Option<alloc::vec::Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, _extension: &str) -> Option<alloc::vec::Vec<u8>> {
-            Some(self.0.clone())
+        fn get(&self, _extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            Some(self.0.clone().into())
         }
     }
 

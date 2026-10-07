@@ -9,17 +9,19 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use std::borrow::Cow;
+
 use retro_image::{Companions, Format};
 
 struct SameCompanion<'a>(&'a [u8]);
 
 impl Companions for SameCompanion<'_> {
-    fn get(&self, _extension: &str) -> Option<Vec<u8>> {
-        (!self.0.is_empty()).then(|| self.0.to_vec())
+    fn get(&self, _extension: &str) -> Option<Cow<'_, [u8]>> {
+        (!self.0.is_empty()).then(|| Cow::Borrowed(self.0))
     }
 
-    fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
-        (!self.0.is_empty()).then(|| self.0.to_vec())
+    fn get_named(&self, _file_name: &str) -> Option<Cow<'_, [u8]>> {
+        (!self.0.is_empty()).then(|| Cow::Borrowed(self.0))
     }
 }
 
@@ -42,14 +44,14 @@ fuzz_target!(|data: &[u8]| {
             image.rgb().len(),
             pixels * 3,
             "{}: pixel buffer doesn't match the dimensions",
-            format.name
+            format.name()
         );
         // `rgba` stops at the shorter plane, so a short alpha plane fails here.
         assert_eq!(
             image.rgba().len(),
             pixels * 4,
             "{}: alpha plane doesn't match the dimensions",
-            format.name
+            format.name()
         );
     }
 });

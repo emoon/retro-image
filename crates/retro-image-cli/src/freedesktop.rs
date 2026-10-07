@@ -48,7 +48,7 @@ const TOO_GENERIC: &[&str] = &[
 /// and deduplicated.
 fn extensions() -> BTreeSet<String> {
     retro_image::formats()
-        .flat_map(|f| f.extensions.iter())
+        .flat_map(|f| f.extensions().iter())
         .map(|e| e.to_ascii_lowercase())
         .filter(|e| !TOO_GENERIC.contains(&e.as_str()))
         .collect()
@@ -68,9 +68,9 @@ pub fn format_list() -> String {
         let _ = writeln!(
             out,
             "{}\t{}\t{}\t{}",
-            f.platform,
-            f.name,
-            f.extensions.join(","),
+            f.platform(),
+            f.name(),
+            f.extensions().join(","),
             flags.join(",")
         );
     }
@@ -129,7 +129,7 @@ mod tests {
         let xml = mime_xml();
         for ext in TOO_GENERIC {
             assert!(
-                retro_image::formats().any(|f| f.extensions.contains(ext)),
+                retro_image::formats().any(|f| f.extensions().contains(ext)),
                 "{ext} is on the denylist but no format uses it"
             );
             assert!(

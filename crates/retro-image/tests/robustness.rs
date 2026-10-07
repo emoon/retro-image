@@ -192,14 +192,15 @@ fn mutate(data: &[u8], rng: &mut Rng, round: usize) -> Vec<u8> {
 struct MemoryCompanions(Vec<(String, Vec<u8>)>);
 
 impl retro_image::Companions for MemoryCompanions {
-    fn get(&self, extension: &str) -> Option<Vec<u8>> {
+    fn get(&self, extension: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         self.0
             .iter()
             .find(|(e, _)| e.eq_ignore_ascii_case(extension))
             .map(|(_, data)| data.clone())
+            .map(Into::into)
     }
 
-    fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+    fn get_named(&self, _file_name: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         None
     }
 }
@@ -267,7 +268,7 @@ type Outcome = std::thread::Result<Result<retro_image::Image, retro_image::Decod
 
 /// Records a panic, or a successful decode that breaks the `Image` contract.
 fn record(format: &Format, input: &str, outcome: Outcome, failures: &mut Vec<String>) {
-    let who = format!("{} / {}", format.platform, format.name);
+    let who = format!("{} / {}", format.platform(), format.name());
     match outcome {
         Err(payload) => {
             let message = payload

@@ -125,13 +125,13 @@ mod tests {
     struct Frames(Vec<u8>, Vec<u8>);
 
     impl Companions for Frames {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             match extension {
-                "odd" => Some(self.0.clone()),
-                "eve" => Some(self.1.clone()),
+                "odd" => Some(self.0.clone().into()),
+                "eve" => Some(self.1.clone().into()),
                 _ => None,
             }
         }

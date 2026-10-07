@@ -443,7 +443,7 @@ mod tests {
             let (format, _) = crate::candidates("x.dat")
                 .find_map(|f| f.decode(&data).ok().map(|i| (f, i)))
                 .unwrap();
-            assert_eq!(format.name, "Maki-chan Graphics");
+            assert_eq!(format.name(), "Maki-chan Graphics");
         }
     }
 

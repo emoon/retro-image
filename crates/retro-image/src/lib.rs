@@ -36,7 +36,7 @@ mod simd;
 mod tiles;
 
 pub use error::{Attempt, DecodeError};
-pub use format::{Companions, Format, NoCompanions, candidates, formats};
+pub use format::{Companions, Format, FormatId, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
 pub use image::Image;
 pub use limits::{DEFAULT_MAX_IMAGE_BYTES, Limits};

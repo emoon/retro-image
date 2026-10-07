@@ -166,7 +166,7 @@ mod tests {
             .filter(|f| f.matches_filename("x.spr"))
             .collect();
         assert!(claimants.len() > 1, "other formats claim .spr too");
-        assert_eq!(claimants.last().map(|f| f.platform), Some("Neo Geo"));
+        assert_eq!(claimants.last().map(|f| f.platform()), Some("Neo Geo"));
     }
 
     /// The first pixel of row 3 of the sprite in each quadrant is set in the
@@ -190,10 +190,10 @@ mod tests {
         c2[2 * 16 + 3 * 2 + 1] = 0x01; // plane 3
         struct Pair(Vec<u8>);
         impl Companions for Pair {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
-                (extension == "c2").then(|| self.0.clone())
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+                (extension == "c2").then(|| self.0.clone()).map(Into::into)
             }
-            fn get_named(&self, _: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

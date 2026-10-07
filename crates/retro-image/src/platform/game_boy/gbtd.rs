@@ -312,4 +312,5 @@ fn tile_set_file(path: &[u8], companions: &dyn Companions) -> Option<Vec<u8>> {
         .ok()
         .and_then(|name| companions.get_named(name))
         .or_else(|| companions.get("gbr"))
+        .map(alloc::borrow::Cow::into_owned)
 }

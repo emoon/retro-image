@@ -32,7 +32,7 @@ fn lowering_the_limit_rejects_pictures_that_no_longer_fit() {
     assert!(
         attempts
             .iter()
-            .any(|a| a.format().name == "Interchange File Format"
+            .any(|a| a.format().name() == "Interchange File Format"
                 && *a.error() == DecodeError::TooLarge),
         "the IFF decoder reports the size, not a bad file: {attempts:?}"
     );

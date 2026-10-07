@@ -481,14 +481,14 @@ mod tests {
 
         struct Pvp;
         impl Companions for Pvp {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 let mut file = b"PVPL\0\0\0\0\x01\0\0\0\0\0\x10\0".to_vec();
                 for i in 0..16u16 {
                     file.extend_from_slice(&(i << 11).to_le_bytes());
                 }
-                (extension == "pvp").then_some(file)
+                (extension == "pvp").then_some(file.into())
             }
-            fn get_named(&self, _: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }
