@@ -26,8 +26,8 @@
 //!   a bug. Every decoder is tested against truncated and mutated real files
 //!   and fuzzed for this.
 //! - **Memory is bounded.** A picture may take at most
-//!   [`DEFAULT_MAX_IMAGE_BYTES`] (64 MiB, 4 bytes per pixel) of memory
-//!   unless the program changes the [`Limits`]. Dimensions come from
+//!   [`max_image_bytes`] (64 MiB, 4 bytes per pixel) of memory
+//!   unless the program calls [`set_max_image_bytes`]. Dimensions come from
 //!   untrusted headers, so the limit is checked before anything is
 //!   allocated for them; a bigger picture fails with
 //!   [`DecodeError::TooLarge`]. A decoder holds some temporary buffers
@@ -72,7 +72,7 @@ pub use error::{Attempt, DecodeError};
 pub use format::{Companions, Format, FormatId, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
 pub use image::Image;
-pub use limits::{DEFAULT_MAX_IMAGE_BYTES, Limits};
+pub use limits::{max_image_bytes, set_max_image_bytes};
 /// For the `simd` fuzz target: compares every SIMD level with the scalar
 /// reference.
 #[cfg(fuzzing)]

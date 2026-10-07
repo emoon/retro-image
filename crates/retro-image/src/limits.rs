@@ -17,83 +17,49 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 /// Bytes the crate budgets for each pixel of a decoded picture: 3 color
 /// channels and the alpha plane. Every picture is counted as if it had
 /// alpha, so whether a picture fits does not depend on its transparency.
-/// [`Limits`] documents the figure for callers.
+/// [`max_image_bytes`] documents the figure for callers.
 pub(crate) const BYTES_PER_PIXEL: usize = 4;
 
-/// The default limit on the memory of one decoded [`Image`](crate::Image):
-/// 64 MiB, which is about 16.8 million pixels (a 4096 x 4096 picture).
-///
-/// This is the one place the default is defined.
-pub const DEFAULT_MAX_IMAGE_BYTES: usize = 64 << 20;
+/// The default limit on the memory of one decoded picture: 64 MiB, which is
+/// about 16.8 million pixels (a 4096 x 4096 picture).
+const DEFAULT_MAX_IMAGE_BYTES: usize = 64 << 20;
 
 static MAX_IMAGE_BYTES: AtomicUsize = AtomicUsize::new(DEFAULT_MAX_IMAGE_BYTES);
 
-/// Limits on what the decoders may allocate.
+/// The most memory one decoded picture may take, in bytes: 64 MiB until
+/// [`set_max_image_bytes`] changes it.
 ///
-/// A picture counts 4 bytes per pixel (red, green, blue and the alpha plane), whether or not it
-/// has alpha. A decode that would produce a larger picture fails with
-/// [`DecodeError::TooLarge`](crate::DecodeError::TooLarge) before the
-/// picture is allocated. Decoders may also hold temporary buffers while they
-/// work, so the peak memory of a decode is a small multiple of the limit.
+/// A picture counts 4 bytes per pixel (red, green, blue and the alpha
+/// plane), whether or not it has alpha. A decode that would produce a larger
+/// picture fails with [`DecodeError::TooLarge`](crate::DecodeError::TooLarge)
+/// before the picture is allocated. Decoders may also hold temporary buffers
+/// while they work, so the peak memory of a decode is a small multiple of
+/// the limit.
+#[must_use]
+pub fn max_image_bytes() -> usize {
+    MAX_IMAGE_BYTES.load(Ordering::Relaxed)
+}
+
+/// Sets the most memory one decoded picture may take, in bytes. See
+/// [`max_image_bytes`] for how pictures are counted.
 ///
 /// The limit applies to the whole process, including decodes that run on
 /// other threads, so set it once at start-up.
 ///
 /// ```
-/// use retro_image::Limits;
-///
-/// assert_eq!(Limits::current().max_image_bytes(), 64 << 20);
-/// // A caller that only makes thumbnails can tighten the limit:
-/// let before = Limits::current();
-/// Limits::default().with_max_image_bytes(1 << 20).install();
-/// assert_eq!(Limits::current().max_image_bytes(), 1 << 20);
-/// before.install();
+/// // A program that only makes thumbnails can tighten the limit:
+/// let before = retro_image::max_image_bytes();
+/// retro_image::set_max_image_bytes(1 << 20);
+/// assert_eq!(retro_image::max_image_bytes(), 1 << 20);
+/// retro_image::set_max_image_bytes(before);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Limits {
-    max_image_bytes: usize,
-}
-
-impl Limits {
-    /// The limits in force now.
-    #[must_use]
-    pub fn current() -> Self {
-        Self {
-            max_image_bytes: MAX_IMAGE_BYTES.load(Ordering::Relaxed),
-        }
-    }
-
-    /// The most memory one decoded picture may take, in bytes.
-    #[must_use]
-    pub const fn max_image_bytes(&self) -> usize {
-        self.max_image_bytes
-    }
-
-    /// These limits with a different picture memory limit.
-    #[must_use]
-    pub const fn with_max_image_bytes(mut self, bytes: usize) -> Self {
-        self.max_image_bytes = bytes;
-        self
-    }
-
-    /// Makes these limits the ones every later decode uses.
-    pub fn install(self) {
-        MAX_IMAGE_BYTES.store(self.max_image_bytes, Ordering::Relaxed);
-    }
-}
-
-impl Default for Limits {
-    /// The default limits: [`DEFAULT_MAX_IMAGE_BYTES`].
-    fn default() -> Self {
-        Self {
-            max_image_bytes: DEFAULT_MAX_IMAGE_BYTES,
-        }
-    }
+pub fn set_max_image_bytes(bytes: usize) {
+    MAX_IMAGE_BYTES.store(bytes, Ordering::Relaxed);
 }
 
 /// Most pixels a picture may have under the limits in force.
 pub(crate) fn max_pixels() -> usize {
-    Limits::current().max_image_bytes / BYTES_PER_PIXEL
+    max_image_bytes() / BYTES_PER_PIXEL
 }
 
 /// Whether a `width` x `height` picture is within `max_pixels`.

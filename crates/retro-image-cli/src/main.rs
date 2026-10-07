@@ -41,7 +41,7 @@ fn usage() -> String {
        retro-image ... [--max-image-mb MB]   (default {})
        retro-image --list-formats | --mime-xml | --thumbnailer
        retro-image --help | --version",
-        retro_image::DEFAULT_MAX_IMAGE_BYTES >> 20
+        retro_image::max_image_bytes() >> 20
     )
 }
 
@@ -170,9 +170,7 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
         let bytes = mb
             .checked_mul(1 << 20)
             .ok_or("--max-image-mb is too large")?;
-        retro_image::Limits::default()
-            .with_max_image_bytes(bytes)
-            .install();
+        retro_image::set_max_image_bytes(bytes);
     }
     let data = read_input(&convert.input)?;
     let filename = match &convert.ext {

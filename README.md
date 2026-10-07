@@ -57,9 +57,8 @@ wildcard arm.
 
 Decoding never panics on a truncated or corrupt file, it returns an error. It also doesn't let a
 header demand memory: a decoded picture may take at most 64 MiB by default (4 bytes per pixel,
-about 8.4 million pixels), and a bigger one fails with `DecodeError::TooLarge` before anything
-is allocated. Call `Limits::default().with_max_image_bytes(n).install()` once at start-up to
-change it. The limit applies to the whole process.
+about 16.8 million pixels), and a bigger one fails with `DecodeError::TooLarge` before anything
+is allocated. Call `set_max_image_bytes(n)` once at start-up to change it. The limit applies to the whole process.
 
 The minimum supported Rust version is 1.94. Raising it counts as a minor-version change, not a
 patch.

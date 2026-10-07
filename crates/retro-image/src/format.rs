@@ -231,7 +231,7 @@ impl Format {
     ///
     /// [`DecodeError::Invalid`] if the data is not valid for this format,
     /// including truncated data, and [`DecodeError::TooLarge`] if the picture
-    /// would exceed the [`Limits`](crate::Limits).
+    /// would exceed [`max_image_bytes`](crate::max_image_bytes).
     ///
     /// # Examples
     ///

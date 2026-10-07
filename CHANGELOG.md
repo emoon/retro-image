@@ -15,9 +15,8 @@ minor-version change.
   `format()` give the picture and the format that accepted it.
 - `FormatId` and `Format::id()`, a stable identity for a format.
 - `Format` accessors `platform()`, `name()` and `extensions()`.
-- `Limits` and `DEFAULT_MAX_IMAGE_BYTES`: a process-wide cap on decoded picture size,
-  64 MiB (4 bytes per pixel) by default. Change it with
-  `Limits::default().with_max_image_bytes(n).install()`. Images over the cap fail with
+- `max_image_bytes()` and `set_max_image_bytes()`: a process-wide cap on decoded picture
+  size, 64 MiB (4 bytes per pixel) by default. Images over the cap fail with
   `DecodeError::TooLarge` before anything is allocated.
 - `Image::flattened(background)`, which composites a picture with alpha onto a color.
 - `Debug` for `Image`, and `Debug`, `Clone`, `Copy`, `Default`, `PartialEq` and `Eq` for

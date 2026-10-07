@@ -26,7 +26,7 @@ pub enum DecodeError {
     /// The data is not valid for the format, or uses a variant of it that is
     /// not supported. Truncated data is invalid.
     Invalid,
-    /// The picture would be larger than the [`Limits`](crate::Limits) allow.
+    /// The picture would be larger than [`max_image_bytes`](crate::max_image_bytes) allows.
     TooLarge,
     /// Formats were tried and every one failed. A format that has the
     /// file's extension is tried first, so the attempts show whether a

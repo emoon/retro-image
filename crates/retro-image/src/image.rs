@@ -17,7 +17,7 @@ pub(crate) enum BitOrder {
     LsbFirst,
 }
 
-/// Fails if a `width` x `height` picture exceeds the [`Limits`](crate::Limits) in force.
+/// Fails if a `width` x `height` picture exceeds [`max_image_bytes`](crate::max_image_bytes).
 /// The one size gate: every `Image` constructor passes through it, so no decoder can
 /// build an oversized picture. Decoders still call [`check_size`] first when
 /// they allocate buffers sized from header dimensions before the `Image`.
@@ -115,7 +115,7 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
 ///
 /// Images come from [`decode`](crate::decode) and
 /// [`Format::decode`](crate::Format::decode). A picture takes at most the
-/// [`Limits`](crate::Limits) allow, 64 MiB by default.
+/// [`max_image_bytes`](crate::max_image_bytes) allows, 64 MiB by default.
 ///
 /// [`rgb`](Self::rgb) holds the color channels and ignores alpha;
 /// [`has_alpha`](Self::has_alpha) says whether that is the whole picture.

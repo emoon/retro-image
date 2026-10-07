@@ -1,7 +1,7 @@
 //! The size limit is process-wide, so everything that changes it lives in
 //! this one test, in its own test binary.
 
-use retro_image::{DecodeError, Limits};
+use retro_image::{DecodeError, max_image_bytes, set_max_image_bytes};
 
 /// 1x1 single-plane ILBM: BMHD, CMAP (2 colors), BODY (one word).
 fn tiny_ilbm() -> Vec<u8> {
@@ -16,15 +16,16 @@ fn tiny_ilbm() -> Vec<u8> {
 #[test]
 fn lowering_the_limit_rejects_pictures_that_no_longer_fit() {
     let data = tiny_ilbm();
+    let default = max_image_bytes();
     assert!(retro_image::decode("x.iff", &data).is_ok());
 
     // A 1x1 picture takes 4 bytes under the limit's accounting. The decoder
     // also expands the 15 padding bits of each bitplane row, so it needs 64.
-    Limits::default().with_max_image_bytes(64).install();
+    set_max_image_bytes(64);
     let result = retro_image::decode("x.iff", &data);
     assert!(result.is_ok(), "{result:?}");
 
-    Limits::default().with_max_image_bytes(3).install();
+    set_max_image_bytes(3);
     let error = retro_image::decode("x.iff", &data).unwrap_err();
     let DecodeError::NoMatch { attempts } = &error else {
         panic!("expected NoMatch, got {error:?}");
@@ -37,7 +38,7 @@ fn lowering_the_limit_rejects_pictures_that_no_longer_fit() {
         "the IFF decoder reports the size, not a bad file: {attempts:?}"
     );
 
-    Limits::default().install();
-    assert_eq!(Limits::current(), Limits::default());
+    set_max_image_bytes(default);
+    assert_eq!(max_image_bytes(), default);
     assert!(retro_image::decode("x.iff", &data).is_ok());
 }
