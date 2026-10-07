@@ -53,10 +53,6 @@ impl Nametable<'_> {
                 }));
             }
         }
-        Ok(Image::from_colors(
-            width as u32,
-            height as u32,
-            colors.into_iter(),
-        ))
+        Image::from_colors(width as u32, height as u32, colors.into_iter())
     }
 }

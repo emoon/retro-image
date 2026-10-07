@@ -26,11 +26,11 @@ use crate::codec::packbits;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let size = be16(data, 0).ok_or(fail)?;
-    let tiles = packbits::unpack_all(&data[2..], chr::MAX_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let size = be16(data, 0).ok_or(FAIL)?;
+    let tiles = packbits::unpack_all(&data[2..], chr::MAX_LEN).ok_or(FAIL)?;
     if tiles.len() % 0x1_0000 != usize::from(size) {
-        return Err(fail);
+        return Err(FAIL);
     }
     chr::sheet(&tiles)
 }

@@ -79,7 +79,7 @@ use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 
 // `EP_CAP` files.
 const OLD_MAGIC: &[u8] = b"EP_CAP";
@@ -286,7 +286,7 @@ pub(super) fn decode_new(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let values = planar_pixels(&rows, width, height, strips, planes, |plane, y| {
         plane * plane_len + y * strips
-    });
+    })?;
     let indices: Vec<u8> = values.into_iter().map(|v| v as u8).collect();
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }

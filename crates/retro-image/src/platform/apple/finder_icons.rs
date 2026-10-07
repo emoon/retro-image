@@ -58,7 +58,7 @@ use crate::image::{CLEAR, check_size};
 use crate::sheet::{MAX_PICTURES, sheet};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 /// Header: link, ID, path and a name that is a length byte and 15 characters.
 const HEADER_LEN: usize = 26;
 /// Fixed fields of an icon data record, before the big icon.
@@ -135,7 +135,7 @@ fn read_icon(data: &[u8]) -> Result<(Image, &[u8]), DecodeError> {
         }
     });
     let rest = &data[ICON_HEADER_LEN + 2 * size..];
-    Ok((Image::from_argb(width as u32, height as u32, pixels), rest))
+    Ok((Image::from_argb(width as u32, height as u32, pixels)?, rest))
 }
 
 #[cfg(test)]

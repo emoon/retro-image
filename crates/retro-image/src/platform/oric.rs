@@ -40,8 +40,8 @@ const CHARSET_LEN: usize = 768;
 fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     let file = tape_files(data)?
         .find(|file| file.start == HIRES_START && file.body.len() >= HIRES_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(240, 200);
+        .ok_or(DecodeError::Invalid)?;
+    let mut image = Image::new(240, 200)?;
     for (y, row) in file.body[..HIRES_LEN]
         .as_chunks::<40>()
         .0
@@ -87,8 +87,8 @@ fn decode_charset(data: &[u8]) -> Result<Image, DecodeError> {
                 file.body.get(skip..skip + CHARSET_LEN)
             })
         })
-        .ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(256, 24);
+        .ok_or(DecodeError::Invalid)?;
+    let mut image = Image::new(256, 24)?;
     for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % 32 * 8, index / 32 * 8);
         for (y, &byte) in glyph.iter().enumerate() {
@@ -121,7 +121,7 @@ const SYNC: [u8; 4] = [0x16, 0x16, 0x16, 0x24];
 fn tape_files(data: &[u8]) -> Result<impl Iterator<Item = TapeFile<'_>>, DecodeError> {
     let syncs = data.iter().take_while(|&&b| b == 0x16).count();
     if syncs < 3 || data.get(syncs) != Some(&0x24) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut rest = data;
     Ok(core::iter::from_fn(move || {

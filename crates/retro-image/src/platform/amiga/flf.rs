@@ -13,7 +13,7 @@ use crate::{DecodeError, Image};
 pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
     if fluff.kind != 0x0d {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     flf::decode_paletted(&fluff, 320, 256)
 }

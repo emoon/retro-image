@@ -66,20 +66,20 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             .is_some_and(|row| has_signature(header.planes, row))
     });
     if camg & CAMG_HIRES == 0 || !signed || header.height <= signature_rows {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let lines = header.height - signature_rows;
     let (width, fields) = (header.width, if lace { 2 } else { 1 });
     let shift = 4 - header.planes;
     let out_height = if lace { lines } else { lines * 2 };
     check_size(width, out_height)?;
-    let mut image = Image::new(width as u32, out_height as u32);
+    let mut image = Image::new(width as u32, out_height as u32)?;
     for field in 0..fields {
         let mut previous = Vec::new();
         for (index, row) in (field..lines).step_by(fields).enumerate() {
             let samples = bitmap
                 .row(signature_rows + row)
-                .ok_or(DecodeError::Unrecognized)?;
+                .ok_or(DecodeError::Invalid)?;
             let line = Line::new(samples, shift, index % 2 == 1);
             let chroma = line.chroma();
             let y = if lace { row } else { row * 2 };
@@ -214,7 +214,7 @@ mod tests {
             contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
             contents.extend_from_slice(&data);
         }
-        assert!(matches!(decode(&contents), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode(&contents), Err(DecodeError::TooLarge)));
     }
 
     #[test]

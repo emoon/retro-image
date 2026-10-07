@@ -29,40 +29,44 @@ pub(super) fn decode_ifl(data: &[u8]) -> Result<Image, DecodeError> {
 /// MC: 192 linear bitmap rows of 32 bytes, then 8x1 attributes row by row.
 pub(super) fn decode_mc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * BITMAP_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, attributes) = data.split_at(BITMAP_LEN);
-    let mut frame = Frame::new(WIDTH, HEIGHT);
+    let mut frame = Frame::new(WIDTH, HEIGHT)?;
     frame.draw_screen(
         0,
         0,
         |column, y| bitmap[y * COLUMNS + column],
         |column, y, ink| attribute_color(attributes[y * COLUMNS + column], ink),
     );
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 fn decode_single(data: &[u8], cell_height: usize) -> Result<Image, DecodeError> {
     if data.len() != BITMAP_LEN + attributes_len(cell_height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, attributes) = data.split_at(BITMAP_LEN);
-    Ok(multicolor_frame(bitmap, attributes, cell_height).into_image())
+    multicolor_frame(bitmap, attributes, cell_height)?.into_image()
 }
 
 fn attributes_len(cell_height: usize) -> usize {
     HEIGHT / cell_height * COLUMNS
 }
 
-fn multicolor_frame(bitmap: &[u8], attributes: &[u8], cell_height: usize) -> Frame {
-    let mut frame = Frame::new(WIDTH, HEIGHT);
+fn multicolor_frame(
+    bitmap: &[u8],
+    attributes: &[u8],
+    cell_height: usize,
+) -> Result<Frame, DecodeError> {
+    let mut frame = Frame::new(WIDTH, HEIGHT)?;
     frame.draw_screen(
         0,
         0,
         |column, y| bitmap_byte(bitmap, column, y),
         |column, y, ink| attribute_color(attributes[y / cell_height * COLUMNS + column], ink),
     );
-    frame
+    Ok(frame)
 }
 
 const MGH_HEADER_LEN: usize = 256;
@@ -80,13 +84,13 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
         && data[3] == 1
         && data[4] == cell_height;
     if !header_ok {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmaps = &data[MGH_HEADER_LEN..MGH_BITMAPS];
     let attributes = &data[MGH_BITMAPS..];
     let frames: Vec<Frame> = if cell_height == 1 {
         if attributes.len() != 2 * (MG1_INNER_LEN + MG1_OUTER_LEN) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (inner, outer) = attributes.split_at(2 * MG1_INNER_LEN);
         (0..2)
@@ -96,11 +100,11 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
                 let outer = &outer[i * MG1_OUTER_LEN..][..MG1_OUTER_LEN];
                 mg1_frame(bitmap, inner, outer)
             })
-            .collect()
+            .collect::<Result<_, _>>()?
     } else {
         let len = attributes_len(usize::from(cell_height));
         if attributes.len() != 2 * len {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         bitmaps
             .as_chunks::<BITMAP_LEN>()
@@ -110,13 +114,13 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
             .map(|(bitmap, attributes)| {
                 multicolor_frame(bitmap, attributes, usize::from(cell_height))
             })
-            .collect()
+            .collect::<Result<_, _>>()?
     };
     Ok(blend(&frames))
 }
 
-fn mg1_frame(bitmap: &[u8], inner: &[u8], outer: &[u8]) -> Frame {
-    let mut frame = Frame::new(WIDTH, HEIGHT);
+fn mg1_frame(bitmap: &[u8], inner: &[u8], outer: &[u8]) -> Result<Frame, DecodeError> {
+    let mut frame = Frame::new(WIDTH, HEIGHT)?;
     frame.draw_screen(
         0,
         0,
@@ -130,5 +134,5 @@ fn mg1_frame(bitmap: &[u8], inner: &[u8], outer: &[u8]) -> Frame {
             attribute_color(attribute, ink)
         },
     );
-    frame
+    Ok(frame)
 }

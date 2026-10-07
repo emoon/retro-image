@@ -27,24 +27,24 @@ const BORDER_LEN: usize = (TOP + BOTTOM) * 24 + HEIGHT * 8;
 /// BSC: a 6912-byte screen followed by the packed border.
 pub(super) fn decode_bsc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCR_LEN + BORDER_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (scr, border) = data.split_at(SCR_LEN);
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_packed_border(&mut frame, border);
     draw_scr(&mut frame, LEFT, TOP, scr);
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// BMC4: interleaved bitmap, attributes for the upper and the lower 4 lines
 /// of each character cell, then the packed border.
 pub(super) fn decode_bmc4(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != BITMAP_LEN + 2 * ATTRIBUTES_LEN + BORDER_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, rest) = data.split_at(BITMAP_LEN);
     let (attributes, border) = rest.split_at(2 * ATTRIBUTES_LEN);
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_packed_border(&mut frame, border);
     frame.draw_screen(
         LEFT,
@@ -55,7 +55,7 @@ pub(super) fn decode_bmc4(data: &[u8]) -> Result<Image, DecodeError> {
             attribute_color(attributes[bank + y / 8 * COLUMNS + column], ink)
         },
     );
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 const BSP_HEADER_LEN: usize = 70;
@@ -68,21 +68,21 @@ const BSP_BORDER: u8 = 0x40;
 /// Only files with border data are accepted.
 pub(super) fn decode_bsp(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() < BSP_HEADER_LEN || !data.starts_with(b"bsp") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let config = data[3];
     if config & !(BSP_GIGASCREEN | BSP_BORDER) != 0 || config & BSP_BORDER == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames = if config & BSP_GIGASCREEN != 0 {
         let second_border = data
             .get(BSP_HEADER_LEN..BSP_HEADER_LEN + 2)
             .map(|b| usize::from(u16::from_le_bytes([b[0], b[1]])))
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         let screens = BSP_HEADER_LEN + 2;
         let borders = screens + 2 * SCR_LEN;
         if second_border < borders || second_border > data.len() {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         alloc::vec![
             bsp_frame(&data[screens..][..SCR_LEN], &data[borders..second_border])?,
@@ -95,14 +95,14 @@ pub(super) fn decode_bsp(data: &[u8]) -> Result<Image, DecodeError> {
         let borders = BSP_HEADER_LEN + SCR_LEN;
         let scr = data
             .get(BSP_HEADER_LEN..borders)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         alloc::vec![bsp_frame(scr, &data[borders..])?]
     };
     Ok(blend(&frames))
 }
 
 fn bsp_frame(scr: &[u8], border: &[u8]) -> Result<Frame, DecodeError> {
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_rle_border(&mut frame, border)?;
     draw_scr(&mut frame, LEFT, TOP, scr);
     Ok(frame)
@@ -118,7 +118,7 @@ fn draw_rle_border(frame: &mut Frame, border: &[u8]) -> Result<(), DecodeError> 
     let mut bytes = border.iter().copied();
     let (mut x, mut y) = (0, 0);
     while y < CANVAS_HEIGHT {
-        let byte = bytes.next().ok_or(DecodeError::Unrecognized)?;
+        let byte = bytes.next().ok_or(DecodeError::Invalid)?;
         let screen_row = (TOP..TOP + HEIGHT).contains(&y);
         let segment_end = if screen_row && x < LEFT {
             LEFT
@@ -127,7 +127,7 @@ fn draw_rle_border(frame: &mut Frame, border: &[u8]) -> Result<(), DecodeError> 
         };
         let mut length = match byte >> 3 {
             0 => segment_end - x,
-            1 => 2 * usize::from(bytes.next().ok_or(DecodeError::Unrecognized)?),
+            1 => 2 * usize::from(bytes.next().ok_or(DecodeError::Invalid)?),
             2 => 24,
             code => (usize::from(code) + 13) * 2,
         };
@@ -146,7 +146,7 @@ fn draw_rle_border(frame: &mut Frame, border: &[u8]) -> Result<(), DecodeError> 
         }
     }
     if bytes.next().is_some() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(())
 }

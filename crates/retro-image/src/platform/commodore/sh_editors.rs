@@ -67,7 +67,7 @@ impl Layout {
     }
 
     fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
-        let memory = escape_first_rle(data, self.len()).ok_or(DecodeError::Unrecognized)?;
+        let memory = escape_first_rle(data, self.len()).ok_or(DecodeError::Invalid)?;
         let width = self.columns * 8;
         Ok(render(width, HEIGHT, |x, y| {
             let cell = y / 8 * self.columns + x / 8;

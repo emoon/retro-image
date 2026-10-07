@@ -26,14 +26,14 @@ const ROWS: usize = 8;
 /// registers playfield 0-3 and background, 15 ignored bytes.
 pub(super) fn decode_leo(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2580 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (glyphs, rest) = data.split_at(GLYPHS * 8);
     let (cells, rest) = rest.split_at(GLYPHS);
     let [pf0, pf1, pf2, pf3, background] = rest[GLYPHS..GLYPHS + 5] else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
-    let mut image = Image::new(COLUMNS as u32 * 8, ROWS as u32 * 8);
+    let mut image = Image::new(COLUMNS as u32 * 8, ROWS as u32 * 8)?;
     for (index, &cell) in cells.iter().enumerate() {
         // Bit 7 of the index is the column parity, bit 6 the row parity, bits
         // 5-4 the row pair, bits 3-0 the column pair.

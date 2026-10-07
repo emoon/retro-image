@@ -62,11 +62,11 @@ const PALETTE: [u32; 8] = [
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FILE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels = planar_pixels(data, WIDTH, HEIGHT, ROW_LEN, PLANES, |plane, y| {
         plane * PLANE_LEN + y * ROW_LEN
-    });
+    })?;
     let indices: alloc::vec::Vec<u8> = pixels.into_iter().map(|v| v as u8).collect();
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &PALETTE)
 }

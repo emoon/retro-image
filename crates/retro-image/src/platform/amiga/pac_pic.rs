@@ -54,22 +54,22 @@ const SCREEN_HEADER_LEN: usize = 90;
 /// A `Pac.Pic.` bank: the AmBk header, a screen header with the palette,
 /// then the picture.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.get(..4) != Some(b"AmBk") || data.get(12..20) != Some(b"Pac.Pic.") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    decode_screen(data.get(20..).ok_or(fail)?)
+    decode_screen(data.get(20..).ok_or(FAIL)?)
 }
 
 /// A screen header and picture without the bank header (the files the AMOS
 /// picture packer saves). Both ids must match.
 pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let screen = data.get(..SCREEN_HEADER_LEN).ok_or(fail)?;
-    if !SCREEN_IDS.contains(&be32(screen, 0).ok_or(fail)?) {
-        return Err(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let screen = data.get(..SCREEN_HEADER_LEN).ok_or(FAIL)?;
+    if !SCREEN_IDS.contains(&be32(screen, 0).ok_or(FAIL)?) {
+        return Err(FAIL);
     }
-    let mode = be16(screen, 20).ok_or(fail)?;
+    let mode = be16(screen, 20).ok_or(FAIL)?;
     let mut palette = [0u32; 64];
     for (i, word) in screen[26..90].as_chunks::<2>().0.iter().enumerate() {
         palette[i] = rgb444(u16::from_be_bytes([word[0], word[1]]));
@@ -92,29 +92,29 @@ fn draw(
     mode: u16,
     palette: Option<[u32; 64]>,
 ) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let picture = data.get(start..start + 24).ok_or(fail)?;
-    if be32(picture, 0).ok_or(fail)? != PICTURE_ID {
-        return Err(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let picture = data.get(start..start + 24).ok_or(FAIL)?;
+    if be32(picture, 0).ok_or(FAIL)? != PICTURE_ID {
+        return Err(FAIL);
     }
-    let row_len = usize::from(be16(picture, 8).ok_or(fail)?);
-    let lumps = usize::from(be16(picture, 10).ok_or(fail)?);
-    let lump_lines = usize::from(be16(picture, 12).ok_or(fail)?);
-    let planes = usize::from(be16(picture, 14).ok_or(fail)?);
-    let rle_pos = start.saturating_add(be32(picture, 16).ok_or(fail)? as usize);
-    let points_pos = start.saturating_add(be32(picture, 20).ok_or(fail)? as usize);
+    let row_len = usize::from(be16(picture, 8).ok_or(FAIL)?);
+    let lumps = usize::from(be16(picture, 10).ok_or(FAIL)?);
+    let lump_lines = usize::from(be16(picture, 12).ok_or(FAIL)?);
+    let planes = usize::from(be16(picture, 14).ok_or(FAIL)?);
+    let rle_pos = start.saturating_add(be32(picture, 16).ok_or(FAIL)? as usize);
+    let points_pos = start.saturating_add(be32(picture, 20).ok_or(FAIL)? as usize);
     let (width, height) = (row_len * 8, lumps * lump_lines);
     if !(1..=6).contains(&planes) {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     let plane_len = row_len * height;
     let unpacked = stos_pictbank::unpack(data, start + 24, rle_pos, points_pos, plane_len * planes)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let palette = palette.unwrap_or_else(|| gray_ramp(planes));
 
     let is_ham = mode & 0x800 != 0 && planes == 6;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let mut held = 0;
     for y in 0..height {
         let (lump, line) = (y / lump_lines, y % lump_lines);

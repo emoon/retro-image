@@ -40,7 +40,10 @@ use crate::bytes::le16;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+/// How many times the picture size plus the operation bytes the pixel writes
+/// may add up to before the file is refused.
+const WORK_FACTOR: usize = 8;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 0xcc52;
 const FIXED_HEADER_LEN: usize = 15;
 const CLEAR_FIRST: u8 = 1;
@@ -87,13 +90,21 @@ impl Canvas {
     /// Writes `values` to channel `channel` of scanline `line` from `x` on.
     /// Scanline 0 is the bottom row; what falls outside the picture, or in a
     /// channel the file does not have, is dropped.
-    fn write(&mut self, line: usize, x: usize, channel: u8, values: impl Iterator<Item = u8>) {
+    /// Returns how many pixels it was asked to write inside the picture.
+    fn write(
+        &mut self,
+        line: usize,
+        x: usize,
+        channel: u8,
+        values: impl Iterator<Item = u8>,
+    ) -> usize {
         let (width, height) = (self.image.width() as usize, self.image.height() as usize);
         if line >= height || x >= width {
-            return;
+            return 0;
         }
         let row = height - 1 - line;
         let values = values.take(width - x);
+        let work = values.size_hint().1.unwrap_or(0);
         if channel == ALPHA_CHANNEL {
             if let Some(alpha) = &mut self.alpha {
                 for (slot, value) in alpha[row * width + x..].iter_mut().zip(values) {
@@ -108,6 +119,7 @@ impl Canvas {
                 pixel[usize::from(channel)] = value;
             }
         }
+        work
     }
 }
 
@@ -159,7 +171,7 @@ pub(super) fn decode_utah_rle(data: &[u8]) -> Result<Image, DecodeError> {
     let ops = data.get(pos..).ok_or(FAIL)?;
 
     let mut canvas = Canvas {
-        image: Image::new(width as u32, height as u32),
+        image: Image::new(width as u32, height as u32)?,
         alpha: (flags & ALPHA != 0).then(|| alloc::vec![0; width * height]),
         colors,
     };
@@ -201,6 +213,10 @@ fn pixel_color(raw: &[u8], colors: usize, map: Option<&ColorMap>) -> [u8; 3] {
 /// Runs the scanline operations on the canvas.
 fn run_operations(ops: &[u8], canvas: &mut Canvas) -> Result<(), DecodeError> {
     let (mut pos, mut line, mut x, mut channel) = (0, 0usize, 0usize, 0u8);
+    // Runs may overwrite the same pixels again and again, so cap the pixels
+    // written at a small multiple of the picture plus the operation bytes.
+    let mut budget =
+        WORK_FACTOR * (canvas.image.width() as usize * canvas.image.height() as usize + ops.len());
     while let Some(&op) = ops.get(pos) {
         let operand = |at: usize| -> Result<usize, DecodeError> {
             if op & LONG != 0 {
@@ -232,7 +248,8 @@ fn run_operations(ops: &[u8], canvas: &mut Canvas) -> Result<(), DecodeError> {
                 let count = operand(pos)? + 1;
                 let start = pos + head;
                 let values = ops.get(start..start + count).ok_or(FAIL)?;
-                canvas.write(line, x, channel, values.iter().copied());
+                let work = canvas.write(line, x, channel, values.iter().copied());
+                budget = budget.checked_sub(work).ok_or(FAIL)?;
                 x += count;
                 pos = start + count + count % 2;
             }
@@ -241,7 +258,8 @@ fn run_operations(ops: &[u8], canvas: &mut Canvas) -> Result<(), DecodeError> {
                 let start = pos + head;
                 let value = *ops.get(start).ok_or(FAIL)?;
                 ops.get(start + 1).ok_or(FAIL)?;
-                canvas.write(line, x, channel, core::iter::repeat_n(value, count));
+                let work = canvas.write(line, x, channel, core::iter::repeat_n(value, count));
+                budget = budget.checked_sub(work).ok_or(FAIL)?;
                 x += count;
                 pos = start + 2;
             }
@@ -265,6 +283,17 @@ mod tests {
         bytes.extend_from_slice(&[flags, colors, 8, 0, 8]);
         bytes.extend(core::iter::repeat_n(0, usize::from(colors)));
         bytes
+    }
+
+    #[test]
+    fn repeated_runs_over_one_row_are_bounded() {
+        // 60000x1 gray, then 100000 repeats of SET_COLOR and a full-row run: 6 GB of
+        // writes if unbounded.
+        let mut file = header(60000, 1, 0, 1);
+        for _ in 0..100_000 {
+            file.extend_from_slice(&[SET_COLOR, 0, RUN | LONG, 0, 0x5f, 0xea, 7, 0]);
+        }
+        assert!(decode_utah_rle(&file).is_err());
     }
 
     #[test]

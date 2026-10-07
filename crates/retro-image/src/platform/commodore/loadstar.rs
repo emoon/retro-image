@@ -23,16 +23,16 @@ struct Chunks<'a>(&'a [u8]);
 
 impl Chunks<'_> {
     fn byte(&mut self) -> Result<u8, DecodeError> {
-        let (&byte, rest) = self.0.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&byte, rest) = self.0.split_first().ok_or(DecodeError::Invalid)?;
         self.0 = rest;
         Ok(byte)
     }
 
     fn unpack(&mut self, escape: u8, len: usize) -> Result<Vec<u8>, DecodeError> {
-        let (out, used) = escape_rle_counted(self.0, escape, Run::CountValue, len)
-            .ok_or(DecodeError::Unrecognized)?;
+        let (out, used) =
+            escape_rle_counted(self.0, escape, Run::CountValue, len).ok_or(DecodeError::Invalid)?;
         if out.len() != len {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.0 = &self.0[used..];
         Ok(out)
@@ -46,7 +46,7 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let mut chunks = match data {
         [0x00, 0x40, rest @ ..] => Chunks(rest),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let mode = chunks.byte()?;
     let (hires, columns, rows) = match mode {
@@ -57,10 +57,10 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
             usize::from(mode & 0x3f),
             usize::from(chunks.byte()?),
         ),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if columns == 0 || columns > 40 || rows == 0 || rows > 25 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let old = mode & 0x3f != 0;
     let cells = columns * rows;
@@ -82,7 +82,7 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
         (false, false) => chunks.unpack(0xff, cells)?,
         (true, false) => {
             if chunks.byte()? != 0xff {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             chunks.unpack(0xd8, cells)?
         }
@@ -119,6 +119,6 @@ fn render(
         let bitmap = Bitmap::multicolor(&full_bitmap, &full_screen, &full_color, background);
         Frame::multicolor(&bitmap, height)
     };
-    let frame = frame.ok_or(DecodeError::Unrecognized)?;
+    let frame = frame.ok_or(DecodeError::Invalid)?;
     Ok(frame.to_image_width(columns * 8))
 }

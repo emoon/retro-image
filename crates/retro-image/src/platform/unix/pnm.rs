@@ -33,7 +33,7 @@ use super::to_byte;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const WHITE: u32 = 0xff_ffff;
 const BLACK: u32 = 0;
 
@@ -355,7 +355,7 @@ fn decode_samples(data: &[u8], header: &Header) -> Result<Image, DecodeError> {
         text: Text { data, pos: raster },
         encoding,
     };
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let channel = |source: &mut Samples| source.next().map(|v| u32::from(to_byte(v, maxval)));
     for y in 0..height as u32 {
         for x in 0..width as u32 {

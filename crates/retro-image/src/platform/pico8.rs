@@ -85,16 +85,16 @@ enum Reading {
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut lines = data
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
     if lines.next() != Some(HEADER) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let version = lines.next().and_then(|line| line.strip_prefix(b"version "));
     if !version.is_some_and(|v| !v.is_empty() && v.iter().all(u8::is_ascii_digit)) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (mut gfx, mut label) = (None, None);
     let mut reading = Reading::Other;
@@ -114,7 +114,7 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             match reading {
                 Reading::Gfx => {
                     if let Some(gfx) = gfx.as_mut() {
-                        gfx.push(line).ok_or(fail)?;
+                        gfx.push(line).ok_or(FAIL)?;
                     }
                 }
                 Reading::Label => {
@@ -129,7 +129,7 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    let shown = label.filter(|l| !l.is_blank()).or(gfx).ok_or(fail)?;
+    let shown = label.filter(|l| !l.is_blank()).or(gfx).ok_or(FAIL)?;
     Image::from_indexed(SIZE as u32, SIZE as u32, &shown.pixels, &PALETTE)
 }
 

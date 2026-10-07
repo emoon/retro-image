@@ -118,19 +118,19 @@ impl Crtc {
 }
 
 pub(super) fn decode_sna(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(MAGIC) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let ram = video_ram(data).ok_or(fail)?;
+    let ram = video_ram(data).ok_or(FAIL)?;
     let crtc_register = |n: usize| usize::from(data[CRTC_AT + n]);
     let chars_per_line = crtc_register(1);
     let rows = crtc_register(6);
     let lines_per_row = crtc_register(9) + 1;
     if !(1..=64).contains(&chars_per_line) || !(1..=64).contains(&rows) || lines_per_row > 8 {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let mode = Mode::from_number(data[MODE_AT] & 3).ok_or(fail)?;
+    let mode = Mode::from_number(data[MODE_AT] & 3).ok_or(FAIL)?;
     let mut pens = [0; 16];
     for (pen, &value) in pens.iter_mut().zip(&data[PENS_AT..]) {
         *pen = hardware_color(value);

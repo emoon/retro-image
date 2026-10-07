@@ -187,7 +187,7 @@ fn decode_map(
     let (depth, tiles) = [TWO_BPP, ONE_BPP]
         .into_iter()
         .find_map(|depth| Some((depth, companions.get(depth.extension)?)))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let other = companions.get(if is_tilemap { "attrmap" } else { "tilemap" });
     let (tilemap, attributes) = if is_tilemap {
         (Some(data), other.as_deref())
@@ -292,27 +292,27 @@ impl Parts<'_> {
     /// map of a screen size, if the attribute map does not have the same
     /// size, or if a cell names a palette that the `.pal` lacks.
     fn screen(&self) -> Result<Image, DecodeError> {
-        let len = self.tilemap.ok_or(DecodeError::Unrecognized)?.len();
+        let len = self.tilemap.ok_or(DecodeError::Invalid)?.len();
         let width = SCREEN_WIDTHS
             .iter()
             .find_map(|&(screen_len, width)| (screen_len == len).then_some(width))
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         self.draw(width)
     }
 
     /// The screen of a tile map `width` tiles wide.
     fn draw(&self, width: usize) -> Result<Image, DecodeError> {
-        let names = self.tilemap.ok_or(DecodeError::Unrecognized)?;
+        let names = self.tilemap.ok_or(DecodeError::Invalid)?;
         let attributes = self.attributes.unwrap_or(&[]);
         if width == 0
             || !names.len().is_multiple_of(width)
             || self.attributes.is_some() && attributes.len() != names.len()
         {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let layout = &self.depth.layout;
         if self.tiles.is_empty() || !self.tiles.len().is_multiple_of(layout.tile_len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let attribute = |cell: usize| attributes.get(cell).copied().unwrap_or(0);
         let height = names.len() / width;
@@ -363,11 +363,7 @@ impl Parts<'_> {
                 }
             }
         }
-        Ok(Image::from_argb(
-            pixel_width as u32,
-            pixel_height as u32,
-            colors.into_iter(),
-        ))
+        Image::from_argb(pixel_width as u32, pixel_height as u32, colors.into_iter())
     }
 
     /// Palette number `index`: from the `.pal` if there is one, and the
@@ -377,7 +373,7 @@ impl Parts<'_> {
             Some(palettes) => palettes
                 .get(usize::from(index))
                 .copied()
-                .ok_or(DecodeError::Unrecognized),
+                .ok_or(DecodeError::Invalid),
             None => Ok(self.depth.shades),
         }
     }
@@ -397,13 +393,13 @@ mod tests {
     struct Files<'a>(&'a [(&'a str, &'a [u8])]);
 
     impl Companions for Files<'_> {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
 
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             let (_, data) = self.0.iter().find(|(e, _)| *e == extension)?;
-            Some(data.to_vec())
+            Some(data.to_vec().into())
         }
     }
 
@@ -430,7 +426,7 @@ mod tests {
         assert_eq!(mono.get(0, 0), 0x00_0000);
         assert_eq!(
             decode_2bpp(&[0; 15], &NoCompanions),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 

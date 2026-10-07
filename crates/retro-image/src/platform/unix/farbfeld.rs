@@ -18,7 +18,7 @@ use crate::bytes::{be16, be32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: &[u8] = b"farbfeld";
 const HEADER_LEN: usize = 16;
 
@@ -38,7 +38,7 @@ pub(super) fn decode_farbfeld(data: &[u8]) -> Result<Image, DecodeError> {
             [0, 2, 4, 6].map(|at| to_byte(be16(pixel, at).unwrap_or(0).into(), 0xffff));
         u32::from_be_bytes([a, r, g, b])
     });
-    Ok(Image::from_argb(width as u32, height as u32, colors))
+    Image::from_argb(width as u32, height as u32, colors)
 }
 
 #[cfg(test)]

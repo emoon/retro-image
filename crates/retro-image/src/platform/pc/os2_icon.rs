@@ -62,7 +62,7 @@ use crate::bytes::{le16, le32};
 use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const FILE_HEADER_LEN: usize = 14;
 /// `BA` entries followed in one array: far more than any icon file holds.
 const MAX_ENTRIES: usize = 64;
@@ -202,7 +202,7 @@ impl<'a> Record<'a> {
         self.mask.height / 2
     }
 
-    fn render(&self) -> Image {
+    fn render(&self) -> Result<Image, DecodeError> {
         let (mask, picture) = (&self.mask, &self.picture);
         let (width, height) = (self.width(), self.height());
         let color = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
@@ -259,7 +259,7 @@ pub(super) fn decode_os2_icon(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         Record::parse(data, 0)?
     };
-    Ok(record.render())
+    record.render()
 }
 
 #[cfg(test)]

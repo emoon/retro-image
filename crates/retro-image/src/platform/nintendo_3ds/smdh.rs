@@ -42,14 +42,14 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// The large icon of an SMDH block that starts at the beginning of `block`.
 pub(super) fn icon(block: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let block = block.get(..LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let block = block.get(..LEN).ok_or(FAIL)?;
     if !block.starts_with(MAGIC)
         || RESERVED
             .iter()
             .any(|run| block[run.clone()].iter().any(|&b| b != 0))
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let pixels = &block[LARGE_ICON_AT..];
     let color = |x: usize, y: usize| {
@@ -57,11 +57,11 @@ pub(super) fn icon(block: &[u8]) -> Result<Image, DecodeError> {
         let within = morton_index((x % TILE_SIDE) as u32, (y % TILE_SIDE) as u32) as usize;
         le16(pixels, (tile * TILE_SIDE * TILE_SIDE + within) * 2).map_or(0, rgb565)
     };
-    Ok(Image::from_colors(
+    Image::from_colors(
         SIDE as u32,
         SIDE as u32,
         (0..SIDE).flat_map(|y| (0..SIDE).map(move |x| color(x, y))),
-    ))
+    )
 }
 
 /// An SMDH block whose large icon holds the given 16-bit words at the given

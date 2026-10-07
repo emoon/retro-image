@@ -89,7 +89,7 @@ use super::c_source::Tokens;
 use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 
 /// X11 color names from `rgb.txt` that have no number (`red3` and `gray50` do),
 /// lower case and without spaces, sorted for binary search.
@@ -340,7 +340,7 @@ fn decode_lines(lines: &[Cow<[u8]>]) -> Result<Image, DecodeError> {
         .collect::<Result<_, _>>()?;
     table.sort_by_key(|&(key, _)| key);
 
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (y, row) in rows.iter().enumerate() {
         for (x, pixel) in row.chunks_exact(per_pixel).take(width).enumerate() {
             let key = pack(pixel);

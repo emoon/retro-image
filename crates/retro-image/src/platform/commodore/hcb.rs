@@ -22,7 +22,7 @@ const HEIGHT: usize = 200;
 
 pub(super) fn decode_hcb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SIZE {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, LOAD);
     let parts = (
@@ -32,7 +32,7 @@ pub(super) fn decode_hcb(data: &[u8]) -> Result<Image, DecodeError> {
         prg.at(0x7f40, HEIGHT / 4),
     );
     let (Some(upper), Some(lower), Some(bitmap), Some(background)) = parts else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let frame = Frame::from_fn(HEIGHT, |x, y| {
         let cell = y / 8 * 40 + x / 8;

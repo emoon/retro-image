@@ -30,7 +30,7 @@ const PLANES: usize = 4;
 const PALETTE_OFFSET: usize = 4;
 
 pub(super) fn decode_seq(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 /// One frame's header fields and data.

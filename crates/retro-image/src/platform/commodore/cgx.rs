@@ -31,30 +31,30 @@ fn chunk<'a>(mut chunks: &'a [u8], id: &[u8; 4]) -> Option<&'a [u8]> {
 
 pub(super) fn decode_cgx(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() < 12 || &data[..4] != b"RIFF" || &data[8..12] != b"CGFX" {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let chunks = &data[12..];
-    let format = chunk(chunks, b"FRMT").ok_or(DecodeError::Unrecognized)?;
-    let frames = chunk(chunks, b"DATA").ok_or(DecodeError::Unrecognized)?;
+    let format = chunk(chunks, b"FRMT").ok_or(DecodeError::Invalid)?;
+    let frames = chunk(chunks, b"DATA").ok_or(DecodeError::Invalid)?;
     // Matrix rows and columns, frame count, 25×40-cell bitmap frames
     // without attributes.
     let &[rows, columns, _, _, count, _, _, _, ref frame_info @ ..] = format else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let &[25, 40, mode @ (3 | 4), 0] = frame_info else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (rows, columns, count) = (usize::from(rows), usize::from(columns), usize::from(count));
     if count == 0 || rows * columns < count || frames.len() % count != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frame_len = frames.len() / count;
     if frame_len < BITMAP_LEN + 2 * SCREEN_LEN + 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (width, height) = (columns * 320, rows * 200);
     check_size(width, height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (i, frame) in frames.chunks_exact(frame_len).enumerate() {
         let (bitmap, rest) = frame.split_at(BITMAP_LEN);
         let (screen, rest) = rest.split_at(SCREEN_LEN);
@@ -65,7 +65,7 @@ pub(super) fn decode_cgx(data: &[u8]) -> Result<Image, DecodeError> {
         } else {
             Frame::multicolor(&Bitmap::multicolor(bitmap, screen, color, background), 200)
         }
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
         let (left, top) = (i % columns * 320, i / columns * 200);
         for y in 0..200 {
             for x in 0..320 {

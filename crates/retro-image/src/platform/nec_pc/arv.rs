@@ -36,14 +36,14 @@ const RECORDS: usize = 0x28;
 const PALETTE_RECORD: usize = 1;
 
 pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     if !data.starts_with(SIGNATURE)
         || data.get(0x10..0x13) != Some(b"IRB")
         || data.get(0x13..0x16) != Some(b"BRG")
         || le16(data, 0x18) != Some(WIDTH as u16)
         || le16(data, 0x1a) != Some(HEIGHT as u16)
     {
-        return Err(bad);
+        return Err(BAD);
     }
     let mut pos = RECORDS;
     let mut palette_at = 0;
@@ -51,9 +51,9 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
         if record == PALETTE_RECORD {
             palette_at = pos + 2;
         }
-        let length = usize::from(le16(data, pos).ok_or(bad)?);
+        let length = usize::from(le16(data, pos).ok_or(BAD)?);
         if length < 2 {
-            return Err(bad);
+            return Err(BAD);
         }
         pos += length;
     }
@@ -61,7 +61,7 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
         .map(|i| {
             let component = |c: usize| match le16(data, palette_at + (i * 3 + c) * 2) {
                 Some(v @ 0..=15) => Ok(widen_channel(u32::from(v), 4)),
-                _ => Err(bad),
+                _ => Err(BAD),
             };
             Ok(component(0)? << 16 | component(1)? << 8 | component(2)?)
         })
@@ -69,12 +69,12 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
 
     let mut planes = Vec::with_capacity(4);
     for _ in 0..4 {
-        planes.push(unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?);
+        planes.push(unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(BAD)?);
     }
     let planes = planes.concat();
     let indices: Vec<u8> = planar_pixels(&planes, WIDTH, HEIGHT, WIDTH / 8, 4, |plane, y| {
         plane * PLANE_BYTES + y * (WIDTH / 8)
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

@@ -107,7 +107,7 @@ fn per_row(layout: &TileLayout, tiles: &[u8]) -> usize {
 fn decode_c1(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     if data.is_empty() || !data.len().is_multiple_of(HALF_SPRITE_LEN) || data.len() > MAX_C_ROM_LEN
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let c2 = companions.get("c2").filter(|c2| c2.len() == data.len());
     let shown = data.len().min(MAX_SPRITES * HALF_SPRITE_LEN);
@@ -130,7 +130,7 @@ fn decode_c1(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeEr
 fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.is_empty() || !data.len().is_multiple_of(SPRITE.tile_len()) || data.len() > MAX_SPR_LEN
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let shown = data.len().min(MAX_SPRITES * SPRITE.tile_len());
     let tiles: Vec<u8> = data[..shown]
@@ -148,7 +148,7 @@ fn decode_fix(data: &[u8]) -> Result<Image, DecodeError> {
         || !data.len().is_multiple_of(FIX.tile_len())
         || data.len() > MAX_FIX_TILES * FIX.tile_len()
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     FIX.sheet(data, per_row(&FIX, data), &gray_ramp(COLORS))
 }
@@ -166,7 +166,7 @@ mod tests {
             .filter(|f| f.matches_filename("x.spr"))
             .collect();
         assert!(claimants.len() > 1, "other formats claim .spr too");
-        assert_eq!(claimants.last().map(|f| f.platform), Some("Neo Geo"));
+        assert_eq!(claimants.last().map(|f| f.platform()), Some("Neo Geo"));
     }
 
     /// The first pixel of row 3 of the sprite in each quadrant is set in the
@@ -190,10 +190,10 @@ mod tests {
         c2[2 * 16 + 3 * 2 + 1] = 0x01; // plane 3
         struct Pair(Vec<u8>);
         impl Companions for Pair {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
-                (extension == "c2").then(|| self.0.clone())
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+                (extension == "c2").then(|| self.0.clone()).map(Into::into)
             }
-            fn get_named(&self, _: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

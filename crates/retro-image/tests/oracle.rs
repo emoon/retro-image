@@ -65,7 +65,7 @@ fn matches_recoil_on_corpus() {
         };
         // Same order as `retro_image::decode`: extension, then signature.
         let candidates: Vec<&Format> = retro_image::candidates(&sample.name)
-            .filter(|f| platforms.selects(f.platform))
+            .filter(|f| platforms.selects(f.platform()))
             .collect();
         let alone = candidates
             .iter()
@@ -347,7 +347,7 @@ impl PlatformFilter {
             .map(|list| list.split(',').map(|p| p.trim().to_owned()).collect());
         for name in list.iter().flatten() {
             assert!(
-                retro_image::formats().any(|f| f.platform == name),
+                retro_image::formats().any(|f| f.platform() == name),
                 "RETRO_IMAGE_PLATFORMS: unknown platform {name:?}"
             );
         }

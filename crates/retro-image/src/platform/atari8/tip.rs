@@ -23,7 +23,7 @@ use crate::{DecodeError, Image};
 pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
     let header = data.strip_prefix(b"TIP\x01\x00");
     let Some(&[width, height, len_low, len_high, ref frames @ ..]) = header else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(width), usize::from(height));
     let line_len = width / 4;
@@ -35,7 +35,7 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
         || frame_len != line_len * height
         || frames.len() != 3 * frame_len
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (gtia9, rest) = frames.split_at(frame_len);
     let (gtia10, gtia11) = rest.split_at(frame_len);
@@ -50,8 +50,8 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
         0 => pixel(gtia9, line, Some(x + 1)).unwrap_or(0),
         _ => pixel(gtia10, line, x.checked_sub(1)).map_or(0, gtia10_luminance),
     };
-    let frames: [Image; 2] = core::array::from_fn(|frame| {
-        let mut image = Image::new(out_width as u32, 2 * height as u32);
+    let render_frame = |frame: usize| -> Result<Image, DecodeError> {
+        let mut image = Image::new(out_width as u32, 2 * height as u32)?;
         for line in 0..height {
             for x in 0..out_width {
                 let hue = pixel(gtia11, line, Some(x + 1));
@@ -64,9 +64,9 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
                 image.set(x as u32, y + 1, luminance_scanline);
             }
         }
-        image
-    });
-    Ok(Image::blend(&[&frames[0], &frames[1]]))
+        Ok(image)
+    };
+    Ok(Image::blend(&[&render_frame(0)?, &render_frame(1)?]))
 }
 
 /// Luminance of a GTIA mode 10 value with TIP's registers 0, 2, ..., 14, 0.
@@ -105,7 +105,10 @@ mod tests {
     #[test]
     fn detected_by_content() {
         let data = tip(0x99, 0x44, 0xff);
-        assert_eq!(crate::decode("x.dat", &data), decode_tip(&data));
+        assert_eq!(
+            crate::decode("x.dat", &data).map(crate::Decoded::into_image),
+            decode_tip(&data)
+        );
     }
 
     #[test]

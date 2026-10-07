@@ -207,7 +207,7 @@ fn first_palette(palette: Option<&Palette>, bits: usize) -> Vec<u32> {
 fn decode_palette(data: &[u8]) -> Result<Image, DecodeError> {
     const PER_ROW: usize = 16;
     const SIZE: usize = 16;
-    let palette = Palette::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let palette = Palette::parse(data).ok_or(DecodeError::Invalid)?;
     let rows = palette.colors.len().div_ceil(PER_ROW);
     let (width, height) = (PER_ROW * SIZE, rows * SIZE);
     check_size(width, height)?;
@@ -219,13 +219,13 @@ fn decode_palette(data: &[u8]) -> Result<Image, DecodeError> {
             .copied()
             .unwrap_or(0)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// The character set `data`, drawn as the screen of its `.nscr` companion if
 /// there is a sound one, else as a sheet of tiles.
 fn decode_character(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let character = Character::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let character = Character::parse(data).ok_or(DecodeError::Invalid)?;
     let palette = companion_palette(companions);
     let screen = companions.get("nscr");
     if let Some(screen) = screen.as_deref().and_then(Screen::parse)
@@ -239,12 +239,12 @@ fn decode_character(data: &[u8], companions: &dyn Companions) -> Result<Image, D
 /// The screen `data`, drawn with the `.ncgr` (or `.ncbr`) and `.nclr`
 /// companions; it needs the character data.
 fn decode_screen(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let screen = Screen::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let screen = Screen::parse(data).ok_or(DecodeError::Invalid)?;
     let characters = companions
         .get("ncgr")
         .or_else(|| companions.get("ncbr"))
-        .ok_or(DecodeError::Unrecognized)?;
-    let character = Character::parse(&characters).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let character = Character::parse(&characters).ok_or(DecodeError::Invalid)?;
     screen.draw(&character, companion_palette(companions).as_ref())
 }
 
@@ -317,14 +317,14 @@ mod tests {
         assert_eq!(image.get(0, 0), 0x11_1111);
         struct Files<'a>(&'a [u8], &'a [u8]);
         impl Companions for Files<'_> {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 match extension {
-                    "nclr" => Some(self.0.to_vec()),
-                    "nscr" => Some(self.1.to_vec()),
+                    "nclr" => Some(self.0.to_vec().into()),
+                    "nscr" => Some(self.1.to_vec().into()),
                     _ => None,
                 }
             }
-            fn get_named(&self, _name: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

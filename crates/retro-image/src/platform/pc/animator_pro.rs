@@ -59,7 +59,7 @@ use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 0x9500;
 const HEADER_LEN: usize = 64;
 const DEPTH_AT: usize = 18;

@@ -20,7 +20,7 @@ const HEADER_LEN: usize = 512;
 pub(super) fn decode_mac_binary(data: &[u8]) -> Result<Image, DecodeError> {
     match MacBinary::parse(data) {
         Some(file) if file.file_type == *b"PNTG" => decode(file.data_fork),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -28,10 +28,10 @@ pub(super) fn decode_mac_binary(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     // The header starts with a version number: 0, 2 or 3.
     if data.len() <= HEADER_LEN || data[..3] != [0, 0, 0] || data[3] > 3 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let (bitmap, _) = packbits::unpack(&data[HEADER_LEN..], WIDTH / 8 * HEIGHT)
-        .ok_or(DecodeError::Unrecognized)?;
+    let (bitmap, _) =
+        packbits::unpack(&data[HEADER_LEN..], WIDTH / 8 * HEIGHT).ok_or(DecodeError::Invalid)?;
     // Most significant bit leftmost, set bit black.
     let colors = [0xffffff, 0];
     Image::from_bits(

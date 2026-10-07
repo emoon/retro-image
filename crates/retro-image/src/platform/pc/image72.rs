@@ -30,14 +30,14 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         _ if data.len() == HEADERLESS_LEN && !has_amsdos_header(data) => {
             sheet(data, 8, PER_ROW * HEADERLESS_ROWS)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
 /// Lays out `count` glyphs of `height` bytes taken from the start of `glyphs`.
 fn sheet(glyphs: &[u8], height: usize, count: usize) -> Result<Image, DecodeError> {
     let rows = count / PER_ROW;
-    let mut image = Image::new((PER_ROW * 8) as u32, (rows * height) as u32);
+    let mut image = Image::new((PER_ROW * 8) as u32, (rows * height) as u32)?;
     for (index, glyph) in glyphs.chunks_exact(height).take(count).enumerate() {
         let (left, top) = (index % PER_ROW * 8, index / PER_ROW * height);
         for (y, &bits) in glyph.iter().enumerate() {

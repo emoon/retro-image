@@ -60,27 +60,22 @@ fn render(tiles: &[u8], columns: usize) -> Result<Image, DecodeError> {
 
 /// `GOD0`, then 40×25 packed tiles.
 pub(super) fn decode_4bt(data: &[u8]) -> Result<Image, DecodeError> {
-    let packed = data
-        .strip_prefix(b"GOD0")
-        .ok_or(DecodeError::Unrecognized)?;
-    let tiles = unpack(packed, 40 * 25 * TILE.tile_len()).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.strip_prefix(b"GOD0").ok_or(DecodeError::Invalid)?;
+    let tiles = unpack(packed, 40 * 25 * TILE.tile_len()).ok_or(DecodeError::Invalid)?;
     render(&tiles, 40)
 }
 
 /// `GOD1`, start row and column, width and height in tiles, packed tiles.
 pub(super) fn decode_clp(data: &[u8]) -> Result<Image, DecodeError> {
-    let rest = data
-        .strip_prefix(b"GOD1")
-        .ok_or(DecodeError::Unrecognized)?;
+    let rest = data.strip_prefix(b"GOD1").ok_or(DecodeError::Invalid)?;
     let [_, _, columns, rows, packed @ ..] = rest else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(*columns), usize::from(*rows));
     if columns == 0 || rows == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let tiles =
-        unpack(packed, columns * rows * TILE.tile_len()).ok_or(DecodeError::Unrecognized)?;
+    let tiles = unpack(packed, columns * rows * TILE.tile_len()).ok_or(DecodeError::Invalid)?;
     render(&tiles, columns)
 }
 

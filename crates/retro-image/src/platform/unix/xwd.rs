@@ -97,7 +97,7 @@ use crate::bytes::be32;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 100;
 const COLOR_LEN: usize = 12;
 const VERSION: u32 = 7;
@@ -220,7 +220,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
 pub(super) fn decode_xwd(data: &[u8]) -> Result<Image, DecodeError> {
     let h = parse_header(data)?;
     let rows = &data[h.image_at..];
-    let mut image = Image::new(h.width as u32, h.height as u32);
+    let mut image = Image::new(h.width as u32, h.height as u32)?;
     let direct = matches!(h.visual_class, TRUE_COLOR | DIRECT_COLOR) && h.masks != [0; 3];
     if direct && h.bits_per_pixel < 8 {
         return Err(FAIL);

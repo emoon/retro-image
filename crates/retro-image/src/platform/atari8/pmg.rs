@@ -62,8 +62,8 @@ impl Sheet {
     }
 
     /// Scales every pixel to `PIXEL` wide; unset pixels stay black.
-    fn finish(&self) -> Image {
-        let mut image = Image::new(self.width as u32 * PIXEL, self.height as u32);
+    fn finish(&self) -> Result<Image, DecodeError> {
+        let mut image = Image::new(self.width as u32 * PIXEL, self.height as u32)?;
         for y in 0..self.height {
             for x in 0..self.width {
                 let color = self.colors[y * self.width + x];
@@ -79,7 +79,7 @@ impl Sheet {
                 }
             }
         }
-        image
+        Ok(image)
     }
 }
 
@@ -99,11 +99,11 @@ fn draw_missiles(image: &mut Image, x: u32, y: u32, line: u8, colors: &[u8]) {
 
 /// Four missiles: colors of missiles 0-3, then 240 lines.
 pub(super) fn decode_4mi(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, lines) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, lines) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     if lines.len() != PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(32, PM_LINES as u32);
+    let mut image = Image::new(32, PM_LINES as u32)?;
     for (y, &line) in lines.iter().enumerate() {
         draw_missiles(&mut image, 0, y as u32, line, colors);
     }
@@ -122,29 +122,29 @@ fn draw_players(sheet: &mut Sheet, colors: &[u8], players: &[u8]) {
 
 /// Four players: colors of players 0-3, then 4 x 240 lines.
 pub(super) fn decode_4pl(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, players) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, players) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     if players.len() != 4 * PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut sheet = Sheet::new(4 * CELL, PM_LINES);
     draw_players(&mut sheet, colors, players);
-    Ok(sheet.finish())
+    sheet.finish()
 }
 
 /// Four players and four missiles: colors of 0-3, 4 x 240 player lines,
 /// then 240 missile lines. The missiles sit right of the players.
 pub(super) fn decode_4pm(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, rest) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, rest) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     let (players, missiles) = rest
         .split_at_checked(4 * PM_LINES)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if missiles.len() != PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut sheet = Sheet::new(4 * CELL, PM_LINES);
     draw_players(&mut sheet, colors, players);
-    let players = sheet.finish();
-    let mut image = Image::new(players.width() + 32, PM_LINES as u32);
+    let players = sheet.finish()?;
+    let mut image = Image::new(players.width() + 32, PM_LINES as u32)?;
     for y in 0..PM_LINES as u32 {
         for x in 0..players.width() {
             image.set(x, y, players.get(x, y));
@@ -176,10 +176,10 @@ pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
         ..,
     ] = *data
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if data.len() != 1677 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (frames, height, offset) = (
         usize::from(frames),
@@ -197,7 +197,7 @@ pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(sheet.finish())
+    sheet.finish()
 }
 
 /// PMG Designer: `F0 ED E4`, the colors of players 0-3, three counts
@@ -221,13 +221,13 @@ pub(super) fn decode_pmd(data: &[u8]) -> Result<Image, DecodeError> {
         ref blocks @ ..,
     ] = *data
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let colors = [c0, c1, c2, c3];
     let frames = usize::from(a) * usize::from(b);
     let (players, height) = (usize::from(players), usize::from(height));
     if frames == 0 || frames > 160 || blocks.len() != players * frames * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let sprites = players / 2 * frames;
     let per_row = sprites.min(16);
@@ -244,7 +244,7 @@ pub(super) fn decode_pmd(data: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(sheet.finish())
+    sheet.finish()
 }
 
 /// Ludek Maker animation: the text "Ludek Maker data file" in inverse
@@ -264,15 +264,15 @@ pub(super) fn decode_ldm(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(&TEXT)
         .and_then(|rest| rest.split_first_chunk::<4>())
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let frames = frames
         .get(256..)
         .filter(|frames| frames.len() >= usize::from(*count) * 4 * LINES)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let (count, skip) = (usize::from(*count), usize::from(*skip));
     if !(1..=100).contains(&count) || skip >= count {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let shown = count - skip;
     let per_row = shown.min(8);
@@ -288,7 +288,7 @@ pub(super) fn decode_ldm(data: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(sheet.finish())
+    sheet.finish()
 }
 
 #[cfg(test)]
@@ -336,6 +336,6 @@ mod tests {
         let mut sheet = Sheet::new(8, 1);
         sheet.draw_player(0, 0, 0x80, 0x14);
         sheet.draw_player(0, 0, 0x80, 0x28);
-        assert_eq!(sheet.finish().get(0, 0), register_rgb(0x3c));
+        assert_eq!(sheet.finish().unwrap().get(0, 0), register_rgb(0x3c));
     }
 }

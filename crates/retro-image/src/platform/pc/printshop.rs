@@ -56,7 +56,7 @@ use crate::bytes::le16;
 use crate::sheet::Sheet;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const WIDTH: usize = 88;
 const HEIGHT: usize = 52;
 const PICTURE_LEN: usize = WIDTH / 8 * HEIGHT;

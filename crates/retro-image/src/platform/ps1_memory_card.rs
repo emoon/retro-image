@@ -84,20 +84,20 @@ fn icon_row(card: &[u8], block: usize) -> Option<Image> {
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.len() != CARD_LEN || &data[..2] != b"MC" || !frame_is_checked(&data[..FRAME_LEN]) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let rows: Vec<Image> = (1..16)
         .filter(|&block| le32(data, block * FRAME_LEN) == Some(FIRST_BLOCK))
         .filter_map(|block| icon_row(data, block))
         .collect();
-    let width = rows.first().ok_or(fail)?.width();
+    let width = rows.first().ok_or(FAIL)?.width();
     let height = ICON.height as u32 * rows.len() as u32;
     let pixels = rows.iter().flat_map(|row| {
         (0..row.height()).flat_map(move |y| (0..row.width()).map(move |x| row.get_argb(x, y)))
     });
-    Ok(Image::from_argb(width, height, pixels))
+    Image::from_argb(width, height, pixels)
 }
 
 #[cfg(test)]

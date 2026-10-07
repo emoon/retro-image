@@ -220,7 +220,8 @@ impl BackwardOutput {
     /// `count` bytes copied from `distance` bytes behind the write position
     /// (that is, later in the output), one at a time so that overlaps repeat.
     pub(super) fn copy(&mut self, distance: usize, count: usize) -> Option<()> {
-        if distance == 0 || count > self.at || self.at + distance > self.out.len() {
+        let source_end = self.at.checked_add(distance)?;
+        if distance == 0 || count > self.at || source_end > self.out.len() {
             return None;
         }
         for _ in 0..count {

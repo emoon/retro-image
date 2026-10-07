@@ -29,17 +29,22 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use super::{full_palette, read_cel, read_palette};
+use super::{Cel, full_palette, read_cel, read_palette};
 use crate::image::{CLEAR, check_size};
 use crate::{Companions, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const DEFAULT_SIZE: (usize, usize) = (448, 320);
 const MAX_SIDE: usize = 4096;
 /// Cel entries, set positions and palette files read from a file.
 const MAX_ENTRIES: usize = 4096;
 /// Cel pixels drawn in all, so that a file cannot ask for endless work.
 const MAX_PIXELS: usize = 1 << 27;
+/// Cel pixels allowed per canvas pixel, and per entry on top of that.
+const PIXELS_PER_CANVAS_PIXEL: usize = 16;
+const PIXELS_PER_ENTRY: usize = 4096;
+/// Distinct companion files fetched for cels, found or not.
+const MAX_CEL_FILES: usize = 1024;
 
 /// What the configuration file says that matters for the first set.
 struct Set {
@@ -80,18 +85,32 @@ pub(super) fn decode_set(data: &[u8], companions: &dyn Companions) -> Result<Ima
         .and_then(Option::as_ref)
         .map_or(CLEAR, |palette| 0xff00_0000 | palette[0]);
     let fill = core::iter::repeat(background);
-    let mut canvas = Image::from_argb(set.width as u32, set.height as u32, fill);
+    let mut canvas = Image::from_argb(set.width as u32, set.height as u32, fill)?;
     let (mut drawn, mut pixels) = (0, 0usize);
+    let budget = (set.width * set.height * PIXELS_PER_CANVAS_PIXEL
+        + set.cels.len() * PIXELS_PER_ENTRY)
+        .min(MAX_PIXELS);
+    // Each distinct cel file is fetched and decoded once, found or not.
+    let mut cels: Vec<(&str, Option<Cel>)> = Vec::new();
     // Earlier entries are in front, so the last one goes down first.
     for entry in set.cels.iter().rev().filter(|entry| entry.in_first_set) {
         let Some(&Some((x, y))) = set.positions.get(entry.mark) else {
             continue;
         };
-        let Some(cel) = fetch(companions, &entry.file).and_then(|data| read_cel(&data).ok()) else {
+        let slot = match cels.iter().position(|(name, _)| *name == entry.file) {
+            Some(slot) => slot,
+            None if cels.len() == MAX_CEL_FILES => return Err(FAIL),
+            None => {
+                let cel = fetch(companions, &entry.file).and_then(|data| read_cel(&data).ok());
+                cels.push((&entry.file, cel));
+                cels.len() - 1
+            }
+        };
+        let Some(cel) = &cels[slot].1 else {
             continue;
         };
         pixels = pixels.saturating_add(cel.width * cel.height);
-        if pixels > MAX_PIXELS {
+        if pixels > budget {
             return Err(FAIL);
         }
         let (x, y) = (x + cel.x as i64, y + cel.y as i64);
@@ -128,6 +147,7 @@ fn fetch(companions: &dyn Companions, name: &str) -> Option<Vec<u8>> {
     ]
     .iter()
     .find_map(|spelling| companions.get_named(spelling))
+    .map(alloc::borrow::Cow::into_owned)
 }
 
 fn parse(data: &[u8]) -> Set {
@@ -267,15 +287,16 @@ mod tests {
     struct Files(Vec<(&'static str, Vec<u8>)>);
 
     impl Companions for Files {
-        fn get(&self, _extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, _extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
 
-        fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             self.0
                 .iter()
                 .find(|(name, _)| *name == file_name)
                 .map(|(_, data)| data.clone())
+                .map(Into::into)
         }
     }
 
@@ -299,6 +320,44 @@ mod tests {
         data.resize(32, 0);
         data.extend_from_slice(&[0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255]);
         data
+    }
+
+    /// Counts how often a file is fetched.
+    struct Counting(Files, core::cell::Cell<usize>);
+
+    impl Companions for Counting {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            self.0.get(extension)
+        }
+
+        fn get_named(&self, file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            self.1.set(self.1.get() + 1);
+            self.0.get_named(file_name)
+        }
+    }
+
+    #[test]
+    fn a_set_drawing_one_big_cel_many_times_fetches_it_once_and_is_bounded() {
+        let (width, height) = (600usize, 400usize);
+        let mut big = b"KiSS\x20\x08\0\0".to_vec();
+        for word in [width as u16, height as u16, 0, 0] {
+            big.extend_from_slice(&word.to_le_bytes());
+        }
+        big.resize(32, 0);
+        big.resize(32 + width * height, 1);
+        let mut cnf = b"(600,400)\n%col.kcf\n".to_vec();
+        for _ in 0..MAX_ENTRIES {
+            cnf.extend_from_slice(b"#0 big.cel\n");
+        }
+        cnf.extend_from_slice(b"$0 0,0\n");
+        let files = Counting(
+            Files(alloc::vec![("col.kcf", palette()), ("big.cel", big)]),
+            core::cell::Cell::new(0),
+        );
+        // The pixel budget ends the set long before 4096 draws.
+        assert!(decode_set(&cnf, &files).is_err());
+        // One palette file and one cel file, however many entries.
+        assert_eq!(files.1.get(), 2);
     }
 
     #[test]

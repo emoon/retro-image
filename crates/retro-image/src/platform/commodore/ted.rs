@@ -49,7 +49,7 @@ const LEN: usize = 2 + 1024 + 1024 + 8000;
 /// Botticelli (hires) or Multi Botticelli (`MULT` tag) picture.
 pub(super) fn decode_p4i(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let luma = &data[2..1026];
     let chroma = &data[1026..2050];
@@ -57,7 +57,7 @@ pub(super) fn decode_p4i(data: &[u8]) -> Result<Image, DecodeError> {
     let multi = &luma[0x3fa..0x3fe] == b"MULT";
     let swap = |b: u8| b.rotate_left(4);
     let (color0, color3) = (swap(luma[0x3ff]), swap(luma[0x3fe]));
-    let mut image = Image::new(320, 200);
+    let mut image = Image::new(320, 200)?;
     for y in 0..200 {
         for x in 0..320 {
             let cell = y / 8 * 40 + x / 8;
@@ -93,9 +93,9 @@ const FOUR_GREYS: [u8; 4] = [0x00, 0x31, 0x51, 0x71];
 /// significant pixel pair first. Shown with pixels doubled horizontally.
 pub(super) fn decode_p4i_grey(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FOUR_GREYS_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(2 * 4 * STRIPS as u32, STRIP_LINES as u32);
+    let mut image = Image::new(2 * 4 * STRIPS as u32, STRIP_LINES as u32)?;
     for (strip, column) in data[2..].as_chunks::<STRIP_LINES>().0.iter().enumerate() {
         for (y, &byte) in column.iter().enumerate() {
             for pixel in 0..4 {

@@ -30,10 +30,12 @@ pub(super) const MAX_CELLS: usize = 1 << 18;
 /// Cells a terminal may fill over its lifetime: tens of ms of memory writes.
 const WORK_LIMIT: usize = 64 * MAX_CELLS;
 
-/// Pictures taller than this are cropped to the rows that fit rather than
-/// rejected: with tall fonts and 9-pixel cells the cell limit alone would
-/// allow about 75 million pixels.
-const MAX_PIXELS: usize = 1 << 24;
+/// Pictures taller than the size limit allows are cropped to the rows that
+/// fit rather than rejected: with tall fonts and 9-pixel cells the cell
+/// limit alone would allow about 75 million pixels.
+fn max_pixels() -> usize {
+    crate::limits::max_pixels()
+}
 
 /// Most columns a picture may have.
 pub(super) const MAX_COLUMNS: usize = 2048;
@@ -148,23 +150,23 @@ impl Painted {
 }
 
 /// Draws `rows` rows of `width` cells; missing cells are black. Only as
-/// many top rows as fit in [`MAX_PIXELS`] are drawn.
+/// many top rows as fit in the size limit are drawn.
 pub(super) fn render(
     cells: &[Cell],
     width: usize,
     rows: usize,
     style: &Style,
 ) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let cell_width = if style.nine_pixels { 9 } else { 8 };
     let cell_height = style.font.height();
     let cells_ok = width > 0 && rows > 0 && width <= MAX_COLUMNS && width * rows <= MAX_CELLS;
     let row_pixels = width * cell_width * cell_height;
-    if !cells_ok || row_pixels > MAX_PIXELS {
-        return Err(fail);
+    if !cells_ok || row_pixels > max_pixels() {
+        return Err(FAIL);
     }
-    let rows = rows.min(MAX_PIXELS / row_pixels);
-    let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32);
+    let rows = rows.min(max_pixels() / row_pixels);
+    let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32)?;
     // Per cell of the current text row, so its colors are expanded once
     // for all of its pixel lines.
     let mut painted = Vec::with_capacity(width);
@@ -355,7 +357,7 @@ pub(super) fn attribute_cells(
     let count = pairs.len() / 2;
     let rows = count.div_ceil(width.max(1));
     if width == 0 || width > MAX_COLUMNS || rows == 0 || rows * width > MAX_CELLS {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut cells = vec![Cell::from_attribute(0, 0, palette, ice); rows * width];
     for (cell, pair) in cells.iter_mut().zip(pairs.as_chunks::<2>().0) {
@@ -424,7 +426,8 @@ mod tests {
             nine_pixels: true,
         };
         // 80 columns of 9x32 cells: 23040 pixels a row, so 728 rows fit in
-        // 2^24; 1000 rows are cropped to those. 8x16 cells fit 1000 rows.
+        // the default limit (2^24 pixels); 1000 rows are cropped to those.
+        // 8x16 cells are 10240 pixels a row and fit 1000 rows.
         let image = render(&[], 80, 200, &big).unwrap();
         assert_eq!(image.height(), 200 * 32);
         let image = render(&[], 80, 1000, &big).unwrap();

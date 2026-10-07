@@ -42,7 +42,7 @@ fn glyph(code: u8) -> &'static [u8] {
 
 /// ANTIC mode 2 (Graphics 0) characters, 8x8 pixels, white on black;
 /// bit 7 of a code shows the glyph inverted.
-pub(super) fn mode2(codes: &[u8], columns: usize) -> Image {
+pub(super) fn mode2(codes: &[u8], columns: usize) -> Result<Image, DecodeError> {
     mode2_colored(codes, columns, register_rgb(0x00), register_rgb(0x0e))
 }
 
@@ -52,9 +52,9 @@ pub(super) fn mode2_colored(
     columns: usize,
     background: u32,
     foreground: u32,
-) -> Image {
+) -> Result<Image, DecodeError> {
     let rows = codes.len() / columns;
-    let mut image = Image::new(columns as u32 * 8, rows as u32 * 8);
+    let mut image = Image::new(columns as u32 * 8, rows as u32 * 8)?;
     for (i, &code) in codes.iter().enumerate() {
         let (x0, y0) = ((i % columns) as u32 * 8, (i / columns) as u32 * 8);
         let inverse = if code & 0x80 != 0 { 0xff } else { 0 };
@@ -67,7 +67,7 @@ pub(super) fn mode2_colored(
             }
         }
     }
-    image
+    Ok(image)
 }
 
 /// A Graphics 0 screen of 40-character lines (GR0, ASC, SCR, SGE): 24
@@ -76,9 +76,9 @@ pub(super) fn mode2_colored(
 /// competitions.
 pub(super) fn decode_gr0(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.len().is_multiple_of(40) || !(24..=30).contains(&(data.len() / 40)) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    Ok(mode2(data, 40))
+    mode2(data, 40)
 }
 
 /// Splits Mad Studio's max X and max Y header (`header` bytes in all) from
@@ -89,14 +89,12 @@ fn sized(
     max_rows: usize,
 ) -> Result<(&[u8], &[u8], usize), DecodeError> {
     let [max_x, max_y, ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(max_x) + 1, usize::from(max_y) + 1);
-    let (head, codes) = data
-        .split_at_checked(header)
-        .ok_or(DecodeError::Unrecognized)?;
+    let (head, codes) = data.split_at_checked(header).ok_or(DecodeError::Invalid)?;
     if columns > 40 || rows > max_rows || codes.len() != columns * rows {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok((head, codes, columns))
 }
@@ -104,14 +102,14 @@ fn sized(
 /// Mad Studio ANTIC 2: max X, max Y, then the screen codes.
 pub(super) fn decode_an2(data: &[u8]) -> Result<Image, DecodeError> {
     let (_, codes, columns) = sized(data, 2, 24)?;
-    Ok(mode2(codes, columns))
+    mode2(codes, columns)
 }
 
 /// Dir Logo Maker: 16 directory entries of 16 bytes; bytes 5-15 of each
 /// are an 11-character line of ATASCII.
 pub(super) fn decode_dlm(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 256 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut codes = [0u8; 16 * 11];
     for (line, entry) in codes
@@ -124,7 +122,7 @@ pub(super) fn decode_dlm(data: &[u8]) -> Result<Image, DecodeError> {
             *code = screen_code(atascii);
         }
     }
-    Ok(mode2(&codes, 11))
+    mode2(&codes, 11)
 }
 
 /// The screen code showing ATASCII character `c`.
@@ -144,7 +142,7 @@ pub(super) fn screen_code(c: u8) -> u8 {
 /// `colors` are COLOR4 (background), COLOR0-3.
 fn mode6(codes: &[u8], line_height: u32, colors: [u8; 5]) -> Result<Image, DecodeError> {
     let rows = codes.len() / 20;
-    let mut image = Image::new(20 * 8, rows as u32 * 8);
+    let mut image = Image::new(20 * 8, rows as u32 * 8)?;
     for (i, &code) in codes.iter().enumerate() {
         let (x0, y0) = ((i % 20) as u32 * 8, (i / 20) as u32 * 8);
         let foreground = register_rgb(colors[1 + usize::from(code >> 6)]);
@@ -167,7 +165,7 @@ fn decode_mode6(data: &[u8], len: usize, line_height: u32) -> Result<Image, Deco
     let colors = match data.get(len..) {
         Some([]) => [background, pf0, pf1, pf2, OS_PF3],
         Some(&[c4, c0, c1, c2, c3]) => [c4, c0, c1, c2, c3],
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     mode6(&data[..len], line_height, colors)
 }
@@ -191,7 +189,7 @@ fn mode4(
     colors: [u8; 5],
 ) -> Result<Image, DecodeError> {
     let rows = codes.len() / columns;
-    let mut image = Image::new(columns as u32 * 4, rows as u32 * 8);
+    let mut image = Image::new(columns as u32 * 4, rows as u32 * 8)?;
     for (i, &code) in codes.iter().enumerate() {
         let (x0, y0) = ((i % columns) as u32 * 4, (i / columns) as u32 * 8);
         for (row, &bits) in glyph(code).iter().enumerate() {

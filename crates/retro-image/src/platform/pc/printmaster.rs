@@ -90,7 +90,7 @@ impl<'a> Iterator for Records<'a> {
 }
 
 pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut records = Records { rest: data };
     let (mut count, mut cell_width, mut cell_height) = (0, 0, 0);
     for record in records.by_ref() {
@@ -99,7 +99,7 @@ pub(super) fn decode_shp(data: &[u8]) -> Result<Image, DecodeError> {
         cell_height = cell_height.max(record.height);
     }
     if !is_padding(records.rest) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut sheet = Sheet::new(count, cell_width, cell_height)?;
     for (index, record) in (Records { rest: data }).enumerate() {

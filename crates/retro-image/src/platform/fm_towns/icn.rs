@@ -82,7 +82,7 @@ fn read_icon(data: &[u8], at: usize, width: usize, height: usize, bits: usize) -
             }
         })
     });
-    Some(Image::from_colors(width as u32, height as u32, pixels))
+    Image::from_colors(width as u32, height as u32, pixels).ok()
 }
 
 /// `CRI-FJ2 ` (little-endian) and `CRI-FUJI` (big-endian): 32x32 4-bit icons.
@@ -151,7 +151,7 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         None
     };
-    sheet(&icons.ok_or(DecodeError::Unrecognized)?)
+    sheet(&icons.ok_or(DecodeError::Invalid)?)
 }
 
 #[cfg(test)]

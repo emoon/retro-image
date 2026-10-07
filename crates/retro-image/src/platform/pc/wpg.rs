@@ -68,7 +68,7 @@ use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: &[u8] = b"\xffWPC";
 const PREFIX_LEN: usize = 16;
 const PRODUCT_TYPE: u8 = 1;

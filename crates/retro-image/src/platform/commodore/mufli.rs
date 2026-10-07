@@ -131,7 +131,7 @@ impl<'a> Frame<'a> {
     }
 
     fn to_frame(&self) -> Result<vic2::Frame, DecodeError> {
-        let pixels = self.pixels().ok_or(DecodeError::Unrecognized)?;
+        let pixels = self.pixels().ok_or(DecodeError::Invalid)?;
         Ok(vic2::Frame::from_fn(HEIGHT, |x, y| {
             pixels[y * vic2::WIDTH + x]
         }))
@@ -141,7 +141,7 @@ impl<'a> Frame<'a> {
 /// `.muf`: two ignored bytes, the frame and 64 ignored bytes.
 pub(super) fn decode_muf(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + LEN + 64 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(Frame::new(&data[2..], Layout::First)
         .to_frame()?
@@ -150,17 +150,17 @@ pub(super) fn decode_muf(data: &[u8]) -> Result<Image, DecodeError> {
 
 pub(super) fn decode_mup(data: &[u8]) -> Result<Image, DecodeError> {
     let [_, _, escape, packed @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let Some((mem, _)) = backward_rle_filled(packed, *escape, LEN) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     Ok(Frame::new(&mem, Layout::First).to_frame()?.to_image(BUG))
 }
 
 pub(super) fn decode_mui(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + 0xac00 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mem = &data[2..];
     let first = Frame::new(mem, Layout::First).to_frame()?;

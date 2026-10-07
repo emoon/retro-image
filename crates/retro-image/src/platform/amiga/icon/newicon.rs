@@ -48,27 +48,27 @@ const MAX_COLORS: usize = 256;
 /// Decodes the `IM1=` lines among `tool_types`; transparent pixels get
 /// `background`.
 pub(super) fn decode(tool_types: &[&[u8]], background: u32) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut lines = tool_types.iter().filter_map(|t| t.strip_prefix(b"IM1="));
-    let (header, first) = lines.next().ok_or(fail)?.split_at_checked(5).ok_or(fail)?;
+    let (header, first) = lines.next().ok_or(FAIL)?.split_at_checked(5).ok_or(FAIL)?;
     let transparent = match header[0] {
         b'B' => true,
         b'C' => false,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let [width, height, colors_high, colors_low] =
         [header[1], header[2], header[3], header[4]].map(|c| c.checked_sub(0x21));
-    let (width, height) = (width.ok_or(fail)?, height.ok_or(fail)?);
-    let colors = usize::from(colors_high.ok_or(fail)?) << 6 | usize::from(colors_low.ok_or(fail)?);
+    let (width, height) = (width.ok_or(FAIL)?, height.ok_or(FAIL)?);
+    let colors = usize::from(colors_high.ok_or(FAIL)?) << 6 | usize::from(colors_low.ok_or(FAIL)?);
     if width == 0 || height == 0 || !(1..=MAX_COLORS).contains(&colors) {
-        return Err(fail);
+        return Err(FAIL);
     }
 
     // The palette: lines of 8-bit values until all RGB triplets are read.
     let mut rgb = Vec::new();
     unpack_line(first, 8, colors * 3, &mut rgb)?;
     while rgb.len() < colors * 3 {
-        unpack_line(lines.next().ok_or(fail)?, 8, colors * 3, &mut rgb)?;
+        unpack_line(lines.next().ok_or(FAIL)?, 8, colors * 3, &mut rgb)?;
     }
     let mut palette: Vec<u32> = rgb
         .as_chunks::<3>()
@@ -89,7 +89,7 @@ pub(super) fn decode(tool_types: &[&[u8]], background: u32) -> Result<Image, Dec
     }
     let indices = pixels
         .iter()
-        .map(|&i| u8::try_from(i).map_err(|_| fail))
+        .map(|&i| u8::try_from(i).map_err(|_| FAIL))
         .collect::<Result<Vec<u8>, _>>()?;
     Image::from_indexed(width.into(), height.into(), &indices, &palette)
 }
@@ -110,7 +110,7 @@ fn unpack_line(
             0x20..=0x6f => (u32::from(c - 0x20), 7),
             0xa1..=0xd0 => (u32::from(c - 0xa1 + 0x50), 7),
             0xd1..=0xff => (0, 7 * u32::from(c - 0xd0)),
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         };
         for i in (0..count).rev() {
             if out.len() == limit {

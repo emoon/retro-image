@@ -19,10 +19,10 @@ const LINE_BYTES: usize = WIDTH / 2;
 const MAX_HEIGHT: usize = 1024;
 
 pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError> {
-    let body = data.get(PALETTE_BYTES..).ok_or(DecodeError::Unrecognized)?;
+    let body = data.get(PALETTE_BYTES..).ok_or(DecodeError::Invalid)?;
     let height = body.len() / LINE_BYTES;
     if body.len() % LINE_BYTES != 0 || height == 0 || height > MAX_HEIGHT {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = data[..PALETTE_BYTES]
         .as_chunks::<3>()
@@ -30,7 +30,7 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
         .iter()
         .map(|c| {
             if c.iter().any(|&v| v > 15) {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             let [r, g, b] = c.map(|v| widen_channel(u32::from(v), 4));
             Ok(r << 16 | g << 8 | b)
@@ -40,7 +40,7 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
     let plane_len = body.len() / 4;
     let indices: Vec<u8> = planar_pixels(body, WIDTH, height, WIDTH / 8, 4, |plane, y| {
         plane * plane_len + y * (WIDTH / 8)
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

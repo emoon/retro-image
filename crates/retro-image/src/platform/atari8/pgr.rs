@@ -91,13 +91,13 @@ const GRAFM: usize = 0x11;
 
 /// PGR: 336x240.
 pub(super) fn decode_pgr(data: &[u8]) -> Result<Image, DecodeError> {
-    let memory = Memory::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let memory = Memory::parse(data).ok_or(DecodeError::Invalid)?;
     let dmactl = memory.byte(DMACTL);
     let bytes_per_line = match dmactl & 3 {
         1 => 32,
         2 => 40,
         3 => 48,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let objects = Objects {
         players: dmactl & 8 != 0,
@@ -105,14 +105,14 @@ pub(super) fn decode_pgr(data: &[u8]) -> Result<Image, DecodeError> {
     };
     // Double-line resolution is not understood.
     if objects.any() && dmactl & 0x10 == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let rows = display_list(&memory, bytes_per_line).ok_or(DecodeError::Unrecognized)?;
-    let writes = scanline_writes(&memory, &rows, bytes_per_line, objects)
-        .ok_or(DecodeError::Unrecognized)?;
+    let rows = display_list(&memory, bytes_per_line).ok_or(DecodeError::Invalid)?;
+    let writes =
+        scanline_writes(&memory, &rows, bytes_per_line, objects).ok_or(DecodeError::Invalid)?;
 
     let mut registers: Registers = core::array::from_fn(|n| memory.byte(initial_address(n)));
-    let mut image = Image::new(WIDTH as u32, LINES as u32);
+    let mut image = Image::new(WIDTH as u32, LINES as u32)?;
     for (y, (row, writes)) in rows.iter().zip(&writes).enumerate() {
         let writes = objects.with_fetches(&memory, y, writes);
         let line = Line {
@@ -429,7 +429,7 @@ fn render_span(
     let gtia9 = match (prior >> 6, source) {
         (0, _) => false,
         (1, Source::Hires(_) | Source::Blank) => true,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let colors = Colors {
         player: [r[0x12], r[0x13], r[0x14], r[0x15]],

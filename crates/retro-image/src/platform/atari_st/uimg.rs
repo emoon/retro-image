@@ -18,7 +18,7 @@ use crate::{DecodeError, Image};
 const HEADER_LEN: usize = 14;
 
 pub(super) fn decode_uimg(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -82,7 +82,7 @@ fn chunky(
     color: impl Fn(&[u8]) -> Option<u32>,
 ) -> Option<Image> {
     let data = data.get(..width * height * bytes)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, pixel) in data.chunks_exact(bytes).enumerate() {
         image.set((i % width) as u32, (i / width) as u32, color(pixel)?);
     }
@@ -94,7 +94,7 @@ fn chunky(
 fn packed(data: &[u8], width: usize, height: usize, bits: usize, palette: &[u32]) -> Option<Image> {
     let line_len = (width * bits).div_ceil(8);
     let data = data.get(..line_len * height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (y, line) in data.chunks_exact(line_len).enumerate() {
         for x in 0..width {
             let bit = x * bits;

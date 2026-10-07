@@ -26,32 +26,32 @@ const ALIGNMENT: u64 = 0x40;
 const SMDH_AT: usize = 0x400;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let field = |at| le32(data, at).map(u64::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let field = |at| le32(data, at).map(u64::from).ok_or(FAIL);
     if le32(data, 0) != Some(HEADER_SIZE) || le16(data, 4) != Some(0) || le16(data, 6) != Some(0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (certificates, ticket, tmd, meta) = (field(8)?, field(0xc)?, field(0x10)?, field(0x14)?);
     let content = data
         .get(0x18..0x20)
         .and_then(|bytes| bytes.try_into().ok())
         .map(u64::from_le_bytes)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     // The meta section starts after the other sections, each rounded up to
     // the alignment.
     let aligned = |size: u64| size.div_ceil(ALIGNMENT).saturating_mul(ALIGNMENT);
     let start = [u64::from(HEADER_SIZE), certificates, ticket, tmd, content]
         .into_iter()
         .fold(0u64, |at, size| at.saturating_add(aligned(size)));
-    let meta_at = usize::try_from(start).map_err(|_| fail)?;
+    let meta_at = usize::try_from(start).map_err(|_| FAIL)?;
     if meta < (SMDH_AT + smdh::LEN) as u64 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let meta_end = start.saturating_add(meta);
     if meta_end > data.len() as u64 {
-        return Err(fail);
+        return Err(FAIL);
     }
-    smdh::icon(data.get(meta_at + SMDH_AT..).ok_or(fail)?)
+    smdh::icon(data.get(meta_at + SMDH_AT..).ok_or(FAIL)?)
 }
 
 #[cfg(test)]

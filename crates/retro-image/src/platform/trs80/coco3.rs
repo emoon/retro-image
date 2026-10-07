@@ -99,7 +99,7 @@ fn picture(
 pub(super) fn decode_hrs(data: &[u8]) -> Result<Image, DecodeError> {
     const PIXELS: usize = 320 / 2 * 192;
     if data.len() != COLORMAP_LEN + PIXELS {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (colormap, packed) = data.split_at(COLORMAP_LEN);
     picture(320, 192, 4, colormap, packed)
@@ -110,12 +110,12 @@ pub(super) fn decode_hrs(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_mge(data: &[u8]) -> Result<Image, DecodeError> {
     const HEADER: usize = 51;
     const PIXELS: usize = 320 / 2 * 200;
-    let fail = DecodeError::Unrecognized;
-    let (header, body) = data.split_at_checked(HEADER).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let (header, body) = data.split_at_checked(HEADER).ok_or(FAIL)?;
     let (image_type, colorspace, compression) = (header[0], header[17], header[18]);
     // Composite C4I2 (color space 1) is not documented, so not decoded.
     if image_type != 0 || colorspace != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let packed = if compression == 0 {
         let mut packed = Vec::with_capacity(PIXELS);
@@ -125,13 +125,13 @@ pub(super) fn decode_mge(data: &[u8]) -> Result<Image, DecodeError> {
                 break;
             }
             if packed.len() + count > PIXELS {
-                return Err(fail);
+                return Err(FAIL);
             }
             packed.resize(packed.len() + count, byte);
         }
         packed
     } else {
-        body.get(..PIXELS).ok_or(fail)?.to_vec()
+        body.get(..PIXELS).ok_or(FAIL)?.to_vec()
     };
     picture(320, 200, 4, &header[1..17], &packed)
 }
@@ -141,23 +141,23 @@ pub(super) fn decode_mge(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_rat(data: &[u8]) -> Result<Image, DecodeError> {
     const HEADER: usize = 19;
     const PIXELS: usize = 320 / 2 * 199;
-    let fail = DecodeError::Unrecognized;
-    let (header, body) = data.split_at_checked(HEADER).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let (header, body) = data.split_at_checked(HEADER).ok_or(FAIL)?;
     let escape = header[0];
     let packed = if header[1] != 0 {
         let mut packed = Vec::with_capacity(PIXELS);
         let mut input = body.iter().copied();
         while let Some(byte) = input.next() {
             if byte == escape {
-                let count = usize::from(input.next().ok_or(fail)?);
-                let value = input.next().ok_or(fail)?;
+                let count = usize::from(input.next().ok_or(FAIL)?);
+                let value = input.next().ok_or(FAIL)?;
                 if packed.len() + count > PIXELS {
-                    return Err(fail);
+                    return Err(FAIL);
                 }
                 packed.resize(packed.len() + count, value);
             } else {
                 if packed.len() == PIXELS {
-                    return Err(fail);
+                    return Err(FAIL);
                 }
                 packed.push(byte);
             }
@@ -175,8 +175,8 @@ pub(super) fn decode_rat(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_vef(data: &[u8]) -> Result<Image, DecodeError> {
     const HEADER: usize = 18;
     const HEIGHT: usize = 200;
-    let fail = DecodeError::Unrecognized;
-    let (header, body) = data.split_at_checked(HEADER).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let (header, body) = data.split_at_checked(HEADER).ok_or(FAIL)?;
     // Width and bits per pixel by image type.
     let (width, bits): (usize, u32) = match header[1] {
         0 => (320, 4),
@@ -184,15 +184,15 @@ pub(super) fn decode_vef(data: &[u8]) -> Result<Image, DecodeError> {
         2 => (160, 4),
         3 => (320, 2),
         4 => (640, 1),
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let row_len = width * bits as usize / 8;
     let packed = if header[0] & 0x80 != 0 {
-        unsquash(body, row_len / 2).ok_or(fail)?
+        unsquash(body, row_len / 2).ok_or(FAIL)?
     } else if body.len() == row_len * HEIGHT {
         body.to_vec()
     } else {
-        return Err(fail);
+        return Err(FAIL);
     };
     let image = picture(width as u32, HEIGHT as u32, bits, &header[2..], &packed)?;
     // The screen is 4:3 whatever the mode, so 640-pixel modes have tall

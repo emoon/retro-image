@@ -17,7 +17,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::flic::Canvas;
+use super::flic::{Canvas, Effect};
 use crate::{DecodeError, Image};
 
 const DTA_BRUN: u16 = 25;
@@ -43,7 +43,7 @@ impl<'a> HiScreen<'a> {
         depth: u16,
     ) -> Result<Self, DecodeError> {
         if depth != 15 && depth != 16 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(Self {
             data,
@@ -55,7 +55,7 @@ impl<'a> HiScreen<'a> {
         })
     }
 
-    pub(super) fn into_image(self) -> Image {
+    pub(super) fn into_image(self) -> Result<Image, DecodeError> {
         Image::from_colors(
             self.width as u32,
             self.height as u32,
@@ -175,14 +175,25 @@ impl<'a> HiScreen<'a> {
 }
 
 impl Canvas for HiScreen<'_> {
+    fn effect(kind: u16) -> Effect {
+        match kind {
+            DTA_COPY => Effect::Fill,
+            DTA_BRUN | DTA_LC => Effect::Draw,
+            _ => Effect::Nothing,
+        }
+    }
+
     fn apply(&mut self, kind: u16, start: usize, end: usize) {
         match kind {
             DTA_BRUN => self.brun(start, end),
             DTA_COPY => {
                 self.drawn = true;
-                for i in 0..self.pixels.len() {
+                // Words past the end of the file read as black.
+                let have = (self.data.len().saturating_sub(start) / 2 + 1).min(self.pixels.len());
+                for i in 0..have {
                     self.pixels[i] = self.color(start + 2 * i);
                 }
+                self.pixels[have..].fill(0);
             }
             DTA_LC => self.lc(start, end),
             _ => {}

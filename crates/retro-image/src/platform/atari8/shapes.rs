@@ -20,7 +20,7 @@ const DIRECTORY: usize = 528;
 pub(super) fn decode_movie_maker(data: &[u8]) -> Result<Image, DecodeError> {
     match data.split_at_checked(DIRECTORY) {
         Some((_, picture)) if data.len() == 4384 => decode_bkg(picture),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

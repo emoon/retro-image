@@ -38,14 +38,14 @@ use crate::image::{check_size, rgb565};
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// Renders big-endian RGB565 pixels, each repeated `x_scale` times.
 fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height * 2)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, pixel) in data.as_chunks::<2>().0.iter().enumerate() {
         let color = rgb565(u16::from_be_bytes([pixel[0], pixel[1]]));
         image.set((i % width) as u32, (i / width) as u32, color);
@@ -57,7 +57,7 @@ fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Optio
 fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, &v) in data.iter().enumerate() {
         image.set((i % width) as u32, (i / width) as u32, level(v) * 0x010101);
     }
@@ -84,20 +84,20 @@ pub(super) fn videl_entries(data: &[u8], count: usize) -> Option<Vec<u32>> {
 /// ImageLab: `B&W256`, width, height, 8-bit gray (0 = black).
 pub(super) fn decode_bw(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..6) != Some(b"B&W256") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let width = be16(data, 6).ok_or(DecodeError::Unrecognized)?.into();
-    let height = be16(data, 8).ok_or(DecodeError::Unrecognized)?.into();
+    let width = be16(data, 6).ok_or(DecodeError::Invalid)?.into();
+    let height = be16(data, 8).ok_or(DecodeError::Invalid)?.into();
     ok(grey(&data[10..], width, height, u32::from))
 }
 
 /// Print-Technik: `0x0F0F 0x0001`, width, height, word, 7-bit gray.
 pub(super) fn decode_hir(data: &[u8]) -> Result<Image, DecodeError> {
     if be32(data, 0) != Some(0x0f0f_0001) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let width = be16(data, 4).ok_or(DecodeError::Unrecognized)?.into();
-    let height = be16(data, 6).ok_or(DecodeError::Unrecognized)?.into();
+    let width = be16(data, 4).ok_or(DecodeError::Invalid)?.into();
+    let height = be16(data, 6).ok_or(DecodeError::Invalid)?.into();
     ok(grey(&data[10.min(data.len())..], width, height, |v| {
         u32::from(v & 0x7f) << 1
     }))
@@ -109,7 +109,7 @@ pub(super) fn decode_img_scan(data: &[u8]) -> Result<Image, DecodeError> {
         64000 => (320, 200),
         128000 => (640, 200),
         256000 => (640, 400),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     ok(grey(data, width, height, |v| u32::from(!v)))
 }
@@ -117,9 +117,9 @@ pub(super) fn decode_img_scan(data: &[u8]) -> Result<Image, DecodeError> {
 /// DuneGraph uncompressed: `DGU`, version, width, height, palette, 8 planes.
 pub(super) fn decode_dg1(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..3) != Some(b"DGU") || data.len() != 8 + 1024 + 64000 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let palette = videl_palette(&data[8..]).ok_or(DecodeError::Unrecognized)?;
+    let palette = videl_palette(&data[8..]).ok_or(DecodeError::Invalid)?;
     ok(planar_image(&data[1032..], 320, 200, 8, &palette, 1))
 }
 
@@ -182,18 +182,18 @@ pub(super) fn decode_fuckpaint(data: &[u8]) -> Result<Image, DecodeError> {
         77824 => (320, 240),
         65024 => (320, 200),
         308224 => (640, 480),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
-    let palette = videl_palette(data).ok_or(DecodeError::Unrecognized)?;
+    let palette = videl_palette(data).ok_or(DecodeError::Invalid)?;
     ok(planar_image(&data[1024..], width, height, 8, &palette, 1))
 }
 
 /// GodPaint: id word, width, height, RGB565.
 pub(super) fn decode_god(data: &[u8]) -> Result<Image, DecodeError> {
-    let width: usize = be16(data, 2).ok_or(DecodeError::Unrecognized)?.into();
-    let height: usize = be16(data, 4).ok_or(DecodeError::Unrecognized)?.into();
+    let width: usize = be16(data, 2).ok_or(DecodeError::Invalid)?.into();
+    let height: usize = be16(data, 4).ok_or(DecodeError::Invalid)?.into();
     if check_size(width, height).is_err() || data.len() != 6 + width * height * 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(high_color(&data[6..], width, height, 1))
 }
@@ -201,11 +201,11 @@ pub(super) fn decode_god(data: &[u8]) -> Result<Image, DecodeError> {
 /// COKE: `COKE format.`, width, height, data offset, RGB565.
 pub(super) fn decode_tg1(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..12) != Some(b"COKE format.") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let width = be16(data, 12).ok_or(DecodeError::Unrecognized)?.into();
-    let height = be16(data, 14).ok_or(DecodeError::Unrecognized)?.into();
-    let offset = be16(data, 16).ok_or(DecodeError::Unrecognized)?.into();
+    let width = be16(data, 12).ok_or(DecodeError::Invalid)?.into();
+    let height = be16(data, 14).ok_or(DecodeError::Invalid)?.into();
+    let offset = be16(data, 16).ok_or(DecodeError::Invalid)?.into();
     ok(high_color(
         data.get(offset..).unwrap_or(&[]),
         width,
@@ -220,27 +220,27 @@ pub(super) fn decode_trp(data: &[u8]) -> Result<Image, DecodeError> {
     // once only: nested packing is not followed, so a file can't recurse.
     let unpacked;
     let data = if crate::codec::pack_ice::is_packed(data) {
-        unpacked = crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?;
+        unpacked = crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Invalid)?;
         &unpacked
     } else {
         data
     };
     match data.get(..4) {
         Some(b"TRUP" | b"tru?") => {}
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     }
-    let width = be16(data, 4).ok_or(DecodeError::Unrecognized)?.into();
-    let height = be16(data, 6).ok_or(DecodeError::Unrecognized)?.into();
+    let width = be16(data, 4).ok_or(DecodeError::Invalid)?.into();
+    let height = be16(data, 6).ok_or(DecodeError::Invalid)?.into();
     ok(high_color(&data[8..], width, height, 1))
 }
 
 /// IndyPaint: `Indy`, width, height, 248 zero bytes, RGB565.
 pub(super) fn decode_tru(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..4) != Some(b"Indy") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let width = be16(data, 4).ok_or(DecodeError::Unrecognized)?.into();
-    let height = be16(data, 6).ok_or(DecodeError::Unrecognized)?.into();
+    let width = be16(data, 4).ok_or(DecodeError::Invalid)?.into();
+    let height = be16(data, 6).ok_or(DecodeError::Invalid)?.into();
     ok(high_color(data.get(256..).unwrap_or(&[]), width, height, 1))
 }
 
@@ -300,7 +300,7 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
         }
         raw = !raw;
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, &word) in pixels.iter().take(total).enumerate() {
         image.set((i % width) as u32, (i / width) as u32, rgb565(word));
     }
@@ -315,10 +315,10 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
 pub(super) fn decode_icdraw(data: &[u8]) -> Result<Image, DecodeError> {
     match data.get(..4) {
         Some(b"ICBI" | b"ICB3") => {}
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     }
     if (be16(data, 8), be16(data, 10), be16(data, 12)) != (Some(32), Some(32), Some(4)) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = super::common::default_vdi_palette(16);
     ok(planar_image(
@@ -334,7 +334,7 @@ pub(super) fn decode_icdraw(data: &[u8]) -> Result<Image, DecodeError> {
 /// Falcon True Color: raw 384x240 RGB565.
 pub(super) fn decode_ftc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 384 * 240 * 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(high_color(data, 384, 240, 1))
 }
@@ -344,7 +344,7 @@ pub(super) fn decode_xga(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
         153600 => ok(high_color(data, 320, 240, 1)),
         368640 => ok(high_color(data, 384, 480, 2)),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -372,7 +372,7 @@ fn decode_iim_inner(data: &[u8]) -> Option<Image> {
         4 | 5 => {
             let bytes = if kind == 4 { 3 } else { 4 };
             let body = body.get(..width * height * bytes)?;
-            let mut image = Image::new(width as u32, height as u32);
+            let mut image = Image::new(width as u32, height as u32).ok()?;
             for (i, p) in body.chunks_exact(bytes).enumerate() {
                 let rgb = &p[bytes - 3..];
                 let color = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);

@@ -159,16 +159,16 @@ fn objects(data: &[u8], header: usize) -> Result<Vec<Object<'_>>, DecodeError> {
         } else {
             None
         };
-        let (kind, master, length) = fields.ok_or(DecodeError::Unrecognized)?;
+        let (kind, master, length) = fields.ok_or(DecodeError::Invalid)?;
         let start = at + header;
         let body = data
             .get(
                 start
                     ..start
                         .checked_add(length as usize)
-                        .ok_or(DecodeError::Unrecognized)?,
+                        .ok_or(DecodeError::Invalid)?,
             )
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         found.push(Object { kind, master, body });
         at = start + length as usize;
     }
@@ -177,27 +177,27 @@ fn objects(data: &[u8], header: usize) -> Result<Vec<Object<'_>>, DecodeError> {
 
 fn parse_gbr(data: &[u8]) -> Result<TileSet<'_>, DecodeError> {
     if !data.starts_with(GBR_MAGIC) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let objects = objects(data, 8)?;
     let body = objects
         .iter()
         .find(|o| o.kind == TILE_DATA)
-        .ok_or(DecodeError::Unrecognized)?
+        .ok_or(DecodeError::Invalid)?
         .body;
     let (Some(width), Some(height), Some(count)) = (le16(body, 30), le16(body, 32), le16(body, 34))
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height, count) = (usize::from(width), usize::from(height), usize::from(count));
     let size = width
         .checked_mul(height)
         .and_then(|tile| tile.checked_mul(count))
-        .ok_or(DecodeError::Unrecognized)?;
-    let colors = body.get(36..40).ok_or(DecodeError::Unrecognized)?;
-    let pixels = body.get(40..40 + size).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let colors = body.get(36..40).ok_or(DecodeError::Invalid)?;
+    let pixels = body.get(40..40 + size).ok_or(DecodeError::Invalid)?;
     if size == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let gbc = objects
         .iter()
@@ -258,46 +258,42 @@ pub(super) fn decode_gbr(data: &[u8]) -> Result<Image, DecodeError> {
         let tile = y / set.height * columns + x / set.width;
         set.color(&Cell::plain(tile), x % set.width, y % set.height)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 pub(super) fn decode_gbm(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     if !data.starts_with(GBM_MAGIC) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let objects = objects(data, 20)?;
     let map = objects
         .iter()
         .find(|o| o.kind == MAP && o.master == 0)
-        .ok_or(DecodeError::Unrecognized)?
+        .ok_or(DecodeError::Invalid)?
         .body;
     let (Some(columns), Some(rows)) = (le32(map, 128), le32(map, 132)) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (columns as usize, rows as usize);
-    let cells = columns.checked_mul(rows).ok_or(DecodeError::Unrecognized)?;
+    let cells = columns.checked_mul(rows).ok_or(DecodeError::Invalid)?;
     let records = objects
         .iter()
         .find(|o| o.kind == MAP_TILES && o.master != 0)
-        .ok_or(DecodeError::Unrecognized)?
+        .ok_or(DecodeError::Invalid)?
         .body;
     let records = cells
         .checked_mul(3)
         .and_then(|len| records.get(..len))
         .filter(|_| cells > 0)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
 
-    let tile_file = map.get(140..396).ok_or(DecodeError::Unrecognized)?;
+    let tile_file = map.get(140..396).ok_or(DecodeError::Invalid)?;
     let tile_file = tile_file.split(|&b| b == 0).next().unwrap_or_default();
-    let gbr = tile_set_file(tile_file, companions).ok_or(DecodeError::Unrecognized)?;
+    let gbr = tile_set_file(tile_file, companions).ok_or(DecodeError::Invalid)?;
     let set = parse_gbr(&gbr)?;
 
-    let width = columns
-        .checked_mul(set.width)
-        .ok_or(DecodeError::Unrecognized)?;
-    let height = rows
-        .checked_mul(set.height)
-        .ok_or(DecodeError::Unrecognized)?;
+    let width = columns.checked_mul(set.width).ok_or(DecodeError::Invalid)?;
+    let height = rows.checked_mul(set.height).ok_or(DecodeError::Invalid)?;
     check_size(width, height)?;
     let colors = (0..width * height).map(|i| {
         let (x, y) = (i % width, i / width);
@@ -305,7 +301,7 @@ pub(super) fn decode_gbm(data: &[u8], companions: &dyn Companions) -> Result<Ima
         let cell = Cell::from_record(&records[cell * 3..cell * 3 + 3]);
         set.color(&cell, x % set.width, y % set.height)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// The GBR a map names (its path's last component), else the GBR next to
@@ -316,4 +312,5 @@ fn tile_set_file(path: &[u8], companions: &dyn Companions) -> Option<Vec<u8>> {
         .ok()
         .and_then(|name| companions.get_named(name))
         .or_else(|| companions.get("gbr"))
+        .map(alloc::borrow::Cow::into_owned)
 }

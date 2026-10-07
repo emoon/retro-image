@@ -37,7 +37,7 @@ pub(crate) struct Fluff<'a> {
 impl<'a> Fluff<'a> {
     pub(crate) fn parse(data: &'a [u8]) -> Result<Self, DecodeError> {
         if data.len() <= KIND || !data.starts_with(MAGIC) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(Self {
             kind: data[KIND],
@@ -47,10 +47,7 @@ impl<'a> Fluff<'a> {
 
     /// The byte at an absolute file offset.
     pub(crate) fn byte(&self, offset: usize) -> Result<u8, DecodeError> {
-        self.data
-            .get(offset)
-            .copied()
-            .ok_or(DecodeError::Unrecognized)
+        self.data.get(offset).copied().ok_or(DecodeError::Invalid)
     }
 
     /// `len` bytes at an absolute file offset, and everything after them.
@@ -59,9 +56,9 @@ impl<'a> Fluff<'a> {
         offset: usize,
         len: usize,
     ) -> Result<(&'a [u8], &'a [u8]), DecodeError> {
-        let rest = self.data.get(offset..).ok_or(DecodeError::Unrecognized)?;
+        let rest = self.data.get(offset..).ok_or(DecodeError::Invalid)?;
         if rest.len() < len {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(rest.split_at(len))
     }
@@ -75,7 +72,7 @@ pub(crate) fn trailer(rest: &[u8], required: bool) -> Result<&[u8], DecodeError>
     match rest.len() {
         0 if !required => Ok(rest),
         TRAILER_LEN => Ok(rest),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -88,10 +85,10 @@ pub(crate) fn decode_paletted(
     height: usize,
 ) -> Result<Image, DecodeError> {
     let (pixels, rest) = fluff.split(PAYLOAD + 1, width * height)?;
-    let (&count, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+    let (&count, rest) = rest.split_first().ok_or(DecodeError::Invalid)?;
     let count = if count == 0 { 256 } else { usize::from(count) };
     if rest.len() < count * 3 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (rgb, rest) = rest.split_at(count * 3);
     trailer(rest, false)?;
@@ -126,7 +123,7 @@ pub(crate) fn decode_cells(
     palette: &[u32],
 ) -> Result<Image, DecodeError> {
     if cells.len() != cols * rows * CELL_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let width = cols * 8;
     let mut indices: Vec<u8> = alloc::vec![0; width * rows * 8];

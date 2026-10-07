@@ -18,14 +18,14 @@ use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 /// A NEOchrome Master picture needs its rasters: without them `recoil2png`
 /// renders the FORM as a plain (Amiga) ILBM, whatever the extension.
 pub(super) fn decode_neochrome_master(data: &[u8]) -> Result<Image, DecodeError> {
     if !is_neochrome_master(data) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_block(data)
 }
@@ -128,7 +128,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     if line_palettes.is_some() && h.planes > 4 {
         return None;
     }
-    let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32);
+    let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32).ok()?;
     for (y, line) in bitmap.chunks_exact(row_len * h.planes).enumerate() {
         for x in 0..h.width {
             let mut index = 0;

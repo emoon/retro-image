@@ -3,8 +3,10 @@
 //! ```text
 //! retro-image INPUT [-o OUTPUT]
 //! retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]   (thumbnailer mode)
+//! retro-image ... [--max-image-mb MB]   (size limit, library default)
 //! retro-image --list-formats
 //! retro-image --mime-xml | --thumbnailer
+//! retro-image --help | --version
 //! ```
 //!
 //! On failure nothing is written and the exit code is non-zero, as
@@ -22,7 +24,9 @@
 mod freedesktop;
 mod thumbnail;
 
+use std::cell::{Cell, OnceCell};
 use std::error::Error;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -30,9 +34,16 @@ use std::process::ExitCode;
 /// comes close, so such a file is not a retro image.
 const MAX_INPUT_LEN: u64 = 32 << 20;
 
-const USAGE: &str = "usage: retro-image INPUT [-o OUTPUT]
+fn usage() -> String {
+    format!(
+        "usage: retro-image INPUT [-o OUTPUT]
        retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]
-       retro-image --list-formats | --mime-xml | --thumbnailer";
+       retro-image ... [--max-image-mb MB]   (default {})
+       retro-image --list-formats | --mime-xml | --thumbnailer
+       retro-image --help | --version",
+        retro_image::max_image_bytes() >> 20
+    )
+}
 
 struct Convert {
     input: PathBuf,
@@ -42,53 +53,100 @@ struct Convert {
     /// Extension to choose the format by, instead of the input's own (the
     /// input may be a symlink target without one).
     ext: Option<String>,
+    /// Largest decoded picture, in MiB; the library's default if not given.
+    max_image_mb: Option<usize>,
 }
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.as_slice() {
-        [flag] if flag == "--list-formats" => {
-            print!("{}", freedesktop::format_list());
-            return ExitCode::SUCCESS;
+    // OsString: a file name need not be UTF-8, and `args()` would panic.
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if let [flag] = args.as_slice() {
+        match flag.to_str() {
+            Some("--help" | "-h") => return print_stdout(&format!("{}\n", usage())),
+            Some("--version" | "-V") => {
+                return print_stdout(&format!("retro-image {}\n", env!("CARGO_PKG_VERSION")));
+            }
+            Some("--list-formats") => return print_stdout(&freedesktop::format_list()),
+            Some("--mime-xml") => return print_stdout(&freedesktop::mime_xml()),
+            Some("--thumbnailer") => return print_stdout(&freedesktop::thumbnailer()),
+            _ => {}
         }
-        [flag] if flag == "--mime-xml" => {
-            print!("{}", freedesktop::mime_xml());
-            return ExitCode::SUCCESS;
-        }
-        [flag] if flag == "--thumbnailer" => {
-            print!("{}", freedesktop::thumbnailer());
-            return ExitCode::SUCCESS;
-        }
-        _ => {}
     }
     let Some(convert) = parse(&args) else {
-        eprintln!("{USAGE}");
+        eprintln!("{}", usage());
         return ExitCode::from(2);
     };
     match run(&convert) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("{}: {e}", convert.input.display());
+            eprintln!("{}: {}", convert.input.display(), describe(e.as_ref()));
             ExitCode::FAILURE
         }
     }
 }
 
-fn parse(args: &[String]) -> Option<Convert> {
+/// Writes `text` to standard output. A reader that went away (`| head`) is
+/// not an error: the output is simply no longer wanted.
+fn print_stdout(text: &str) -> ExitCode {
+    use std::io::Write;
+    let mut out = std::io::stdout().lock();
+    match out.write_all(text.as_bytes()).and_then(|()| out.flush()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("retro-image: cannot write to standard output: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The message for a failure. A decode failure lists each format that was
+/// tried and why it refused the file, so "unknown format" is not all a user
+/// sees.
+fn describe(error: &(dyn Error + 'static)) -> String {
+    use retro_image::DecodeError;
+    let Some(DecodeError::NoMatch { attempts }) = error.downcast_ref::<DecodeError>() else {
+        return error.to_string();
+    };
+    let mut text = error.to_string();
+    // The formats with the file's extension come first; a long tail of
+    // content probes after them is noise.
+    const SHOWN: usize = 5;
+    for attempt in attempts.iter().take(SHOWN) {
+        text.push_str(&format!(
+            "\n  {} {}: {}",
+            attempt.format().platform(),
+            attempt.format().name(),
+            attempt.error()
+        ));
+    }
+    if attempts.len() > SHOWN {
+        text.push_str(&format!("\n  ... and {} more", attempts.len() - SHOWN));
+    }
+    text
+}
+
+fn parse(args: &[OsString]) -> Option<Convert> {
     let mut input = None;
     let mut output = None;
     let mut size = None;
     let mut ext = None;
+    let mut max_image_mb = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "-i" => input = Some(PathBuf::from(args.next()?)),
-            "-o" => output = Some(PathBuf::from(args.next()?)),
-            "-s" => size = Some(args.next()?.parse().ok().filter(|&s| s > 0)?),
-            "--ext" => ext = Some(args.next()?.trim_start_matches('.').to_owned()),
-            positional if !positional.starts_with('-') && input.is_none() => {
-                input = Some(PathBuf::from(positional));
+        // An argument that is not UTF-8 can only be a path.
+        match arg.to_str() {
+            Some("-i") => input = Some(PathBuf::from(args.next()?)),
+            Some("-o") => output = Some(PathBuf::from(args.next()?)),
+            Some("-s") => size = Some(args.next()?.to_str()?.parse().ok().filter(|&s| s > 0)?),
+            Some("--max-image-mb") => {
+                max_image_mb = Some(args.next()?.to_str()?.parse().ok().filter(|&mb| mb > 0)?);
             }
+            Some("--ext") => {
+                ext = Some(args.next()?.to_str()?.trim_start_matches('.').to_owned());
+            }
+            Some(flag) if flag.starts_with('-') => return None,
+            _ if input.is_none() => input = Some(PathBuf::from(arg)),
             _ => return None,
         }
     }
@@ -103,21 +161,28 @@ fn parse(args: &[String]) -> Option<Convert> {
         output,
         size,
         ext,
+        max_image_mb,
     })
 }
 
 fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
+    if let Some(mb) = convert.max_image_mb {
+        let bytes = mb
+            .checked_mul(1 << 20)
+            .ok_or("--max-image-mb is too large")?;
+        retro_image::set_max_image_bytes(bytes);
+    }
     let data = read_input(&convert.input)?;
     let filename = match &convert.ext {
         Some(ext) => format!("input.{ext}"),
         None => convert
             .input
             .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_default()
-            .to_owned(),
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
     };
-    let image = retro_image::decode_with(&filename, &data, &SiblingFiles(&convert.input))?;
+    let image = retro_image::decode_with(&filename, &data, &SiblingFiles::new(&convert.input))?
+        .into_image();
     let raster = match convert.size {
         Some(size) => thumbnail::fit(&image, size),
         None => Raster::of(&image),
@@ -132,6 +197,11 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
 /// (FIFOs, devices) could block or never end, and companions named by an
 /// untrusted file get the same limit as the input itself.
 fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
+    read_limited(path, MAX_INPUT_LEN)
+}
+
+/// Like [`read_input`], with a smaller `limit`.
+fn read_limited(path: &Path, limit: u64) -> std::io::Result<Vec<u8>> {
     use std::io::{Error, ErrorKind, Read};
     // Checked before opening: opening a FIFO blocks.
     if !std::fs::metadata(path)?.is_file() {
@@ -139,8 +209,8 @@ fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
     }
     let file = std::fs::File::open(path)?;
     let mut data = Vec::new();
-    file.take(MAX_INPUT_LEN + 1).read_to_end(&mut data)?;
-    if data.len() as u64 > MAX_INPUT_LEN {
+    file.take(limit + 1).read_to_end(&mut data)?;
+    if data.len() as u64 > limit {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             "file too large for a retro image",
@@ -190,39 +260,77 @@ fn encode_png(raster: &Raster) -> Result<Vec<u8>, Box<dyn Error>> {
 
 /// Companion files next to the input: same name, other extension, matched
 /// case-insensitively (`PIC.MIC` finds `pic.col`), or files looked up by name.
-struct SiblingFiles<'a>(&'a Path);
+///
+/// The input's file names are `OsStr`, so a name that is not UTF-8 works.
+/// The directory is listed once per run, and all companions together may
+/// read at most [`COMPANION_BUDGET`] bytes: a file can name other files (a
+/// KiSS set lists thousands of cells) and must not make a run read
+/// gigabytes.
+struct SiblingFiles<'a> {
+    input: &'a Path,
+    listing: OnceCell<Vec<OsString>>,
+    /// Bytes companions may still read.
+    budget: Cell<u64>,
+}
 
-impl SiblingFiles<'_> {
+/// Most bytes all companions of one input may read in total.
+const COMPANION_BUDGET: u64 = 256 << 20;
+
+impl<'a> SiblingFiles<'a> {
+    fn new(input: &'a Path) -> Self {
+        Self {
+            input,
+            listing: OnceCell::new(),
+            budget: Cell::new(COMPANION_BUDGET),
+        }
+    }
+
     fn directory(&self) -> &Path {
-        self.0
+        self.input
             .parent()
             .filter(|d| !d.as_os_str().is_empty())
             .unwrap_or(Path::new("."))
     }
+
+    /// File names in the directory, read on first use.
+    fn names(&self) -> &[OsString] {
+        self.listing.get_or_init(|| {
+            std::fs::read_dir(self.directory())
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .map(|entry| entry.file_name())
+                .collect()
+        })
+    }
+
+    /// A companion's contents, charged to the budget.
+    fn read(&self, path: &Path) -> Option<std::borrow::Cow<'static, [u8]>> {
+        let limit = MAX_INPUT_LEN.min(self.budget.get());
+        let data = read_limited(path, limit).ok()?;
+        self.budget.set(self.budget.get() - data.len() as u64);
+        Some(data.into())
+    }
 }
 
 impl retro_image::Companions for SiblingFiles<'_> {
-    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+    fn get_named(&self, file_name: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let name = file_name.rsplit(['/', '\\']).next()?;
         if matches!(name, "" | "." | "..") {
             return None;
         }
-        read_input(&self.directory().join(name)).ok()
+        self.read(&self.directory().join(name))
     }
 
-    fn get(&self, extension: &str) -> Option<Vec<u8>> {
-        let stem = self.0.file_stem()?.to_str()?;
-        let wanted = format!("{stem}.{extension}");
-        std::fs::read_dir(self.directory())
-            .ok()?
-            .filter_map(Result::ok)
-            .find(|entry| {
-                entry
-                    .file_name()
-                    .to_str()
-                    .is_some_and(|n| n.eq_ignore_ascii_case(&wanted))
-            })
-            .and_then(|entry| read_input(&entry.path()).ok())
+    fn get(&self, extension: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
+        let mut wanted = self.input.file_stem()?.to_owned();
+        wanted.push(".");
+        wanted.push(extension);
+        let found = self
+            .names()
+            .iter()
+            .find(|name| name.eq_ignore_ascii_case(&wanted))?;
+        self.read(&self.directory().join(found))
     }
 }
 
@@ -238,7 +346,52 @@ mod tests {
         )
         .into_bytes();
         file.extend_from_slice(rgba);
-        retro_image::decode("picture.pam", &file).unwrap()
+        retro_image::decode("picture.pam", &file)
+            .unwrap()
+            .into_image()
+    }
+
+    /// A scratch directory for one test, removed by the caller.
+    #[cfg(unix)]
+    fn scratch_dir(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("retro-image-cli-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn companion_reads_stop_at_the_budget() {
+        use retro_image::Companions;
+        let dir = scratch_dir("budget");
+        let input = dir.join("pic.mic");
+        std::fs::write(dir.join("PIC.col"), [7u8; 1000]).unwrap();
+
+        let siblings = SiblingFiles::new(&input);
+        siblings.budget.set(1500);
+        assert_eq!(siblings.get("col").unwrap().len(), 1000);
+        // 500 bytes left: the same file no longer fits.
+        assert!(siblings.get("col").is_none());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // macOS file systems reject names that are not valid UTF-8.
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn companions_work_for_non_utf8_names() {
+        use retro_image::Companions;
+        use std::os::unix::ffi::OsStrExt;
+        let dir = scratch_dir("non-utf8");
+        let input = dir.join(std::ffi::OsStr::from_bytes(b"p\xFFic.mic"));
+        let companion = dir.join(std::ffi::OsStr::from_bytes(b"P\xFFIC.col"));
+        std::fs::write(&companion, [7u8; 1000]).unwrap();
+
+        let siblings = SiblingFiles::new(&input);
+        assert_eq!(siblings.get("col").unwrap().len(), 1000);
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     fn color_type(png_data: &[u8]) -> png::ColorType {

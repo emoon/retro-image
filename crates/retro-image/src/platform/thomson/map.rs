@@ -77,10 +77,10 @@ impl Map {
         let columns = |bytes| Columns { bytes, lines };
         match &self.screen {
             Screen::Columns40 { rama, ramb } => {
-                Ok(video::columns40(columns(rama), columns(ramb), &palette))
+                Ok(video::columns40(columns(rama), columns(ramb), &palette)?)
             }
             Screen::Bitmap4 { rama, ramb } => {
-                Ok(video::bitmap4(columns(rama), columns(ramb), &palette))
+                Ok(video::bitmap4(columns(rama), columns(ramb), &palette)?)
             }
             Screen::Bitmap16(bytes) => video::bitmap16(columns(bytes), &palette),
             Screen::Columns80(bytes) => video::columns80(columns(bytes), &palette),
@@ -101,18 +101,18 @@ pub(super) fn decode_map(data: &[u8], companions: &dyn Companions) -> Result<Ima
 
 /// Parses a MAP file, checking the whole structure.
 pub(super) fn parse(data: &[u8]) -> Result<Map, DecodeError> {
-    let body = binary_record(data).ok_or(DecodeError::Unrecognized)?;
+    let body = binary_record(data).ok_or(DecodeError::Invalid)?;
     let [mode, columns, rows, packed @ ..] = body else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(*columns) + 1, usize::from(*rows) + 1);
     let max_columns = match mode {
         0x00 => 40,
         0x40 | 0x80 => 80,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if columns > max_columns || rows > 25 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let lines = rows * 8;
     let len = columns * lines;
@@ -125,12 +125,12 @@ pub(super) fn parse(data: &[u8]) -> Result<Map, DecodeError> {
     };
     let screen = match mode {
         0x00 => {
-            let rama = bank(2).ok_or(DecodeError::Unrecognized)?;
-            let ramb = bank(2).ok_or(DecodeError::Unrecognized)?;
+            let rama = bank(2).ok_or(DecodeError::Invalid)?;
+            let ramb = bank(2).ok_or(DecodeError::Invalid)?;
             Screen::Columns40 { rama, ramb }
         }
-        0x40 => Screen::Bitmap16(bank(4).ok_or(DecodeError::Unrecognized)?),
-        _ => Screen::Columns80(bank(4).ok_or(DecodeError::Unrecognized)?),
+        0x40 => Screen::Bitmap16(bank(4).ok_or(DecodeError::Invalid)?),
+        _ => Screen::Columns80(bank(4).ok_or(DecodeError::Invalid)?),
     };
     let trailer = trailer(&packed[pos..])?;
     let screen = match (screen, trailer) {
@@ -211,7 +211,7 @@ fn trailer(tail: &[u8]) -> Result<Option<Trailer>, DecodeError> {
     if tail.len() <= MAX_PAD {
         Ok(None)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 

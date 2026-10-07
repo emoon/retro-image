@@ -57,7 +57,7 @@ use crate::bytes::le16;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 /// Start of every stub: `mov sp, 100h`, `mov ax, 13h`, `int 10h`.
 const STUB: [u8; 8] = [0xbc, 0x00, 0x01, 0xb8, 0x13, 0x00, 0xcd, 0x10];
 /// A COM file is at most one 64 KB segment, less the PSP.
@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(image.get(0, 0), 0xff0082);
         assert_eq!(image.get(1, 0), 0);
         // Found by content under the name a DOS program has.
-        assert_eq!(crate::decode("picture.com", &com), Ok(image));
+        assert_eq!(crate::decode("picture.com", &com).unwrap().image(), &image);
         com[at] = b'Q';
         assert!(decode_pixit(&com).is_err());
     }

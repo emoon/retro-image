@@ -124,70 +124,70 @@ struct Chunk<'a> {
 }
 
 fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let endian = match data.get(..8) {
         Some(b"MIG.00.1") => Endian::Little,
         Some(b".GIM1.00") => Endian::Big,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     // The root chunk holds the end of the file; the rest is walked flat.
     if endian.u16(data, HEADER_LEN) != Some(2) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let end = (endian.u32(data, HEADER_LEN + 4).ok_or(fail)? as usize)
+    let end = (endian.u32(data, HEADER_LEN + 4).ok_or(FAIL)? as usize)
         .saturating_add(HEADER_LEN)
         .min(data.len());
     let mut chunks = Vec::new();
     let mut at = HEADER_LEN;
     while at < end && chunks.len() < MAX_CHUNKS {
-        let kind = endian.u16(data, at).ok_or(fail)?;
-        let len = endian.u32(data, at + 8).ok_or(fail)? as usize;
+        let kind = endian.u16(data, at).ok_or(FAIL)?;
+        let len = endian.u32(data, at + 8).ok_or(FAIL)? as usize;
         if len == 0 {
-            return Err(fail);
+            return Err(FAIL);
         }
         chunks.push(Chunk {
             kind,
             data: &data[at..],
         });
-        at = at.checked_add(len).ok_or(fail)?;
+        at = at.checked_add(len).ok_or(FAIL)?;
     }
 
     let mut after_image = chunks.iter().skip_while(|c| c.kind != 4);
-    let image = after_image.next().ok_or(fail)?.data;
+    let image = after_image.next().ok_or(FAIL)?.data;
     // The palette belongs to the first image: it lies before the next one.
     let palette = after_image
         .take_while(|c| c.kind != 4)
         .find(|c| c.kind == 5);
 
-    let format = endian.u16(image, 0x14).ok_or(fail)?;
-    let swizzled = endian.u16(image, 0x16).ok_or(fail)? == 1;
-    let width = usize::from(endian.u16(image, 0x18).ok_or(fail)?);
-    let height = usize::from(endian.u16(image, 0x1a).ok_or(fail)?);
-    let stride_alignment = usize::from(endian.u16(image, 0x1e).ok_or(fail)?).max(1);
-    let height_alignment = usize::from(endian.u16(image, 0x20).ok_or(fail)?).max(1);
+    let format = endian.u16(image, 0x14).ok_or(FAIL)?;
+    let swizzled = endian.u16(image, 0x16).ok_or(FAIL)? == 1;
+    let width = usize::from(endian.u16(image, 0x18).ok_or(FAIL)?);
+    let height = usize::from(endian.u16(image, 0x1a).ok_or(FAIL)?);
+    let stride_alignment = usize::from(endian.u16(image, 0x1e).ok_or(FAIL)?).max(1);
+    let height_alignment = usize::from(endian.u16(image, 0x20).ok_or(FAIL)?).max(1);
     check_size(width, height)?;
     let bits = match format {
         0..=2 => 16,
         3 => 32,
         4 => 4,
         5 => 8,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let stride = (width * bits)
         .div_ceil(8)
         .next_multiple_of(stride_alignment);
     let rows = height.next_multiple_of(height_alignment);
     if swizzled && (stride % 16 != 0 || rows % 8 != 0) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let pixels = image.get(DATA_AT..).ok_or(fail)?;
+    let pixels = image.get(DATA_AT..).ok_or(FAIL)?;
     pixels
-        .get(..stride.checked_mul(rows).ok_or(fail)?)
-        .ok_or(fail)?;
+        .get(..stride.checked_mul(rows).ok_or(FAIL)?)
+        .ok_or(FAIL)?;
 
     let colors = match (format, palette) {
-        (4 | 5, Some(palette)) => Some(palette_colors(endian, palette.data).ok_or(fail)?),
-        (4 | 5, None) => return Err(fail),
+        (4 | 5, Some(palette)) => Some(palette_colors(endian, palette.data).ok_or(FAIL)?),
+        (4 | 5, None) => return Err(FAIL),
         _ => None,
     };
     // The byte `bx` of row `y`, undoing the swizzle (16 bytes by 8 rows).
@@ -216,7 +216,7 @@ fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
             color(endian, format, &texel).unwrap_or(0)
         }
     });
-    Ok(Image::from_argb(width as u32, height as u32, argb))
+    Image::from_argb(width as u32, height as u32, argb)
 }
 
 /// The colors of a palette chunk, padded to 256 entries so that any index of

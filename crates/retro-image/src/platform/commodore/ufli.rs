@@ -50,11 +50,11 @@ pub(super) fn decode_ufli(data: &[u8]) -> Result<Image, DecodeError> {
         data[2..].to_vec()
     } else {
         let [_, _, escape, packed @ ..] = data else {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         };
         escape_rle(packed, *escape, Run::CountValue, LEN)
             .filter(|mem| mem.len() == LEN)
-            .ok_or(DecodeError::Unrecognized)?
+            .ok_or(DecodeError::Invalid)?
     };
     let pixels = (0..HEIGHT)
         .flat_map(|y| (0..WIDTH).map(move |x| (x, y)))

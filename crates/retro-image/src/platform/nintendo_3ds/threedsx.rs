@@ -21,15 +21,15 @@ const SMDH_OFFSET_AT: usize = 0x20;
 const SMDH_SIZE_AT: usize = 0x24;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(MAGIC) || le16(data, HEADER_SIZE_AT) < Some(EXTENDED_HEADER_SIZE) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let offset = le32(data, SMDH_OFFSET_AT).ok_or(fail)? as usize;
+    let offset = le32(data, SMDH_OFFSET_AT).ok_or(FAIL)? as usize;
     if le32(data, SMDH_SIZE_AT) != Some(smdh::LEN as u32) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    smdh::icon(data.get(offset..).ok_or(fail)?)
+    smdh::icon(data.get(offset..).ok_or(FAIL)?)
 }
 
 #[cfg(test)]

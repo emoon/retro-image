@@ -19,7 +19,7 @@ const HEIGHT: usize = 192;
 pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
     if fluff.kind != 0x1c || fluff.byte(PAYLOAD)? != 0x0e {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (pixels, rest) = fluff.split(PAYLOAD + 1, WIDTH * HEIGHT)?;
     flf::trailer(rest, false)?;

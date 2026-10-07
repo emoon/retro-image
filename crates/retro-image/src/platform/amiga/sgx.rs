@@ -46,25 +46,25 @@ const COLORS_AT: usize = 54;
 const COLORS_LEN: usize = 256 * 3;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !SIGNATURES.iter().any(|s| data.starts_with(s)) || be16(data, VERSION_AT) != Some(VERSION) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let data_offset = be32(data, 20).ok_or(fail)? as usize;
-    let header = data.get(..data_offset).ok_or(fail)?;
+    let data_offset = be32(data, 20).ok_or(FAIL)? as usize;
+    let header = data.get(..data_offset).ok_or(FAIL)?;
     let rows = Rows {
-        width: be32(header, 32).ok_or(fail)? as usize,
-        height: be32(header, 36).ok_or(fail)? as usize,
-        bytes_per_line: be32(header, 50).ok_or(fail)? as usize,
+        width: be32(header, 32).ok_or(FAIL)? as usize,
+        height: be32(header, 36).ok_or(FAIL)? as usize,
+        bytes_per_line: be32(header, 50).ok_or(FAIL)? as usize,
     };
-    let depth = be32(header, 40).ok_or(fail)?;
-    let view_mode = be32(header, 44).ok_or(fail)?;
-    let (&bits, &planes) = (header.get(48).ok_or(fail)?, header.get(49).ok_or(fail)?);
-    let pixels = pixel_layout(bits, planes, depth, view_mode).ok_or(fail)?;
+    let depth = be32(header, 40).ok_or(FAIL)?;
+    let view_mode = be32(header, 44).ok_or(FAIL)?;
+    let (&bits, &planes) = (header.get(48).ok_or(FAIL)?, header.get(49).ok_or(FAIL)?);
+    let pixels = pixel_layout(bits, planes, depth, view_mode).ok_or(FAIL)?;
 
     let mut palette = [0u32; 256];
     if pixels == Pixels::Indexed8 {
-        let colors = header.get(COLORS_AT..COLORS_AT + COLORS_LEN).ok_or(fail)?;
+        let colors = header.get(COLORS_AT..COLORS_AT + COLORS_LEN).ok_or(FAIL)?;
         for (entry, rgb) in palette.iter_mut().zip(colors.as_chunks::<3>().0) {
             *entry = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);
         }

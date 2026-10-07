@@ -83,8 +83,8 @@ fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 
 /// Grass' Slideshow picture.
 pub(super) fn decode_hpm(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked = unpack(data).ok_or(DecodeError::Unrecognized)?;
-    let screen = unpacked.get(..SCREEN).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = unpack(data).ok_or(DecodeError::Invalid)?;
+    let screen = unpacked.get(..SCREEN).ok_or(DecodeError::Invalid)?;
     let colors = match unpacked.get(SCREEN) {
         Some(0x34) if data.len() == JORDAN_LEN => JORDAN,
         Some(&color0) => PALETTES

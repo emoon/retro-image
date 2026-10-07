@@ -19,7 +19,7 @@ const SCREEN_LEN: usize = 32000;
 const PALETTE_LEN: usize = 9616;
 
 pub(super) fn decode_pcs(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -32,7 +32,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     let palette = unpack(data, &mut pos, PALETTE_LEN * 2, 2)?;
     let first = Frame::new(&screen, &palette);
     if mode == 0 {
-        return Some(first.render());
+        return first.render().ok();
     }
     let mut screen2 = unpack(data, &mut pos, SCREEN_LEN, 1)?;
     if mode & 1 == 0 {
@@ -43,8 +43,8 @@ fn decode(data: &[u8]) -> Option<Image> {
         palette2.iter_mut().zip(&palette).for_each(|(b, a)| *b ^= a);
     }
     let second = Frame::new(&screen2, &palette2);
-    let a = first.render();
-    let b = second.render();
+    let a = first.render().ok()?;
+    let b = second.render().ok()?;
     Some(Image::blend(&[&a, &b]))
 }
 
@@ -66,9 +66,9 @@ impl Frame {
         Self { screen, palette }
     }
 
-    fn render(&self) -> Image {
+    fn render(&self) -> Result<Image, DecodeError> {
         let ste = uses_ste_bits(self.palette.iter().copied());
-        let mut image = Image::new(320, 199);
+        let mut image = Image::new(320, 199)?;
         for y in 1..200 {
             let line = &self.screen[y * 160..(y + 1) * 160];
             for x in 0..320 {
@@ -77,7 +77,7 @@ impl Frame {
                 image.set(x as u32, (y - 1) as u32, st_rgb(word, ste));
             }
         }
-        image
+        Ok(image)
     }
 }
 

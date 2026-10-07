@@ -119,7 +119,7 @@ const HEIGHT: usize = ROWS * 8;
 
 fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
     if data.len() != mode.screen_len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(data, mode, &mode.palette)
 }
@@ -128,7 +128,7 @@ fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
 fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Result<Image, DecodeError> {
     let pixels_per_byte = 8 / mode.bits_per_pixel;
     let width = mode.row_bytes / 8 * pixels_per_byte;
-    let mut image = Image::new(width as u32, HEIGHT as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..width {
             let byte = data[y / 8 * mode.row_bytes + x / pixels_per_byte * 8 + y % 8];
@@ -182,7 +182,7 @@ fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
         2 => &MODE2,
         4 => &MODE4,
         5 => &MODE5,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let mut palette = [0; 16];
     for logical in (0..16).rev() {
@@ -191,7 +191,7 @@ fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
     let step = bits.read(8)? as usize;
     let count_bits = bits.read(8)?;
     if value_bits == 0 || value_bits > 8 || count_bits > 16 || step == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut screen = alloc::vec![0u8; mode.screen_len()];
     let mut passes = step;
@@ -216,7 +216,7 @@ fn decode_ldpic(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     if bits.position.div_ceil(8) != data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(&screen, mode, &palette)
 }
@@ -234,7 +234,7 @@ impl BitReader<'_> {
             let byte = self
                 .data
                 .get(self.position / 8)
-                .ok_or(DecodeError::Unrecognized)?;
+                .ok_or(DecodeError::Invalid)?;
             let bit = (byte >> (7 - self.position % 8)) & 1;
             value |= u32::from(bit) << i;
             self.position += 1;
@@ -263,6 +263,6 @@ mod tests {
         };
         assert_eq!(bits.read(8), Ok(8));
         assert_eq!(bits.read(8), Ok(2));
-        assert_eq!(bits.read(1), Err(DecodeError::Unrecognized));
+        assert_eq!(bits.read(1), Err(DecodeError::Invalid));
     }
 }

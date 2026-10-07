@@ -80,7 +80,7 @@ use crate::bytes::le16;
 use crate::platform::textmode;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MARKER: u8 = 0xfd;
 const HEADER_LEN: usize = 7;
 const CGA_MEMORY: usize = 0xb8000;

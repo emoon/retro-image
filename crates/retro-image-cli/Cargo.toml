@@ -15,7 +15,12 @@ categories = ["command-line-utilities", "multimedia::images"]
 [[bin]]
 name = "retro-image"
 path = "src/main.rs"
+# The library crate has the documentation; a bin doc would collide with it.
+doc = false
 
 [dependencies]
 retro-image.workspace = true
 png.workspace = true
+
+[lints]
+workspace = true

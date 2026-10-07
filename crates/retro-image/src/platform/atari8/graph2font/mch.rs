@@ -33,7 +33,7 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
     let columns = match data.len() {
         30833 => 40,
         32993 => 48,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (antic4, gtia) = match data[0] & 0x3f {
         0x01 => (false, 0),
@@ -41,7 +41,7 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
         0x09 => (false, 1),
         0x19 => (false, 2),
         0x29 => (false, 3),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let cells = &data[..9 * columns * ROWS];
     let tables = &data[cells.len()..];
@@ -85,7 +85,7 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
         vbxe: None,
         lines,
     };
-    Ok(picture.render())
+    picture.render()
 }
 
 #[cfg(test)]

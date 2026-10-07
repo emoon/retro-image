@@ -32,7 +32,7 @@ const HEIGHT: usize = 240;
 
 fn decode_hrz(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != WIDTH * HEIGHT * 3 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let level = |sample: u8| u32::from(sample).saturating_mul(4).min(255);
     let colors = data
@@ -40,7 +40,7 @@ fn decode_hrz(data: &[u8]) -> Result<Image, DecodeError> {
         .0
         .iter()
         .map(|&[r, g, b]| level(r) << 16 | level(g) << 8 | level(b));
-    Ok(Image::from_colors(WIDTH as u32, HEIGHT as u32, colors))
+    Image::from_colors(WIDTH as u32, HEIGHT as u32, colors)
 }
 
 #[cfg(test)]

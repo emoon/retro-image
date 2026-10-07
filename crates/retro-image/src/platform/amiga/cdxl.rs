@@ -51,20 +51,20 @@ const BIT_PLANAR: u8 = 0x00;
 const BIT_LINE: u8 = 0x80;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let info = *data.get(1).ok_or(fail)?;
-    let frame_len = be32(data, 2).ok_or(fail)? as usize;
-    let width = usize::from(be16(data, 14).ok_or(fail)?);
-    let height = usize::from(be16(data, 16).ok_or(fail)?);
-    let planes = usize::from(*data.get(19).ok_or(fail)?);
-    let palette_len = usize::from(be16(data, 20).ok_or(fail)?);
-    let sound_len = usize::from(be16(data, 22).ok_or(fail)?);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let info = *data.get(1).ok_or(FAIL)?;
+    let frame_len = be32(data, 2).ok_or(FAIL)? as usize;
+    let width = usize::from(be16(data, 14).ok_or(FAIL)?);
+    let height = usize::from(be16(data, 16).ok_or(FAIL)?);
+    let planes = usize::from(*data.get(19).ok_or(FAIL)?);
+    let palette_len = usize::from(be16(data, 20).ok_or(FAIL)?);
+    let sound_len = usize::from(be16(data, 22).ok_or(FAIL)?);
 
     let mode = match (info & ENCODING_MASK, planes) {
         (ENCODING_HAM, 6) => Pixels::Ham6,
         (ENCODING_HAM, 8) => Pixels::Ham8,
         (0, 1..=8) => Pixels::Indexed8,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let rows = Rows {
         width,
@@ -78,17 +78,17 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     // it may be longer (see above), never shorter.
     let picture_end = HEADER_LEN + palette_len + video_len;
     if palette_len % 2 != 0 || frame_len < picture_end + sound_len {
-        return Err(fail);
+        return Err(FAIL);
     }
     let interleaved = match info & ARRANGEMENT_MASK {
         BIT_PLANAR => false,
         BIT_LINE => true,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
-    let words = data.get(HEADER_LEN..HEADER_LEN + palette_len).ok_or(fail)?;
+    let words = data.get(HEADER_LEN..HEADER_LEN + palette_len).ok_or(FAIL)?;
     let video = data
         .get(HEADER_LEN + palette_len..picture_end)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
 
     let mut palette = [0u32; 256];
     for (entry, word) in palette.iter_mut().zip(words.as_chunks::<2>().0) {
@@ -100,7 +100,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         } else {
             (plane * height + y) * row_len
         }
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

@@ -66,7 +66,7 @@ impl Pixels {
 }
 
 pub(super) fn decode_bnr(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     const TEXT_AT: usize = 0x1820;
     let valid = match data.get(..4) {
         Some(b"BNR1") => data.len() == 0x1960,
@@ -74,15 +74,15 @@ pub(super) fn decode_bnr(data: &[u8]) -> Result<Image, DecodeError> {
         _ => false,
     };
     if !valid {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let pixels = data.get(0x20..).ok_or(fail)?;
-    picture(Pixels::Direct, BANNER_WIDTH, BANNER_HEIGHT, pixels, &[]).ok_or(fail)
+    let pixels = data.get(0x20..).ok_or(FAIL)?;
+    picture(Pixels::Direct, BANNER_WIDTH, BANNER_HEIGHT, pixels, &[]).ok_or(FAIL)
 }
 
 pub(super) fn decode_gci(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let blocks = usize::from(be16(data, 0x38).ok_or(fail)?);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let blocks = usize::from(be16(data, 0x38).ok_or(FAIL)?);
     let printable = |range: core::ops::Range<usize>| {
         data.get(range)
             .is_some_and(|text| text.iter().all(u8::is_ascii_alphanumeric))
@@ -95,14 +95,14 @@ pub(super) fn decode_gci(data: &[u8]) -> Result<Image, DecodeError> {
         || blocks == 0
         || data.len() != ENTRY_LEN + blocks * BLOCK_LEN
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let banner = data[7] & 3;
-    let icon_formats = be16(data, 0x30).ok_or(fail)?;
+    let icon_formats = be16(data, 0x30).ok_or(FAIL)?;
     let start = ENTRY_LEN
-        .checked_add(be32(data, 0x2c).ok_or(fail)? as usize)
-        .ok_or(fail)?;
-    let body = data.get(start..).ok_or(fail)?;
+        .checked_add(be32(data, 0x2c).ok_or(FAIL)? as usize)
+        .ok_or(FAIL)?;
+    let body = data.get(start..).ok_or(FAIL)?;
 
     let (kind, width, height) = match banner {
         1 => (Pixels::Indexed, BANNER_WIDTH, BANNER_HEIGHT),
@@ -110,24 +110,24 @@ pub(super) fn decode_gci(data: &[u8]) -> Result<Image, DecodeError> {
         0 => match icon_formats & 3 {
             1 | 3 => (Pixels::Indexed, ICON_SIZE, ICON_SIZE),
             2 => (Pixels::Direct, ICON_SIZE, ICON_SIZE),
-            _ => return Err(fail),
+            _ => return Err(FAIL),
         },
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let pixel_len = kind.len(width, height);
     let palette = match kind {
         Pixels::Direct => &[][..],
         // The banner's own palette, an icon's own or the one after the icons.
         Pixels::Indexed if banner != 0 || icon_formats & 3 == 3 => {
-            body.get(pixel_len..pixel_len + PALETTE_LEN).ok_or(fail)?
+            body.get(pixel_len..pixel_len + PALETTE_LEN).ok_or(FAIL)?
         }
         Pixels::Indexed => {
             let icons_end = shared_palette_at(icon_formats);
-            body.get(icons_end..icons_end + PALETTE_LEN).ok_or(fail)?
+            body.get(icons_end..icons_end + PALETTE_LEN).ok_or(FAIL)?
         }
     };
-    let pixels = body.get(..pixel_len).ok_or(fail)?;
-    picture(kind, width, height, pixels, palette).ok_or(fail)
+    let pixels = body.get(..pixel_len).ok_or(FAIL)?;
+    picture(kind, width, height, pixels, palette).ok_or(FAIL)
 }
 
 /// Where the palette shared by CI8 icons lies, counted from the first icon:
@@ -158,11 +158,7 @@ fn picture(
             gx::decode(PixelFormat::C8, width, height, pixels, &colors)?
         }
     };
-    Some(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter()).ok()
 }
 
 #[cfg(test)]

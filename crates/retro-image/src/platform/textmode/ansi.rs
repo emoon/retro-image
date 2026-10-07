@@ -66,7 +66,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let sauce = sauce.filter(|s| ANSI_FILE_TYPES.iter().any(|&t| s.is_character(t)));
     let width = sauce.as_ref().and_then(Sauce::width).unwrap_or(80);
     let ice = sauce.as_ref().is_some_and(Sauce::ice);
-    let mut ansi = Ansi::new(width, ice).ok_or(DecodeError::Unrecognized)?;
+    let mut ansi = Ansi::new(width, ice).ok_or(DecodeError::Invalid)?;
     ansi.feed(text);
     ansi.terminal.finish(&sauce::style_of(sauce.as_ref()))
 }

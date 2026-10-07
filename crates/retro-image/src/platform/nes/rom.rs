@@ -48,20 +48,20 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     } else if data.starts_with(UNIF_MAGIC) {
         chr::sheet(&unif_chr(data)?)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
 /// The CHR-ROM of an iNES or NES 2.0 file.
 fn ines_chr(data: &[u8]) -> Result<&[u8], DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..INES_HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..INES_HEADER_LEN).ok_or(FAIL)?;
     let trainer = if header[6] & 4 != 0 { TRAINER_LEN } else { 0 };
     let body = (data.len() - INES_HEADER_LEN).saturating_sub(trainer);
     let (prg, chr) = rom_sizes(header, body);
     let start = INES_HEADER_LEN + trainer + prg;
-    let chr = data.get(start..start.checked_add(chr).ok_or(fail)?);
-    chr.filter(|chr| !chr.is_empty()).ok_or(fail)
+    let chr = data.get(start..start.checked_add(chr).ok_or(FAIL)?);
+    chr.filter(|chr| !chr.is_empty()).ok_or(FAIL)
 }
 
 /// The PRG-ROM and CHR-ROM sizes in bytes: the NES 2.0 reading if the header
@@ -97,14 +97,14 @@ fn rom_size(low: u8, high: u8, unit: usize) -> Option<usize> {
 
 /// The CHR-ROM chunks of a UNIF file, joined in the order of their numbers.
 fn unif_chr(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut banks: [&[u8]; 16] = [&[]; 16];
-    let mut rest = data.get(UNIF_HEADER_LEN..).ok_or(fail)?;
+    let mut rest = data.get(UNIF_HEADER_LEN..).ok_or(FAIL)?;
     while !rest.is_empty() {
-        let id = rest.get(..4).ok_or(fail)?;
-        let len = le32(rest, 4).ok_or(fail)? as usize;
-        let end = 8usize.checked_add(len).ok_or(fail)?;
-        let chunk = rest.get(8..end).ok_or(fail)?;
+        let id = rest.get(..4).ok_or(FAIL)?;
+        let len = le32(rest, 4).ok_or(FAIL)? as usize;
+        let end = 8usize.checked_add(len).ok_or(FAIL)?;
+        let chunk = rest.get(8..end).ok_or(FAIL)?;
         if let Some(bank) = id
             .strip_prefix(b"CHR")
             .and_then(|n| char::from(n[0]).to_digit(16))
@@ -116,7 +116,7 @@ fn unif_chr(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
     }
     let joined = banks.concat();
     if joined.is_empty() {
-        return Err(fail);
+        return Err(FAIL);
     }
     Ok(joined)
 }

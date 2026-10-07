@@ -266,7 +266,7 @@ mod tests {
     fn signature_formats_are_detected_under_other_extensions() {
         // ImageLab: `B&W256`, width 2, height 1, two gray bytes.
         let picture = b"B&W256\0\x02\0\x01\x00\xff";
-        let image = crate::decode("picture.org", picture).unwrap();
+        let image = crate::decode("picture.org", picture).unwrap().into_image();
         assert_eq!(image.rgb(), &[0, 0, 0, 0xff, 0xff, 0xff]);
     }
 
@@ -274,11 +274,11 @@ mod tests {
     struct Any(alloc::vec::Vec<u8>);
 
     impl crate::Companions for Any {
-        fn get_named(&self, _file_name: &str) -> Option<alloc::vec::Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, _extension: &str) -> Option<alloc::vec::Vec<u8>> {
-            Some(self.0.clone())
+        fn get(&self, _extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            Some(self.0.clone().into())
         }
     }
 

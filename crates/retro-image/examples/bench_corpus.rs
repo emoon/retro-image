@@ -19,18 +19,18 @@ use retro_image::Companions;
 struct Siblings(Vec<PathBuf>, PathBuf);
 
 impl Companions for Siblings {
-    fn get(&self, extension: &str) -> Option<Vec<u8>> {
+    fn get(&self, extension: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let path = self.0.iter().find(|p| {
             p.extension()
                 .and_then(|e| e.to_str())
                 .is_some_and(|e| e.eq_ignore_ascii_case(extension))
         })?;
-        std::fs::read(path).ok()
+        std::fs::read(path).ok().map(Into::into)
     }
 
-    fn get_named(&self, file_name: &str) -> Option<Vec<u8>> {
+    fn get_named(&self, file_name: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let name = file_name.rsplit(['/', '\\']).next()?;
-        std::fs::read(self.1.join(name)).ok()
+        std::fs::read(self.1.join(name)).ok().map(Into::into)
     }
 }
 
@@ -134,7 +134,7 @@ fn main() {
         let time = best_of(format, &data, &siblings, runs);
         let pixels = u64::from(image.width()) * u64::from(image.height());
         let t = formats
-            .entry(format!("{} / {}", format.platform, format.name))
+            .entry(format!("{} / {}", format.platform(), format.name()))
             .or_default();
         t.files += 1;
         t.time += time;
@@ -146,7 +146,7 @@ fn main() {
         if dispatch > time * 2 + Duration::from_micros(50) {
             slow_dispatch.push((
                 dispatch - time,
-                format.name,
+                format.name(),
                 files.last().unwrap().2.clone(),
             ));
         }

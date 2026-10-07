@@ -10,7 +10,7 @@ use crate::bytes::be16;
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_psc(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {

@@ -48,16 +48,16 @@ const FRAME_LEN: usize = ROW_LEN * HEIGHT;
 /// The first frame; later ones are deltas and the file must hold them all.
 pub(super) fn decode_hel(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(b"he1\0\x01\0\0\0") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames = le32(data, 8)
         .and_then(|n| (n as usize).checked_add(1))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let expected = frames
         .checked_mul(FRAME_LEN)
         .and_then(|len| len.checked_add(HEADER_LEN));
     if expected != Some(data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Image::from_bits(
         WIDTH as u32,

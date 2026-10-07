@@ -17,17 +17,15 @@ const SCREEN_LEN: usize = 1920;
 /// Raw 1920-byte screen.
 pub(super) fn decode_pgf(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(data)
 }
 
 /// Run-length compressed screen.
 pub(super) fn decode_pgc(data: &[u8]) -> Result<Image, DecodeError> {
-    let packed = data
-        .strip_prefix(b"PG\x01")
-        .ok_or(DecodeError::Unrecognized)?;
-    let screen = unpack(packed).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.strip_prefix(b"PG\x01").ok_or(DecodeError::Invalid)?;
+    let screen = unpack(packed).ok_or(DecodeError::Invalid)?;
     render(&screen)
 }
 

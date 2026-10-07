@@ -25,8 +25,8 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .split(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'))
         .filter(|token| !token.is_empty())
         .map(number);
-    let mut next = move || numbers.next().ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut next = move || numbers.next().ok_or(DecodeError::Invalid)?;
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     loop {
         let (width, height, _kind) = (next()?, next()?, next()?);
         let (x, y) = (next()?, next()?);
@@ -34,7 +34,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             return Ok(image);
         }
         if width == 0 || x + 8 * width > WIDTH || y + height > HEIGHT {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         for column in 0..width {
             for row in y..y + height {
@@ -54,15 +54,15 @@ fn number(token: &[u8]) -> Result<usize, DecodeError> {
         None => (token, 10),
     };
     if digits.is_empty() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     digits.iter().try_fold(0usize, |value, &digit| {
         let digit = char::from(digit)
             .to_digit(radix)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         Some(value * radix as usize + digit as usize)
             .filter(|&value| value < WIDTH)
-            .ok_or(DecodeError::Unrecognized)
+            .ok_or(DecodeError::Invalid)
     })
 }
 

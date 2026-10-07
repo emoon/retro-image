@@ -55,14 +55,14 @@ const FIRST_PAGE: u8 = 0x4d;
 /// A4R: 80x256 grays.
 pub(super) fn decode_a4r(data: &[u8]) -> Result<Image, DecodeError> {
     let Some((&[b0, b1, 0x00, 0x90, page], stream)) = data.split_first_chunk() else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if b0 & b1 & 0x80 == 0 || !(FIRST_PAGE..=PICTURE_PAGE).contains(&page) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let start = usize::from(PICTURE_PAGE - page) * 256;
-    let image = unpack(stream, b0 & 0x7f, b1 & 0x7f, start + PICTURE, page)
-        .ok_or(DecodeError::Unrecognized)?;
+    let image =
+        unpack(stream, b0 & 0x7f, b1 & 0x7f, start + PICTURE, page).ok_or(DecodeError::Invalid)?;
     screen::gtia9(screen::bitmap(&image[start..], 40, 4), 0x00)
 }
 

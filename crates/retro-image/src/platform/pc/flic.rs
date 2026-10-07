@@ -54,7 +54,7 @@ use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 128;
 /// Bytes of a chunk header (size and type) and of a frame header before its
 /// sub-chunks (header, sub-chunk count, 8 reserved bytes).
@@ -76,9 +76,24 @@ const BLACK: u16 = 13;
 const BYTE_RUN: u16 = 15;
 const COPY: u16 = 16;
 
+/// What a chunk does to the canvas, so dead work can be skipped.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Effect {
+    /// Changes only the palette.
+    Palette,
+    /// Overwrites every pixel (BLACK, COPY).
+    Fill,
+    /// Overwrites some pixels.
+    Draw,
+    /// Ignored.
+    Nothing,
+}
+
 /// What a FLIC decoder draws chunks on; the 8-bit [`Screen`] here and the
 /// hi-color screen in `flh.rs` share the file walking below.
 pub(super) trait Canvas {
+    /// How chunks of `kind` touch the canvas.
+    fn effect(kind: u16) -> Effect;
     /// Draws the chunk of `kind` whose body runs from `start` to `end`.
     fn apply(&mut self, kind: u16, start: usize, end: usize);
     /// Whether any chunk has drawn pixels.
@@ -97,6 +112,15 @@ struct Screen<'a> {
 }
 
 impl Canvas for Screen<'_> {
+    fn effect(kind: u16) -> Effect {
+        match kind {
+            COLOR_256 | COLOR_64 => Effect::Palette,
+            BLACK | COPY => Effect::Fill,
+            BYTE_RUN | DELTA_FLI | DELTA_FLC => Effect::Draw,
+            _ => Effect::Nothing,
+        }
+    }
+
     fn apply(&mut self, kind: u16, start: usize, end: usize) {
         self.draw(kind, start, end);
     }
@@ -133,9 +157,11 @@ impl Screen<'_> {
             }
             COPY => {
                 self.drawn = true;
-                for i in 0..self.pixels.len() {
-                    self.pixels[i] = self.byte(start + i);
-                }
+                // Bytes past the end of the file read as 0.
+                let src = self.data.get(start..).unwrap_or(&[]);
+                let copied = src.len().min(self.pixels.len());
+                self.pixels[..copied].copy_from_slice(&src[..copied]);
+                self.pixels[copied..].fill(0);
             }
             BYTE_RUN => self.byte_run(start, end),
             DELTA_FLI => self.delta_fli(start, end),
@@ -340,7 +366,7 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     if magic == FLH {
         let mut screen = HiScreen::new(data, width, height, depth)?;
         return if first_picture(data, end, &mut screen) {
-            Ok(screen.into_image())
+            Ok(screen.into_image()?)
         } else {
             Err(FAIL)
         };
@@ -379,15 +405,31 @@ fn first_picture(data: &[u8], end: usize, canvas: &mut impl Canvas) -> bool {
 }
 
 /// Applies the sub-chunks of the frame chunk at `start`..`end`.
-fn apply_frame(data: &[u8], canvas: &mut impl Canvas, start: usize, end: usize) {
-    let count = le16(data, start + CHUNK_HEADER_LEN).unwrap_or(0);
-    let mut pos = start + FRAME_HEADER_LEN;
-    for _ in 0..count {
-        let Some((size, kind)) = chunk(data, pos, end) else {
-            return;
-        };
+///
+/// Pixel chunks before the last full-frame fill are overwritten anyway, so
+/// only their palette siblings run. That keeps the work linear in the input
+/// instead of one frame's worth of pixels per 6-byte BLACK chunk.
+fn apply_frame<C: Canvas>(data: &[u8], canvas: &mut C, start: usize, end: usize) {
+    let count = usize::from(le16(data, start + CHUNK_HEADER_LEN).unwrap_or(0));
+    let first = start + FRAME_HEADER_LEN;
+    let chunks = || {
+        let mut pos = first;
+        core::iter::from_fn(move || {
+            let (size, kind) = chunk(data, pos, end)?;
+            pos += size;
+            Some((pos - size, size, kind))
+        })
+        .take(count)
+    };
+    let last_fill = chunks()
+        .filter(|&(_, _, kind)| C::effect(kind) == Effect::Fill)
+        .last()
+        .map_or(first, |(at, _, _)| at);
+    for (pos, size, kind) in chunks() {
+        if pos < last_fill && matches!(C::effect(kind), Effect::Fill | Effect::Draw) {
+            continue;
+        }
         canvas.apply(kind, pos + CHUNK_HEADER_LEN, pos + size);
-        pos += size;
     }
 }
 
@@ -443,6 +485,22 @@ mod tests {
         assert_eq!(image.get(1, 1), 0xffffff);
         assert_eq!(image.get(2, 1), 0xffffff);
         assert_eq!(image.get(3, 1), 0);
+    }
+
+    #[test]
+    fn many_full_frame_chunks_decode_quickly() {
+        extern crate std;
+        // 65000 BLACK chunks on a 2048x2048 screen used to cost seconds.
+        let blacks = chunk_bytes(BLACK, &[]).repeat(65000);
+        let mut file = flc(&blacks);
+        file[8..10].copy_from_slice(&2048u16.to_le_bytes());
+        file[10..12].copy_from_slice(&2048u16.to_le_bytes());
+        let count = 65001u16.to_le_bytes();
+        file[HEADER_LEN + CHUNK_HEADER_LEN..][..2].copy_from_slice(&count);
+        let started = std::time::Instant::now();
+        let image = decode_flic(&file).unwrap();
+        assert_eq!(image.width(), 2048);
+        assert!(started.elapsed().as_millis() < 1000);
     }
 
     #[test]

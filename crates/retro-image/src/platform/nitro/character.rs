@@ -121,7 +121,7 @@ impl<'a> Character<'a> {
         let matches_count = |&(y, x): &(usize, usize)| y * x == count;
         let known = self.size.filter(matches_count);
         if self.bitmap {
-            let (tiles_y, tiles_x) = known.ok_or(DecodeError::Unrecognized)?;
+            let (tiles_y, tiles_x) = known.ok_or(DecodeError::Invalid)?;
             let (width, height) = (tiles_x * layout.width, tiles_y * layout.height);
             check_size(width, height)?;
             let indices: Vec<u8> = if self.bits == 8 {

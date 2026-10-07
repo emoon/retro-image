@@ -30,23 +30,23 @@ pub(super) static FORMATS: &[Format] = &[
 ];
 
 fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     // "PIC" $DC, then format version "00".
     if data.len() < 20 || data[..6] != *b"PIC\xdc00" || le16(data, 6) == Some(0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     // The first picture record.
-    let word = |at| le16(data, at).map(usize::from).ok_or(fail);
+    let word = |at| le16(data, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(10)?, word(12)?);
-    let offset = le32(data, 16).ok_or(fail)? as usize;
+    let offset = le32(data, 16).ok_or(FAIL)? as usize;
     check_size(width, height)?;
     let row_len = width.div_ceil(16) * 2;
-    let start = 20usize.checked_add(offset).ok_or(fail)?;
+    let start = 20usize.checked_add(offset).ok_or(FAIL)?;
     let end = row_len
         .checked_mul(height)
         .and_then(|len| start.checked_add(len))
-        .ok_or(fail)?;
-    let pixels = data.get(start..end).ok_or(fail)?;
+        .ok_or(FAIL)?;
+    let pixels = data.get(start..end).ok_or(FAIL)?;
     let colors = [0xffffff, 0];
     Image::from_bits(
         width as u32,
@@ -71,6 +71,6 @@ mod tests {
         data[6] = 1;
         data[10..12].copy_from_slice(&(width as u16).to_le_bytes());
         data[12..14].copy_from_slice(&(height as u16).to_le_bytes());
-        assert!(matches!(decode_pic(&data), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode_pic(&data), Err(DecodeError::TooLarge)));
     }
 }

@@ -20,13 +20,13 @@ const PAGE_ROWS: usize = 24;
 
 pub(in crate::platform) fn decode_ep1(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(&[0xfe, 0x01]) || !matches!(data.get(3), Some(0 | 0xc2 | 0xca)) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let offset = le16(data, 4).ok_or(DecodeError::Unrecognized)?;
+    let offset = le16(data, 4).ok_or(DecodeError::Invalid)?;
     let start = HEADER + usize::from(offset);
     let body = data
         .get(start..start + PAGE_ROWS * COLUMNS)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let mut page = Page::blank();
     for (row, line) in body.as_chunks::<COLUMNS>().0.iter().enumerate() {
         page.set_row(row, line.iter().copied());

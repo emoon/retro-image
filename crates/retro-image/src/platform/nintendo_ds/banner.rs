@@ -64,33 +64,33 @@ const TILE: TileLayout = TileLayout::packed(4, BitOrder::LsbFirst);
 const TILES_PER_ROW: usize = 4;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..HEADER_LEN).ok_or(FAIL)?;
     if le16(header, LOGO_CRC_AT) != Some(LOGO_CRC)
         || le16(header, HEADER_CRC_AT) != Some(crc16(&header[..HEADER_CRC_AT]))
     {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let at = le32(header, BANNER_AT).ok_or(fail)? as usize;
-    let banner = data.get(at..).ok_or(fail)?;
+    let at = le32(header, BANNER_AT).ok_or(FAIL)? as usize;
+    let banner = data.get(at..).ok_or(FAIL)?;
     first_frame(banner)
 }
 
 /// The icon a banner shows first.
 fn first_frame(banner: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let version = le16(banner, 0).ok_or(fail)?;
-    let shown = banner.get(..STATIC_END).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let version = le16(banner, 0).ok_or(FAIL)?;
+    let shown = banner.get(..STATIC_END).ok_or(FAIL)?;
     if !VERSIONS.contains(&version) || le16(banner, CRC_AT) != Some(crc16(&shown[BITMAP_AT..])) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let static_icon = (BITMAP_AT, PALETTE_AT, 0);
     let (bitmap_at, palette_at, flips) = if version == ANIMATED {
-        let animation = banner.get(..ANIMATION_END).ok_or(fail)?;
+        let animation = banner.get(..ANIMATION_END).ok_or(FAIL)?;
         if le16(banner, ANIMATION_CRC_AT) != Some(crc16(&animation[ANIMATION_BITMAPS_AT..])) {
-            return Err(fail);
+            return Err(FAIL);
         }
-        match le16(banner, SEQUENCE_AT).ok_or(fail)? {
+        match le16(banner, SEQUENCE_AT).ok_or(FAIL)? {
             0 => static_icon,
             token => (
                 ANIMATION_BITMAPS_AT + BITMAP_LEN * usize::from(token >> 8 & 7),
@@ -101,20 +101,20 @@ fn first_frame(banner: &[u8]) -> Result<Image, DecodeError> {
     } else {
         static_icon
     };
-    let bitmap = banner.get(bitmap_at..bitmap_at + BITMAP_LEN).ok_or(fail)?;
+    let bitmap = banner.get(bitmap_at..bitmap_at + BITMAP_LEN).ok_or(FAIL)?;
     let palette = banner
         .get(palette_at..palette_at + PALETTE_LEN)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let mut colors = [CLEAR; 16];
     for (color, &word) in colors.iter_mut().zip(palette.as_chunks::<2>().0).skip(1) {
         *color = 0xff00_0000 | bgr555(u16::from_le_bytes(word));
     }
     let icon = TILE.sheet_argb(bitmap, TILES_PER_ROW, &colors)?;
-    Ok(flipped(&icon, flips & 1 != 0, flips & 2 != 0))
+    flipped(&icon, flips & 1 != 0, flips & 2 != 0)
 }
 
 /// The icon mirrored left to right and/or top to bottom.
-fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Image {
+fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Result<Image, DecodeError> {
     let (width, height) = (icon.width(), icon.height());
     let source = |x: u32, y: u32| {
         let x = if horizontal { width - 1 - x } else { x };

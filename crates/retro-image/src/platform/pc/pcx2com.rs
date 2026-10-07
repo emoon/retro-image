@@ -49,7 +49,7 @@ use super::dac_rounded;
 use super::pcx::unpack;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const STUB: [u8; 4] = [0xb8, 0x13, 0x00, 0xcd];
 /// "Self PCX" with the top bit of each byte set.
 const SIGNATURE: [u8; 8] = [0xd3, 0xe5, 0xec, 0xe6, 0xa0, 0xd0, 0xc3, 0xd8];
@@ -98,7 +98,7 @@ mod tests {
         let image = decode_pcx2com(&com).unwrap();
         assert_eq!((image.width(), image.height()), (320, 200));
         assert_eq!(image.get(319, 199), 0xff0082);
-        assert_eq!(crate::decode("picture.com", &com), Ok(image));
+        assert_eq!(crate::decode("picture.com", &com).unwrap().image(), &image);
         let last = com.len() - 1;
         com[last] = 0;
         assert!(decode_pcx2com(&com).is_err());

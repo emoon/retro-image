@@ -84,12 +84,12 @@ pub(super) fn bitmap_bytes(
     payload: &[u8],
     len: usize,
 ) -> Result<Cow<'_, [u8]>, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let unpacked: Option<Vec<u8>> = match packing {
-        Packing::Stored => return payload.get(..len).map(Cow::Borrowed).ok_or(fail),
+        Packing::Stored => return payload.get(..len).map(Cow::Borrowed).ok_or(FAIL),
         Packing::Zlib => {
-            if be32(payload, 0).ok_or(fail)? as usize != len {
-                return Err(fail);
+            if be32(payload, 0).ok_or(FAIL)? as usize != len {
+                return Err(FAIL);
             }
             inflate::zlib(&payload[4..], len)
         }
@@ -99,7 +99,7 @@ pub(super) fn bitmap_bytes(
     unpacked
         .filter(|bytes| bytes.len() >= len)
         .map(Cow::Owned)
-        .ok_or(fail)
+        .ok_or(FAIL)
 }
 
 /// Where the rows are and how big they are.
@@ -118,7 +118,7 @@ impl Rows {
         check_size(self.width, self.height)?;
         let fewest = pixels.min_row_len(self.width);
         if self.bytes_per_line < fewest || self.bytes_per_line > fewest * 2 + 64 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(self.bytes_per_line * self.height)
     }
@@ -135,9 +135,9 @@ pub(super) fn render(
 ) -> Result<Image, DecodeError> {
     let len = rows.len(pixels)?;
     if data.len() < len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(rows.width as u32, rows.height as u32);
+    let mut image = Image::new(rows.width as u32, rows.height as u32)?;
     for (y, row) in data[..len].chunks_exact(rows.bytes_per_line).enumerate() {
         let out = image.row_mut(y as u32).as_chunks_mut::<3>().0;
         draw_row(pixels, row, palette, out);

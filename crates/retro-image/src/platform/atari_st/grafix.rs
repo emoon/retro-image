@@ -27,7 +27,7 @@ const SIZES: usize = PALETTE + 256 * 6 + 2;
 const DATA: usize = SIZES + 12;
 
 pub(super) fn decode_grx(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -61,7 +61,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     Some(if padded == width {
         image
     } else {
-        crop(&image, width, height)
+        crop(&image, width, height).ok()?
     })
 }
 

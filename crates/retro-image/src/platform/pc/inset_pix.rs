@@ -71,7 +71,7 @@ use crate::bytes::{le16, le32};
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const REVISION: u16 = 3;
 const INDEX_AT: usize = 4;
 const ITEM_LEN: usize = 8;
@@ -245,7 +245,7 @@ pub(super) fn decode_pix(data: &[u8]) -> Result<Image, DecodeError> {
             row_len,
             planes,
             |plane, y| (plane * rows + y) * row_len,
-        );
+        )?;
         let visible = tile_columns.min(width - left);
         for (y, row) in values.chunks_exact(tile_columns).enumerate() {
             let start = (top + y) * width + left;

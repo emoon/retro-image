@@ -38,7 +38,7 @@ struct Ifli {
 impl Ifli {
     fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         if !self.sizes.contains(&data.len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.decode_unchecked(data)
     }
@@ -49,7 +49,7 @@ impl Ifli {
         let (first, second) = first
             .frame(&prg)
             .zip(second.frame(&prg))
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         let second = if self.shift {
             second.shift_right(0)
         } else {
@@ -119,13 +119,13 @@ pub(super) fn decode_pixel_perfect(data: &[u8]) -> Result<Image, DecodeError> {
 /// Pixel Perfect packed: load `$3BFC`, `$10 $10 $10`, escape byte, then
 /// `ESC count-1 value` RLE from `$3C00`.
 pub(super) fn decode_pixel_perfect_packed(data: &[u8]) -> Result<Image, DecodeError> {
-    let (header, packed) = data.split_at_checked(6).ok_or(DecodeError::Unrecognized)?;
+    let (header, packed) = data.split_at_checked(6).ok_or(DecodeError::Invalid)?;
     if header[..5] != [0xfc, 0x3b, 0x10, 0x10, 0x10] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let len = PIXEL_PERFECT.sizes[0] - 2;
-    let unpacked = escape_rle(packed, header[5], Run::CountMinusOneValue, len)
-        .ok_or(DecodeError::Unrecognized)?;
+    let unpacked =
+        escape_rle(packed, header[5], Run::CountMinusOneValue, len).ok_or(DecodeError::Invalid)?;
     PIXEL_PERFECT.decode_unchecked(&super::bitmap::with_header(unpacked))
 }
 
@@ -157,7 +157,7 @@ const FFLI: Ifli = Ifli {
 
 pub(super) fn decode_ffli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..3) != Some(&[0xff, 0x3a, b'f']) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     FFLI.decode(data)
 }
@@ -169,7 +169,7 @@ pub(super) fn decode_ffli(data: &[u8]) -> Result<Image, DecodeError> {
 /// from 1000 (8000 for the bitmap) and wrap at 1024 (8192).
 pub(super) fn decode_bfli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 33795 || data[..3] != [0xff, 0x3b, b'b'] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let memory = &data[3..];
     // Offsets from $3C00: color RAM, then two banks of screens and bitmap.
@@ -202,16 +202,16 @@ const FUNPAINT: Ifli = Ifli {
 /// Funpaint II: `FUNPAINT (MT) ` header at `$3FF0`, then a pack flag and an
 /// escape byte; packed data is `ESC count value` RLE from `$4000`.
 pub(super) fn decode_funpaint(data: &[u8]) -> Result<Image, DecodeError> {
-    let header = data.get(..18).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..18).ok_or(DecodeError::Invalid)?;
     if &header[2..16] != b"FUNPAINT (MT) " {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     if header[16] == 0 {
         return FUNPAINT.decode(data);
     }
     let len = FUNPAINT.sizes[0] - header.len();
-    let unpacked = escape_rle(&data[18..], header[17], Run::CountValue, len)
-        .ok_or(DecodeError::Unrecognized)?;
+    let unpacked =
+        escape_rle(&data[18..], header[17], Run::CountValue, len).ok_or(DecodeError::Invalid)?;
     let mut full = Vec::with_capacity(FUNPAINT.sizes[0]);
     full.extend_from_slice(header);
     full.extend(unpacked);

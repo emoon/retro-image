@@ -37,7 +37,7 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
         16009 => {
             let registers = data[2 * FRAME..]
                 .try_into()
-                .map_err(|_| DecodeError::Unrecognized)?;
+                .map_err(|_| DecodeError::Invalid)?;
             (&data[..FRAME], &data[FRAME..2 * FRAME], registers)
         }
         16012 | 15372 => {
@@ -46,29 +46,29 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
             let second = binary_segment(&data[frame + 6..], frame)?;
             (second, first, DEFAULT_REGISTERS)
         }
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
-    Ok(half_pixel_pair(
+    half_pixel_pair(
         320,
         gtia9.len() / 40,
         |y, x| rgb(nibble(&gtia9[y * 40..], x)),
         |y, x| register_rgb(registers[gtia10_register(nibble(&gtia10[y * 40..], x))]),
-    ))
+    )
 }
 
 /// VertiZontal Interlacing: two GTIA mode 9 frames; the second is drawn
 /// half a pixel left of the first.
 pub(super) fn decode_vzi(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (first, second) = data.split_at(FRAME);
-    Ok(half_pixel_pair(
+    half_pixel_pair(
         320,
         200,
         |y, x| rgb(nibble(&second[y * 40..], x)),
         |y, x| rgb(nibble(&first[y * 40..], x)),
-    ))
+    )
 }
 
 /// Mixes two frames of `width` / 4 x `lines` given as `color(line, pixel)`:
@@ -79,9 +79,9 @@ pub(super) fn half_pixel_pair(
     lines: usize,
     left: impl Fn(usize, usize) -> u32,
     right: impl Fn(usize, usize) -> u32,
-) -> Image {
-    let mut left_frame = Image::new(width as u32, lines as u32);
-    let mut right_frame = Image::new(width as u32, lines as u32);
+) -> Result<Image, DecodeError> {
+    let mut left_frame = Image::new(width as u32, lines as u32)?;
+    let mut right_frame = Image::new(width as u32, lines as u32)?;
     for y in 0..lines {
         for x in 0..width {
             if x + 1 < width {
@@ -92,14 +92,14 @@ pub(super) fn half_pixel_pair(
             }
         }
     }
-    Image::blend(&[&left_frame, &right_frame])
+    Ok(Image::blend(&[&left_frame, &right_frame]))
 }
 
 /// The `len` bytes of a DOS binary-load segment (`FF FF`, start, end).
 fn binary_segment(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     match data {
         [0xff, 0xff, _, _, _, _, rest @ ..] if rest.len() >= len => Ok(&rest[..len]),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

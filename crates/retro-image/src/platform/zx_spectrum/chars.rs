@@ -39,15 +39,15 @@ const SHEET_COLUMNS: usize = 32;
 /// 256 characters of 8 bytes each, drawn as a 32x8 character sheet.
 pub(super) fn decode_font(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FONT_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let rows = FONT_LEN / 8 / SHEET_COLUMNS;
-    let mut frame = Frame::new(SHEET_COLUMNS * 8, rows * 8);
+    let mut frame = Frame::new(SHEET_COLUMNS * 8, rows * 8)?;
     for (index, glyph) in data.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % SHEET_COLUMNS * 8, index / SHEET_COLUMNS * 8);
         draw_cell(&mut frame, left, top, glyph, 0xffffff, 0);
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 const CHR_HEADER_LEN: usize = 7;
@@ -57,21 +57,21 @@ const CHR_HEADER_LEN: usize = 7;
 /// the cells row by row.
 pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() < CHR_HEADER_LEN || !data.starts_with(b"chr$") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (columns, rows) = (usize::from(data[4]), usize::from(data[5]));
     let frame_count = match data[6] {
         9 => 1,
         18 => 2,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let cells = &data[CHR_HEADER_LEN..];
     if columns == 0 || rows == 0 || cells.len() != columns * rows * 9 * frame_count {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames: Vec<Frame> = (0..frame_count)
-        .map(|f| {
-            let mut frame = Frame::new(columns * 8, rows * 8);
+        .map(|f| -> Result<Frame, DecodeError> {
+            let mut frame = Frame::new(columns * 8, rows * 8)?;
             for (index, cell) in cells.chunks_exact(9 * frame_count).enumerate() {
                 let cell = &cell[f * 9..][..9];
                 let (left, top) = (index % columns * 8, index / columns * 8);
@@ -79,9 +79,9 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
                 let paper = attribute_color(cell[8], false);
                 draw_cell(&mut frame, left, top, &cell[..8], ink, paper);
             }
-            frame
+            Ok(frame)
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
     Ok(blend(&frames))
 }
 
@@ -93,18 +93,18 @@ const SEV_HEADER_LEN: usize = 14;
 /// first frame is shown, cropped to the size.
 pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(b"Sev\0") || le16(data, 6) != Some(1) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (Some(width), Some(height)) = (le16(data, 10), le16(data, 12)) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(width), usize::from(height));
     check_size(width, height)?;
     let columns = width.div_ceil(8);
     let cells = data
         .get(SEV_HEADER_LEN..SEV_HEADER_LEN + columns * height.div_ceil(8) * 9)
-        .ok_or(DecodeError::Unrecognized)?;
-    let mut frame = Frame::new(width, height);
+        .ok_or(DecodeError::Invalid)?;
+    let mut frame = Frame::new(width, height)?;
     for y in 0..height {
         for x in 0..width {
             let cell = &cells[(y / 8 * columns + x / 8) * 9..][..9];
@@ -112,7 +112,7 @@ pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
             frame.set(x, y, attribute_color(cell[8], ink));
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 fn draw_cell(frame: &mut Frame, left: usize, top: usize, rows: &[u8], ink: u32, paper: u32) {
@@ -152,25 +152,25 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
     let table = data
         .get(CHX_TABLE..CHX_TABLE + 2 * CHX_CHARACTERS)
         .filter(|_| data.starts_with(b"CHX"))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let mut chars = Vec::new();
     for (code, entry) in table.as_chunks::<2>().0.iter().enumerate() {
         let offset = usize::from(u16::from_le_bytes([entry[0], entry[1]]));
         if offset != 0 {
-            chars.push(big_char(data, code, offset).ok_or(DecodeError::Unrecognized)?);
+            chars.push(big_char(data, code, offset).ok_or(DecodeError::Invalid)?);
         }
     }
     let slot_width = 8 * chars
         .iter()
         .map(|c| c.width)
         .max()
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let slot_height = 8 * chars.iter().map(|c| c.height).max().unwrap_or(1);
     let (width, height) = (
         CHX_PER_ROW * slot_width,
         CHX_CHARACTERS / CHX_PER_ROW * slot_height,
     );
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     let white = attribute_color(0x38, false);
     for y in 0..height {
         for x in 0..width {
@@ -189,7 +189,7 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
             draw_cell(&mut frame, x, y, &cell[..8], ink, paper);
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// The character at `offset`: flag (0 colored, 1 not), width and height in

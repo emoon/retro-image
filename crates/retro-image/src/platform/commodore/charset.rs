@@ -19,7 +19,7 @@ const PER_ROW: usize = 32;
 /// SEUCK font: a 64-character set (the only size seen in samples).
 pub(super) fn decode_seuck_font(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + 64 * 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_font(data)
 }
@@ -29,7 +29,7 @@ pub(super) fn decode_seuck_font(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_star_painter_font(data: &[u8]) -> Result<Image, DecodeError> {
     const RECORD: usize = 9;
     if data.len() != 2 + 1024 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut glyphs = alloc::vec![0u8; 128 * 8];
     for (glyph, record) in glyphs
@@ -41,22 +41,22 @@ pub(super) fn decode_star_painter_font(data: &[u8]) -> Result<Image, DecodeError
         let rows = record.get(1..).unwrap_or_default();
         glyph[..rows.len()].copy_from_slice(rows);
     }
-    Ok(sheet(&glyphs))
+    sheet(&glyphs)
 }
 
 /// Load address, then up to 256 characters of 8 bytes.
 pub(super) fn decode_font(data: &[u8]) -> Result<Image, DecodeError> {
-    let glyphs = data.get(2..).ok_or(DecodeError::Unrecognized)?;
+    let glyphs = data.get(2..).ok_or(DecodeError::Invalid)?;
     if glyphs.is_empty() || glyphs.len() > 256 * 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    Ok(sheet(glyphs))
+    sheet(glyphs)
 }
 
 /// Glyphs of 8 bytes, white on black, `PER_ROW` per row.
-fn sheet(glyphs: &[u8]) -> Image {
+fn sheet(glyphs: &[u8]) -> Result<Image, DecodeError> {
     let rows = glyphs.len().div_ceil(8 * PER_ROW);
-    let mut image = Image::new((PER_ROW * 8) as u32, (rows * 8) as u32);
+    let mut image = Image::new((PER_ROW * 8) as u32, (rows * 8) as u32)?;
     for (i, &byte) in glyphs.iter().enumerate() {
         let char = i / 8;
         let x = char % PER_ROW * 8;
@@ -67,5 +67,5 @@ fn sheet(glyphs: &[u8]) -> Image {
             }
         }
     }
-    image
+    Ok(image)
 }

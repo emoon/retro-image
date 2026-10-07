@@ -18,7 +18,7 @@
 //!   other snapshot formats and by eye on the samples in
 //!   `corpus/extra/zx-snapshots/szx`. Zlib is `codec::inflate`.
 //!
-//! Left out, as `Unrecognized`: snapshots with a Timex screen mode other
+//! Left out, as `Invalid`: snapshots with a Timex screen mode other
 //! than the standard one (the sample set has none, so the page layout is
 //! untested), with ULAplus enabled, and of machine 11 (Spectrum SE) or
 //! identifiers after 16.
@@ -41,27 +41,27 @@ const TIMEX_MODE_MASK: u8 = 7;
 const ULAPLUS_ENABLED: u8 = 1;
 
 pub(super) fn decode_szx(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..HEADER_LEN).ok_or(FAIL)?;
     if &header[..4] != b"ZXST" {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let paged = has_paging_port(header[6]).ok_or(fail)?;
+    let paged = has_paging_port(header[6]).ok_or(FAIL)?;
     let mut port_7ffd = 0;
     let mut ram: [Option<&[u8]>; 8] = [None; 8];
     let mut blocks = &data[HEADER_LEN..];
     while !blocks.is_empty() {
-        let size = le32(blocks, 4).ok_or(fail)? as usize;
+        let size = le32(blocks, 4).ok_or(FAIL)? as usize;
         let body = blocks
             .get(BLOCK_HEADER_LEN..)
             .and_then(|rest| rest.get(..size))
-            .ok_or(fail)?;
+            .ok_or(FAIL)?;
         match &blocks[..4] {
-            b"SPCR" => port_7ffd = *body.get(1).ok_or(fail)?,
-            b"SCLD" if body.get(1).ok_or(fail)? & TIMEX_MODE_MASK != 0 => return Err(fail),
-            b"PLTT" if body.first().ok_or(fail)? & ULAPLUS_ENABLED != 0 => return Err(fail),
+            b"SPCR" => port_7ffd = *body.get(1).ok_or(FAIL)?,
+            b"SCLD" if body.get(1).ok_or(FAIL)? & TIMEX_MODE_MASK != 0 => return Err(FAIL),
+            b"PLTT" if body.first().ok_or(FAIL)? & ULAPLUS_ENABLED != 0 => return Err(FAIL),
             b"RAMP" => {
-                let page = usize::from(*body.get(2).ok_or(fail)?);
+                let page = usize::from(*body.get(2).ok_or(FAIL)?);
                 // Pages past 7 belong to bigger machines; they are not read.
                 if let Some(slot) = ram.get_mut(page) {
                     *slot = Some(body);
@@ -76,15 +76,15 @@ pub(super) fn decode_szx(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         NORMAL_SCREEN_BANK
     };
-    let block = ram[usize::from(bank)].ok_or(fail)?;
+    let block = ram[usize::from(bank)].ok_or(FAIL)?;
     let page = &block[3..];
-    if le16(block, 0).ok_or(fail)? & RAM_COMPRESSED != 0 {
+    if le16(block, 0).ok_or(FAIL)? & RAM_COMPRESSED != 0 {
         let page = inflate::zlib(page, BANK_LEN)
             .filter(|page| page.len() == BANK_LEN)
-            .ok_or(fail)?;
-        decode_scr(page.get(..SCR_LEN).ok_or(fail)?)
+            .ok_or(FAIL)?;
+        decode_scr(page.get(..SCR_LEN).ok_or(FAIL)?)
     } else {
-        decode_scr(page.get(..SCR_LEN).ok_or(fail)?)
+        decode_scr(page.get(..SCR_LEN).ok_or(FAIL)?)
     }
 }
 

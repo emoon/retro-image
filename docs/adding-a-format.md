@@ -7,8 +7,12 @@
    A module may become a directory (`atari_st.rs` + `atari_st/*.rs`).
    - The core crate is `no_std` + `alloc`: use `core::`/`alloc::`, never `std::`, and take
      input only as `&[u8]`.
-   - Return `DecodeError::Unrecognized` for any data the format can't accept, including
+   - Return `DecodeError::Invalid` for any data the format can't accept, including
      wrong sizes or truncated data. Never panic on bad input: check lengths before indexing.
+   - Every `Image` constructor (`Image::new`, `from_indexed`, `from_bits`, `planar_pixels`,
+     ...) returns `DecodeError::TooLarge` when the picture would pass the size limit
+     (`max_image_bytes`, 64 MiB by default), so use `?` on them. Call `check_size` before you
+     allocate any buffer whose size comes from header dimensions.
    - Several formats share extensions. Validate size or magic bytes tightly so a decoder
      doesn't claim another format's files.
    - If the decoder checks a reliable signature (magic bytes, or a header validated so

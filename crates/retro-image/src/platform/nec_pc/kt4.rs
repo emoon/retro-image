@@ -49,6 +49,9 @@ const COLUMNS: usize = 160;
 const ROWS: usize = 100;
 const WIDTH: usize = COLUMNS * 4;
 const RAW_MARKER: u8 = 0xff;
+/// How many times the cell count plus the input length the area fills may
+/// write before the file is refused.
+const WORK_FACTOR: usize = 4;
 
 /// Top tile then bottom tile, three plane bytes each.
 type Cell = [u8; 6];
@@ -102,34 +105,39 @@ fn area(
 }
 
 pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     let mut reader = Reader { data, pos: 0 };
     let mut cells: Vec<Option<Cell>> = vec![None; COLUMNS * ROWS];
     // Whether the segments use mode 0 (all of them or none).
     let mut half_height: Option<bool> = None;
+    // Areas may overlap, so bound the cells written by the input size.
+    let mut budget = WORK_FACTOR * (COLUMNS * ROWS + data.len());
 
     loop {
-        let count = reader.byte().ok_or(bad)?;
+        let count = reader.byte().ok_or(BAD)?;
         if count == RAW_MARKER {
             break;
         }
         if *half_height.get_or_insert(count == 0) != (count == 0) {
-            return Err(bad);
+            return Err(BAD);
         }
         let cell: Cell = match count {
-            0 => top_only(reader.take().ok_or(bad)?),
+            0 => top_only(reader.take().ok_or(BAD)?),
             1 => {
-                let [a, b, c]: [u8; 3] = reader.take().ok_or(bad)?;
+                let [a, b, c]: [u8; 3] = reader.take().ok_or(BAD)?;
                 [a, b, c, a, b, c]
             }
-            _ => reader.take().ok_or(bad)?,
+            _ => reader.take().ok_or(BAD)?,
         };
         loop {
-            let first = reader.byte().ok_or(bad)?;
+            let first = reader.byte().ok_or(BAD)?;
             if first == RAW_MARKER {
                 break;
             }
-            let (columns, rows) = area(&mut reader, first).ok_or(bad)?;
+            let (columns, rows) = area(&mut reader, first).ok_or(BAD)?;
+            budget = budget
+                .checked_sub(columns.clone().count() * rows.clone().count())
+                .ok_or(BAD)?;
             for row in rows {
                 for column in columns.clone() {
                     cells[row * COLUMNS + column] = Some(cell);
@@ -137,15 +145,15 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
             }
         }
         loop {
-            let column = reader.byte().ok_or(bad)?;
+            let column = reader.byte().ok_or(BAD)?;
             if column == RAW_MARKER {
                 break;
             }
-            let row = reader.byte().ok_or(bad)?;
+            let row = reader.byte().ok_or(BAD)?;
             let slot = cells
                 .get_mut(usize::from(row) * COLUMNS + usize::from(column))
                 .filter(|_| usize::from(row) < ROWS && usize::from(column) < COLUMNS)
-                .ok_or(bad)?;
+                .ok_or(BAD)?;
             *slot = Some(cell);
         }
     }
@@ -153,13 +161,13 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let full_height = half_height == Some(false);
     for slot in cells.iter_mut().filter(|slot| slot.is_none()) {
         *slot = Some(if full_height {
-            reader.take().ok_or(bad)?
+            reader.take().ok_or(BAD)?
         } else {
-            top_only(reader.take().ok_or(bad)?)
+            top_only(reader.take().ok_or(BAD)?)
         });
     }
     if reader.pos != data.len() {
-        return Err(bad);
+        return Err(BAD);
     }
 
     // A cell is two tiles of 2 rows, or one in a half-height picture.
@@ -167,7 +175,7 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let height = ROWS * halves * 2;
     let mut indices = vec![0u8; WIDTH * height];
     for (n, cell) in cells.iter().enumerate() {
-        let cell = cell.as_ref().ok_or(bad)?;
+        let cell = cell.as_ref().ok_or(BAD)?;
         let (x, y) = (n % COLUMNS * 4, n / COLUMNS * halves * 2);
         for (half, tile) in cell.chunks(3).take(halves).enumerate() {
             for bit in 0..8 {
@@ -214,6 +222,17 @@ mod tests {
             pos: 0,
         };
         assert!(area(&mut r, 0xc0).is_none());
+    }
+
+    #[test]
+    fn repeated_full_screen_fills_are_bounded() {
+        // One segment with 100000 whole-screen fills: 1.6e9 writes unbounded.
+        let mut file = vec![2, 1, 2, 3, 4, 5, 6];
+        for _ in 0..100_000 {
+            file.extend_from_slice(&[0x00, 0, 0, 159, 99]);
+        }
+        file.extend_from_slice(&[0xff, 0xff, 0xff]);
+        assert!(decode_kt4(&file).is_err());
     }
 
     #[test]

@@ -20,14 +20,14 @@ use crate::{Companions, DecodeError, Image};
 
 /// CPT, shown with the rasters of the `.HBL` file next to it if present.
 pub(super) fn decode_cpt(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let picture = Picture::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let picture = Picture::parse(data).ok_or(DecodeError::Invalid)?;
     let hbl = companions.get("hbl");
     let image = hbl
         .as_deref()
         .and_then(Hbl::parse)
         .and_then(|hbl| picture.decode_with_rasters(&hbl))
         .or_else(|| picture.decode());
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// Animation data between the HBL data and the picture in a FUL file.
@@ -39,7 +39,7 @@ pub(super) fn decode_ful(data: &[u8]) -> Result<Image, DecodeError> {
         let picture = Picture::parse(data.get(hbl.len + FUL_ANIMATION_LEN..)?)?;
         picture.decode_with_rasters(&hbl)
     });
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// An unpacked CPT picture.

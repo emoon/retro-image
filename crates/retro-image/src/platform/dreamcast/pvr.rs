@@ -77,27 +77,27 @@ pub(super) fn decode_pvr(data: &[u8], companions: &dyn Companions) -> Result<Ima
 }
 
 pub(super) fn decode_pvm(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    if data.get(..4) != Some(b"PVMH") || le16(data, 10).ok_or(fail)? == 0 {
-        return Err(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    if data.get(..4) != Some(b"PVMH") || le16(data, 10).ok_or(FAIL)? == 0 {
+        return Err(FAIL);
     }
-    let mut at = (le32(data, 4).ok_or(fail)? as usize)
+    let mut at = (le32(data, 4).ok_or(FAIL)? as usize)
         .checked_add(8)
         .filter(|&at| at >= 12)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     // Textures are `PVRT` chunks; skip any other chunk in front of the first.
     for _ in 0..MAX_SKIPPED_CHUNKS {
-        let chunk = data.get(at..).ok_or(fail)?;
+        let chunk = data.get(at..).ok_or(FAIL)?;
         if chunk.get(..4) == Some(b"PVRT") {
             return decode_texture(chunk, companions);
         }
-        let len = le32(chunk, 4).ok_or(fail)? as usize;
+        let len = le32(chunk, 4).ok_or(FAIL)? as usize;
         at = len
             .checked_add(8)
             .and_then(|len| at.checked_add(len))
-            .ok_or(fail)?;
+            .ok_or(FAIL)?;
     }
-    Err(fail)
+    Err(FAIL)
 }
 
 /// How a texture's texels are stored, from its data format code.
@@ -246,27 +246,27 @@ fn mipmap_skip(storage: Storage, width: usize, texel_len: usize) -> usize {
 }
 
 fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     // The `GBIX` chunk is 16 bytes in practice, whatever its length says.
     let start = if data.get(..4) == Some(b"GBIX") {
         16
     } else {
         0
     };
-    let chunk = data.get(start..).ok_or(fail)?;
+    let chunk = data.get(start..).ok_or(FAIL)?;
     if chunk.get(..4) != Some(b"PVRT") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let pixel_format = *chunk.get(8).ok_or(fail)?;
-    let texel_len = texel_len(pixel_format).ok_or(fail)?;
-    let data_format = *chunk.get(9).ok_or(fail)?;
-    let width = usize::from(le16(chunk, 12).ok_or(fail)?);
-    let height = usize::from(le16(chunk, 14).ok_or(fail)?);
-    let storage = Storage::from_code(data_format, width).ok_or(fail)?;
+    let pixel_format = *chunk.get(8).ok_or(FAIL)?;
+    let texel_len = texel_len(pixel_format).ok_or(FAIL)?;
+    let data_format = *chunk.get(9).ok_or(FAIL)?;
+    let width = usize::from(le16(chunk, 12).ok_or(FAIL)?);
+    let height = usize::from(le16(chunk, 14).ok_or(FAIL)?);
+    let storage = Storage::from_code(data_format, width).ok_or(FAIL)?;
     check_size(width, height)?;
     let twiddled = !matches!(storage, Storage::Raster);
     if twiddled && !(width.is_power_of_two() && height.is_power_of_two()) {
-        return Err(fail);
+        return Err(FAIL);
     }
     // Rectangles are only the plain twiddled texels (0x0d) and indices.
     let square = width == height;
@@ -280,15 +280,15 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     // A VQ block grid needs at least one block.
     let too_small = matches!(storage, Storage::Vq { .. }) && width < 2;
     if (needs_square && !square) || too_small {
-        return Err(fail);
+        return Err(FAIL);
     }
 
-    let mut body = chunk.get(16..).ok_or(fail)?;
+    let mut body = chunk.get(16..).ok_or(FAIL)?;
     // The codebook of a VQ texture follows the header.
     let codebook = match storage {
         Storage::Vq { codes, .. } => {
             let len = codes * 4 * texel_len;
-            let book = body.get(..len).ok_or(fail)?;
+            let book = body.get(..len).ok_or(FAIL)?;
             body = &body[len..];
             Some(book)
         }
@@ -297,7 +297,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
     if mipmapped {
         body = body
             .get(mipmap_skip(storage, width, texel_len)..)
-            .ok_or(fail)?;
+            .ok_or(FAIL)?;
     }
 
     // The base level takes this much of the data; a header that claims more
@@ -309,7 +309,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
         Storage::Indexed { bits, .. } => (texels * bits).div_ceil(8),
     };
     if body.len() < base_len {
-        return Err(fail);
+        return Err(FAIL);
     }
 
     let mut argb = Vec::with_capacity(texels);
@@ -318,7 +318,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             for y in 0..height {
                 for x in 0..width {
                     let at = (y * width + x) * texel_len;
-                    argb.push(color(pixel_format, body.get(at..).ok_or(fail)?).ok_or(fail)?);
+                    argb.push(color(pixel_format, body.get(at..).ok_or(FAIL)?).ok_or(FAIL)?);
                 }
             }
         }
@@ -326,20 +326,20 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             for y in 0..height {
                 for x in 0..width {
                     let at = twiddled_index(width, height, x, y) * texel_len;
-                    argb.push(color(pixel_format, body.get(at..).ok_or(fail)?).ok_or(fail)?);
+                    argb.push(color(pixel_format, body.get(at..).ok_or(FAIL)?).ok_or(FAIL)?);
                 }
             }
         }
         Storage::Vq { .. } => {
-            let book = codebook.ok_or(fail)?;
+            let book = codebook.ok_or(FAIL)?;
             for y in 0..height {
                 for x in 0..width {
                     let grid = twiddled_index(width / 2, height / 2, x / 2, y / 2);
-                    let code = usize::from(*body.get(grid).ok_or(fail)?);
+                    let code = usize::from(*body.get(grid).ok_or(FAIL)?);
                     // Column order within a block.
                     let texel = code * 4 + (x % 2) * 2 + y % 2;
                     let at = texel * texel_len;
-                    argb.push(color(pixel_format, book.get(at..).ok_or(fail)?).ok_or(fail)?);
+                    argb.push(color(pixel_format, book.get(at..).ok_or(FAIL)?).ok_or(FAIL)?);
                 }
             }
         }
@@ -350,20 +350,16 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
                     let texel = twiddled_index(width, height, x, y);
                     let index = if bits == 4 {
                         // The even texel is the low nibble.
-                        *body.get(texel / 2).ok_or(fail)? >> (texel % 2 * 4) & 15
+                        *body.get(texel / 2).ok_or(FAIL)? >> (texel % 2 * 4) & 15
                     } else {
-                        *body.get(texel).ok_or(fail)?
+                        *body.get(texel).ok_or(FAIL)?
                     };
                     argb.push(palette[usize::from(index)]);
                 }
             }
         }
     }
-    Ok(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 
 /// The first `len` colors of the `.pvp` file next to the texture, or a ramp of
@@ -485,14 +481,14 @@ mod tests {
 
         struct Pvp;
         impl Companions for Pvp {
-            fn get(&self, extension: &str) -> Option<Vec<u8>> {
+            fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 let mut file = b"PVPL\0\0\0\0\x01\0\0\0\0\0\x10\0".to_vec();
                 for i in 0..16u16 {
                     file.extend_from_slice(&(i << 11).to_le_bytes());
                 }
-                (extension == "pvp").then_some(file)
+                (extension == "pvp").then_some(file.into())
             }
-            fn get_named(&self, _: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

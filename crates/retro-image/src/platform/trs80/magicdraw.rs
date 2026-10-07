@@ -26,14 +26,14 @@ const HEIGHT: usize = 240;
 const SCREEN_LEN: usize = WIDTH / 8 * HEIGHT;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut screen = Vec::with_capacity(SCREEN_LEN);
     let mut decoded = 0;
     let mut input = data.iter().copied();
     while let Some(control) = input.next() {
         let count = usize::from(control & 0x7f);
         if control & 0x80 != 0 {
-            let byte = input.next().ok_or(fail)?;
+            let byte = input.next().ok_or(FAIL)?;
             screen.resize((screen.len() + count).min(SCREEN_LEN), byte);
         } else {
             let literal = input.by_ref().take(count);
@@ -46,13 +46,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
                 taken += 1;
             }
             if taken < count {
-                return Err(fail);
+                return Err(FAIL);
             }
         }
         decoded += count;
     }
     if decoded < SCREEN_LEN {
-        return Err(fail);
+        return Err(FAIL);
     }
     mono(&screen, WIDTH, HEIGHT, WHITE)?.scaled(1, 2)
 }

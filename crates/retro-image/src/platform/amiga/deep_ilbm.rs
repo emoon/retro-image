@@ -47,50 +47,52 @@ fn channels(planes: usize) -> Option<usize> {
 }
 
 /// Scales a `bits`-wide channel value to 8 bits.
-fn to_byte(value: u32, bits: usize) -> u32 {
+fn to_byte(value: u32, bits: usize) -> u8 {
     match bits {
-        4 => widen_channel(value, 4),
-        8 => value,
-        _ => value >> (bits - 8),
+        4 => widen_channel(value, 4) as u8,
+        8 => value as u8,
+        _ => (value >> (bits - 8)) as u8,
     }
 }
 
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let bmhd = find(contents, b"BMHD")
         .filter(|b| b.len() >= 20)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let (width, height) = (
-        usize::from(be16(bmhd, 0).ok_or(fail)?),
-        usize::from(be16(bmhd, 2).ok_or(fail)?),
+        usize::from(be16(bmhd, 0).ok_or(FAIL)?),
+        usize::from(be16(bmhd, 2).ok_or(FAIL)?),
     );
     let (planes, masking, compression) = (usize::from(bmhd[8]), bmhd[9], bmhd[10]);
-    let bits = channels(planes).ok_or(fail)?;
+    let bits = channels(planes).ok_or(FAIL)?;
     check_size(width, height)?;
 
     let stored = planes + usize::from(masking == MASK_HAS_MASK);
     let row_len = width.div_ceil(16) * 2;
     let len = row_len * stored * height;
-    let body = find(contents, b"BODY").ok_or(fail)?;
+    let body = find(contents, b"BODY").ok_or(FAIL)?;
     // ByteRun1 never expands a byte past 128.
     if len > body.len().saturating_mul(128) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let data = match compression {
-        0 => body.get(..len).ok_or(fail)?.to_vec(),
-        1 => packbits::unpack(body, len).ok_or(fail)?.0,
-        _ => return Err(fail),
+        0 => body.get(..len).ok_or(FAIL)?.to_vec(),
+        1 => packbits::unpack(body, len).ok_or(FAIL)?.0,
+        _ => return Err(FAIL),
     };
-    let channel = |index: usize| -> Vec<u32> {
-        planar_pixels(&data, width, height, row_len, bits, |plane, y| {
+    // Each channel is narrowed to bytes as soon as it is read, so only one
+    // channel at a time is held as 32-bit values.
+    let channel = |index: usize| -> Result<Vec<u8>, DecodeError> {
+        let values = planar_pixels(&data, width, height, row_len, bits, |plane, y| {
             (y * stored + index * bits + plane) * row_len
-        })
+        })?;
+        Ok(values.iter().map(|&v| to_byte(v, bits)).collect())
     };
-    let (red, green, blue) = (channel(0), channel(1), channel(2));
-    let colors = (0..width * height).map(|i| {
-        to_byte(red[i], bits) << 16 | to_byte(green[i], bits) << 8 | to_byte(blue[i], bits)
-    });
-    let image = Image::from_colors(width as u32, height as u32, colors);
+    let (red, green, blue) = (channel(0)?, channel(1)?, channel(2)?);
+    let colors = (0..width * height)
+        .map(|i| u32::from(red[i]) << 16 | u32::from(green[i]) << 8 | u32::from(blue[i]));
+    let image = Image::from_colors(width as u32, height as u32, colors)?;
     let camg = find(contents, b"CAMG")
         .and_then(|c| be32(c, 0))
         .unwrap_or(0);

@@ -54,22 +54,22 @@ const CUT_HEADER_LEN: usize = 6;
 const PAL_HEADER_LEN: usize = 40;
 
 pub(super) fn decode_cut(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let word = |at| le16(data, at).map(usize::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let word = |at| le16(data, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(0)?, word(2)?);
     if word(4)? != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     // Each line costs at least its count word and a terminator.
     if height > data.len() / 3 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut pixels = Vec::with_capacity(width * height);
     let mut pos = CUT_HEADER_LEN;
     for _ in 0..height {
         let len = word(pos)?;
-        let line = data.get(pos + 2..pos + 2 + len).ok_or(fail)?;
+        let line = data.get(pos + 2..pos + 2 + len).ok_or(FAIL)?;
         pos += 2 + len;
         unpack_line(line, width, &mut pixels)?;
     }
@@ -91,7 +91,7 @@ fn grey_ramp(pixels: &[u8]) -> Vec<u32> {
 
 /// Appends exactly `width` pixels decoded from one line's run data.
 fn unpack_line(line: &[u8], width: usize, out: &mut Vec<u8>) -> Result<(), DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let start = out.len();
     let mut pos = 0;
     while let Some(&control) = line.get(pos) {
@@ -101,21 +101,21 @@ fn unpack_line(line: &[u8], width: usize, out: &mut Vec<u8>) -> Result<(), Decod
             break;
         }
         if out.len() - start + n > width {
-            return Err(fail);
+            return Err(FAIL);
         }
         if control & 0x80 != 0 {
-            let value = *line.get(pos).ok_or(fail)?;
+            let value = *line.get(pos).ok_or(FAIL)?;
             pos += 1;
             out.resize(out.len() + n, value);
         } else {
-            out.extend_from_slice(line.get(pos..pos + n).ok_or(fail)?);
+            out.extend_from_slice(line.get(pos..pos + n).ok_or(FAIL)?);
             pos += n;
         }
     }
     if out.len() - start == width {
         Ok(())
     } else {
-        Err(fail)
+        Err(FAIL)
     }
 }
 
@@ -176,22 +176,24 @@ mod tests {
     fn pal_companion_is_scaled() {
         struct Pal;
         impl Companions for Pal {
-            fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
-            fn get(&self, ext: &str) -> Option<Vec<u8>> {
-                (ext == "pal").then(|| {
-                    let mut p = alloc::vec![0u8; PAL_HEADER_LEN];
-                    p[..2].copy_from_slice(b"AH");
-                    p[6] = 0x0a;
-                    p[0x0c] = 3;
-                    p[0x0e] = 63;
-                    p[0x10] = 63;
-                    p[0x12] = 63;
-                    p.extend_from_slice(&[0; 18]);
-                    p.extend_from_slice(&[63, 0, 0, 0, 21, 0]);
-                    p
-                })
+            fn get(&self, ext: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+                (ext == "pal")
+                    .then(|| {
+                        let mut p = alloc::vec![0u8; PAL_HEADER_LEN];
+                        p[..2].copy_from_slice(b"AH");
+                        p[6] = 0x0a;
+                        p[0x0c] = 3;
+                        p[0x0e] = 63;
+                        p[0x10] = 63;
+                        p[0x12] = 63;
+                        p.extend_from_slice(&[0; 18]);
+                        p.extend_from_slice(&[63, 0, 0, 0, 21, 0]);
+                        p
+                    })
+                    .map(Into::into)
             }
         }
         let image = decode_cut(&cut(), &Pal).unwrap();

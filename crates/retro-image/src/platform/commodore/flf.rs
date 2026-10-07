@@ -33,7 +33,7 @@ pub(super) fn decode_c64(data: &[u8]) -> Result<Image, DecodeError> {
     let cells = |header: usize, mode| {
         let (cells, rest) = fluff.split(header, COLS * ROWS * CELL_LEN)?;
         if !rest.is_empty() {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         flf::decode_cells(cells, COLS, ROWS, mode, &palette)
     };
@@ -42,7 +42,7 @@ pub(super) fn decode_c64(data: &[u8]) -> Result<Image, DecodeError> {
         4 | 5 => cells(18, CellMode::Multicolor),
         6 => cells(18, CellMode::Hires),
         7 => decode_text(&fluff),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -50,15 +50,13 @@ fn decode_text(fluff: &Fluff) -> Result<Image, DecodeError> {
     let background = fluff.byte(13)? & 15;
     let (cols, rows) = (usize::from(fluff.byte(15)?), usize::from(fluff.byte(16)?));
     if cols == 0 || rows == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let count = cols * rows;
     let (colors, rest) = fluff.split(29, count)?;
-    let (screen, rest) = rest
-        .split_at_checked(count)
-        .ok_or(DecodeError::Unrecognized)?;
+    let (screen, rest) = rest.split_at_checked(count).ok_or(DecodeError::Invalid)?;
     if rest.len() != 16 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     TextScreen {
         columns: cols,
@@ -74,12 +72,12 @@ fn decode_text(fluff: &Fluff) -> Result<Image, DecodeError> {
 pub(super) fn decode_vic20(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
     if fluff.kind != 9 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (cols, rows) = (usize::from(fluff.byte(18)?), usize::from(fluff.byte(19)?));
     let (cells, rest) = fluff.split(20, cols * rows * CELL_LEN)?;
     if cols == 0 || rows == 0 || !rest.is_empty() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     flf::decode_cells(
         cells,

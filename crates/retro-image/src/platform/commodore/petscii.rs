@@ -75,7 +75,7 @@ impl TextScreen<'_> {
     pub(super) fn render(&self) -> Result<Image, DecodeError> {
         let cells = self.columns * self.rows;
         if self.screen.len() < cells || self.colors.len() < cells || self.charset.len() < 2048 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (width, height) = (self.columns * 8, self.rows * 8);
         let mut pixels = Vec::with_capacity(width * height);
@@ -121,13 +121,13 @@ const C64OS_CHARSET: usize = C64OS_BACKGROUND + 1;
 pub(super) fn decode_c64os(data: &[u8]) -> Result<Image, DecodeError> {
     let (magic, version) = (data.get(..3), data.get(3));
     if magic != Some(&[0xd0, 0xc5, 0xd4]) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let charset = match (version, data.len()) {
         (Some(b'0'), C64OS_CHARSET) => RomCharset::UpperGraphics.glyphs(),
         (Some(b'1'), C64OS_CHARSET) => RomCharset::LowerUpper.glyphs(),
         (Some(b'2'), len) if len == C64OS_CHARSET + 2048 => &data[C64OS_CHARSET..],
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     full_screen(
         &data[C64OS_HEADER..],
@@ -143,7 +143,7 @@ pub(super) fn decode_c64os(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_petscii_editor(data: &[u8]) -> Result<Image, DecodeError> {
     const COLORS: usize = 2 + 0x400;
     if data.len() != COLORS + SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     full_screen(
         &data[2..],
@@ -163,12 +163,12 @@ pub(super) fn decode_scr_col(
 ) -> Result<Image, DecodeError> {
     const LEN: usize = 2 + SCREEN_LEN;
     if data.len() != LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = companions
         .get("col")
         .filter(|colors| colors.len() == LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     full_screen(
         &data[2..],
         &colors[2..],
@@ -184,7 +184,7 @@ pub(super) fn decode_petdraw(data: &[u8]) -> Result<Image, DecodeError> {
     const SCREEN: usize = 5;
     const COLORS: usize = SCREEN + SCREEN_LEN + 24;
     if data.len() != COLORS + SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     full_screen(
         &data[SCREEN..],
@@ -222,14 +222,14 @@ pub(super) fn decode_petscii_prg(data: &[u8]) -> Result<Image, DecodeError> {
         && data[26..30] == [0x8d, 0x20, 0xd0, 0xa9]
         && data[31..SCREEN] == PRG_STUB_TAIL;
     if !stub_ok || data[COLORS..].iter().any(|&c| c > 15) || data[BACKGROUND] > 15 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // `$D018` selects the character ROM: `$1000` upper case/graphics,
     // `$1800` lower/upper case.
     let charset = match data[D018] {
         0x14 => RomCharset::UpperGraphics,
         0x17 => RomCharset::LowerUpper,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     full_screen(
         &data[SCREEN..],
@@ -245,7 +245,7 @@ pub(super) fn decode_pbot(data: &[u8]) -> Result<Image, DecodeError> {
     let (columns, rows) = match data.len() {
         70 => (5, 7),
         384 => (12, 16),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (colors, screen) = data.split_at(columns * rows);
     TextScreen {
@@ -293,11 +293,11 @@ mod tests {
     struct Colors(Vec<u8>);
 
     impl Companions for Colors {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "col").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "col").then(|| self.0.clone()).map(Into::into)
         }
     }
 

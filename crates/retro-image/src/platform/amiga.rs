@@ -123,7 +123,7 @@ fn decode_abk(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_dctv(data: &[u8]) -> Result<Image, DecodeError> {
     match iff::form(data) {
         Some((kind, contents)) if &kind == b"ILBM" => dctv::decode(contents),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -131,7 +131,7 @@ fn decode_dctv(data: &[u8]) -> Result<Image, DecodeError> {
 fn decode_ham_e(data: &[u8]) -> Result<Image, DecodeError> {
     match iff::form(data) {
         Some((kind, contents)) if &kind == b"ILBM" => ham_e::decode(contents),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -151,7 +151,7 @@ fn depack(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     } else {
         return Ok(None);
     };
-    unpacked.map(Some).ok_or(DecodeError::Unrecognized)
+    unpacked.map(Some).ok_or(DecodeError::Invalid)
 }
 
 /// Any IFF picture FORM we support, plain or packed (one layer).
@@ -166,12 +166,12 @@ fn decode_plain_iff(data: &[u8]) -> Result<Image, DecodeError> {
     // NEOchrome Master (Atari ST) pictures: an ILBM plus rasters after the
     // FORM, left to that decoder.
     if super::atari_st::is_neochrome_master(data) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     if let Some((kind, contents)) = iff_group::first_form(data) {
         return decode_form(&kind, &contents);
     }
-    let (kind, contents) = iff::form(data).ok_or(DecodeError::Unrecognized)?;
+    let (kind, contents) = iff::form(data).ok_or(DecodeError::Invalid)?;
     decode_form(&kind, contents)
 }
 
@@ -179,10 +179,14 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     match kind {
         // BBM: the form type of PC Deluxe Paint files, laid out like ILBM.
         b"BBM " => ilbm::decode_ilbm(contents),
-        b"ILBM" => ilbm::decode_ilbm(contents)
-            .or_else(|_| dctv::decode(contents))
-            .or_else(|_| ham_e::decode(contents))
-            .or_else(|_| deep_ilbm::decode(contents)),
+        // The plain ILBM decoder's error is the one reported when no variant
+        // takes the file.
+        b"ILBM" => ilbm::decode_ilbm(contents).or_else(|plain| {
+            dctv::decode(contents)
+                .or_else(|_| ham_e::decode(contents))
+                .or_else(|_| deep_ilbm::decode(contents))
+                .map_err(|_| plain)
+        }),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),
@@ -192,7 +196,7 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
         b"YAFA" => yafa::decode(contents),
         b"YUVN" => yuvn::decode(contents),
         b"ANIM" | b"DPST" => first_frame(contents),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -205,10 +209,10 @@ fn first_frame(contents: &[u8]) -> Result<Image, DecodeError> {
             let (kind, frame) = body.split_at(4);
             match kind {
                 b"ILBM" => ilbm::decode_ilbm(frame),
-                _ => Err(DecodeError::Unrecognized),
+                _ => Err(DecodeError::Invalid),
             }
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -310,9 +314,6 @@ mod tests {
         form.extend_from_slice(b"BODY\0\0\0\x02\x80\0");
         assert!(decode_iff(&form).is_ok());
         let neochrome = [&form[..], b"RAST\0\0\0\0"].concat();
-        assert_eq!(
-            decode_iff(&neochrome).err(),
-            Some(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_iff(&neochrome).err(), Some(DecodeError::Invalid));
     }
 }

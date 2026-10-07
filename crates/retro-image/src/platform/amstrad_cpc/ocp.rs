@@ -36,7 +36,7 @@ const LINES: usize = 200;
 pub(super) fn decode_scr(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let screen = unpack(strip_amsdos(data))?;
     if screen.len() != SCREEN_LEN && screen.len() != SHORT_SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = Palette::from_companions(companions);
     let width = LINE_BYTES * palette.mode.pixels_per_byte();
@@ -52,7 +52,7 @@ pub(super) fn decode_amsdos_scr(
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
     if amsdos_extension(data) != Some(*b"SCR") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_scr(data, companions)
 }
@@ -68,7 +68,7 @@ pub(super) fn decode_win(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let pixels_len = window
         .len()
         .checked_sub(WIN_TRAILER_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let (pixels, trailer) = window.split_at(pixels_len);
     let bits = usize::from(u16::from_le_bytes([trailer[1], trailer[2]]));
     let height = usize::from(trailer[3]);
@@ -82,13 +82,13 @@ pub(super) fn decode_win(data: &[u8], companions: &dyn Companions) -> Result<Ima
         needed == pixels.len()
     };
     if bits == 0 || height == 0 || !fits {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels = &pixels[..needed];
     let palette = Palette::from_companions(companions);
     let width = bits * palette.mode.pixels_per_byte() / 8;
     if width == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let line = |y| &pixels[y * line_bytes..][..line_bytes];
     render(palette.mode, width, height, line, &palette.pens)
@@ -102,7 +102,7 @@ fn unpack(data: &[u8]) -> Result<Cow<'_, [u8]>, DecodeError> {
     let mut out = Vec::new();
     let mut rest = data;
     while !rest.is_empty() {
-        rest = unpack_mjh_block(rest, &mut out).ok_or(DecodeError::Unrecognized)?;
+        rest = unpack_mjh_block(rest, &mut out).ok_or(DecodeError::Invalid)?;
     }
     Ok(Cow::Owned(out))
 }

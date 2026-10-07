@@ -146,22 +146,22 @@ pub(super) fn decode_daj(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode(data: &[u8], variant: Variant) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.get(..4) != Some(MAGIC) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let resolution = be16(data, 4).ok_or(fail)?;
-    let layout = layout(variant, resolution).ok_or(fail)?;
-    let field = |at| be16(data, at).map(usize::from).ok_or(fail);
+    let resolution = be16(data, 4).ok_or(FAIL)?;
+    let layout = layout(variant, resolution).ok_or(FAIL)?;
+    let field = |at| be16(data, at).map(usize::from).ok_or(FAIL);
     let (words, lumps, lump_lines) = (field(10)?, field(12)?, field(16)?);
-    let rle_pos = be32(data, 20).ok_or(fail)? as usize;
-    let points_pos = be32(data, 24).ok_or(fail)? as usize;
+    let rle_pos = be32(data, 20).ok_or(FAIL)? as usize;
+    let points_pos = be32(data, 24).ok_or(FAIL)? as usize;
     if words == 0 || lumps == 0 || lump_lines == 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     // PP1 and PP3 regroup columns in pairs of 16-pixel words.
     if matches!(layout, Layout::Pp1 | Layout::Pp3) && words % 2 != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let row_len = words * 2;
     let stored_height = lumps * lump_lines;
@@ -180,7 +180,7 @@ fn decode(data: &[u8], variant: Variant) -> Result<Image, DecodeError> {
         points_pos,
         plane_len * layout.stored_planes(),
     )
-    .ok_or(fail)?;
+    .ok_or(FAIL)?;
 
     let source = Source {
         data: &packed,
@@ -195,7 +195,7 @@ fn decode(data: &[u8], variant: Variant) -> Result<Image, DecodeError> {
         Layout::Daj => source.daj(width, height),
     };
     let colors = 1 << layout.bits();
-    let words = palette_words(data, PALETTE_AT, 16).ok_or(fail)?;
+    let words = palette_words(data, PALETTE_AT, 16).ok_or(FAIL)?;
     let palette = if layout.bits() == 1 {
         if words[0] & 0xfff == 0 {
             alloc::vec![0x000000, 0xffffff]

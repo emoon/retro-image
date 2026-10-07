@@ -66,20 +66,20 @@ pub(super) fn decode_p(data: &[u8]) -> Result<Image, DecodeError> {
     let d_file = data
         .get(D_FILE..D_FILE + 2)
         .map(|b| usize::from(u16::from_le_bytes([b[0], b[1]])))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let program = d_file
         .checked_sub(0x4009)
         .and_then(|end| data.get(PROGRAM..end))
-        .ok_or(DecodeError::Unrecognized)?;
-    let screen = run(program).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(screen.as_flattened()))
+        .ok_or(DecodeError::Invalid)?;
+    let screen = run(program).ok_or(DecodeError::Invalid)?;
+    render(screen.as_flattened())
 }
 
 /// ZXpaintyONE v2.0 `.RAW`: the display file without its leading HALT, 24
 /// lines of 32 character codes each ended by NEWLINE (0x76).
 pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != ROWS * (COLUMNS + 1) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut codes = [0; ROWS * COLUMNS];
     for (line, cells) in data
@@ -88,36 +88,32 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .zip(codes.as_chunks_mut::<COLUMNS>().0)
     {
-        let text = line
-            .strip_suffix(&[NEWLINE])
-            .ok_or(DecodeError::Unrecognized)?;
+        let text = line.strip_suffix(&[NEWLINE]).ok_or(DecodeError::Invalid)?;
         cells.copy_from_slice(text);
     }
-    Ok(render(&codes))
+    render(&codes)
 }
 
 /// ZXpaintyONE `.ZP1`: the 768 character codes as two hex digits each
 /// (either case); anything after them is ignored.
 pub(super) fn decode_zp1(data: &[u8]) -> Result<Image, DecodeError> {
-    let digits = data
-        .get(..2 * ROWS * COLUMNS)
-        .ok_or(DecodeError::Unrecognized)?;
+    let digits = data.get(..2 * ROWS * COLUMNS).ok_or(DecodeError::Invalid)?;
     let mut codes = [0; ROWS * COLUMNS];
     for (code, pair) in codes.iter_mut().zip(digits.as_chunks::<2>().0) {
-        let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Unrecognized);
+        let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Invalid);
         *code = (hex(pair[0])? << 4 | hex(pair[1])?) as u8;
     }
-    Ok(render(&codes))
+    render(&codes)
 }
 
 /// A 32x24 character screen, row by row; codes 0x40-0x7F and 0xC0-0xFF
 /// show the glyph of their low 6 bits like the others.
-fn render(codes: &[u8]) -> Image {
-    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32);
+fn render(codes: &[u8]) -> Result<Image, DecodeError> {
+    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32)?;
     for (i, &code) in codes.iter().enumerate() {
         draw_char(&mut image, i % COLUMNS, i / COLUMNS, code);
     }
-    image
+    Ok(image)
 }
 
 /// The screen a picture program prints, or `None` if it isn't one.

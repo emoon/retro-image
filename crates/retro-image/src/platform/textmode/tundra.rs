@@ -56,15 +56,15 @@ use crate::{DecodeError, Image};
 const MAGIC: &[u8] = b"\x18TUNDRA24";
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (content, sauce) = sauce::split(data);
-    let stream = content.strip_prefix(MAGIC).ok_or(fail)?;
+    let stream = content.strip_prefix(MAGIC).ok_or(FAIL)?;
     let width = sauce
         .filter(|s| s.data_type == sauce::CHARACTER)
         .as_ref()
         .and_then(Sauce::width)
         .unwrap_or(80);
-    let mut terminal = Terminal::new(width).ok_or(fail)?;
+    let mut terminal = Terminal::new(width).ok_or(FAIL)?;
     let mut cell = Cell::BLANK;
     let color = |at: usize| be32(stream, at).map(|c| c & 0xff_ffff);
     let mut i = 0;

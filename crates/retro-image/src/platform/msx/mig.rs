@@ -37,9 +37,9 @@ const VRAM_SIZE: usize = 0x20000;
 const MAX_STREAM: usize = VRAM_SIZE + 0x1000;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let stream = unpack(data).ok_or(DecodeError::Unrecognized)?;
-    let vdp = Vdp::run(&stream).ok_or(DecodeError::Unrecognized)?;
-    vdp.render().ok_or(DecodeError::Unrecognized)
+    let stream = unpack(data).ok_or(DecodeError::Invalid)?;
+    let vdp = Vdp::run(&stream).ok_or(DecodeError::Invalid)?;
+    vdp.render().ok_or(DecodeError::Invalid)
 }
 
 /// The command stream held in the BitBuster blocks.
@@ -144,7 +144,7 @@ impl Vdp {
                 Tiled::Graphic3 => vdp::MSX2_PALETTE,
                 _ => vdp::MSX1_PALETTE,
             });
-            return Some(screen::render_tiled(tiled, &vram, &palette, false));
+            return screen::render_tiled(tiled, &vram, &palette, false).ok();
         }
         let bitmap = match (mode, r[25] & 0x18) {
             (0b01100, _) => Bitmap::Graphic4,

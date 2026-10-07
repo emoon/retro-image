@@ -24,13 +24,13 @@ const SIZE: usize = 2 + HEADER.len() + HEIGHT * (1 + WIDTH_BYTES);
 
 pub(super) fn decode_gra(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SIZE || data[2..2 + HEADER.len()] != HEADER {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (rows, _) = data[2 + HEADER.len()..].as_chunks::<{ 1 + WIDTH_BYTES }>();
     if rows.iter().any(|row| row[0] != ROW_MARK) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new((WIDTH_BYTES * 8) as u32, HEIGHT as u32);
+    let mut image = Image::new((WIDTH_BYTES * 8) as u32, HEIGHT as u32)?;
     for (y, row) in rows.iter().enumerate() {
         for (x, byte) in row[1..].iter().enumerate() {
             for bit in 0..8 {

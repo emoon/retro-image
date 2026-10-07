@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/retro-image", "crates/retro-image-cli"]
 
 [workspace.package]
-version = "0.0.1"
+version = "1.0.0"
 edition = "2024"
 # Safe `__cpuid` in the x86_64 SIMD dispatch needs 1.94.
 rust-version = "1.94"
@@ -12,8 +12,18 @@ repository = "https://github.com/emoon/retro-image"
 readme = "README.md"
 
 [workspace.dependencies]
-retro-image = { path = "crates/retro-image", version = "0.0.1" }
+retro-image = { path = "crates/retro-image", version = "1.0.0" }
 png = "0.18"
+
+[workspace.lints.rust]
+# cargo-fuzz builds with `--cfg fuzzing`.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+unsafe_op_in_unsafe_fn = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+missing_safety_doc = "warn"
 
 # The corpus tests decode thousands of files many times over; optimise them
 # but keep overflow checks and debug assertions so arithmetic bugs still panic.

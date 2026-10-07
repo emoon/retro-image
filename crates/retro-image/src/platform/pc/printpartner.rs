@@ -63,7 +63,7 @@ use crate::bytes::le16;
 use crate::sheet::Sheet;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: &[u8] = b"PrintPartner";
 const END_OF_HEADER: u8 = 0x1a;
 /// Where the header's `1A` must be at the latest (Deark reads 255 bytes).

@@ -6,8 +6,9 @@
 //! `recoil2png` output).
 
 use alloc::vec::Vec;
+use core::fmt;
 
-use crate::{DecodeError, simd};
+use crate::{DecodeError, limits, simd};
 
 /// Which bit of a byte in a 1-bit bitmap is the leftmost pixel.
 #[derive(Debug, Clone, Copy)]
@@ -16,19 +17,26 @@ pub(crate) enum BitOrder {
     LsbFirst,
 }
 
-/// Most pixels a decoder may allocate for one picture (192 MiB of RGB).
-/// Dimensions come from untrusted headers, so a few bytes of file must not
-/// be able to demand gigabytes.
-const MAX_PIXELS: usize = 1 << 26;
-
-/// Fails if a `width` x `height` picture is empty or exceeds [`MAX_PIXELS`].
-/// The one size gate: call before allocating anything sized from header
-/// dimensions. A format with a smaller hard limit states it locally.
-pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError> {
-    match width.checked_mul(height) {
-        Some(pixels) if pixels != 0 && pixels <= MAX_PIXELS => Ok(()),
-        _ => Err(DecodeError::Unrecognized),
+/// Fails if a `width` x `height` picture exceeds [`max_image_bytes`](crate::max_image_bytes).
+/// The one size gate: every `Image` constructor passes through it, so no decoder can
+/// build an oversized picture. Decoders still call [`check_size`] first when
+/// they allocate buffers sized from header dimensions before the `Image`.
+fn within_limit(width: usize, height: usize) -> Result<(), DecodeError> {
+    if limits::fits(width, height, limits::max_pixels()) {
+        Ok(())
+    } else {
+        Err(DecodeError::TooLarge)
     }
+}
+
+/// Fails if a `width` x `height` picture is empty or exceeds the size limit.
+/// Call before allocating anything sized from header dimensions. A format
+/// with a smaller hard limit states it locally.
+pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError> {
+    if width == 0 || height == 0 {
+        return Err(DecodeError::Invalid);
+    }
+    within_limit(width, height)
 }
 
 /// A 15-bit color as the Game Boy Color, the Game Boy Advance, the DS and the
@@ -105,12 +113,16 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
 /// A decoded picture: 8-bit color, row-major, top row first, and an alpha
 /// plane when some pixel is not opaque.
 ///
+/// Images come from [`decode`](crate::decode) and
+/// [`Format::decode`](crate::Format::decode). A picture takes at most the
+/// [`max_image_bytes`](crate::max_image_bytes) allows, 64 MiB by default.
+///
 /// [`rgb`](Self::rgb) holds the color channels and ignores alpha;
 /// [`has_alpha`](Self::has_alpha) says whether that is the whole picture.
 /// Alpha is straight (not premultiplied): 0 is transparent, 255 opaque.
 /// Decoded images are canonical: an image whose pixels are all opaque has no
 /// alpha plane, and a fully transparent pixel is black.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Image {
     width: u32,
     height: u32,
@@ -118,36 +130,54 @@ pub struct Image {
     alpha: Option<Vec<u8>>,
 }
 
+/// Prints the size and whether there is an alpha plane, not the pixels: a
+/// picture can be millions of bytes, and `unwrap` and `assert_eq!` print
+/// their operands.
+impl fmt::Debug for Image {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Image")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("has_alpha", &self.has_alpha())
+            .finish_non_exhaustive()
+    }
+}
+
 impl Image {
-    /// Creates a black image.
-    pub(crate) fn new(width: u32, height: u32) -> Self {
-        let len = (width as usize)
-            .checked_mul(height as usize)
-            .and_then(|pixels| pixels.checked_mul(3))
-            .expect("image size overflows; decoders must call check_size first");
-        Self {
+    /// Creates a black image. Fails if it exceeds the size limit.
+    pub(crate) fn new(width: u32, height: u32) -> Result<Self, DecodeError> {
+        within_limit(width as usize, height as usize)?;
+        Ok(Self {
             width,
             height,
-            rgb: alloc::vec![0; len],
+            rgb: alloc::vec![0; width as usize * height as usize * 3],
             alpha: None,
-        }
+        })
     }
 
     /// An image from `0xRRGGBB` colors in row-major order; pixels the
     /// iterator doesn't reach stay black.
-    pub(crate) fn from_colors(width: u32, height: u32, colors: impl Iterator<Item = u32>) -> Self {
-        let mut image = Self::new(width, height);
+    pub(crate) fn from_colors(
+        width: u32,
+        height: u32,
+        colors: impl Iterator<Item = u32>,
+    ) -> Result<Self, DecodeError> {
+        let mut image = Self::new(width, height)?;
         for (pixel, color) in image.rgb.as_chunks_mut::<3>().0.iter_mut().zip(colors) {
             let [_, r, g, b] = color.to_be_bytes();
             *pixel = [r, g, b];
         }
-        image
+        Ok(image)
     }
 
     /// An image from straight `0xAARRGGBB` pixels in row-major order; pixels
     /// the iterator doesn't reach stay opaque black.
-    pub(crate) fn from_argb(width: u32, height: u32, pixels: impl Iterator<Item = u32>) -> Self {
-        let mut image = Self::new(width, height);
+    pub(crate) fn from_argb(
+        width: u32,
+        height: u32,
+        pixels: impl Iterator<Item = u32>,
+    ) -> Result<Self, DecodeError> {
+        let mut image = Self::new(width, height)?;
         let mut alpha = alloc::vec![255; image.rgb.len() / 3];
         let mut opaque = true;
         let targets = image.rgb.as_chunks_mut::<3>().0.iter_mut().zip(&mut alpha);
@@ -158,15 +188,17 @@ impl Image {
             opaque &= a == 255;
         }
         image.alpha = (!opaque).then_some(alpha);
-        image
+        Ok(image)
     }
 
     /// Width in pixels.
+    #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
     /// Height in pixels.
+    #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -181,25 +213,39 @@ impl Image {
     }
 
     /// The color channels, 3 bytes (R, G, B) per pixel, ignoring alpha.
-    /// Use [`flatten`](Self::flatten) first for the picture as seen over a
+    /// Use [`flattened`](Self::flattened) first for the picture as seen over a
     /// background, or [`rgba`](Self::rgba) to keep the transparency.
+    #[must_use]
     pub fn rgb(&self) -> &[u8] {
         &self.rgb
     }
 
     /// Takes the color channels, 3 bytes (R, G, B) per pixel, dropping alpha.
+    #[must_use]
     pub fn into_rgb(self) -> Vec<u8> {
         self.rgb
     }
 
     /// Whether some pixel is not fully opaque, so that [`rgb`](Self::rgb) is
     /// not the whole picture.
+    #[must_use]
     pub fn has_alpha(&self) -> bool {
         self.alpha.is_some()
     }
 
     /// The pixels as straight RGBA, 4 bytes (R, G, B, A) per pixel; opaque
     /// (255) when the image has no alpha. Allocates a copy.
+    ///
+    /// ```
+    /// // A 2x1 PAM with alpha: opaque red, then half-transparent green.
+    /// let file = b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n\
+    ///              \xff\x00\x00\xff\x00\xff\x00\x80";
+    /// let image = retro_image::decode("two.pam", file)?.into_image();
+    /// assert!(image.has_alpha());
+    /// assert_eq!(image.rgba(), [255, 0, 0, 255, 0, 255, 0, 128]);
+    /// # Ok::<(), retro_image::DecodeError>(())
+    /// ```
+    #[must_use]
     pub fn rgba(&self) -> Vec<u8> {
         let pixels = self.rgb.as_chunks::<3>().0;
         let mut out = Vec::with_capacity(pixels.len() * 4);
@@ -218,9 +264,23 @@ impl Image {
         out
     }
 
-    /// The picture drawn over an opaque `background` (R, G, B): an image
-    /// without alpha, for consumers that cannot show transparency.
-    pub fn flatten(&self, background: [u8; 3]) -> Self {
+    /// A new image: the picture drawn over an opaque `background` (R, G, B),
+    /// which has no alpha plane, for consumers that cannot show transparency.
+    /// This image is left as it is; an image without alpha comes back as a
+    /// copy.
+    ///
+    /// ```
+    /// let file = b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n\
+    ///              \xff\x00\x00\x00\x00\xff\x00\xff";
+    /// let image = retro_image::decode("two.pam", file)?.into_image();
+    /// // The first pixel is fully transparent, so the background shows.
+    /// let flat = image.flattened([10, 20, 30]);
+    /// assert!(!flat.has_alpha());
+    /// assert_eq!(flat.rgb(), [10, 20, 30, 0, 255, 0]);
+    /// # Ok::<(), retro_image::DecodeError>(())
+    /// ```
+    #[must_use]
+    pub fn flattened(&self, background: [u8; 3]) -> Self {
         let Some(alpha) = &self.alpha else {
             return self.clone();
         };
@@ -393,10 +453,11 @@ impl Image {
         indices: &[u8],
         palette: &[u32],
     ) -> Result<Self, DecodeError> {
+        within_limit(width as usize, height as usize)?;
         let outside = max_byte(indices).is_some_and(|max| usize::from(max) >= palette.len());
         let pixels = (width as usize).checked_mul(height as usize);
         if pixels != Some(indices.len()) || outside {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let mut table = [0; 256];
         let used = palette.len().min(256);
@@ -443,11 +504,16 @@ impl Image {
         order: BitOrder,
         colors: [u32; 2],
     ) -> Result<Self, DecodeError> {
+        // The padding bits of each row are expanded too, so they count.
+        within_limit(
+            row_len.saturating_mul(8).max(width as usize),
+            height as usize,
+        )?;
         let fits = row_len
             .checked_mul(height as usize)
             .is_some_and(|len| len <= bitmap.len());
         if !fits || row_len.saturating_mul(8) < width as usize {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         // The rows form one bit stream, so a single `expand_plane` call
         // covers the image; the padding bits are cropped afterwards.
@@ -571,8 +637,9 @@ fn blend_with_alpha(frames: &[&Image]) -> (Vec<u8>, Vec<u8>) {
 /// Pixel values of a `width` x `height` image stored as `planes`
 /// bitplanes of `row_len`-byte rows, most significant bit first:
 /// `row_start(plane, y)` is where a row starts in `data`, and plane `p` gives
-/// bit `p` of each value. At most 32 planes. Panics if a row is outside
-/// `data` or shorter than `width` bits.
+/// bit `p` of each value. At most 32 planes. Fails if the picture exceeds
+/// the size limit, a row is outside `data`, or a row is shorter than `width`
+/// bits.
 pub(crate) fn planar_pixels(
     data: &[u8],
     width: usize,
@@ -580,22 +647,27 @@ pub(crate) fn planar_pixels(
     row_len: usize,
     planes: usize,
     row_start: impl Fn(usize, usize) -> usize,
-) -> Vec<u32> {
-    assert!(planes <= 32, "more than 32 planes");
-    assert!(row_len * 8 >= width, "rows too short");
+) -> Result<Vec<u32>, DecodeError> {
+    let stride = row_len.saturating_mul(8);
+    if planes > 32 || stride < width {
+        return Err(DecodeError::Invalid);
+    }
+    // The padding bits of each row are expanded too, so they count.
+    within_limit(stride, height)?;
     // Regrouped plane by plane, each plane is one bit stream covering the
     // whole image, so it takes a single `expand_plane` call.
     let plane_len = row_len * height;
     if plane_len == 0 {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     let mut grouped = Vec::with_capacity(plane_len * planes);
     for plane in 0..planes {
         for y in 0..height {
-            grouped.extend_from_slice(&data[row_start(plane, y)..][..row_len]);
+            let row = (row_start(plane, y).checked_add(row_len))
+                .and_then(|end| data.get(end - row_len..end));
+            grouped.extend_from_slice(row.ok_or(DecodeError::Invalid)?);
         }
     }
-    let stride = row_len * 8;
     let mut values = alloc::vec![0u32; stride * height];
     let mut bits = alloc::vec![0u8; values.len()];
     for (shift, group) in (0..).step_by(8).zip(grouped.chunks(plane_len * 8)) {
@@ -608,7 +680,7 @@ pub(crate) fn planar_pixels(
         }
     }
     crop_rows(&mut values, stride, width);
-    values
+    Ok(values)
 }
 
 /// The largest byte of `bytes`. Lane-wise maxima over fixed-size chunks
@@ -679,7 +751,7 @@ mod tests {
 
     #[test]
     fn get_returns_what_set_stored() {
-        let mut image = Image::new(2, 2);
+        let mut image = Image::new(2, 2).unwrap();
         image.set(1, 1, 0x123456);
         assert_eq!(image.get(1, 1), 0x123456);
         assert_eq!(image.get(0, 1), 0);
@@ -687,7 +759,7 @@ mod tests {
 
     #[test]
     fn set_argb_adds_the_alpha_plane_on_the_first_clear_pixel() {
-        let mut image = Image::new(2, 1);
+        let mut image = Image::new(2, 1).unwrap();
         image.set_argb(0, 0, 0xff10_2030);
         assert!(!image.has_alpha());
         image.set_argb(1, 0, 0x4000_ff00);
@@ -698,9 +770,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "check_size")]
     fn new_refuses_sizes_that_overflow() {
-        Image::new(u32::MAX, u32::MAX);
+        assert!(Image::new(u32::MAX, u32::MAX).is_err());
     }
 
     #[test]
@@ -718,7 +789,7 @@ mod tests {
 
     #[test]
     fn from_colors_fills_row_major_and_pads_black() {
-        let image = Image::from_colors(2, 2, [0x010203, 0x040506, 0x070809].into_iter());
+        let image = Image::from_colors(2, 2, [0x010203, 0x040506, 0x070809].into_iter()).unwrap();
         assert_eq!(image.rgb(), &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0]);
     }
 
@@ -777,6 +848,12 @@ mod tests {
     }
 
     #[test]
+    fn debug_shows_the_size_and_not_the_pixels() {
+        let shown = alloc::format!("{:?}", red_green([0, 128]));
+        assert_eq!(shown, "Image { width: 2, height: 1, has_alpha: true, .. }");
+    }
+
+    #[test]
     fn rgba_adds_the_alpha_plane_or_full_opacity() {
         let opaque = Image::from_indexed(2, 1, &[0, 1], &[0x102030, 0x405060]).unwrap();
         assert!(!opaque.has_alpha());
@@ -791,15 +868,15 @@ mod tests {
     }
 
     #[test]
-    fn flatten_draws_over_the_background() {
-        let flat = red_green([0, 255]).flatten([10, 20, 30]);
+    fn flattened_draws_over_the_background() {
+        let flat = red_green([0, 255]).flattened([10, 20, 30]);
         assert!(!flat.has_alpha());
         assert_eq!(flat.rgb(), [10, 20, 30, 0, 255, 0]);
         // Without alpha it is a plain copy.
-        assert_eq!(flat.flatten([1, 2, 3]), flat);
+        assert_eq!(flat.flattened([1, 2, 3]), flat);
         // Half of green over black: 255 * 128 / 255 = 128.
         assert_eq!(
-            red_green([0, 128]).flatten([0, 0, 0]).rgb()[3..],
+            red_green([0, 128]).flattened([0, 0, 0]).rgb()[3..],
             [0, 128, 0]
         );
     }
@@ -845,11 +922,11 @@ mod tests {
         image.draw(0, 0, 0xff00_ff00);
         assert_eq!(image.get_argb(0, 0), 0xff00_ff00, "opaque replaces");
         // Over a transparent pixel the source shows through unchanged.
-        let mut clear = Image::from_argb(1, 1, core::iter::once(CLEAR));
+        let mut clear = Image::from_argb(1, 1, core::iter::once(CLEAR)).unwrap();
         clear.draw(0, 0, 0x80ff_0000);
         assert_eq!(clear.get_argb(0, 0), 0x80ff_0000);
         // Half red over half blue: alpha 192, red two thirds of the color.
-        let mut half = Image::from_argb(1, 1, core::iter::once(0x8000_00ff));
+        let mut half = Image::from_argb(1, 1, core::iter::once(0x8000_00ff)).unwrap();
         half.draw(0, 0, 0x80ff_0000);
         assert_eq!(half.get_argb(0, 0), 0xc0aa_0055);
     }
@@ -889,7 +966,7 @@ mod tests {
 
     #[test]
     fn alpha_row_mut_starts_opaque() {
-        let mut image = Image::new(2, 2);
+        let mut image = Image::new(2, 2).unwrap();
         image.alpha_row_mut(1)[0] = 7;
         assert_eq!(
             image.rgba()[3..],
@@ -960,7 +1037,7 @@ mod tests {
     fn planar_pixels_combines_up_to_32_planes() {
         // 24 planes of two 1-byte rows, cropped to 3 pixels.
         let data: Vec<u8> = (0..48).map(|i| 0x80 >> (i / 2 % 3)).collect();
-        let values = planar_pixels(&data, 3, 2, 1, 24, |plane, y| plane * 2 + y);
+        let values = planar_pixels(&data, 3, 2, 1, 24, |plane, y| plane * 2 + y).unwrap();
         let row = [0x24_9249, 0x49_2492, 0x92_4924];
         assert_eq!(values, [row, row].concat());
     }

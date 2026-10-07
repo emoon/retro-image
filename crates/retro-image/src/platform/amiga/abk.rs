@@ -22,24 +22,29 @@ struct Object<'a> {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let magic = data.get(..4).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let magic = data.get(..4).ok_or(FAIL)?;
     if magic != b"AmSp" && magic != b"AmIc" {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let count = usize::from(be16(data, 4).ok_or(fail)?);
+    let count = usize::from(be16(data, 4).ok_or(FAIL)?);
     let mut pos = 6;
     let mut objects = Vec::new();
     for _ in 0..count {
-        let header = data.get(pos..pos + 10).ok_or(fail)?;
-        let word = |at| be16(header, at).map(usize::from).ok_or(fail);
+        let header = data.get(pos..pos + 10).ok_or(FAIL)?;
+        let word = |at| be16(header, at).map(usize::from).ok_or(FAIL);
         let (width, height, depth) = (word(0)? * 16, word(2)?, word(4)?);
         if depth > 6 {
-            return Err(fail);
+            return Err(FAIL);
         }
-        let len = width / 8 * height * depth;
-        let planes = data.get(pos + 10..pos + 10 + len).ok_or(fail)?;
-        pos += 10 + len;
+        // The product of three header words overflows a 32-bit usize.
+        let len = (width / 8)
+            .checked_mul(height)
+            .and_then(|n| n.checked_mul(depth))
+            .ok_or(FAIL)?;
+        let end = (pos + 10).checked_add(len).ok_or(FAIL)?;
+        let planes = data.get(pos + 10..end).ok_or(FAIL)?;
+        pos = end;
         objects.push(Object {
             width,
             height,
@@ -50,7 +55,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let palette: Vec<u16> = (0..32)
         .map(|i| be16(data, pos + i * 2))
         .collect::<Option<_>>()
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     // 6-plane objects use Extra Half-Brite: colors 32-63 are colors 0-31
     // at half brightness (Amiga Hardware Reference Manual, "Extra Half Brite
     // Mode"), rounded as in ILBM. RECOIL rejects such banks.
@@ -63,7 +68,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let width: usize = objects.iter().map(|o| o.width).sum();
     let height = objects.iter().map(|o| o.height).max().unwrap_or(0);
     if width > 0xffff {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     // Color 0 where no object reaches.

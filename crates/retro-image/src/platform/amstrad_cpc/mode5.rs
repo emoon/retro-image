@@ -29,15 +29,15 @@ const BAND: usize = 48;
 /// CM5 with its GFX companion; the bitmap is needed, so CM5 alone fails.
 pub(super) fn decode_cm5(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let colors = strip_amsdos(data);
-    let gfx = companions.get("gfx").ok_or(DecodeError::Unrecognized)?;
+    let gfx = companions.get("gfx").ok_or(DecodeError::Invalid)?;
     let gfx = strip_amsdos(&gfx);
     // Colors are `0x40 | n`; a bare hardware number `n` (seen for black in
     // a sample) means the same.
     let valid = |c: &u8| c & !0x5f == 0;
     if colors.len() != CM5_LEN || gfx.len() != GFX_LEN || !colors.iter().all(valid) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         let line = &gfx[y * LINE_BYTES..][..LINE_BYTES];
         let line_colors = &colors[1 + y * LINE_COLORS..][..LINE_COLORS];
@@ -63,11 +63,11 @@ mod tests {
     struct Gfx(Vec<u8>);
 
     impl Companions for Gfx {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "gfx").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "gfx").then(|| self.0.clone()).map(Into::into)
         }
     }
 

@@ -25,7 +25,7 @@ enum Colours {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_inner(data: &[u8]) -> Option<Image> {
@@ -72,7 +72,7 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
             .map_or(0, |c| level5(c[0]) << 16 | level5(c[1]) << 8 | level5(c[2]))
     };
 
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for y in 0..height {
         let row = y * width;
         let mut group_colours = [0; 4];

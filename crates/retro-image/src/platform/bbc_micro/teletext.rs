@@ -326,7 +326,7 @@ fn mosaic_rows(code: u8, separated: bool) -> [u16; CELL_H] {
 /// 1024. The 7-bit codes are stored as the SAA5050 sees them.
 pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != COLUMNS * ROWS && data.len() != 1024 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut page = Page::blank();
     for (row, line) in data.as_chunks::<COLUMNS>().0.iter().take(ROWS).enumerate() {

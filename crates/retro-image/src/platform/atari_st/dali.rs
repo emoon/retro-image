@@ -9,15 +9,15 @@ use super::common::{Resolution, SCREEN_LEN, decode_screen, palette_words};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_lpk(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_pk(data, Resolution::Low).ok_or(DecodeError::Unrecognized)
+    decode_pk(data, Resolution::Low).ok_or(DecodeError::Invalid)
 }
 
 pub(super) fn decode_mpk(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_pk(data, Resolution::Medium).ok_or(DecodeError::Unrecognized)
+    decode_pk(data, Resolution::Medium).ok_or(DecodeError::Invalid)
 }
 
 pub(super) fn decode_hpk(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_pk(data, Resolution::High).ok_or(DecodeError::Unrecognized)
+    decode_pk(data, Resolution::High).ok_or(DecodeError::Invalid)
 }
 
 /// Palette, ASCII byte-table size, ASCII long-table size, tables.
@@ -31,7 +31,7 @@ fn decode_pk(data: &[u8], resolution: Resolution) -> Option<Image> {
 
 /// `(c)F.MARCHAL`, ASCII byte-table size, palette, tables.
 pub(super) fn decode_rgh(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_rgh_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_rgh_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_rgh_inner(data: &[u8]) -> Option<Image> {

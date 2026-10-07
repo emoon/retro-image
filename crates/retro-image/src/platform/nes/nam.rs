@@ -58,11 +58,11 @@ pub(super) fn draw_screen(
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
     if screen.len() != NAMES_LEN && screen.len() != WITH_ATTRIBUTES_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let pattern = companions.get("chr").ok_or(DecodeError::Unrecognized)?;
+    let pattern = companions.get("chr").ok_or(DecodeError::Invalid)?;
     if pattern.len() != PATTERN_TABLE_LEN && pattern.len() != 2 * PATTERN_TABLE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut palette = [0; 16];
     for sub in palette.as_chunks_mut::<4>().0 {
@@ -137,15 +137,15 @@ mod tests {
     }
 
     impl Companions for Beside {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             match extension {
-                "chr" => Some(self.chr.clone()),
-                "pal" => self.pal.clone(),
+                "chr" => Some(self.chr.clone().into()),
+                "pal" => self.pal.clone().map(Into::into),
                 _ => None,
             }
         }
 
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }

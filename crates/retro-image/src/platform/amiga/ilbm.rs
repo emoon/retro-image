@@ -56,22 +56,23 @@ pub(super) struct Header {
 }
 
 impl Header {
-    pub(super) fn parse(contents: &[u8]) -> Option<Self> {
-        let bmhd = find(contents, b"BMHD")?;
-        if bmhd.len() < 20 {
-            return None;
-        }
-        let (width, height) = (be16(bmhd, 0)? as usize, be16(bmhd, 2)? as usize);
-        check_size(width, height).ok()?;
-        let header = Self {
+    pub(super) fn parse(contents: &[u8]) -> Result<Self, DecodeError> {
+        let bmhd = find(contents, b"BMHD")
+            .filter(|bmhd| bmhd.len() >= 20)
+            .ok_or(DecodeError::Invalid)?;
+        let (width, height) = (
+            be16(bmhd, 0).ok_or(DecodeError::Invalid)? as usize,
+            be16(bmhd, 2).ok_or(DecodeError::Invalid)? as usize,
+        );
+        check_size(width, height)?;
+        Ok(Self {
             width,
             height,
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
-            transparent: be16(bmhd, 12)?,
-        };
-        (header.width > 0 && header.height > 0).then_some(header)
+            transparent: be16(bmhd, 12).ok_or(DecodeError::Invalid)?,
+        })
     }
 
     /// Bytes per row of one plane, padded to 16 bits.
@@ -106,7 +107,7 @@ pub(super) fn decode_acbm(contents: &[u8]) -> Result<Image, DecodeError> {
 fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Image, DecodeError> {
     let bitmap = read_bitmap(contents, body_id, layout)?;
     if bitmap.is_dctv() || bitmap.is_ham_e() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let Bitmap {
         header,
@@ -119,7 +120,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
-    let mut image = Image::new(header.width as u32, header.height as u32);
+    let mut image = Image::new(header.width as u32, header.height as u32)?;
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
         if let Some(line_palettes) = &line_palettes {
             line_palettes.apply(y, &mut palette);
@@ -158,8 +159,8 @@ pub(super) fn read_ilbm(contents: &[u8]) -> Result<Bitmap, DecodeError> {
 }
 
 fn read_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Bitmap, DecodeError> {
-    let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
-    let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
+    let header = Header::parse(contents)?;
+    let body = find(contents, body_id).ok_or(DecodeError::Invalid)?;
     let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
     let (indices, mask) = match layout {
         Layout::Chunky => (read_chunky(&header, body)?, None),
@@ -255,11 +256,11 @@ fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, Deco
         0 => body
             .get(..len)
             .map(<[u8]>::to_vec)
-            .ok_or(DecodeError::Unrecognized),
+            .ok_or(DecodeError::Invalid),
         1 => packbits::unpack(body, len)
             .map(|(out, _)| out)
-            .ok_or(DecodeError::Unrecognized),
-        _ => Err(DecodeError::Unrecognized),
+            .ok_or(DecodeError::Invalid),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -271,7 +272,7 @@ fn read_planar(
     layout: Layout,
 ) -> Result<(Vec<u32>, Option<Vec<u8>>), DecodeError> {
     if header.planes == 0 || header.planes > 32 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let stored_planes = header.planes + usize::from(header.masking == 1);
     let row_len = header.plane_row_len();
@@ -280,13 +281,14 @@ fn read_planar(
     // can, but not in real files); this keeps corrupt sizes from allocating
     // huge buffers.
     if len > body.len().saturating_mul(128) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let data = match layout {
         // ABIT is never compressed, whatever BMHD says.
-        Layout::Contiguous => body.get(..len).ok_or(DecodeError::Unrecognized)?.to_vec(),
-        _ if header.compression == 2 => vdat::unpack(body, stored_planes, row_len, header.height)
-            .ok_or(DecodeError::Unrecognized)?,
+        Layout::Contiguous => body.get(..len).ok_or(DecodeError::Invalid)?.to_vec(),
+        _ if header.compression == 2 => {
+            vdat::unpack(body, stored_planes, row_len, header.height).ok_or(DecodeError::Invalid)?
+        }
         _ => unpack_body(header, body, len)?,
     };
     let values = planar_pixels(
@@ -299,26 +301,30 @@ fn read_planar(
             Layout::Contiguous => (plane * header.height + y) * row_len,
             _ => (y * stored_planes + plane) * row_len,
         },
-    );
-    let mask = (header.masking == 1 && layout == Layout::Interleaved).then(|| {
+    )?;
+    let mask = if header.masking == 1 && layout == Layout::Interleaved {
         // The mask plane follows the bitplanes of each row.
         let bits = planar_pixels(&data, header.width, header.height, row_len, 1, |_, y| {
             (y * stored_planes + header.planes) * row_len
-        });
-        bits.iter()
-            .map(|&bit| if bit != 0 { 255 } else { 0 })
-            .collect()
-    });
+        })?;
+        Some(
+            bits.iter()
+                .map(|&bit| if bit != 0 { 255 } else { 0 })
+                .collect(),
+        )
+    } else {
+        None
+    };
     Ok((values, mask))
 }
 
 fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {
     if header.planes != 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let row_len = header.width + (header.width & 1);
     if row_len * header.height > body.len().saturating_mul(128) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let data = unpack_body(header, body, row_len * header.height)?;
     Ok(data
@@ -357,7 +363,7 @@ impl Mode {
             6 if camg.is_none() && colors == 16 => Self::Ham6,
             1..=8 => Self::Indexed,
             24 => Self::TrueColor,
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         })
     }
 
@@ -466,8 +472,8 @@ mod tests {
 
     #[test]
     fn header_rejects_pictures_over_the_pixel_cap() {
-        assert!(Header::parse(&bmhd(100, 100)).is_some());
-        assert!(Header::parse(&bmhd(65535, 65535)).is_none());
+        assert!(Header::parse(&bmhd(100, 100)).is_ok());
+        assert!(Header::parse(&bmhd(65535, 65535)).is_err());
     }
 
     /// A 3 x 1 picture of one plane (black and white palette), uncompressed.
@@ -525,11 +531,11 @@ mod tests {
 
     #[test]
     fn interlace_doubling_over_the_pixel_cap_is_rejected() {
-        let (width, height) = (50000u16, 700u16);
+        let (width, height) = (4100u16, 2100u16);
         let mut bmhd = bmhd(width, height)[8..].to_vec();
         bmhd[10] = 1; // ByteRun1
         let mut body = Vec::new();
-        for _ in 0..36000 {
+        for _ in 0..10500 {
             body.extend_from_slice(&[0x81, 0]);
         }
         let mut contents = Vec::new();
@@ -542,9 +548,6 @@ mod tests {
             contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
             contents.extend_from_slice(&data);
         }
-        assert!(matches!(
-            decode_ilbm(&contents),
-            Err(DecodeError::Unrecognized)
-        ));
+        assert!(matches!(decode_ilbm(&contents), Err(DecodeError::TooLarge)));
     }
 }

@@ -29,7 +29,7 @@ use crate::image::{check_size, rgb565};
 use crate::{DecodeError, Image};
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// Lines are doubled for 640x200-like shapes.
@@ -55,7 +55,7 @@ fn chunky(
 ) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height * bytes)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, pixel) in data.chunks_exact(bytes).enumerate() {
         image.set((i % width) as u32, (i / width) as u32, color(pixel));
     }
@@ -259,7 +259,7 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
     Some(if padded == width {
         image
     } else {
-        super::common::crop(&image, width as u32, image.height())
+        super::common::crop(&image, width as u32, image.height()).ok()?
     })
 }
 
@@ -267,8 +267,8 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
 /// with their lengths given, for `DPH`: derived from sample files) holding a VIDEL palette and 320x240 8-plane pictures (four
 /// quadrants for `DPH`).
 pub(super) fn decode_del(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked = delm_blocks(data, 2, 3).ok_or(DecodeError::Unrecognized)?;
-    let palette = videl_palette(&unpacked).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = delm_blocks(data, 2, 3).ok_or(DecodeError::Invalid)?;
+    let palette = videl_palette(&unpacked).ok_or(DecodeError::Invalid)?;
     ok(planar_image(&unpacked[1024..], 320, 240, 8, &palette, 1))
 }
 

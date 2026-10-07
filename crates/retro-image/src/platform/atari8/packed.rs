@@ -37,9 +37,9 @@ const LINE: usize = 40;
 
 /// Trzmiel: `data[0]` is the mode (1 or 2), tokens follow.
 pub(super) fn decode_cpr(data: &[u8]) -> Result<Image, DecodeError> {
-    let (&mode, tokens) = data.split_first().ok_or(DecodeError::Unrecognized)?;
+    let (&mode, tokens) = data.split_first().ok_or(DecodeError::Invalid)?;
     if !matches!(mode, 1 | 2) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let stream = unpack(tokens, SCREEN)?;
     let screen = if mode == 2 {
@@ -61,26 +61,26 @@ pub(super) fn decode_cpr(data: &[u8]) -> Result<Image, DecodeError> {
 fn unpack(mut tokens: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::with_capacity(len);
     while out.len() < len {
-        let (&token, rest) = tokens.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&token, rest) = tokens.split_first().ok_or(DecodeError::Invalid)?;
         tokens = rest;
         if token & 0x80 != 0 {
             let count = usize::from(token & 0x7f);
             if count == 0 || count > tokens.len() {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             let (literal, rest) = tokens.split_at(count);
             out.extend_from_slice(literal);
             tokens = rest;
         } else {
             let count = if token == 0 {
-                let count = le16(tokens, 0).ok_or(DecodeError::Unrecognized)?;
+                let count = le16(tokens, 0).ok_or(DecodeError::Invalid)?;
                 tokens = &tokens[2..];
                 // Stored big-endian.
                 usize::from(count.swap_bytes())
             } else {
                 usize::from(token)
             };
-            let (&value, rest) = tokens.split_first().ok_or(DecodeError::Unrecognized)?;
+            let (&value, rest) = tokens.split_first().ok_or(DecodeError::Invalid)?;
             tokens = rest;
             out.resize(out.len() + count.min(len), value);
         }
@@ -93,23 +93,23 @@ fn unpack(mut tokens: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
 pub(super) fn decode_kpr(data: &[u8]) -> Result<Image, DecodeError> {
     let (start, end) = match (data.get(..2), le16(data, 2), le16(data, 4)) {
         (Some(&[0xff, 0xff]), Some(start), Some(end)) if end >= start => (start, end),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if data.len() != 6 + usize::from(end - start) + 1 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let &[_, _, bands, per_band, rows, ref rest @ ..] = &data[6..] else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (bands, per_band, rows) = (usize::from(bands), usize::from(per_band), usize::from(rows));
     let cells = bands * per_band * rows;
     if cells == 0 || rest.len() < cells {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (map, tiles) = rest.split_at(cells);
     let tile_count = tiles.len() / 8;
     if map.iter().any(|&t| usize::from(t) >= tile_count) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let columns = bands * per_band;
     let mut screen = alloc::vec![0; columns * rows * 8];

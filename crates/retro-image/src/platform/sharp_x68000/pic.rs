@@ -262,22 +262,22 @@ fn unpack(header: &Header) -> Option<Vec<u32>> {
 
 /// Decodes a PIC picture if it was saved on `machine`.
 pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
-    let header = Header::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let header = Header::parse(data).ok_or(DecodeError::Invalid)?;
     let (width, height) = (header.width, header.height);
     if header.machine != machine {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // `unpack` holds 8 bytes per pixel and VaTiled output is twice as tall, so
     // PIC stays below the crate-wide cap.
     if width * height > MAX_PIXELS {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     check_size(width, height)?;
-    let values = unpack(&header).ok_or(DecodeError::Unrecognized)?;
+    let values = unpack(&header).ok_or(DecodeError::Invalid)?;
     if header.colour == Colour::VaTiled {
         // Word (x, y) holds pixels 2x and 2x + 1 of a line made of output lines
         // 2y and 2y + 1 side by side; the low byte is the left pixel.
-        let mut image = Image::new(width as u32, (height * 2) as u32);
+        let mut image = Image::new(width as u32, (height * 2) as u32)?;
         for (i, &word) in values.iter().enumerate() {
             let (x, y) = (i % width * 2, i / width * 2);
             for (half, byte) in [word & 0xff, word >> 8].into_iter().enumerate() {
@@ -305,7 +305,7 @@ pub(in crate::platform) fn decode_pic(data: &[u8], machine: Machine) -> Result<I
                 | widen_channel(value & 31, 5)
         }
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 #[cfg(test)]

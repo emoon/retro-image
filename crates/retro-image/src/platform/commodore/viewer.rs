@@ -95,7 +95,7 @@ impl Viewer {
             .tail
             .is_none_or(|(at, tail)| data.get(at..) == Some(tail));
         if !code_ok || !tail_ok {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.picture.decode(data)
     }

@@ -63,7 +63,7 @@ fn decode_packed(
     height: usize,
 ) -> Result<Image, DecodeError> {
     if !data.starts_with(signature) || data.len() <= offset {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let patterns = unpack(&data[offset..], 64 * height);
     mono(512, height, |x, y| {
@@ -84,12 +84,12 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Stamp: width and height (LE16), then 4 two-bit pixels per byte, rows not padded.
 pub(super) fn decode_stp(data: &[u8]) -> Result<Image, DecodeError> {
-    let header = data.get(..4).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..4).ok_or(DecodeError::Invalid)?;
     let width = u16::from_le_bytes([header[0], header[1]]) as usize;
     let height = u16::from_le_bytes([header[2], header[3]]) as usize;
     let pixels = &data[4..];
     if width == 0 || height == 0 || pixels.len() < (width * height).div_ceil(4) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mono(width, height, |x, y| {
         let i = y * width + x;
@@ -107,7 +107,7 @@ mod tests {
         let mut data = alloc::vec![0u8; 4 + (width * height).div_ceil(4)];
         data[..2].copy_from_slice(&(width as u16).to_le_bytes());
         data[2..4].copy_from_slice(&(height as u16).to_le_bytes());
-        assert!(matches!(decode_stp(&data), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode_stp(&data), Err(DecodeError::TooLarge)));
     }
 
     #[test]

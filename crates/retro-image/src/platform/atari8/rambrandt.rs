@@ -173,7 +173,7 @@ impl Picture {
         layout: Layout,
     ) -> Result<Self, DecodeError> {
         if !tables[..TABLE].iter().all(|&code| layout.accepts(code)) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(Self {
             screen,
@@ -186,11 +186,11 @@ impl Picture {
     /// The raw 8192-byte form (RM2).
     fn raw(data: &[u8], layout: Layout) -> Result<Self, DecodeError> {
         if data.len() != 8192 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let start = data[7680..7689]
             .try_into()
-            .map_err(|_| DecodeError::Unrecognized)?;
+            .map_err(|_| DecodeError::Invalid)?;
         Self::new(data[..7680].to_vec(), start, &data[8192 - TABLES..], layout)
     }
 
@@ -199,16 +199,16 @@ impl Picture {
     fn koala(data: &[u8], mode: u8) -> Result<Self, DecodeError> {
         let pic = koala::parse(data)?;
         if pic.mode != mode {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let tail = data
             .len()
             .checked_sub(464)
             .filter(|&tail| tail > 18)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         let start = data[tail..tail + 9]
             .try_into()
-            .map_err(|_| DecodeError::Unrecognized)?;
+            .map_err(|_| DecodeError::Invalid)?;
         Self::new(
             pic.screen.to_vec(),
             start,

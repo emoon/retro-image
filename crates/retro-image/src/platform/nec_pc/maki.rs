@@ -172,7 +172,9 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
         let flag_byte = data.get(header.flag_a.checked_add(flag_bit / 8)?)?;
         if flag_byte & (0x80 >> (flag_bit % 8)) != 0 {
             action[slot] ^= byte(flag_b);
-            flag_b += 1;
+            // Offsets are 32-bit header words, so they saturate (and read
+            // as zero) instead of wrapping on a 32-bit usize.
+            flag_b = flag_b.saturating_add(1);
         }
         flag_bit += 1;
         let nibbles = action[slot];
@@ -183,8 +185,9 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
             }
             let value = match nibble {
                 0 => {
-                    colour += 2;
-                    [byte(colour - 2), byte(colour - 1)]
+                    let at = colour;
+                    colour = colour.saturating_add(2);
+                    [byte(at), byte(at.saturating_add(1))]
                 }
                 n => {
                     let (units, rows) = COPY_FROM[n as usize - 1];
@@ -230,8 +233,13 @@ fn indexed(
     Image::from_indexed(width as u32, unpacked.height as u32, &indices, palette)
 }
 
-fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> Image {
-    let mut image = Image::new(width as u32, unpacked.height as u32);
+fn yjk_pixels(
+    unpacked: &Unpacked,
+    width: usize,
+    yae: bool,
+    palette: &[u32],
+) -> Result<Image, DecodeError> {
+    let mut image = Image::new(width as u32, unpacked.height as u32)?;
     let mut pal16 = [0; 16];
     for (dst, src) in pal16.iter_mut().zip(palette) {
         *dst = *src;
@@ -252,7 +260,7 @@ fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> 
             }
         }
     }
-    image
+    Ok(image)
 }
 
 fn msx_picture(
@@ -263,19 +271,19 @@ fn msx_picture(
     let screen = header.flags >> 4;
     let interlaced = header.flags & 0x0c == 0;
     if header.flags & 8 != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bpp = header.bits_per_pixel();
     let image = match screen {
         // Screens 10/11 (YAE) and 12 (YJK): one byte per pixel.
         2 | 4 => {
             let width = unpacked.width * bpp / 8;
-            yjk_pixels(unpacked, width, screen == 2, palette)
+            yjk_pixels(unpacked, width, screen == 2, palette)?
         }
         // Screen 6: 2-bit pixels whatever the stored depth.
         6 => indexed(unpacked, 2, unpacked.width * bpp / 2, palette)?,
         0 | 1 | 5 => indexed(unpacked, bpp, unpacked.width, palette)?,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let wide_screen = matches!(screen, 0 | 6);
     let (sx, sy) = (
@@ -287,9 +295,9 @@ fn msx_picture(
 
 /// Decodes a MAG picture if it was saved on `machine`.
 pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
-    let header = MagHeader::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let header = MagHeader::parse(data).ok_or(DecodeError::Invalid)?;
     if header.machine() != machine {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colours = if header.bits_per_pixel() == 8 {
         256
@@ -298,8 +306,8 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
     };
     let grb = data
         .get(header.palette..header.palette + colours * 3)
-        .ok_or(DecodeError::Unrecognized)?;
-    let unpacked = unpack_mag(data, &header).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let unpacked = unpack_mag(data, &header).ok_or(DecodeError::Invalid)?;
     let mode_200_lines = header.mode & 1 != 0;
     let image = if header.machine == 0x03 {
         let palette = read_palette(grb, Precision::Bits(3));
@@ -321,7 +329,7 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
             .scaled(1, 1 + u32::from(double_height))?
     };
     if image.width() == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(image)
 }
@@ -331,12 +339,12 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
     let xor_rows = match data.get(..8) {
         Some(b"MAKI01A ") => 2,
         Some(b"MAKI01B ") => 4,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     const FLAG_A: usize = 96;
     const FLAG_B: usize = FLAG_A + 1000;
     if data.len() < FLAG_B {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (precision, detected) = match &data[8..12] {
         b"X68K" => (Precision::X68000, Machine::X68000),
@@ -344,7 +352,7 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
         _ => (Precision::Bits(4), Machine::Pc98),
     };
     if detected != machine {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = read_palette(&data[48..96], precision);
     let byte = |i: usize| data.get(i).copied().unwrap_or(0);
@@ -420,10 +428,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (8, 1));
         assert_eq!(&image.rgb()[..6], &[0xff, 0, 0, 0, 0, 0]);
         assert_eq!(&image.rgb()[9..12], &[0xff, 0, 0]);
-        assert_eq!(
-            decode_mag(&data, Machine::Msx),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_mag(&data, Machine::Msx), Err(DecodeError::Invalid));
     }
 
     #[test]
@@ -436,12 +441,12 @@ mod tests {
         ] {
             let data = mag(machine, 0, 0, 7, &[0x44; 48], &[0x10, 0x01, 0, 0]);
             let ours = decode_mag(&data, expected).unwrap();
-            assert_eq!(crate::decode("x.dat", &data), Ok(ours.clone()));
-            assert_eq!(crate::decode("x.mag", &data), Ok(ours));
+            assert_eq!(crate::decode("x.dat", &data).unwrap().image(), &ours);
+            assert_eq!(crate::decode("x.mag", &data).unwrap().image(), &ours);
             let (format, _) = crate::candidates("x.dat")
                 .find_map(|f| f.decode(&data).ok().map(|i| (f, i)))
                 .unwrap();
-            assert_eq!(format.name, "Maki-chan Graphics");
+            assert_eq!(format.name(), "Maki-chan Graphics");
         }
     }
 
@@ -464,10 +469,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (8, 1));
         // X68000 precision: 5-bit red, intensity bit clear.
         assert_eq!(&image.rgb()[..3], &[0xfb, 0, 0]);
-        assert_eq!(
-            decode_mag(&data, Machine::Pc98),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_mag(&data, Machine::Pc98), Err(DecodeError::Invalid));
     }
 
     #[test]

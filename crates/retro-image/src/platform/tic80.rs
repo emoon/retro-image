@@ -178,7 +178,7 @@ fn used_rows(body: &[u8]) -> Vec<u8> {
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let chunks = chunks(data).ok_or(DecodeError::Unrecognized)?;
+    let chunks = chunks(data).ok_or(DecodeError::Invalid)?;
     let palette = palette(&chunks);
     if let Some(screen) = bank_0(&chunks, SCREEN_CHUNK).filter(|s| s.iter().any(|&b| b != 0)) {
         let mut pixels = screen[..screen.len().min(SCREEN.tile_len())].to_vec();
@@ -189,7 +189,7 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let sprites: Vec<u8> = parts.iter().flatten().flat_map(|p| used_rows(p)).collect();
     // Nothing but blank sprites and no cover is not a picture.
     if sprites.is_empty() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     SPRITE.sheet(&sprites, SPRITES_PER_ROW, &palette)
 }

@@ -18,11 +18,11 @@ const COLORS: usize = 2 + BITMAP_LEN;
 
 pub(super) fn decode_cle(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN || data[..2] != [0x00, 0x60] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let screen = [data[COLORS]; SCREEN_LEN];
     let color = [data[COLORS + 1] & 15; SCREEN_LEN];
     let bitmap = Bitmap::multicolor(&data[2..COLORS], &screen, &color, data[COLORS + 2] & 15);
-    let frame = Frame::multicolor(&bitmap, 200).ok_or(DecodeError::Unrecognized)?;
+    let frame = Frame::multicolor(&bitmap, 200).ok_or(DecodeError::Invalid)?;
     Ok(frame.to_image(0))
 }

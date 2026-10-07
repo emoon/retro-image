@@ -55,7 +55,7 @@ pub(super) static BY_SIZE: &[Format] = &[Format::with_companions(
     decode_old_cel,
 )];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 32;
 const CEL_MARK: u8 = 0x20;
 const CKISS_MARK: u8 = 0x21;
@@ -219,7 +219,7 @@ fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError>
         cel.width as u32,
         cel.height as u32,
         core::iter::repeat(CLEAR),
-    );
+    )?;
     cel.draw(&mut image, 0, 0, &palette);
     Ok(image)
 }
@@ -283,11 +283,11 @@ mod tests {
     struct Palette(Vec<u8>);
 
     impl Companions for Palette {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "kcf").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "kcf").then(|| self.0.clone()).map(Into::into)
         }
 
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }
@@ -367,7 +367,7 @@ mod tests {
             .filter(|f| f.matches_filename("doll.cel"))
             .collect();
         assert!(by_extension.len() > 2, "several formats claim .cel");
-        assert_eq!(by_extension.last().unwrap().name, "Conventional cel");
+        assert_eq!(by_extension.last().unwrap().name(), "Conventional cel");
     }
 
     #[test]
@@ -375,12 +375,12 @@ mod tests {
         struct Asked(core::cell::Cell<bool>);
 
         impl Companions for Asked {
-            fn get(&self, _extension: &str) -> Option<Vec<u8>> {
+            fn get(&self, _extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 self.0.set(true);
                 None
             }
 
-            fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+            fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
                 None
             }
         }

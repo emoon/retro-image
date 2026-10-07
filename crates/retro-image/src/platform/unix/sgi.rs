@@ -31,7 +31,7 @@ use crate::bytes::{be16, be32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 474;
 const HEADER_LEN: usize = 512;
 
@@ -95,7 +95,7 @@ pub(super) fn decode_sgi(data: &[u8]) -> Result<Image, DecodeError> {
         channels,
         ..
     } = header;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let mut planes = alloc::vec![0u16; width * channels];
     for y in 0..height {
         // Row 0 of the file is the bottom of the picture.

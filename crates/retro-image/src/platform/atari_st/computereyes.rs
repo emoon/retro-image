@@ -14,7 +14,7 @@ use crate::{DecodeError, Image};
 const HEADER_LEN: usize = 22;
 
 pub(super) fn decode_ce(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -24,7 +24,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     let body = &data[HEADER_LEN.min(data.len())..];
     match be16(data, 4)? {
         0 if body.len() == 3 * 64000 => {
-            let mut image = Image::new(320, 200);
+            let mut image = Image::new(320, 200).ok()?;
             for x in 0..320 {
                 for y in 0..200 {
                     let i = x * 200 + y;
@@ -40,7 +40,7 @@ fn decode(data: &[u8]) -> Option<Image> {
             Some(image)
         }
         1 if body.len() == 256000 => {
-            let mut image = Image::new(640, 400);
+            let mut image = Image::new(640, 400).ok()?;
             for x in 0..640 {
                 for y in 0..200 {
                     let i = (x * 200 + y) * 2;
@@ -54,7 +54,7 @@ fn decode(data: &[u8]) -> Option<Image> {
             Some(image)
         }
         2 if body.len() == 256000 => {
-            let mut image = Image::new(640, 400);
+            let mut image = Image::new(640, 400).ok()?;
             for x in 0..640 {
                 for i in 0..400 {
                     // Even lines first, then odd lines, per column.

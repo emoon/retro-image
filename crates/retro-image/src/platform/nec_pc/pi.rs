@@ -245,12 +245,12 @@ impl Decoder<'_> {
 
 /// Decodes a Pi picture if it was saved on `machine`.
 pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
-    let header = Header::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let header = Header::parse(data).ok_or(DecodeError::Invalid)?;
     check_size(header.width, header.height)?;
     let pixels = header.width * header.height;
     // Pairs are copied from the line above, so lines need at least 2 bytes.
     if header.machine() != machine || header.width < 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colours = header.colours;
     let mut decoder = Decoder {
@@ -266,7 +266,7 @@ pub(in crate::platform) fn decode_pi(data: &[u8], machine: Machine) -> Result<Im
             .map(|i| ((colours + i / colours - i % colours) % colours) as u8)
             .collect(),
     };
-    decoder.run().ok_or(DecodeError::Unrecognized)?;
+    decoder.run().ok_or(DecodeError::Invalid)?;
 
     let precision = header.precision();
     let palette: Vec<u32> = header
@@ -320,10 +320,7 @@ mod tests {
     fn rejects_truncated_stream() {
         let mut data = b"Pi\x1a\0\0\0\0\x04PC98\0\0\0\x04\0\x01".to_vec();
         data.extend([0; 48]);
-        assert_eq!(
-            decode_pi(&data, Machine::Pc98),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_pi(&data, Machine::Pc98), Err(DecodeError::Invalid));
         // Two deltas (color 15, 15), a first repeat of 1 pair (shortened to 0),
         // then an end marker.
         data.extend([0b1110_0000, 0b0000_0000]);
@@ -338,10 +335,7 @@ mod tests {
         data.extend([0xee, 0xcc, 0]);
         data.extend([0; 45]);
         data.extend([0b1110_0000, 0b0000_0000]);
-        assert_eq!(
-            decode_pi(&data, Machine::Pc98),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_pi(&data, Machine::Pc98), Err(DecodeError::Invalid));
         let image = decode_pi(&data, Machine::FmTowns).unwrap();
         assert_eq!((image.width(), image.height()), (4, 1));
         data[8..12].copy_from_slice(b"PC98");

@@ -51,10 +51,10 @@ fn rgb_of(pixel: &[u8]) -> u32 {
 }
 
 pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let h = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let h = data.get(..HEADER_LEN).ok_or(FAIL)?;
     let (id_len, map_type, kind) = (usize::from(h[0]), h[1], h[2]);
-    let word = |at| le16(h, at).map(usize::from).ok_or(fail);
+    let word = |at| le16(h, at).map(usize::from).ok_or(FAIL);
     let (map_first, map_len, map_bits) = (word(3)?, word(5)?, usize::from(h[7]));
     let (width, height) = (word(12)?, word(14)?);
     let depth = usize::from(h[16]);
@@ -68,24 +68,28 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
         _ => false,
     };
     if !matches!(kind, 1..=3 | 9..=11) || !depth_ok || descriptor & 0xc0 != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     if map_type > 1 || (mapped && map_type != 1) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let map_entry = match map_bits {
         15 | 16 => 2,
         24 => 3,
         32 => 4,
         0 if map_type == 0 || map_len == 0 => 0,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
+    // A mapped image with no color map has nothing to index.
+    if mapped && map_entry == 0 {
+        return Err(FAIL);
+    }
     check_size(width, height)?;
 
     // Image ID, then the color map, then the pixels.
     let map_start = HEADER_LEN + id_len;
     let map_end = map_start + map_len * map_entry;
-    let map_bytes = data.get(map_start..map_end).ok_or(fail)?;
+    let map_bytes = data.get(map_start..map_end).ok_or(FAIL)?;
     let attribute_bits = descriptor & 0xf;
     let (palette, palette_alpha): (Vec<u32>, Vec<u8>) = if mapped {
         let entries = map_bytes.chunks_exact(map_entry);
@@ -103,7 +107,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
     let raw: Vec<u8> = if rle {
         unpack(body, count, bpp)?
     } else {
-        body.get(..count * bpp).ok_or(fail)?.to_vec()
+        body.get(..count * bpp).ok_or(FAIL)?.to_vec()
     };
 
     let top_down = descriptor & 0x20 != 0;
@@ -117,11 +121,11 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
         _ => false,
     };
     let mut alpha = has_alpha.then(|| alloc::vec![255u8; count]);
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (i, pixel) in raw.chunks_exact(bpp).enumerate() {
         let (color, a) = if mapped {
-            let index = usize::from(pixel[0]).checked_sub(map_first).ok_or(fail)?;
-            (*palette.get(index).ok_or(fail)?, palette_alpha[index])
+            let index = usize::from(pixel[0]).checked_sub(map_first).ok_or(FAIL)?;
+            (*palette.get(index).ok_or(FAIL)?, palette_alpha[index])
         } else if kind & 7 == 3 {
             (u32::from(pixel[0]) * 0x01_01_01, 255)
         } else {
@@ -144,28 +148,28 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Expands run-length packets into `count` pixels of `bpp` bytes.
 fn unpack(data: &[u8], count: usize, bpp: usize) -> Result<Vec<u8>, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     // A packet yields at most 128 pixels for at least 2 bytes.
     if count > data.len().saturating_mul(64) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut out = Vec::with_capacity(count * bpp);
     let mut pos = 0;
     while out.len() < count * bpp {
-        let head = *data.get(pos).ok_or(fail)?;
+        let head = *data.get(pos).ok_or(FAIL)?;
         pos += 1;
         let n = usize::from(head & 0x7f) + 1;
         if n * bpp > count * bpp - out.len() {
-            return Err(fail);
+            return Err(FAIL);
         }
         if head & 0x80 != 0 {
-            let pixel = data.get(pos..pos + bpp).ok_or(fail)?;
+            let pixel = data.get(pos..pos + bpp).ok_or(FAIL)?;
             pos += bpp;
             for _ in 0..n {
                 out.extend_from_slice(pixel);
             }
         } else {
-            out.extend_from_slice(data.get(pos..pos + n * bpp).ok_or(fail)?);
+            out.extend_from_slice(data.get(pos..pos + n * bpp).ok_or(FAIL)?);
             pos += n * bpp;
         }
     }
@@ -252,5 +256,13 @@ mod tests {
         assert!(decode_tga(&data).is_err());
         assert!(decode_tga(&data[..20]).is_err());
         assert!(decode_tga(&header(7, 8, 1, 1, 0)).is_err());
+    }
+
+    #[test]
+    fn mapped_image_without_map_is_rejected() {
+        let mut data = header(1, 8, 1, 1, 0);
+        data[1] = 1; // map present, but zero entries of zero bits
+        data.push(0);
+        assert!(decode_tga(&data).is_err());
     }
 }

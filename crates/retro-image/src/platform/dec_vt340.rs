@@ -73,7 +73,7 @@ use crate::{DecodeError, Format, Image};
 pub(super) static FORMATS: &[Format] =
     &[Format::new("DEC VT340", "Sixel", &["six", "sixel"], decode_sixel).signature()];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const ESC: u8 = 0x1b;
 const C1_ST: u8 = 0x9c;
 /// How far into the file the control string may start: files begin with a
@@ -202,7 +202,7 @@ fn decode_sixel(data: &[u8]) -> Result<Image, DecodeError> {
         UNSET => unset,
         register => 0xff00_0000 | registers[usize::from(register)],
     });
-    Ok(Image::from_argb(width as u32, height as u32, colors))
+    Image::from_argb(width as u32, height as u32, colors)
 }
 
 /// The data of a file made of VMS variable-length records (a 16-bit length,

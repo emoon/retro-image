@@ -120,9 +120,9 @@ impl Info {
 }
 
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let info = find(contents, b"INFO").and_then(Info::parse).ok_or(fail)?;
-    let body = find(contents, b"BODY").ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let info = find(contents, b"INFO").and_then(Info::parse).ok_or(FAIL)?;
+    let body = find(contents, b"BODY").ok_or(FAIL)?;
     let rows = Rows {
         width: info.width,
         height: info.height,
@@ -140,26 +140,26 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             } else {
                 0
             };
-        Cow::Owned(xpk::unpack(body, limit).ok_or(fail)?)
+        Cow::Owned(xpk::unpack(body, limit).ok_or(FAIL)?)
     } else {
         Cow::Borrowed(body)
     };
     let pixels = if is_delta_frame(contents, &info) {
         // The palette of a delta frame would sit behind data of unknown length.
         if !info.is_planar() || per_frame_palette {
-            return Err(fail);
+            return Err(FAIL);
         }
-        undo_delta(&frame, &info).ok_or(fail)?
+        undo_delta(&frame, &info).ok_or(FAIL)?
     } else {
-        frame.get(..frame_len).ok_or(fail)?.to_vec()
+        frame.get(..frame_len).ok_or(FAIL)?.to_vec()
     };
 
     let palette = if per_frame_palette {
-        load_rgb32(frame.get(frame_len..).ok_or(fail)?)
+        load_rgb32(frame.get(frame_len..).ok_or(FAIL)?)
     } else {
         find(contents, b"DRGB").and_then(load_rgb32)
     }
-    .ok_or(fail)?;
+    .ok_or(FAIL)?;
 
     let indices = if info.is_planar() {
         let row_len = info.plane_row_len();
@@ -171,7 +171,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             row_len,
             info.depth,
             |plane, y| plane * plane_len + y * row_len,
-        )
+        )?
         .into_iter()
         .map(|v| v as u8)
         .collect()

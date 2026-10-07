@@ -41,25 +41,25 @@ pub(super) fn decode(data: &[u8], companions: &dyn Companions) -> Result<Image, 
 /// The bytes the data unpacks to, which stay within one nametable and its
 /// attributes.
 fn unpack(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let (&tag, mut rest) = data.split_first().ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let (&tag, mut rest) = data.split_first().ok_or(FAIL)?;
     let mut out = Vec::new();
     loop {
-        let (&byte, after) = rest.split_first().ok_or(fail)?;
+        let (&byte, after) = rest.split_first().ok_or(FAIL)?;
         rest = after;
         if byte != tag {
             out.push(byte);
         } else {
-            let (&count, after) = rest.split_first().ok_or(fail)?;
+            let (&count, after) = rest.split_first().ok_or(FAIL)?;
             rest = after;
             if count == 0 {
                 return Ok(out);
             }
-            let &previous = out.last().ok_or(fail)?;
+            let &previous = out.last().ok_or(FAIL)?;
             out.resize(out.len() + usize::from(count), previous);
         }
         if out.len() > WITH_ATTRIBUTES_LEN {
-            return Err(fail);
+            return Err(FAIL);
         }
     }
 }
@@ -72,11 +72,11 @@ mod tests {
     struct Chr;
 
     impl Companions for Chr {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "chr").then(|| alloc::vec![0; 4096])
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "chr").then(|| alloc::vec![0; 4096].into())
         }
 
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }

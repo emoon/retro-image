@@ -87,31 +87,31 @@ struct Info {
 }
 
 fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header_len = le32(data, 0).ok_or(fail)? as usize;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header_len = le32(data, 0).ok_or(FAIL)? as usize;
     if !HEADER_SIZES.contains(&header_len) || data.len() < header_len {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (width, height, planes, bpp);
     let (mut top_down, mut compression, mut colors_used) = (false, 0, 0);
     if header_len == 12 {
-        width = usize::from(le16(data, 4).ok_or(fail)?);
-        height = usize::from(le16(data, 6).ok_or(fail)?);
-        planes = le16(data, 8).ok_or(fail)?;
-        bpp = usize::from(le16(data, 10).ok_or(fail)?);
+        width = usize::from(le16(data, 4).ok_or(FAIL)?);
+        height = usize::from(le16(data, 6).ok_or(FAIL)?);
+        planes = le16(data, 8).ok_or(FAIL)?;
+        bpp = usize::from(le16(data, 10).ok_or(FAIL)?);
     } else {
-        let w = le32(data, 4).ok_or(fail)? as i32;
-        let h = le32(data, 8).ok_or(fail)? as i32;
-        width = usize::try_from(w).map_err(|_| fail)?;
+        let w = le32(data, 4).ok_or(FAIL)? as i32;
+        let h = le32(data, 8).ok_or(FAIL)? as i32;
+        width = usize::try_from(w).map_err(|_| FAIL)?;
         height = h.unsigned_abs() as usize;
         top_down = h < 0;
-        planes = le16(data, 12).ok_or(fail)?;
-        bpp = usize::from(le16(data, 14).ok_or(fail)?);
+        planes = le16(data, 12).ok_or(FAIL)?;
+        bpp = usize::from(le16(data, 14).ok_or(FAIL)?);
         if header_len >= 20 {
-            compression = le32(data, 16).ok_or(fail)?;
+            compression = le32(data, 16).ok_or(FAIL)?;
         }
         if header_len >= 36 {
-            colors_used = le32(data, 32).ok_or(fail)? as usize;
+            colors_used = le32(data, 32).ok_or(FAIL)? as usize;
         }
     }
     let os2_v2 = header_len == 16 || header_len == 64;
@@ -121,10 +121,10 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
         (1, 8) => Compression::Rle8,
         (2, 4) => Compression::Rle4,
         (3 | 6, 16 | 32) if !os2_v2 => Compression::Bitfields,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     if planes != 1 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     Ok(Info {
@@ -144,14 +144,14 @@ fn parse_info(data: &[u8]) -> Result<Info, DecodeError> {
 /// Parses a BMP file's headers: `BM`, a known info header, and a pixel offset
 /// that lies inside the file. Returns the info and the pixel offset.
 fn parse_file(data: &[u8]) -> Result<(Info, usize), DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(b"BM") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let offset = le32(data, 10).ok_or(fail)? as usize;
+    let offset = le32(data, 10).ok_or(FAIL)? as usize;
     let info = parse_info(&data[FILE_HEADER_LEN..])?;
     if offset < FILE_HEADER_LEN + info.header_len || offset >= data.len() {
-        return Err(fail);
+        return Err(FAIL);
     }
     Ok((info, offset))
 }
@@ -177,7 +177,7 @@ pub(super) fn decode_icon_dib(data: &[u8]) -> Result<Image, DecodeError> {
     let mut info = parse_info(data)?;
     info.height /= 2;
     if info.height == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (image, rows_end) = decode_pixels(data, &info, None, true)?;
     if image.has_alpha() {
@@ -252,7 +252,7 @@ fn decode_pixels(
     pixels: Option<usize>,
     icon: bool,
 ) -> Result<(Image, usize), DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let Info {
         header_len,
         width,
@@ -269,7 +269,7 @@ fn decode_pixels(
     };
     if info.compression == Compression::Bitfields {
         for (i, mask) in masks.iter_mut().enumerate() {
-            *mask = le32(dib, MASKS_AT + i * 4).ok_or(fail)?;
+            *mask = le32(dib, MASKS_AT + i * 4).ok_or(FAIL)?;
         }
         if header_len == 40 {
             after_header += if info.alpha_mask { 16 } else { 12 };
@@ -285,7 +285,7 @@ fn decode_pixels(
     } else {
         0
     };
-    let palette_bytes = dib.get(after_header..).ok_or(fail)?;
+    let palette_bytes = dib.get(after_header..).ok_or(FAIL)?;
     // The pixel offset can cut a palette short; missing entries stay black.
     let available = match pixels {
         Some(offset) => offset.saturating_sub(after_header),
@@ -307,7 +307,7 @@ fn decode_pixels(
     }
 
     let start = pixels.unwrap_or(after_header + palette_len * entry_len);
-    let body = dib.get(start..).ok_or(fail)?;
+    let body = dib.get(start..).ok_or(FAIL)?;
     let (w, h) = (width as u32, height as u32);
 
     // Rows of `row_len` bytes in file order to top-first order.
@@ -353,7 +353,7 @@ fn decode_pixels(
             let alpha_mask = if info.compression == Compression::Bitfields
                 && (header_len >= 56 || info.alpha_mask)
             {
-                le32(dib, MASKS_AT + 12).ok_or(fail)?
+                le32(dib, MASKS_AT + 12).ok_or(FAIL)?
             } else if icon && bpp == 32 {
                 0xff00_0000
             } else {
@@ -361,7 +361,7 @@ fn decode_pixels(
             };
             let alpha_channel = Mask::new(alpha_mask);
             let mut alpha = (alpha_mask != 0 && bpp >= 16).then(|| vec![255u8; width * height]);
-            let mut image = Image::new(w, h);
+            let mut image = Image::new(w, h)?;
             for (row, y) in raw.chunks_exact(stride).zip(0..h) {
                 let y = if info.top_down { y } else { h - 1 - y };
                 for x in 0..width {
@@ -408,7 +408,7 @@ fn whole_rows(body: &[u8], stride: usize, height: usize) -> Result<Cow<'_, [u8]>
         rows.resize(total, 0);
         Ok(Cow::Owned(rows))
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -425,7 +425,7 @@ fn unpack_rle(
     // covers at most 255 pixels for 2 bytes; this keeps tiny files from
     // demanding a huge frame.
     if width * height > data.len().saturating_mul(1 << 14) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut out = vec![0u8; width * height];
     let (mut x, mut y) = (0usize, 0usize);

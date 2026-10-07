@@ -80,21 +80,19 @@ fn decode_mode(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
         let (screen, clut) = data.split_at(mode.ssx_len());
         let mut clut16 = [0; 16];
         clut16[..clut.len()].copy_from_slice(clut);
-        return Ok(render(mode, screen, BITMAP_LEN, &Palette::fixed(clut16)));
+        return render(mode, screen, BITMAP_LEN, &Palette::fixed(clut16));
     }
     let (screen, palette, len) = screen_file(data, mode)?;
     if len != data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    Ok(render(mode, screen, MODE2_FILE_ATTRIBUTES, &palette))
+    render(mode, screen, MODE2_FILE_ATTRIBUTES, &palette)
 }
 
 /// Parses the `SCREEN$` file at the start of `data`: screen memory,
 /// palette and the file's length.
 fn screen_file(data: &[u8], mode: Mode) -> Result<(&[u8], Palette, usize), DecodeError> {
-    let screen = data
-        .get(..mode.memory_len())
-        .ok_or(DecodeError::Unrecognized)?;
+    let screen = data.get(..mode.memory_len()).ok_or(DecodeError::Invalid)?;
     let (mut palette, palette_len) = Palette::from_screen_file(&data[mode.memory_len()..])?;
     if mode == Mode::Three {
         // Pixel values 1 and 2 select CLUT entries 2 and 1 (observed from
@@ -110,18 +108,18 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     let (first, first_palette, first_len) = screen_file(data, Mode::Four)?;
     let (second, second_palette, second_len) = screen_file(&data[first_len..], Mode::Four)?;
     if first_len + second_len != data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    Ok(interlace(&[
-        render(Mode::Four, first, 0, &first_palette),
-        render(Mode::Four, second, 0, &second_palette),
-    ]))
+    interlace(&[
+        render(Mode::Four, first, 0, &first_palette)?,
+        render(Mode::Four, second, 0, &second_palette)?,
+    ])
 }
 
 /// Shows two 256x192 fields interlaced as 512x384: the first on even lines,
 /// each pixel doubled horizontally. Also used by the Spectrum LCE variant.
-pub(super) fn interlace(fields: &[Image; 2]) -> Image {
-    let mut image = Image::new(512, 2 * HEIGHT as u32);
+pub(super) fn interlace(fields: &[Image; 2]) -> Result<Image, DecodeError> {
+    let mut image = Image::new(512, 2 * HEIGHT as u32)?;
     for (field, frame) in (0..).zip(fields) {
         for y in 0..frame.height() {
             for x in 0..frame.width() {
@@ -131,7 +129,7 @@ pub(super) fn interlace(fields: &[Image; 2]) -> Image {
             }
         }
     }
-    image
+    Ok(image)
 }
 
 const RAW_WIDTH: usize = 512;
@@ -143,10 +141,10 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     if data.len() != RAW_WIDTH * HEIGHT {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // One SAM color byte per pixel of the 512x192 display.
-    let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32)?;
     for (i, &value) in data.iter().enumerate() {
         let (x, y) = ((i % RAW_WIDTH) as u32, (i / RAW_WIDTH) as u32);
         image.set(x, y, color(value));
@@ -175,9 +173,7 @@ impl Palette {
     /// after the given one (observed from `recoil2png` output). Returns the
     /// palette and the number of bytes used.
     fn from_screen_file(tail: &[u8]) -> Result<(Self, usize), DecodeError> {
-        let table = tail
-            .get(..PALETTE_TABLE_LEN)
-            .ok_or(DecodeError::Unrecognized)?;
+        let table = tail.get(..PALETTE_TABLE_LEN).ok_or(DecodeError::Invalid)?;
         let mut clut = [0; 16];
         clut.copy_from_slice(&table[..16]);
         let mut changes = Vec::new();
@@ -188,7 +184,7 @@ impl Palette {
                 Some(&[line, entry, value, _]) if entry < 16 => {
                     changes.push((usize::from(line), usize::from(entry), value));
                 }
-                _ => return Err(DecodeError::Unrecognized),
+                _ => return Err(DecodeError::Invalid),
             }
         }
         let used = PALETTE_TABLE_LEN + 4 * changes.len() + 1;
@@ -227,9 +223,14 @@ fn color(value: u8) -> u32 {
 }
 
 /// Renders a screen. `attributes` is where mode 2 attributes start.
-fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Image {
+fn render(
+    mode: Mode,
+    screen: &[u8],
+    attributes: usize,
+    palette: &Palette,
+) -> Result<Image, DecodeError> {
     let width = if mode == Mode::Three { 512 } else { 256 };
-    let mut image = Image::new(width as u32, HEIGHT as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..width {
             let entry = match mode {
@@ -261,9 +262,9 @@ fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Im
     }
     // Mode 3 pixels are half as wide as they are high.
     if mode == Mode::Three {
-        image.scaled(1, 2).expect("fixed-size screen")
+        image.scaled(1, 2)
     } else {
-        image
+        Ok(image)
     }
 }
 

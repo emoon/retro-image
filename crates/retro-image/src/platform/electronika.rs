@@ -32,9 +32,9 @@ const BK_SCREEN_LEN: usize = 16384;
 /// 256x256 color screen in the BK-0010 colors (BK-0011M palette 0).
 fn decode_bk_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != BK_SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    Ok(bk_color(data, 0))
+    bk_color(data, 0)
 }
 
 /// BKS: one or two screens (two are shown in alternation), followed in
@@ -45,14 +45,14 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
     let color = match palettes.len() {
         0 => false,
         n if n == screens => true,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if !(1..=2).contains(&screens)
         || palettes
             .iter()
             .any(|&p| usize::from(p) >= BK_PALETTES.len())
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames: Vec<Image> = pixels
         .as_chunks::<BK_SCREEN_LEN>()
@@ -61,7 +61,7 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
         .enumerate()
         .map(|(i, screen)| {
             if color {
-                Ok(bk_color(screen, palettes[i]))
+                bk_color(screen, palettes[i])
             } else {
                 bk_mono(screen)
             }
@@ -92,9 +92,9 @@ const BK_PALETTES: [[u32; 3]; 16] = [
 ];
 
 /// 256x256, 4 pixels per byte, the lowest bit pair leftmost.
-fn bk_color(screen: &[u8], palette: u8) -> Image {
+fn bk_color(screen: &[u8], palette: u8) -> Result<Image, DecodeError> {
     let colors = &BK_PALETTES[usize::from(palette)];
-    let mut image = Image::new(256, 256);
+    let mut image = Image::new(256, 256)?;
     for (i, &byte) in screen.iter().enumerate() {
         let (x, y) = ((i % 64 * 4) as u32, (i / 64) as u32);
         for n in 0..4 {
@@ -105,13 +105,13 @@ fn bk_color(screen: &[u8], palette: u8) -> Image {
             image.set(x + n, y, color);
         }
     }
-    image
+    Ok(image)
 }
 
 /// 512x256 mono, 8 pixels per byte, the lowest bit leftmost; shown with
 /// rows doubled.
 fn bk_mono(screen: &[u8]) -> Result<Image, DecodeError> {
-    let mut image = Image::new(512, 256);
+    let mut image = Image::new(512, 256)?;
     for (i, &byte) in screen.iter().enumerate() {
         let (x, y) = ((i % 64 * 8) as u32, (i / 64) as u32);
         for bit in 0..8 {
@@ -127,9 +127,9 @@ const MC0515_LEN: usize = 16000;
 /// 640x200 monochrome, 80 bytes per line, most significant bit leftmost.
 fn decode_mc0515(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != MC0515_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(640, 200);
+    let mut image = Image::new(640, 200)?;
     for (i, &byte) in data.iter().enumerate() {
         let (x, y) = ((i % 80 * 8) as u32, (i / 80) as u32);
         for bit in 0..8 {

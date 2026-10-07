@@ -49,12 +49,12 @@ impl Kind {
 }
 
 pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = Header::parse(contents).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = Header::parse(contents)?;
     if header.planes != kind.planes() || !kind.accepts(header.compression) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let body = find(contents, b"BODY").ok_or(fail)?;
+    let body = find(contents, b"BODY").ok_or(FAIL)?;
     let camg = find(contents, b"CAMG")
         .and_then(|c| be32(c, 0))
         .unwrap_or(0);
@@ -63,14 +63,14 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
     let total = header.width * header.height;
     // Every entry is at least 2 bytes and repeats at most 65536 pixels.
     if total > body.len().saturating_mul(32768) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let mut image = Image::new(header.width as u32, header.height as u32);
+    let mut image = Image::new(header.width as u32, header.height as u32)?;
     let (mut pos, mut done) = (0, 0);
     while done < total {
         let (color, count, used) = match kind {
-            Kind::Rgbn => rgbn_entry(body, pos).ok_or(fail)?,
-            Kind::Rgb8 => rgb8_entry(body, pos).ok_or(fail)?,
+            Kind::Rgbn => rgbn_entry(body, pos).ok_or(FAIL)?,
+            Kind::Rgb8 => rgb8_entry(body, pos).ok_or(FAIL)?,
         };
         pos += used;
         let end = total.min(done + count);

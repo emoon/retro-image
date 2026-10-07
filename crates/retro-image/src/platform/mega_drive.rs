@@ -85,7 +85,7 @@ fn palette(file: &[u8]) -> Option<Vec<u32>> {
 }
 
 fn decode_nem(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let tiles = nemesis::decompress(data).ok_or(DecodeError::Unrecognized)?;
+    let tiles = nemesis::decompress(data).ok_or(DecodeError::Invalid)?;
     let palette = companions
         .get("pal")
         .and_then(|file| palette(&file))

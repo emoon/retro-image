@@ -67,28 +67,28 @@ const EXTENSION: u8 = 0x40;
 const ENCRYPTED: u8 = 0x20;
 
 pub(super) fn decode_rix(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.get(..4) != Some(b"RIX3") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let width = usize::from(le16(data, 4).ok_or(fail)?);
-    let height = usize::from(le16(data, 6).ok_or(fail)?);
-    let (palette_type, storage) = (*data.get(8).ok_or(fail)?, *data.get(9).ok_or(fail)?);
+    let width = usize::from(le16(data, 4).ok_or(FAIL)?);
+    let height = usize::from(le16(data, 6).ok_or(FAIL)?);
+    let (palette_type, storage) = (*data.get(8).ok_or(FAIL)?, *data.get(9).ok_or(FAIL)?);
     if storage & ENCRYPTED != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     let planar = match storage & 0x0f {
         0 => false,
         4 => true,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let mut pos = 10;
     if storage & EXTENSION != 0 {
-        pos += 2 + usize::from(le16(data, pos).ok_or(fail)?);
+        pos += 2 + usize::from(le16(data, pos).ok_or(FAIL)?);
     }
     let colors = if palette_type == 0xab { 16 } else { 256 };
-    let palette_bytes = data.get(pos..pos + colors * 3).ok_or(fail)?;
+    let palette_bytes = data.get(pos..pos + colors * 3).ok_or(FAIL)?;
     pos += colors * 3;
     let mut palette = alloc::vec![0; 256];
     for (entry, rgb) in palette.iter_mut().zip(palette_bytes.as_chunks::<3>().0) {
@@ -102,12 +102,12 @@ pub(super) fn decode_rix(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let len = row_len * height;
     let pixels = if storage & COMPRESSED != 0 {
-        unpack(data.get(pos..).ok_or(fail)?, len, row_len, !planar).ok_or(fail)?
+        unpack(data.get(pos..).ok_or(FAIL)?, len, row_len, !planar).ok_or(FAIL)?
     } else {
-        data.get(pos..pos + len).ok_or(fail)?.to_vec()
+        data.get(pos..pos + len).ok_or(FAIL)?.to_vec()
     };
     let indices = if planar {
-        planar_rows(&pixels, width, height, row_len)
+        planar_rows(&pixels, width, height, row_len)?
     } else {
         pixels
     };
@@ -122,41 +122,45 @@ const EGA_PALETTE_LEN: usize = 16;
 /// one flags compression), then 640x350 pixels as 4 whole-image planes, raw or
 /// packed like the `RIX3` pictures (each packed segment is one plane).
 pub(super) fn decode_ega_scr(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let compressed = data.first().ok_or(fail)? & COMPRESSED != 0;
-    let body = data.get(EGA_PALETTE_LEN..).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let compressed = data.first().ok_or(FAIL)? & COMPRESSED != 0;
+    let body = data.get(EGA_PALETTE_LEN..).ok_or(FAIL)?;
     let row_len = EGA_WIDTH / 8;
     let plane_len = row_len * EGA_HEIGHT;
     let len = plane_len * 4;
     let pixels = if compressed {
-        unpack(body, len, row_len, false).ok_or(fail)?
+        unpack(body, len, row_len, false).ok_or(FAIL)?
     } else if body.len() == len {
         body.to_vec()
     } else {
-        return Err(fail);
+        return Err(FAIL);
     };
     let mut palette = [0u32; 16];
     for (entry, &index) in palette.iter_mut().zip(data) {
         *entry = ega_64(index & 0x3f);
     }
-    let indices: Vec<u8> = planar_pixels(&pixels, EGA_WIDTH, EGA_HEIGHT, row_len, 4, |plane, y| {
-        plane * plane_len + y * row_len
-    })
-    .into_iter()
-    .map(|v| v as u8)
-    .collect();
+    let indices: Vec<u8> =
+        planar_pixels(&pixels, EGA_WIDTH, EGA_HEIGHT, row_len, 4, |plane, y| {
+            plane * plane_len + y * row_len
+        })?
+        .into_iter()
+        .map(|v| v as u8)
+        .collect();
     Image::from_indexed(EGA_WIDTH as u32, EGA_HEIGHT as u32, &indices, &palette)
 }
 
 /// Pixel indices of 4-bit rows holding their 4 planes one after the other.
-fn planar_rows(pixels: &[u8], width: usize, height: usize, row_len: usize) -> Vec<u8> {
+fn planar_rows(
+    pixels: &[u8],
+    width: usize,
+    height: usize,
+    row_len: usize,
+) -> Result<Vec<u8>, DecodeError> {
     let plane_len = row_len / 4;
-    planar_pixels(pixels, width, height, plane_len, 4, |plane, y| {
+    let values = planar_pixels(pixels, width, height, plane_len, 4, |plane, y| {
         y * row_len + plane * plane_len
-    })
-    .into_iter()
-    .map(|v| v as u8)
-    .collect()
+    })?;
+    Ok(values.into_iter().map(|v| v as u8).collect())
 }
 
 /// A node of the Huffman table is a branch.

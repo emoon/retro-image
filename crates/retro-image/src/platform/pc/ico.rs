@@ -28,7 +28,7 @@ use super::bmp::decode_icon_dib;
 use crate::bytes::{le16, le32};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const DIR_LEN: usize = 6;
 const ENTRY_LEN: usize = 16;
 /// Size of the `BITMAPINFOHEADER` every DIB-based icon image starts with.

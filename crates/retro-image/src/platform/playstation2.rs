@@ -138,19 +138,19 @@ fn palette(header: &Header, clut: &[u8], count: usize) -> Option<Vec<u32>> {
 }
 
 fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.get(..4) != Some(b"TIM2") || data.get(5).is_none_or(|&id| id > 1) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    if le16(data, 6).ok_or(fail)? == 0 {
-        return Err(fail);
+    if le16(data, 6).ok_or(FAIL)? == 0 {
+        return Err(FAIL);
     }
     let start = if data[5] == 0 { FILE_HEADER_LEN } else { 128 };
-    let header = read_header(data, start).ok_or(fail)?;
+    let header = read_header(data, start).ok_or(FAIL)?;
     // A picture without image data holds only a CLUT (CLUT2 files).
-    let storage = pixel_storage(header.image_type).ok_or(fail)?;
+    let storage = pixel_storage(header.image_type).ok_or(FAIL)?;
     if header.mipmaps == 0 || header.header_size < PICTURE_HEADER_LEN {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(header.width, header.height)?;
     let pixels = header.width * header.height;
@@ -160,11 +160,11 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
         Pixels::Indexed { bits } => (pixels * bits).div_ceil(8),
     };
     if image_len > header.image_size {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let image_at = start.checked_add(header.header_size).ok_or(fail)?;
-    let image = data.get(image_at..image_at + image_len).ok_or(fail)?;
-    let clut_at = image_at.checked_add(header.image_size).ok_or(fail)?;
+    let image_at = start.checked_add(header.header_size).ok_or(FAIL)?;
+    let image = data.get(image_at..image_at + image_len).ok_or(FAIL)?;
+    let clut_at = image_at.checked_add(header.image_size).ok_or(FAIL)?;
     let clut = data.get(clut_at..).unwrap_or_default();
     let clut = &clut[..header.clut_size.min(clut.len())];
 
@@ -188,7 +188,7 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
             .map(|p| color(p[0], p[1], p[2], p[3]))
             .collect(),
         Pixels::Indexed { bits: 4 } => {
-            let colors = palette(&header, clut, 16).ok_or(fail)?;
+            let colors = palette(&header, clut, 16).ok_or(FAIL)?;
             // The low nibble is the left pixel.
             image
                 .iter()
@@ -196,15 +196,11 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
                 .collect()
         }
         Pixels::Indexed { .. } => {
-            let colors = palette(&header, clut, 256).ok_or(fail)?;
+            let colors = palette(&header, clut, 256).ok_or(FAIL)?;
             image.iter().map(|&i| colors[usize::from(i)]).collect()
         }
     };
-    Ok(Image::from_argb(
-        header.width as u32,
-        header.height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(header.width as u32, header.height as u32, argb.into_iter())
 }
 
 #[cfg(test)]

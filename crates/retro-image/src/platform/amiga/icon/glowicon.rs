@@ -51,12 +51,12 @@ const IMAG_HEADER_LEN: usize = 10;
 /// Decodes the contents of a `FORM ICON`; transparent pixels get
 /// `background`.
 pub(super) fn decode(contents: &[u8], background: u32) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let face = iff::find(contents, b"FACE").ok_or(fail)?;
-    let width = u32::from(*face.first().ok_or(fail)?) + 1;
-    let height = u32::from(*face.get(1).ok_or(fail)?) + 1;
-    let imag = iff::find(contents, b"IMAG").ok_or(fail)?;
-    let header = imag.get(..IMAG_HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let face = iff::find(contents, b"FACE").ok_or(FAIL)?;
+    let width = u32::from(*face.first().ok_or(FAIL)?) + 1;
+    let height = u32::from(*face.get(1).ok_or(FAIL)?) + 1;
+    let imag = iff::find(contents, b"IMAG").ok_or(FAIL)?;
+    let header = imag.get(..IMAG_HEADER_LEN).ok_or(FAIL)?;
     let [
         transparent,
         colors,
@@ -68,17 +68,17 @@ pub(super) fn decode(contents: &[u8], background: u32) -> Result<Image, DecodeEr
     let has_transparency = flags & 1 != 0;
     // The first image always has a palette.
     if flags & 2 == 0 || !(1..=8).contains(&depth) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let image_len = usize::from(be16(header, 6).ok_or(fail)?) + 1;
-    let palette_len = usize::from(be16(header, 8).ok_or(fail)?) + 1;
+    let image_len = usize::from(be16(header, 6).ok_or(FAIL)?) + 1;
+    let palette_len = usize::from(be16(header, 8).ok_or(FAIL)?) + 1;
     let image_data = imag
         .get(IMAG_HEADER_LEN..IMAG_HEADER_LEN + image_len)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let palette_start = IMAG_HEADER_LEN + image_len;
     let palette_data = imag
         .get(palette_start..palette_start + palette_len)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
 
     let rgb = unpack(
         palette_data,
@@ -109,7 +109,7 @@ fn unpack(data: &[u8], format: u8, bits: u32, count: usize) -> Result<Vec<u8>, D
         1 => unpack_runs(data, bits, count),
         _ => None,
     }
-    .ok_or(DecodeError::Unrecognized)
+    .ok_or(DecodeError::Invalid)
 }
 
 /// ByteRun1 over a bit stream: an 8-bit code `n`, then `n + 1` literal

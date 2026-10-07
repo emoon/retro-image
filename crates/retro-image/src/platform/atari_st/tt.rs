@@ -21,15 +21,15 @@ const ST_240_LEN: usize = 34 + 38400;
 /// TT low: resolution word 7, 256 palette words, 320x480 in 8 planes.
 pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + 512 + BITMAP_LEN || be16(data, 0) != Some(7) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette: alloc::vec::Vec<u32> = palette_words(data, 2, 256)
-        .ok_or(DecodeError::Unrecognized)?
+        .ok_or(DecodeError::Invalid)?
         .into_iter()
         .map(rgb444)
         .collect();
     let image = planar_image(&data[514..], 320, 480, 8, &palette, 1);
-    let image = image.ok_or(DecodeError::Unrecognized)?;
+    let image = image.ok_or(DecodeError::Invalid)?;
     image.scaled(2, 1)
 }
 
@@ -38,9 +38,9 @@ pub(super) fn decode_pi4(data: &[u8]) -> Result<Image, DecodeError> {
 /// (extension only); the layout is derived from sample files.
 pub(super) fn decode_pi6(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 6 + BITMAP_LEN || be16(data, 0) != Some(6) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    super::common::mono_image(&data[6..], 1280, 960, 160).ok_or(DecodeError::Unrecognized)
+    super::common::mono_image(&data[6..], 1280, 960, 160).ok_or(DecodeError::Invalid)
 }
 
 /// TT medium: resolution word 4, 16 palette words, 640x480 in 4 planes;
@@ -49,12 +49,12 @@ pub(super) fn decode_pi5(data: &[u8]) -> Result<Image, DecodeError> {
     let (width, height) = match data.len() {
         TT_MEDIUM_LEN => (640, 480),
         ST_240_LEN => (320, 240),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if be16(data, 0) != Some(4) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let words = palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?;
+    let words = palette_words(data, 2, 16).ok_or(DecodeError::Invalid)?;
     // The 320x240 variant uses ST/STE palette words (observed from
     // `recoil2png` output).
     let palette: alloc::vec::Vec<u32> = if width == 320 {
@@ -62,5 +62,5 @@ pub(super) fn decode_pi5(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         words.into_iter().map(rgb444).collect()
     };
-    planar_image(&data[34..], width, height, 4, &palette, 1).ok_or(DecodeError::Unrecognized)
+    planar_image(&data[34..], width, height, 4, &palette, 1).ok_or(DecodeError::Invalid)
 }

@@ -112,7 +112,7 @@ impl Planes<'_> {
 
     fn image(&self) -> Result<Image, DecodeError> {
         if !self.fits() {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(render(self.width, self.height, |x, y| self.pixel(x, y)))
     }
@@ -132,7 +132,7 @@ pub(super) fn decode_shi(data: &[u8]) -> Result<Image, DecodeError> {
     // `recoil2png` reads other sizes, or a nonzero byte at `$7FFF`, some
     // other way; there are no such samples.
     if data.len() != SHI_LEN || data[2] != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = &data[SHI_COLORS..SHI_COLORS + 8];
     let frame = |frame: usize| {
@@ -192,10 +192,10 @@ fn sif_section(data: &[u8]) -> Option<(Vec<u8>, &[u8])> {
 
 /// Super Hires Interlace FLI Editor.
 pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
-    let (first, rest) = sif_section(data).ok_or(DecodeError::Unrecognized)?;
-    let (second, rest) = sif_section(rest).ok_or(DecodeError::Unrecognized)?;
+    let (first, rest) = sif_section(data).ok_or(DecodeError::Invalid)?;
+    let (second, rest) = sif_section(rest).ok_or(DecodeError::Invalid)?;
     let [c0, c1, c2, c3] = *rest else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     Ok(Image::blend(&[
         &four_planes(&first, [c0, c1])?,
@@ -226,7 +226,7 @@ struct SpriteFli {
 impl SpriteFli {
     fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         if data.len() != self.len {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         // The VIC bank `$4000-$7FFF`; sprite blocks may lie past the file.
         let mut mem = alloc::vec![0u8; 0x4000];
@@ -315,13 +315,13 @@ pub(super) fn decode_shf(data: &[u8]) -> Result<Image, DecodeError> {
         return SHF.decode(data);
     }
     let [_, _, escape, packed @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
-    let mut planes = escape_rle(packed, *escape, Run::CountValue, PLANES_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+    let mut planes =
+        escape_rle(packed, *escape, Run::CountValue, PLANES_LEN).ok_or(DecodeError::Invalid)?;
     // Short data is accepted as long as the colors are there.
     if planes.len() <= 0x1fe9 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     planes.resize(PLANES_LEN, 0);
     // `recoil2png` paints both layers in the first color; the editor
@@ -335,10 +335,10 @@ pub(super) fn decode_shx(data: &[u8]) -> Result<Image, DecodeError> {
         return SHX.decode(data);
     }
     let [_, _, packed @ .., escape] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (planes, _) =
-        backward_rle_filled(packed, *escape, 3 * 3072 - 48).ok_or(DecodeError::Unrecognized)?;
+        backward_rle_filled(packed, *escape, 3 * 3072 - 48).ok_or(DecodeError::Invalid)?;
     Planes {
         data: &planes,
         width: 144,

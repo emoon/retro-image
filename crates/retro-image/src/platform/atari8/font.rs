@@ -76,8 +76,8 @@ const CHARS_PER_ROW: usize = 32;
 /// Raw 128-character font; RECOIL also accepts 1 or 2 trailing bytes.
 pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        1024..=1026 => Ok(sheet(&[&data[..1024]])),
-        _ => Err(DecodeError::Unrecognized),
+        1024..=1026 => Ok(sheet(&[&data[..1024]])?),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -85,29 +85,29 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
 /// the top half, the second the bottom half.
 pub(super) fn decode_fn2(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        2048 => Ok(sheet(&[&data[..1024], &data[1024..]])),
-        _ => Err(DecodeError::Unrecognized),
+        2048 => Ok(sheet(&[&data[..1024], &data[1024..]])?),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
 /// Super-IRG font: two ANTIC mode 4 charsets shown on alternate frames.
 pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2048 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     const COLORS: [u8; 4] = [0x00, 0x4c, 0xcc, 0x8c];
-    let charset = |font: &[u8]| {
-        let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32);
+    let charset = |font: &[u8]| -> Result<Image, DecodeError> {
+        let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32)?;
         for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * 8;
             draw_multicolor_glyph(&mut image, x, y, glyph, COLORS);
         }
-        image
+        Ok(image)
     };
     Ok(Image::blend(&[
-        &charset(&data[..1024]),
-        &charset(&data[1024..]),
+        &charset(&data[..1024])?,
+        &charset(&data[1024..])?,
     ]))
 }
 
@@ -115,11 +115,11 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
 /// charset drawn 16 characters to a row.
 pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 1028 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (colors, charset) = data.split_at(4);
     let colors = [colors[0], colors[1], colors[2], colors[3]];
-    let mut image = Image::new(128, 64);
+    let mut image = Image::new(128, 64)?;
     for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
         let (x, y) = ((index % 16) as u32 * 8, (index / 16) as u32 * 8);
         draw_multicolor_glyph(&mut image, x, y, glyph, colors);
@@ -131,8 +131,8 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
 /// segment (at any address), then two ANTIC mode 4 charsets shown as 8x16
 /// characters (first charset on top), in grays.
 pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
-    let charsets = binary_load(data, 2048).ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);
+    let charsets = binary_load(data, 2048).ok_or(DecodeError::Invalid)?;
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64)?;
     for (part, charset) in charsets.as_chunks::<1024>().0.iter().enumerate() {
         for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
@@ -168,9 +168,9 @@ fn binary_load(data: &[u8], len: usize) -> Option<&[u8]> {
 /// characters of 16x16 pixels; each is 4 consecutive glyphs (top left, top
 /// right, bottom left, bottom right). Drawn 16 to a row.
 pub(super) fn decode_sxs(data: &[u8]) -> Result<Image, DecodeError> {
-    let font = binary_load(data, 1024).ok_or(DecodeError::Unrecognized)?;
+    let font = binary_load(data, 1024).ok_or(DecodeError::Invalid)?;
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(256, 32);
+    let mut image = Image::new(256, 32)?;
     for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
         let (big, quarter) = (index / 4, index % 4);
         let x = (big % 16 * 16 + quarter % 2 * 8) as u32;
@@ -186,10 +186,10 @@ pub(super) fn decode_sxs(data: &[u8]) -> Result<Image, DecodeError> {
 /// to a row.
 pub(super) fn decode_odf(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 1280 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40)?;
     for (index, glyph) in data.as_chunks::<10>().0.iter().enumerate() {
         let x = (index % CHARS_PER_ROW) as u32 * 8;
         let y = (index / CHARS_PER_ROW) as u32 * 10;
@@ -205,10 +205,10 @@ pub(super) fn decode_odf(data: &[u8]) -> Result<Image, DecodeError> {
 /// Drawn 32 to a row.
 pub(super) fn decode_f80(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 512 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32)?;
     for (pair, rows) in data.as_chunks::<8>().0.iter().enumerate() {
         for half in 0..2 {
             let index = 2 * pair + half;
@@ -239,7 +239,7 @@ pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
     } else if let Some(glyphs) = data.strip_prefix(b"3\x9b") {
         decode_daisy_dot3(glyphs)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -248,18 +248,18 @@ pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
 /// tall and drawn in 20x16 cells, 16 to a row, by character code from 32.
 fn decode_daisy_dot2(mut glyphs: &[u8]) -> Result<Image, DecodeError> {
     const CELL_WIDTH: u32 = 20;
-    let mut image = Image::new(16 * CELL_WIDTH, 96);
+    let mut image = Image::new(16 * CELL_WIDTH, 96)?;
     for code in daisy_dot_codes() {
-        let (&width, rest) = glyphs.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&width, rest) = glyphs.split_first().ok_or(DecodeError::Invalid)?;
         let width = usize::from(width);
         let (glyph, rest) = rest
             .split_at_checked(2 * width)
-            .ok_or(DecodeError::Unrecognized)?;
-        let (&0x9b, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)? else {
-            return Err(DecodeError::Unrecognized);
+            .ok_or(DecodeError::Invalid)?;
+        let (&0x9b, rest) = rest.split_first().ok_or(DecodeError::Invalid)? else {
+            return Err(DecodeError::Invalid);
         };
         if width as u32 > CELL_WIDTH {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         glyphs = rest;
         let (x, y) = ((code - 32) % 16 * CELL_WIDTH, (code - 32) / 16 * 16);
@@ -268,7 +268,7 @@ fn decode_daisy_dot2(mut glyphs: &[u8]) -> Result<Image, DecodeError> {
     if glyphs.is_empty() {
         Ok(image)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -282,25 +282,25 @@ fn decode_daisy_dot3(data: &[u8]) -> Result<Image, DecodeError> {
     let mut glyphs = Vec::new();
     let mut rest = data;
     for code in daisy_dot_codes().skip(1) {
-        let (&size, after) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&size, after) = rest.split_first().ok_or(DecodeError::Invalid)?;
         let (bands, width) = (usize::from(size >> 6) + 1, usize::from(size & 0x3f));
         if bands > 2 || !(1..=CELL_WIDTH as usize).contains(&width) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (glyph, after) = after
             .split_at_checked(2 * width * bands)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         glyphs.push((code, width, glyph));
         rest = after;
     }
     if rest.len() != 3 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let tall = glyphs
         .iter()
         .any(|&(_, width, glyph)| glyph.len() > 2 * width);
     let cell_height = if tall { 32 } else { 16 };
-    let mut image = Image::new(16 * CELL_WIDTH, 6 * cell_height);
+    let mut image = Image::new(16 * CELL_WIDTH, 6 * cell_height)?;
     for (code, width, glyph) in glyphs {
         let (x, y) = (
             (code - 32) % 16 * CELL_WIDTH,
@@ -356,10 +356,10 @@ pub(super) fn draw_multicolor_glyph(
 
 /// Draws 128 characters 32 to a row, white on black. Each character stacks
 /// its glyph from every font in `fonts`.
-fn sheet(fonts: &[&[u8]]) -> Image {
+fn sheet(fonts: &[&[u8]]) -> Result<Image, DecodeError> {
     let char_height = 8 * fonts.len() as u32;
     let rows = 128 / CHARS_PER_ROW as u32;
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, rows * char_height);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, rows * char_height)?;
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     for (part, font) in fonts.iter().enumerate() {
         for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
@@ -370,7 +370,7 @@ fn sheet(fonts: &[&[u8]]) -> Image {
             });
         }
     }
-    image
+    Ok(image)
 }
 
 /// Draws an 8x8 1-bit glyph with its top-left corner at (`x`, `y`).

@@ -81,11 +81,13 @@ mod tests {
     struct Palette(Vec<u8>);
 
     impl Companions for Palette {
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "gbapal").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "gbapal")
+                .then(|| self.0.clone())
+                .map(Into::into)
         }
 
-        fn get_named(&self, _name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
     }
@@ -102,7 +104,7 @@ mod tests {
         assert_eq!(image.get(1, 1), 0xff_ffff);
         assert_eq!(
             decode(&tile[..31], &NoCompanions, 4),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 

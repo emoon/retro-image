@@ -27,10 +27,10 @@ const LINES: usize = 119;
 const PLANE: usize = LINES * 40;
 
 pub(super) fn decode_lum(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let luminances = plane(data).ok_or(DecodeError::Unrecognized)?;
+    let luminances = plane(data).ok_or(DecodeError::Invalid)?;
     let hues = companions.get("col").and_then(|col| plane(&col));
     let nibble = |plane: &[u8], line: usize, x: usize| antic::nibble(&plane[line * 40..], x);
-    let mut image = Image::new(80, 2 * LINES as u32);
+    let mut image = Image::new(80, 2 * LINES as u32)?;
     for line in 0..LINES {
         for x in 0..80 {
             let now = nibble(&luminances, line, x);
@@ -76,11 +76,11 @@ mod tests {
     struct Col(Vec<u8>);
 
     impl Companions for Col {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "col").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "col").then(|| self.0.clone()).map(Into::into)
         }
     }
 

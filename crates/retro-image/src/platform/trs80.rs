@@ -95,7 +95,7 @@ fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
     const LEN: usize = 640 / 8 * 240;
     // Some files carry a few hundred bytes of trailing data.
     if !(LEN..=LEN + 1024).contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mono(data, 640, 240, WHITE)?.scaled(1, 2)
 }
@@ -104,7 +104,7 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
     let (width, height) = match data.get(..3) {
         Some(b"\x1bGH") => (256, 192),
         Some(b"\x1bGM") => (128, 96),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let total = (width * height) as usize;
     // Printable run characters up to an escape or the end, covering the
@@ -116,9 +116,9 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
     let covered: usize = runs.iter().map(|&c| usize::from(c.wrapping_sub(32))).sum();
     let shortfall = total.saturating_sub(covered);
     if runs.iter().any(|c| !(0x20..=0x7f).contains(c)) || shortfall > usize::from(end.is_some()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new(width, height);
+    let mut image = Image::new(width, height)?;
     let mut pos = 0;
     let mut foreground = false;
     let mut color = 0;
@@ -146,7 +146,7 @@ fn decode_clp(data: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = data
         .get(HEADER_LEN..HEADER_LEN + 5 * 56)
         .filter(|_| data[24] == 5 && data[16..18] == [0, 56])
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     mono(bitmap, 40, 56, 0)
 }
 
@@ -162,7 +162,7 @@ fn rs_dos_data(data: &[u8], len: usize) -> Option<&[u8]> {
 }
 
 fn decode_pmode4(data: &[u8]) -> Result<Image, DecodeError> {
-    let bitmap = rs_dos_data(data, 6144).ok_or(DecodeError::Unrecognized)?;
+    let bitmap = rs_dos_data(data, 6144).ok_or(DecodeError::Invalid)?;
     mono(bitmap, 256, 192, WHITE)
 }
 
@@ -170,7 +170,7 @@ fn decode_pmode4(data: &[u8]) -> Result<Image, DecodeError> {
 const PMODE1_COLORS: [u32; 4] = [0x07ff00, 0xffff00, 0x3b08ff, 0xcc003b];
 
 fn decode_pmode1(data: &[u8]) -> Result<Image, DecodeError> {
-    let bitmap = rs_dos_data(data, 3072).ok_or(DecodeError::Unrecognized)?;
+    let bitmap = rs_dos_data(data, 3072).ok_or(DecodeError::Invalid)?;
     let indices: Vec<u8> = bitmap
         .iter()
         .flat_map(|&b| [b >> 6, b >> 4 & 3, b >> 2 & 3, b & 3])

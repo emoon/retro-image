@@ -22,7 +22,7 @@ const RECORDS_LEN: usize = 8 * 48;
 const LINE_PALETTES_LEN: usize = 200 * 32 * 2;
 
 pub(super) fn decode_pbx(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -101,7 +101,7 @@ fn line_palettes(first: &[u8], second: Option<&[u8]>, screen: &[u8]) -> Option<I
 
 fn line_palette_image(palettes: &[u8], screen: &[u8]) -> Option<Image> {
     let palettes = words(palettes);
-    let mut image = Image::new(320, 200);
+    let mut image = Image::new(320, 200).ok()?;
     for y in 0..200 {
         let line = &screen[y * 160..(y + 1) * 160];
         for x in 0..320 {

@@ -208,24 +208,20 @@ fn dyuv(h: &Header, idat: &[u8]) -> Option<Image> {
             colors.extend([dyuv_color(y0, u, v), dyuv_color(y, u, v)]);
         }
     }
-    Some(Image::from_colors(
-        h.width as u32,
-        h.height as u32,
-        colors.into_iter(),
-    ))
+    Image::from_colors(h.width as u32, h.height as u32, colors.into_iter()).ok()
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let chunks = chunks(data).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let chunks = chunks(data).ok_or(FAIL)?;
     let find = |tag: &[u8; 4]| chunks.iter().find(|(t, _)| t == tag).map(|(_, body)| *body);
-    let h = header(find(b"IHDR").ok_or(fail)?).ok_or(fail)?;
+    let h = header(find(b"IHDR").ok_or(FAIL)?).ok_or(FAIL)?;
     check_size(h.width, h.height)?;
-    let idat = find(b"IDAT").ok_or(fail)?;
+    let idat = find(b"IDAT").ok_or(FAIL)?;
     if h.coding == Coding::Dyuv {
-        return dyuv(&h, idat).ok_or(fail);
+        return dyuv(&h, idat).ok_or(FAIL);
     }
-    let palette = palette(find(b"PLTE").ok_or(fail)?).ok_or(fail)?;
+    let palette = palette(find(b"PLTE").ok_or(FAIL)?).ok_or(FAIL)?;
     let indices = match h.coding {
         Coding::Clut4 => clut4(&h, idat),
         _ => rl7(&h, idat),
@@ -233,7 +229,7 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     Image::from_indexed(
         h.width as u32,
         h.height as u32,
-        &indices.ok_or(fail)?,
+        &indices.ok_or(FAIL)?,
         &palette,
     )
 }

@@ -47,7 +47,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     let rest = data
         .strip_prefix(b"XLPB")
         .filter(|rest| rest.len() == 2 * FRAME + 8)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     mcp_picture(rest, LINES)
 }
 
@@ -61,12 +61,10 @@ fn set_color(set: &[u8], value: u8) -> u8 {
 
 /// MAX: `XLPM`, nine tables of 192 per-line colors, packed frames.
 pub(super) fn decode_max(data: &[u8]) -> Result<Image, DecodeError> {
-    let rest = data
-        .strip_prefix(b"XLPM")
-        .ok_or(DecodeError::Unrecognized)?;
+    let rest = data.strip_prefix(b"XLPM").ok_or(DecodeError::Invalid)?;
     let (tables, packed) = rest
         .split_at_checked(9 * TABLE)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let stored = Stored::new(packed, LINES, false)?;
     // Stored frame 0 is drawn with tables 4-7, frame 1 with tables 0-3, each
     // listing the background first.
@@ -88,10 +86,10 @@ pub(super) fn decode_xlp(data: &[u8]) -> Result<Image, DecodeError> {
         Some(rest) => (true, rest),
         None => (false, data),
     };
-    let (colors, packed) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, packed) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     let lines = if compact {
         LINES
-    } else if packed_len(packed).ok_or(DecodeError::Unrecognized)? >= 80 * 200 {
+    } else if packed_len(packed).ok_or(DecodeError::Invalid)? >= 80 * 200 {
         200
     } else {
         LINES
@@ -109,7 +107,7 @@ struct Stored {
 
 impl Stored {
     fn new(packed: &[u8], lines: usize, lenient: bool) -> Result<Self, DecodeError> {
-        let data = unpack(packed, 80 * lines, lenient).ok_or(DecodeError::Unrecognized)?;
+        let data = unpack(packed, 80 * lines, lenient).ok_or(DecodeError::Invalid)?;
         Ok(Self { data, lines })
     }
 

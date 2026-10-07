@@ -74,20 +74,20 @@ const PALETTE: [u32; 16] = [
 ];
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(MAGIC) || le16(data, FIXED_AT) != Some(FIXED) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let (animation, audio) = (le32(data, 4).ok_or(fail)?, le32(data, 8).ok_or(fail)?);
+    let (animation, audio) = (le32(data, 4).ok_or(FAIL)?, le32(data, 8).ok_or(FAIL)?);
     let end = ANIMATION_AT
         .checked_add(animation as usize)
         .and_then(|end| end.checked_add(audio as usize));
     if end.is_none_or(|end| end > data.len()) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let tiles = data
         .get(THUMBNAIL_AT..THUMBNAIL_AT + THUMBNAIL_LEN)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     TILE.sheet(tiles, TILES_PER_ROW, &PALETTE)
 }
 

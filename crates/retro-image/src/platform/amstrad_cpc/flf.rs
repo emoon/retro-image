@@ -21,7 +21,7 @@ const INKS: usize = 192;
 pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
     if fluff.kind != 0x18 || fluff.byte(PAYLOAD)? != 0x0b {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (pens, rest) = fluff.split(PAYLOAD + 1, WIDTH * HEIGHT)?;
     let trailer = flf::trailer(rest, true)?;

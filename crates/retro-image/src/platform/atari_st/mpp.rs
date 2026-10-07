@@ -80,7 +80,7 @@ const MODES: [Mode; 4] = [
 ];
 
 pub(super) fn decode_mpp(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -160,7 +160,7 @@ fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Image
         }
     }
 
-    let mut image = Image::new(mode.width as u32, mode.height as u32);
+    let mut image = Image::new(mode.width as u32, mode.height as u32).ok()?;
     let mut palette = [0u32; 16];
     let line_len = mode.width / 2;
     for (y, line) in bitmap.chunks_exact(line_len).enumerate() {
@@ -218,7 +218,7 @@ mod tests {
     fn rejects_short_file() {
         assert_eq!(
             decode_mpp(b"MPP\x01\x00\0\0\0\0\0\0\0"),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 }

@@ -225,7 +225,7 @@ impl Nufli<'_> {
 
 pub(super) fn decode_nufli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + END - LOAD {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_frame(&data[2..])
 }
@@ -235,11 +235,11 @@ pub(super) fn decode_nufli(data: &[u8]) -> Result<Image, DecodeError> {
 /// count escape`, count 0 = 256). The stream must fill the memory exactly.
 pub(super) fn decode_nup(data: &[u8]) -> Result<Image, DecodeError> {
     let [_, _, 0xfd, escape, packed @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     match backward_rle_filled(packed, *escape, END - LOAD) {
         Some((mem, true)) => decode_frame(&mem),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -255,7 +255,7 @@ fn decode_frame(mem: &[u8]) -> Result<Image, DecodeError> {
         .flat_map(|y| (0..vic2::WIDTH).map(move |x| (x, y)))
         .map(|(x, y)| nufli.pixel(x, y, &underlay, &bug[y]))
         .collect::<Option<Vec<u8>>>()
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     Ok(vic2::image(vic2::WIDTH, HEIGHT, pixels))
 }
 

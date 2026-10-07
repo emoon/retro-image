@@ -84,7 +84,7 @@ fn decode(
     expect: impl FnOnce(Screen) -> Option<Screen>,
 ) -> Result<Image, DecodeError> {
     let mut map = map::parse(data)?;
-    map.screen = expect(map.screen).ok_or(DecodeError::Unrecognized)?;
+    map.screen = expect(map.screen).ok_or(DecodeError::Invalid)?;
     let palette = map
         .palette
         .or_else(|| companion_palette(companions, palette_extension))
@@ -110,11 +110,11 @@ mod tests {
     struct Palette(Vec<u8>);
 
     impl Companions for Palette {
-        fn get_named(&self, _file_name: &str) -> Option<Vec<u8>> {
+        fn get_named(&self, _file_name: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
             None
         }
-        fn get(&self, extension: &str) -> Option<Vec<u8>> {
-            (extension == "d16").then(|| self.0.clone())
+        fn get(&self, extension: &str) -> Option<alloc::borrow::Cow<'_, [u8]>> {
+            (extension == "d16").then(|| self.0.clone()).map(Into::into)
         }
     }
 

@@ -61,17 +61,17 @@ fn color_code(text: &[u8]) -> Option<u8> {
 /// characters (at most 1 in 100 besides CR, LF and tab; the samples have
 /// none): `.pcb` is also used for circuit board layouts.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (text, sauce) = sauce::split(data);
     if !(0..text.len()).any(|i| color_code(&text[i..]).is_some()) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let width = sauce
         .filter(|s| s.is_character(PCBOARD_FILE_TYPE))
         .as_ref()
         .and_then(Sauce::width)
         .unwrap_or(80);
-    let mut terminal = Terminal::new(width).ok_or(fail)?;
+    let mut terminal = Terminal::new(width).ok_or(FAIL)?;
     let mut attribute = 0x07;
     let (mut drawn, mut controls) = (0usize, 0usize);
     let mut i = 0;
@@ -100,7 +100,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     if controls * 100 > drawn {
-        return Err(fail);
+        return Err(FAIL);
     }
     terminal.finish(&DEFAULT_STYLE)
 }

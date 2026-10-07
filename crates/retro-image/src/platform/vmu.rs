@@ -116,7 +116,7 @@ impl Header {
 
     /// The icons as a row of cells, through the header's palette.
     fn sheet(&self, data: &[u8]) -> Result<Image, DecodeError> {
-        let palette = palette(data, self.at + PALETTE_AT).ok_or(DecodeError::Unrecognized)?;
+        let palette = palette(data, self.at + PALETTE_AT).ok_or(DecodeError::Invalid)?;
         let icons = &data[self.at + HEADER_LEN..][..self.icons * ICON.tile_len()];
         ICON.sheet_argb(icons, self.icons, &palette)
     }
@@ -159,17 +159,17 @@ fn crc16(parts: &[&[u8]]) -> u16 {
 
 /// A data file: the header at the start, and a CRC that matches.
 fn decode_data(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = Header::parse(data, 0).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = Header::parse(data, 0).ok_or(FAIL)?;
     let end = header
         .data_at()
-        .checked_add(le32(data, 0x48).ok_or(fail)? as usize)
+        .checked_add(le32(data, 0x48).ok_or(FAIL)? as usize)
         .filter(|&end| end <= data.len())
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     // The CRC field, at 0x46, counts as zero.
     let crc = crc16(&[&data[..0x46], &[0, 0], &data[0x48..end]]);
     if le16(data, 0x46) != Some(crc) {
-        return Err(fail);
+        return Err(FAIL);
     }
     header.sheet(data)
 }
@@ -177,11 +177,11 @@ fn decode_data(data: &[u8]) -> Result<Image, DecodeError> {
 /// A game file: the header in the second block, which has no CRC to check.
 /// The short description must be printable ASCII.
 fn decode_game(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = Header::parse(data, GAME_HEADER_AT).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = Header::parse(data, GAME_HEADER_AT).ok_or(FAIL)?;
     let description = &data[GAME_HEADER_AT..][..16];
     if !description.iter().all(|b| (0x20..0x7f).contains(b)) {
-        return Err(fail);
+        return Err(FAIL);
     }
     header.sheet(data)
 }
@@ -189,26 +189,26 @@ fn decode_game(data: &[u8]) -> Result<Image, DecodeError> {
 /// `ICONDATA_VMS`: a 16-byte description, then the offsets of the monochrome
 /// icon and of the color icon (0 if there is none).
 fn decode_icondata(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data[..data.len().min(16)]
         .iter()
         .all(|b| (0x20..0x7f).contains(b))
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let offset = |at| le32(data, at).map(|o| o as usize);
-    let (mono, color) = (offset(0x10).ok_or(fail)?, offset(0x14).ok_or(fail)?);
+    let (mono, color) = (offset(0x10).ok_or(FAIL)?, offset(0x14).ok_or(FAIL)?);
     // Offsets point behind this header and must leave room for their icon.
     let icon = |at: usize, len: usize| {
         let end = at.checked_add(len)?;
         (at >= 0x18).then(|| data.get(at..end)).flatten()
     };
     if color != 0 {
-        let color_icon = icon(color, 32 + ICON.tile_len()).ok_or(fail)?;
-        let palette = palette(color_icon, 0).ok_or(fail)?;
+        let color_icon = icon(color, 32 + ICON.tile_len()).ok_or(FAIL)?;
+        let palette = palette(color_icon, 0).ok_or(FAIL)?;
         return ICON.sheet_argb(&color_icon[32..], 1, &palette);
     }
-    let mono_icon = icon(mono, MONO_ICON.tile_len()).ok_or(fail)?;
+    let mono_icon = icon(mono, MONO_ICON.tile_len()).ok_or(FAIL)?;
     MONO_ICON.sheet_argb(mono_icon, 1, &[CLEAR, 0xff00_0000])
 }
 

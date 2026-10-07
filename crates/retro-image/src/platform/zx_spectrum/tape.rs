@@ -42,7 +42,7 @@ pub(super) fn decode_tap(data: &[u8]) -> Result<Image, DecodeError> {
 /// TZX tape.
 pub(super) fn decode_tzx(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(TZX_SIGNATURE) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut rest = &data[TZX_HEADER_LEN.min(data.len())..];
     // Blocks without a standard-speed payload are skipped, not ends of tape.
@@ -115,7 +115,7 @@ fn find_screen<'a>(blocks: impl Iterator<Item = &'a [u8]>) -> Result<Image, Deco
         }
         previous = block;
     }
-    Err(DecodeError::Unrecognized)
+    Err(DecodeError::Invalid)
 }
 
 /// Whether the 6912-byte `screen` may be taken as one, given the block before

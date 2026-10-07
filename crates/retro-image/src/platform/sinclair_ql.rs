@@ -89,20 +89,20 @@ fn render(
     height: usize,
     stride: usize,
 ) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let line_len = width.div_ceil(8) * 2;
     if stride < line_len {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     let needed = stride
         .checked_mul(height - 1)
         .and_then(|n| n.checked_add(line_len))
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     if data.len() < needed {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for y in 0..height {
         let line = &data[y * stride..][..line_len];
         for x in 0..width {
@@ -123,7 +123,7 @@ const SCREEN_HEIGHT: usize = 256;
 /// `.QS8` extensions name it.
 fn decode_screen(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
     if data.len() != LINE_BYTES * SCREEN_HEIGHT {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(data, mode, SCREEN_WIDTH, SCREEN_HEIGHT, LINE_BYTES)
 }
@@ -138,31 +138,31 @@ fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// PSA area save: 4 undefined bytes, then a PIC file.
 fn decode_psa(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_area(data.get(4..).ok_or(DecodeError::Unrecognized)?)
+    decode_area(data.get(4..).ok_or(DecodeError::Invalid)?)
 }
 
 fn decode_area(data: &[u8]) -> Result<Image, DecodeError> {
     const HEADER_LEN: usize = 10;
     const MAX_PADDING: usize = 7;
-    let fail = DecodeError::Unrecognized;
-    let word = |at| be16(data, at).map(usize::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let word = |at| be16(data, at).map(usize::from).ok_or(FAIL);
     if word(0)? != 0x4afc || data.get(9) != Some(&0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (width, height, stride) = (word(2)?, word(4)?, word(6)?);
     let mode = match data[8] {
         0 | 4 => Mode::Four,
         8 => Mode::Eight,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let end = stride
         .checked_mul(height)
         .and_then(|n| n.checked_add(HEADER_LEN))
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     // QDesign clip art (`_cut` files) ends with 2-6 zero bytes of padding.
-    let padding = data.get(end..).ok_or(fail)?;
+    let padding = data.get(end..).ok_or(FAIL)?;
     if padding.len() > MAX_PADDING || padding.iter().any(|&b| b != 0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     render(&data[HEADER_LEN..], mode, width, height, stride)
 }
@@ -181,7 +181,7 @@ mod tests {
         data[4..6].copy_from_slice(&(height as u16).to_be_bytes());
         data[6..8].copy_from_slice(&(stride as u16).to_be_bytes());
         data[8] = 4;
-        assert!(matches!(decode_area(&data), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode_area(&data), Err(DecodeError::TooLarge)));
     }
 
     #[test]

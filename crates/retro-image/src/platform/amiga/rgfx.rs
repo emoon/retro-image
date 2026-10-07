@@ -38,11 +38,11 @@ const RGB24: u32 = 1 << 1;
 
 /// Decodes the chunks of a `FORM RGFX`.
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let header = find(contents, b"RGHD")
         .filter(|h| h.len() >= HEADER_LEN)
-        .ok_or(fail)?;
-    let field = |i: usize| be32(header, i * 4).ok_or(fail);
+        .ok_or(FAIL)?;
+    let field = |i: usize| be32(header, i * 4).ok_or(FAIL);
     let rows = Rows {
         width: field(2)? as usize,
         height: field(3)? as usize,
@@ -52,7 +52,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     let packing = match field(9)? {
         0 => Packing::Stored,
         1 => Packing::Xpk,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let view_mode = find(contents, b"RSCM")
         .and_then(|m| be32(m, 0))
@@ -62,14 +62,14 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         (RGB24, 24) => Some(Pixels::Rgb24),
         _ => None,
     }
-    .ok_or(fail)?;
+    .ok_or(FAIL)?;
 
     let (palette, clear) = if pixels == Pixels::Indexed8 {
-        palette(contents).ok_or(fail)?
+        palette(contents).ok_or(FAIL)?
     } else {
         ([0; 256], None)
     };
-    let body = find(contents, b"RBOD").ok_or(fail)?;
+    let body = find(contents, b"RBOD").ok_or(FAIL)?;
     let bytes = bitmap_bytes(packing, body, rows.len(pixels)?)?;
     render(pixels, rows, &bytes, &palette, clear)
 }

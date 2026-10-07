@@ -52,7 +52,7 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Result<Image, 
     let width = columns * (SPRITE_WIDTH + GAP) - if trailing_gap { 0 } else { GAP };
     let height = rows * (SPRITE_HEIGHT + GAP) - GAP;
     check_size(width, height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let background = rgb(colors.background);
     for y in 0..height {
         for x in 0..width {
@@ -104,10 +104,10 @@ pub(super) fn decode_spd(data: &[u8]) -> Result<Image, DecodeError> {
             rest @ ..,
         ] => {
             let len = (usize::from(*count) + 1) * 64;
-            let sprites = rest.get(..len).ok_or(DecodeError::Unrecognized)?;
+            let sprites = rest.get(..len).ok_or(DecodeError::Invalid)?;
             render_spd([*background, *multi1, *multi2], sprites)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -121,10 +121,10 @@ pub(super) fn decode_spd(data: &[u8]) -> Result<Image, DecodeError> {
 /// their data sits.
 fn decode_spd_v3(data: &[u8]) -> Result<Image, DecodeError> {
     let header_len = if data[3] == 3 { 16 } else { 20 };
-    let header = data.get(..header_len).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..header_len).ok_or(DecodeError::Invalid)?;
     let flags = header[4];
-    let count = usize::from(le16(header, 5).ok_or(DecodeError::Unrecognized)?);
-    let tiles = le16(header, 7).ok_or(DecodeError::Unrecognized)?;
+    let count = usize::from(le16(header, 5).ok_or(DecodeError::Invalid)?);
+    let tiles = le16(header, 7).ok_or(DecodeError::Invalid)?;
     let animations = if flags == ANIMATIONS {
         (usize::from(header[9]) + 1) * ANIMATION_LEN
     } else {
@@ -136,7 +136,7 @@ fn decode_spd_v3(data: &[u8]) -> Result<Image, DecodeError> {
         || count == 0
         || data.len() != sprites_end + animations
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render_spd(
         [header[13], header[14], header[15]],
@@ -147,17 +147,17 @@ fn decode_spd_v3(data: &[u8]) -> Result<Image, DecodeError> {
 /// Headerless SpritePad: the three shared colors, then the sprites.
 pub(super) fn decode_spd_raw(data: &[u8]) -> Result<Image, DecodeError> {
     let [background, multi1, multi2, sprites @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if sprites.len() % 64 != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render_spd([*background, *multi1, *multi2], sprites)
 }
 
 fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
     if sprites.is_empty() || colors.iter().any(|&c| c > 15) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let [background, multi1, multi2] = colors;
     render(
@@ -175,7 +175,7 @@ fn render_spd(colors: [u8; 3], sprites: &[u8]) -> Result<Image, DecodeError> {
 /// shared colors; `recoil2png` uses dark gray, black and white.
 pub(super) fn decode_seuck(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + 127 * 64 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut sprites = data[2..].to_vec();
     for sprite in sprites.as_chunks_mut::<64>().0 {

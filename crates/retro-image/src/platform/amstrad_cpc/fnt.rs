@@ -15,9 +15,9 @@ const PER_ROW: usize = 32;
 pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     let font = strip_amsdos(data);
     if font.len() != CHARACTERS * 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let mut image = Image::new((PER_ROW * 8) as u32, (CHARACTERS / PER_ROW * 8) as u32);
+    let mut image = Image::new((PER_ROW * 8) as u32, (CHARACTERS / PER_ROW * 8) as u32)?;
     for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % PER_ROW * 8, index / PER_ROW * 8);
         for (y, &bits) in glyph.iter().enumerate() {
