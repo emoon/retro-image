@@ -222,12 +222,40 @@ impl Format {
         matches!(self.decoder, Decoder::WithCompanions(_))
     }
 
-    /// Decodes `data` alone.
+    /// Decodes `data` alone, as this format and no other.
+    ///
+    /// Unlike [`crate::decode`], which finds the format for a file, this
+    /// asks one format to decode and says nothing about the file name.
+    ///
+    /// # Errors
+    ///
+    /// [`DecodeError::Invalid`] if the data is not valid for this format,
+    /// including truncated data, and [`DecodeError::TooLarge`] if the picture
+    /// would exceed the [`Limits`](crate::Limits).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use retro_image::DecodeError;
+    ///
+    /// let pam = retro_image::formats()
+    ///     .find(|f| f.extensions().contains(&"pam"))
+    ///     .unwrap();
+    /// let file = b"P7\nWIDTH 1\nHEIGHT 1\nDEPTH 3\nMAXVAL 255\nTUPLTYPE RGB\nENDHDR\n\x01\x02\x03";
+    /// assert_eq!(pam.decode(file)?.rgb(), [1, 2, 3]);
+    /// assert_eq!(pam.decode(b"P7\n").unwrap_err(), DecodeError::Invalid);
+    /// # Ok::<(), DecodeError>(())
+    /// ```
     pub fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         self.decode_with(data, &NoCompanions)
     }
 
     /// Decodes `data`, reading companion files from `companions` if needed.
+    /// Like [`Format::decode`], for one format only.
+    ///
+    /// # Errors
+    ///
+    /// The same as [`Format::decode`].
     pub fn decode_with(
         &self,
         data: &[u8],
@@ -249,12 +277,24 @@ impl Format {
 }
 
 /// Every supported format.
+///
+/// ```
+/// let count = retro_image::formats().count();
+/// assert!(count > 600);
+/// assert!(retro_image::formats().all(|f| !f.name().is_empty()));
+/// ```
 pub fn formats() -> impl Iterator<Item = &'static Format> {
     platform::ALL.iter().flat_map(|formats| formats.iter())
 }
 
 /// The formats [`decode`](crate::decode) tries for `filename`, in order:
 /// those matching its extension, then the other formats with a signature.
+/// `filename` is only looked at for its extension.
+///
+/// ```
+/// let first = retro_image::candidates("PICTURE.PI1").next().unwrap();
+/// assert!(first.extensions().contains(&"pi1"));
+/// ```
 pub fn candidates(filename: &str) -> impl Iterator<Item = &'static Format> + '_ {
     let by_extension = formats().filter(move |f| f.matches_filename(filename));
     let by_content = formats().filter(move |f| f.signature && !f.matches_filename(filename));

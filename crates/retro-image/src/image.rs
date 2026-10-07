@@ -113,6 +113,10 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
 /// A decoded picture: 8-bit color, row-major, top row first, and an alpha
 /// plane when some pixel is not opaque.
 ///
+/// Images come from [`decode`](crate::decode) and
+/// [`Format::decode`](crate::Format::decode). A picture takes at most the
+/// [`Limits`](crate::Limits) allow, 32 MiB by default.
+///
 /// [`rgb`](Self::rgb) holds the color channels and ignores alpha;
 /// [`has_alpha`](Self::has_alpha) says whether that is the whole picture.
 /// Alpha is straight (not premultiplied): 0 is transparent, 255 opaque.
@@ -231,6 +235,16 @@ impl Image {
 
     /// The pixels as straight RGBA, 4 bytes (R, G, B, A) per pixel; opaque
     /// (255) when the image has no alpha. Allocates a copy.
+    ///
+    /// ```
+    /// // A 2x1 PAM with alpha: opaque red, then half-transparent green.
+    /// let file = b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n\
+    ///              \xff\x00\x00\xff\x00\xff\x00\x80";
+    /// let image = retro_image::decode("two.pam", file)?.into_image();
+    /// assert!(image.has_alpha());
+    /// assert_eq!(image.rgba(), [255, 0, 0, 255, 0, 255, 0, 128]);
+    /// # Ok::<(), retro_image::DecodeError>(())
+    /// ```
     #[must_use]
     pub fn rgba(&self) -> Vec<u8> {
         let pixels = self.rgb.as_chunks::<3>().0;
@@ -254,6 +268,17 @@ impl Image {
     /// which has no alpha plane, for consumers that cannot show transparency.
     /// This image is left as it is; an image without alpha comes back as a
     /// copy.
+    ///
+    /// ```
+    /// let file = b"P7\nWIDTH 2\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n\
+    ///              \xff\x00\x00\x00\x00\xff\x00\xff";
+    /// let image = retro_image::decode("two.pam", file)?.into_image();
+    /// // The first pixel is fully transparent, so the background shows.
+    /// let flat = image.flattened([10, 20, 30]);
+    /// assert!(!flat.has_alpha());
+    /// assert_eq!(flat.rgb(), [10, 20, 30, 0, 255, 0]);
+    /// # Ok::<(), retro_image::DecodeError>(())
+    /// ```
     #[must_use]
     pub fn flattened(&self, background: [u8; 3]) -> Self {
         let Some(alpha) = &self.alpha else {
