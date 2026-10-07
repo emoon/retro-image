@@ -24,6 +24,7 @@
 mod freedesktop;
 mod thumbnail;
 
+use std::cell::{Cell, OnceCell};
 use std::error::Error;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -108,13 +109,19 @@ fn describe(error: &(dyn Error + 'static)) -> String {
         return error.to_string();
     };
     let mut text = error.to_string();
-    for attempt in attempts {
+    // The formats with the file's extension come first; a long tail of
+    // content probes after them is noise.
+    const SHOWN: usize = 5;
+    for attempt in attempts.iter().take(SHOWN) {
         text.push_str(&format!(
             "\n  {} {}: {}",
             attempt.format().platform(),
             attempt.format().name(),
             attempt.error()
         ));
+    }
+    if attempts.len() > SHOWN {
+        text.push_str(&format!("\n  ... and {} more", attempts.len() - SHOWN));
     }
     text
 }
@@ -173,12 +180,11 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
         None => convert
             .input
             .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_default()
-            .to_owned(),
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
     };
-    let image =
-        retro_image::decode_with(&filename, &data, &SiblingFiles(&convert.input))?.into_image();
+    let image = retro_image::decode_with(&filename, &data, &SiblingFiles::new(&convert.input))?
+        .into_image();
     let raster = match convert.size {
         Some(size) => thumbnail::fit(&image, size),
         None => Raster::of(&image),
@@ -193,6 +199,11 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
 /// (FIFOs, devices) could block or never end, and companions named by an
 /// untrusted file get the same limit as the input itself.
 fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
+    read_limited(path, MAX_INPUT_LEN)
+}
+
+/// Like [`read_input`], with a smaller `limit`.
+fn read_limited(path: &Path, limit: u64) -> std::io::Result<Vec<u8>> {
     use std::io::{Error, ErrorKind, Read};
     // Checked before opening: opening a FIFO blocks.
     if !std::fs::metadata(path)?.is_file() {
@@ -200,8 +211,8 @@ fn read_input(path: &Path) -> std::io::Result<Vec<u8>> {
     }
     let file = std::fs::File::open(path)?;
     let mut data = Vec::new();
-    file.take(MAX_INPUT_LEN + 1).read_to_end(&mut data)?;
-    if data.len() as u64 > MAX_INPUT_LEN {
+    file.take(limit + 1).read_to_end(&mut data)?;
+    if data.len() as u64 > limit {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             "file too large for a retro image",
@@ -251,14 +262,56 @@ fn encode_png(raster: &Raster) -> Result<Vec<u8>, Box<dyn Error>> {
 
 /// Companion files next to the input: same name, other extension, matched
 /// case-insensitively (`PIC.MIC` finds `pic.col`), or files looked up by name.
-struct SiblingFiles<'a>(&'a Path);
+///
+/// The input's file names are `OsStr`, so a name that is not UTF-8 works.
+/// The directory is listed once per run, and all companions together may
+/// read at most [`COMPANION_BUDGET`] bytes: a file can name other files (a
+/// KiSS set lists thousands of cells) and must not make a run read
+/// gigabytes.
+struct SiblingFiles<'a> {
+    input: &'a Path,
+    listing: OnceCell<Vec<OsString>>,
+    /// Bytes companions may still read.
+    budget: Cell<u64>,
+}
 
-impl SiblingFiles<'_> {
+/// Most bytes all companions of one input may read in total.
+const COMPANION_BUDGET: u64 = 256 << 20;
+
+impl<'a> SiblingFiles<'a> {
+    fn new(input: &'a Path) -> Self {
+        Self {
+            input,
+            listing: OnceCell::new(),
+            budget: Cell::new(COMPANION_BUDGET),
+        }
+    }
+
     fn directory(&self) -> &Path {
-        self.0
+        self.input
             .parent()
             .filter(|d| !d.as_os_str().is_empty())
             .unwrap_or(Path::new("."))
+    }
+
+    /// File names in the directory, read on first use.
+    fn names(&self) -> &[OsString] {
+        self.listing.get_or_init(|| {
+            std::fs::read_dir(self.directory())
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .map(|entry| entry.file_name())
+                .collect()
+        })
+    }
+
+    /// A companion's contents, charged to the budget.
+    fn read(&self, path: &Path) -> Option<std::borrow::Cow<'static, [u8]>> {
+        let limit = MAX_INPUT_LEN.min(self.budget.get());
+        let data = read_limited(path, limit).ok()?;
+        self.budget.set(self.budget.get() - data.len() as u64);
+        Some(data.into())
     }
 }
 
@@ -268,25 +321,18 @@ impl retro_image::Companions for SiblingFiles<'_> {
         if matches!(name, "" | "." | "..") {
             return None;
         }
-        read_input(&self.directory().join(name))
-            .ok()
-            .map(Into::into)
+        self.read(&self.directory().join(name))
     }
 
     fn get(&self, extension: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
-        let stem = self.0.file_stem()?.to_str()?;
-        let wanted = format!("{stem}.{extension}");
-        std::fs::read_dir(self.directory())
-            .ok()?
-            .filter_map(Result::ok)
-            .find(|entry| {
-                entry
-                    .file_name()
-                    .to_str()
-                    .is_some_and(|n| n.eq_ignore_ascii_case(&wanted))
-            })
-            .and_then(|entry| read_input(&entry.path()).ok())
-            .map(Into::into)
+        let mut wanted = self.input.file_stem()?.to_owned();
+        wanted.push(".");
+        wanted.push(extension);
+        let found = self
+            .names()
+            .iter()
+            .find(|name| name.eq_ignore_ascii_case(&wanted))?;
+        self.read(&self.directory().join(found))
     }
 }
 
@@ -305,6 +351,26 @@ mod tests {
         retro_image::decode("picture.pam", &file)
             .unwrap()
             .into_image()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn companions_work_for_non_utf8_names_and_stop_at_the_budget() {
+        use retro_image::Companions;
+        use std::os::unix::ffi::OsStrExt;
+        let dir = std::env::temp_dir().join(format!("retro-image-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input = dir.join(std::ffi::OsStr::from_bytes(b"p\xFFic.mic"));
+        let companion = dir.join(std::ffi::OsStr::from_bytes(b"P\xFFIC.col"));
+        std::fs::write(&companion, [7u8; 1000]).unwrap();
+
+        let siblings = SiblingFiles::new(&input);
+        siblings.budget.set(1500);
+        assert_eq!(siblings.get("col").unwrap().len(), 1000);
+        // 500 bytes left: the same file no longer fits.
+        assert!(siblings.get("col").is_none());
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     fn color_type(png_data: &[u8]) -> png::ColorType {
