@@ -82,7 +82,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
     };
     // A mapped image with no color map has nothing to index.
     if mapped && map_entry == 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
 
