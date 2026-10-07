@@ -7,7 +7,7 @@
 
 use alloc::vec::Vec;
 
-use crate::{DecodeError, simd};
+use crate::{DecodeError, limits, simd};
 
 /// Which bit of a byte in a 1-bit bitmap is the leftmost pixel.
 #[derive(Debug, Clone, Copy)]
@@ -16,19 +16,15 @@ pub(crate) enum BitOrder {
     LsbFirst,
 }
 
-/// Most pixels a decoder may allocate for one picture (192 MiB of RGB).
-/// Dimensions come from untrusted headers, so a few bytes of file must not
-/// be able to demand gigabytes.
-const MAX_PIXELS: usize = 1 << 26;
-
-/// Fails if a `width` x `height` picture exceeds [`MAX_PIXELS`]. The one
-/// size gate: every `Image` constructor passes through it, so no decoder can
+/// Fails if a `width` x `height` picture exceeds the [`Limits`](crate::Limits) in force.
+/// The one size gate: every `Image` constructor passes through it, so no decoder can
 /// build an oversized picture. Decoders still call [`check_size`] first when
 /// they allocate buffers sized from header dimensions before the `Image`.
 fn within_limit(width: usize, height: usize) -> Result<(), DecodeError> {
-    match width.checked_mul(height) {
-        Some(pixels) if pixels <= MAX_PIXELS => Ok(()),
-        _ => Err(DecodeError::TooLarge),
+    if limits::fits(width, height, limits::max_pixels()) {
+        Ok(())
+    } else {
+        Err(DecodeError::TooLarge)
     }
 }
 

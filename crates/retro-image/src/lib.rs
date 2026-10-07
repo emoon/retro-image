@@ -27,6 +27,7 @@ mod error;
 mod format;
 mod image;
 mod json;
+mod limits;
 mod macbinary;
 mod morton;
 mod platform;
@@ -38,6 +39,7 @@ pub use error::{Attempt, DecodeError};
 pub use format::{Companions, Format, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
 pub use image::Image;
+pub use limits::{DEFAULT_MAX_IMAGE_BYTES, Limits};
 /// For the `simd` fuzz target: compares every SIMD level with the scalar
 /// reference.
 #[cfg(fuzzing)]

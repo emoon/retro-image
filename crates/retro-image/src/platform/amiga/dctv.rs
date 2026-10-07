@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn doubled_height_over_the_pixel_cap_is_rejected() {
-        let (width, height, planes) = (65535usize, 520usize, 3usize);
+        let (width, height, planes) = (2100usize, 2100usize, 3usize);
         let row_len = width.div_ceil(16) * 2;
         let mut body = alloc::vec![0u8; row_len * planes * height];
         // Top plane of the first row carries the signature.
