@@ -179,10 +179,14 @@ fn decode_form(kind: &[u8; 4], contents: &[u8]) -> Result<Image, DecodeError> {
     match kind {
         // BBM: the form type of PC Deluxe Paint files, laid out like ILBM.
         b"BBM " => ilbm::decode_ilbm(contents),
-        b"ILBM" => ilbm::decode_ilbm(contents)
-            .or_else(|_| dctv::decode(contents))
-            .or_else(|_| ham_e::decode(contents))
-            .or_else(|_| deep_ilbm::decode(contents)),
+        // The plain ILBM decoder's error is the one reported when no variant
+        // takes the file.
+        b"ILBM" => ilbm::decode_ilbm(contents).or_else(|plain| {
+            dctv::decode(contents)
+                .or_else(|_| ham_e::decode(contents))
+                .or_else(|_| deep_ilbm::decode(contents))
+                .map_err(|_| plain)
+        }),
         b"PBM " => ilbm::decode_pbm(contents),
         b"ACBM" => ilbm::decode_acbm(contents),
         b"RGBN" => rgbn::decode(rgbn::Kind::Rgbn, contents),

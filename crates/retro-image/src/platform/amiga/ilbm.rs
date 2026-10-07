@@ -56,22 +56,23 @@ pub(super) struct Header {
 }
 
 impl Header {
-    pub(super) fn parse(contents: &[u8]) -> Option<Self> {
-        let bmhd = find(contents, b"BMHD")?;
-        if bmhd.len() < 20 {
-            return None;
-        }
-        let (width, height) = (be16(bmhd, 0)? as usize, be16(bmhd, 2)? as usize);
-        check_size(width, height).ok()?;
-        let header = Self {
+    pub(super) fn parse(contents: &[u8]) -> Result<Self, DecodeError> {
+        let bmhd = find(contents, b"BMHD")
+            .filter(|bmhd| bmhd.len() >= 20)
+            .ok_or(DecodeError::Invalid)?;
+        let (width, height) = (
+            be16(bmhd, 0).ok_or(DecodeError::Invalid)? as usize,
+            be16(bmhd, 2).ok_or(DecodeError::Invalid)? as usize,
+        );
+        check_size(width, height)?;
+        Ok(Self {
             width,
             height,
             planes: bmhd[8] as usize,
             masking: bmhd[9],
             compression: bmhd[10],
-            transparent: be16(bmhd, 12)?,
-        };
-        (header.width > 0 && header.height > 0).then_some(header)
+            transparent: be16(bmhd, 12).ok_or(DecodeError::Invalid)?,
+        })
     }
 
     /// Bytes per row of one plane, padded to 16 bits.
@@ -158,7 +159,7 @@ pub(super) fn read_ilbm(contents: &[u8]) -> Result<Bitmap, DecodeError> {
 }
 
 fn read_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Bitmap, DecodeError> {
-    let header = Header::parse(contents).ok_or(DecodeError::Invalid)?;
+    let header = Header::parse(contents)?;
     let body = find(contents, body_id).ok_or(DecodeError::Invalid)?;
     let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
     let (indices, mask) = match layout {
@@ -471,8 +472,8 @@ mod tests {
 
     #[test]
     fn header_rejects_pictures_over_the_pixel_cap() {
-        assert!(Header::parse(&bmhd(100, 100)).is_some());
-        assert!(Header::parse(&bmhd(65535, 65535)).is_none());
+        assert!(Header::parse(&bmhd(100, 100)).is_ok());
+        assert!(Header::parse(&bmhd(65535, 65535)).is_err());
     }
 
     /// A 3 x 1 picture of one plane (black and white palette), uncompressed.
@@ -530,11 +531,11 @@ mod tests {
 
     #[test]
     fn interlace_doubling_over_the_pixel_cap_is_rejected() {
-        let (width, height) = (50000u16, 700u16);
+        let (width, height) = (3000u16, 1500u16);
         let mut bmhd = bmhd(width, height)[8..].to_vec();
         bmhd[10] = 1; // ByteRun1
         let mut body = Vec::new();
-        for _ in 0..36000 {
+        for _ in 0..4500 {
             body.extend_from_slice(&[0x81, 0]);
         }
         let mut contents = Vec::new();

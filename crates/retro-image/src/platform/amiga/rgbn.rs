@@ -50,7 +50,7 @@ impl Kind {
 
 pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> {
     const FAIL: DecodeError = DecodeError::Invalid;
-    let header = Header::parse(contents).ok_or(FAIL)?;
+    let header = Header::parse(contents)?;
     if header.planes != kind.planes() || !kind.accepts(header.compression) {
         return Err(FAIL);
     }
