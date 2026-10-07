@@ -21,10 +21,10 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 pub(crate) const BYTES_PER_PIXEL: usize = 4;
 
 /// The default limit on the memory of one decoded [`Image`](crate::Image):
-/// 32 MiB, which is about 8.4 million pixels (a 2896 x 2896 picture).
+/// 64 MiB, which is about 16.8 million pixels (a 4096 x 4096 picture).
 ///
 /// This is the one place the default is defined.
-pub const DEFAULT_MAX_IMAGE_BYTES: usize = 32 << 20;
+pub const DEFAULT_MAX_IMAGE_BYTES: usize = 64 << 20;
 
 static MAX_IMAGE_BYTES: AtomicUsize = AtomicUsize::new(DEFAULT_MAX_IMAGE_BYTES);
 
@@ -42,7 +42,7 @@ static MAX_IMAGE_BYTES: AtomicUsize = AtomicUsize::new(DEFAULT_MAX_IMAGE_BYTES);
 /// ```
 /// use retro_image::Limits;
 ///
-/// assert_eq!(Limits::current().max_image_bytes(), 32 << 20);
+/// assert_eq!(Limits::current().max_image_bytes(), 64 << 20);
 /// // A caller that only makes thumbnails can tighten the limit:
 /// let before = Limits::current();
 /// Limits::default().with_max_image_bytes(1 << 20).install();
@@ -114,8 +114,8 @@ mod tests {
     }
 
     #[test]
-    fn the_default_is_32_mib_of_four_byte_pixels() {
-        assert_eq!(DEFAULT_MAX_IMAGE_BYTES, 32 * 1024 * 1024);
-        assert_eq!(DEFAULT_MAX_IMAGE_BYTES / BYTES_PER_PIXEL, 8 * 1024 * 1024);
+    fn the_default_is_64_mib_of_four_byte_pixels() {
+        assert_eq!(DEFAULT_MAX_IMAGE_BYTES, 64 * 1024 * 1024);
+        assert_eq!(DEFAULT_MAX_IMAGE_BYTES / BYTES_PER_PIXEL, 16 * 1024 * 1024);
     }
 }

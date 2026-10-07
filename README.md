@@ -56,7 +56,7 @@ uses the extension and none recognized the content. The enum is `#[non_exhaustiv
 wildcard arm.
 
 Decoding never panics on a truncated or corrupt file, it returns an error. It also doesn't let a
-header demand memory: a decoded picture may take at most 32 MiB by default (4 bytes per pixel,
+header demand memory: a decoded picture may take at most 64 MiB by default (4 bytes per pixel,
 about 8.4 million pixels), and a bigger one fails with `DecodeError::TooLarge` before anything
 is allocated. Call `Limits::default().with_max_image_bytes(n).install()` once at start-up to
 change it. The limit applies to the whole process.

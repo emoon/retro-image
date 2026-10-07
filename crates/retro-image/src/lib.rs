@@ -26,7 +26,7 @@
 //!   a bug. Every decoder is tested against truncated and mutated real files
 //!   and fuzzed for this.
 //! - **Memory is bounded.** A picture may take at most
-//!   [`DEFAULT_MAX_IMAGE_BYTES`] (32 MiB, 4 bytes per pixel) of memory
+//!   [`DEFAULT_MAX_IMAGE_BYTES`] (64 MiB, 4 bytes per pixel) of memory
 //!   unless the program changes the [`Limits`]. Dimensions come from
 //!   untrusted headers, so the limit is checked before anything is
 //!   allocated for them; a bigger picture fails with

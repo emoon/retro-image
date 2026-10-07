@@ -425,14 +425,14 @@ mod tests {
             font: Font::new(32, &[0; 32 * 256]).unwrap(),
             nine_pixels: true,
         };
-        // 80 columns of 9x32 cells: 23040 pixels a row, so 364 rows fit in
-        // the default limit (2^23 pixels); 1000 rows are cropped to those.
-        // 8x16 cells are 10240 pixels a row and fit 600 rows.
+        // 80 columns of 9x32 cells: 23040 pixels a row, so 728 rows fit in
+        // the default limit (2^24 pixels); 1000 rows are cropped to those.
+        // 8x16 cells are 10240 pixels a row and fit 1000 rows.
         let image = render(&[], 80, 200, &big).unwrap();
         assert_eq!(image.height(), 200 * 32);
         let image = render(&[], 80, 1000, &big).unwrap();
-        assert_eq!((image.width(), image.height()), (720, 364 * 32));
-        assert_eq!(render(&[], 80, 600, &STYLE).unwrap().height(), 9600);
+        assert_eq!((image.width(), image.height()), (720, 728 * 32));
+        assert_eq!(render(&[], 80, 1000, &STYLE).unwrap().height(), 16000);
         // A row of the widest allowed picture (2048 columns of 9x32 cells,
         // 589824 pixels) always fits; wider ones are rejected outright.
         assert!(render(&[], MAX_COLUMNS + 1, 1, &big).is_err(), "too wide");

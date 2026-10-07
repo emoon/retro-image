@@ -115,7 +115,7 @@ pub(crate) fn gray_ramp(len: usize) -> Vec<u32> {
 ///
 /// Images come from [`decode`](crate::decode) and
 /// [`Format::decode`](crate::Format::decode). A picture takes at most the
-/// [`Limits`](crate::Limits) allow, 32 MiB by default.
+/// [`Limits`](crate::Limits) allow, 64 MiB by default.
 ///
 /// [`rgb`](Self::rgb) holds the color channels and ignores alpha;
 /// [`has_alpha`](Self::has_alpha) says whether that is the whole picture.

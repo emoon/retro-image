@@ -531,11 +531,11 @@ mod tests {
 
     #[test]
     fn interlace_doubling_over_the_pixel_cap_is_rejected() {
-        let (width, height) = (3000u16, 1500u16);
+        let (width, height) = (4100u16, 2100u16);
         let mut bmhd = bmhd(width, height)[8..].to_vec();
         bmhd[10] = 1; // ByteRun1
         let mut body = Vec::new();
-        for _ in 0..4500 {
+        for _ in 0..10500 {
             body.extend_from_slice(&[0x81, 0]);
         }
         let mut contents = Vec::new();

@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn awbm_larger_than_the_pixel_cap_is_rejected() {
-        // 16-color planar: 65535 x 1025 pixels in 32 MiB of planes.
+        // 16-color planar: 65535 x 1025 pixels, 256 MiB decoded.
         let (width, height) = (65535usize, 1025usize);
         let bitmap_len = width.div_ceil(8) * 4 * height;
         let mut data = vec![0u8; 8 + bitmap_len + 4 + 16 * 3];
