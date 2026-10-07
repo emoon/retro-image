@@ -80,7 +80,7 @@ pub(super) fn decode_set(data: &[u8], companions: &dyn Companions) -> Result<Ima
         .and_then(Option::as_ref)
         .map_or(CLEAR, |palette| 0xff00_0000 | palette[0]);
     let fill = core::iter::repeat(background);
-    let mut canvas = Image::from_argb(set.width as u32, set.height as u32, fill);
+    let mut canvas = Image::from_argb(set.width as u32, set.height as u32, fill)?;
     let (mut drawn, mut pixels) = (0, 0usize);
     // Earlier entries are in front, so the last one goes down first.
     for entry in set.cels.iter().rev().filter(|entry| entry.in_first_set) {

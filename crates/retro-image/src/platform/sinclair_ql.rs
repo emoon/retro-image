@@ -102,7 +102,7 @@ fn render(
     if data.len() < needed {
         return Err(fail);
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for y in 0..height {
         let line = &data[y * stride..][..line_len];
         for x in 0..width {

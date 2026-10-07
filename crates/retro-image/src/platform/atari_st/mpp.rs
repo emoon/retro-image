@@ -160,7 +160,7 @@ fn frame(data: &[u8], pos: &mut usize, mode: &Mode, bits: usize) -> Option<Image
         }
     }
 
-    let mut image = Image::new(mode.width as u32, mode.height as u32);
+    let mut image = Image::new(mode.width as u32, mode.height as u32).ok()?;
     let mut palette = [0u32; 16];
     let line_len = mode.width / 2;
     for (y, line) in bitmap.chunks_exact(line_len).enumerate() {

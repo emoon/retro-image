@@ -202,7 +202,7 @@ fn decode_sixel(data: &[u8]) -> Result<Image, DecodeError> {
         UNSET => unset,
         register => 0xff00_0000 | registers[usize::from(register)],
     });
-    Ok(Image::from_argb(width as u32, height as u32, colors))
+    Image::from_argb(width as u32, height as u32, colors)
 }
 
 /// The data of a file made of VMS variable-length records (a 16-bit length,

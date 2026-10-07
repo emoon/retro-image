@@ -208,11 +208,7 @@ fn dyuv(h: &Header, idat: &[u8]) -> Option<Image> {
             colors.extend([dyuv_color(y0, u, v), dyuv_color(y, u, v)]);
         }
     }
-    Some(Image::from_colors(
-        h.width as u32,
-        h.height as u32,
-        colors.into_iter(),
-    ))
+    Image::from_colors(h.width as u32, h.height as u32, colors.into_iter()).ok()
 }
 
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {

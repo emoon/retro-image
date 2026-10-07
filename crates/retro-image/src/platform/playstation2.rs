@@ -200,11 +200,7 @@ fn decode_tim2(data: &[u8]) -> Result<Image, DecodeError> {
             image.iter().map(|&i| colors[usize::from(i)]).collect()
         }
     };
-    Ok(Image::from_argb(
-        header.width as u32,
-        header.height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(header.width as u32, header.height as u32, argb.into_iter())
 }
 
 #[cfg(test)]

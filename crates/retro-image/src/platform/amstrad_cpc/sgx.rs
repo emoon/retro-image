@@ -84,7 +84,7 @@ pub(super) fn decode_sgx(data: &[u8]) -> Result<Image, DecodeError> {
     if parts.is_empty() || width * height > 8 * data.len() {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for part in &parts {
         draw_part(&mut image, part);
     }

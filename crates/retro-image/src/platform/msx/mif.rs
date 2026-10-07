@@ -103,7 +103,7 @@ fn decode_inner(data: &[u8]) -> Option<Image> {
                 screen::set_basic_multicolour_names(&mut vram);
             }
             let palette = palette.unwrap_or(vdp::MSX1_PALETTE);
-            Some(screen::render_tiled(mode, &vram, &palette, false))
+            Some(screen::render_tiled(mode, &vram, &palette, false).ok()?)
         }
     }
 }

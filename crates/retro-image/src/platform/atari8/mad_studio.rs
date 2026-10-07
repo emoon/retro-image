@@ -57,7 +57,7 @@ pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let color = register_rgb(color);
-    let mut image = Image::new(2 * PLAYER_PIXEL, 34);
+    let mut image = Image::new(2 * PLAYER_PIXEL, 34)?;
     for (y, &line) in lines.iter().enumerate() {
         for x in 0..2 {
             if line & (2 >> x) != 0 {
@@ -113,7 +113,7 @@ pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
         bits: 2,
     };
     let color = rgb(color);
-    let mut image = Image::new(2 * PLAYER_PIXEL, 240);
+    let mut image = Image::new(2 * PLAYER_PIXEL, 240)?;
     for y in 0..240 {
         let line = bitmap.pixel(y % 4, y / 4);
         for x in 0..2 {
@@ -157,7 +157,7 @@ pub(super) fn decode_mpl(data: &[u8]) -> Result<Image, DecodeError> {
         .map(|&x| u32::from(x) + 8)
         .max()
         .unwrap_or(8);
-    let mut image = Image::new((right - left) * PLAYER_PIXEL, height as u32);
+    let mut image = Image::new((right - left) * PLAYER_PIXEL, height as u32)?;
     for player in (0..4).rev() {
         let color = register_rgb(colors[player]);
         let origin = u32::from(positions[player]) - left;
@@ -186,7 +186,7 @@ pub(super) fn decode_tl4(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let [background, pf0, pf1, pf2] = OS_COLORS;
     let pf3 = 0x46;
-    let mut image = Image::new(width as u32 * 8, height as u32 * 8);
+    let mut image = Image::new(width as u32 * 8, height as u32 * 8)?;
     for (index, char) in chars.as_chunks::<9>().0.iter().enumerate() {
         let colors = [background, pf0, pf1, if char[8] != 0 { pf3 } else { pf2 }];
         let x = (index % width) as u32 * 8;

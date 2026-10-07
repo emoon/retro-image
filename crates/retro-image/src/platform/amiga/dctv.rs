@@ -73,7 +73,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     let shift = 4 - header.planes;
     let out_height = if lace { lines } else { lines * 2 };
     check_size(width, out_height)?;
-    let mut image = Image::new(width as u32, out_height as u32);
+    let mut image = Image::new(width as u32, out_height as u32)?;
     for field in 0..fields {
         let mut previous = Vec::new();
         for (index, row) in (field..lines).step_by(fields).enumerate() {

@@ -62,7 +62,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     check_size(width, height)?;
     let row_len = w * 2;
     let lookup = |i: usize| le16(clut, i * 2).map_or(0, bgr555);
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for y in 0..height {
         let row = &pixels[y * row_len..(y + 1) * row_len];
         for x in 0..width {

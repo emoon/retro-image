@@ -225,9 +225,10 @@ fn render(root: &Value) -> Option<Image> {
         font.machine
             .rgb(if set { cells[cell].color } else { background })
     };
-    Some(Image::from_colors(
+    Image::from_colors(
         pixel_width as u32,
         pixel_height as u32,
         (0..pixel_width * pixel_height).map(color),
-    ))
+    )
+    .ok()
 }

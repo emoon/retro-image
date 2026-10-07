@@ -95,7 +95,7 @@ pub(super) fn decode_sgi(data: &[u8]) -> Result<Image, DecodeError> {
         channels,
         ..
     } = header;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let mut planes = alloc::vec![0u16; width * channels];
     for y in 0..height {
         // Row 0 of the file is the bottom of the picture.

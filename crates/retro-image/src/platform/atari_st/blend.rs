@@ -50,11 +50,11 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
     let (screens, palettes) = data.split_at(2 * PCI_SCREEN_LEN);
     let all = words(palettes);
     let ste = uses_ste_bits(all.iter().copied());
-    let frame = |i: usize| {
+    let frame = |i: usize| -> Result<Image, DecodeError> {
         let screen =
             separate_planes_to_interleaved(&screens[i * PCI_SCREEN_LEN..][..PCI_SCREEN_LEN], 4);
         let palette = &all[i * PCI_HEIGHT * 16..][..PCI_HEIGHT * 16];
-        let mut image = Image::new(PCI_WIDTH as u32, PCI_HEIGHT as u32);
+        let mut image = Image::new(PCI_WIDTH as u32, PCI_HEIGHT as u32)?;
         let stride = PCI_WIDTH / 2;
         for y in 0..PCI_HEIGHT {
             let line = &screen[y * stride..][..stride];
@@ -63,9 +63,9 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
                 image.set(x, y as u32, st_rgb(palette[y * 16 + c], ste));
             }
         }
-        image
+        Ok(image)
     };
-    Ok(Image::blend(&[&frame(0), &frame(1)]))
+    Ok(Image::blend(&[&frame(0)?, &frame(1)?]))
 }
 
 /// HighresMedium: 400 medium-resolution lines (pairs of alternating
@@ -80,7 +80,7 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
     let ste = uses_ste_bits(palettes.iter().copied());
     // Even and odd lines are two 640x200 fields shown alternately.
     let field = |first: usize| -> Option<Image> {
-        let mut image = Image::new(640, 200);
+        let mut image = Image::new(640, 200).ok()?;
         for y in 0..200 {
             let line_index = y * 2 + first;
             let line = &data[line_index * 160..][..160];

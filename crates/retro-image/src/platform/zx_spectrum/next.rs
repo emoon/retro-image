@@ -89,13 +89,13 @@ impl Palette<'_> {
 }
 
 /// Draws a fixed-size mode; callers have checked that `pixels` is long enough.
-fn render(mode: Mode, pixels: &[u8], palette: Palette) -> Image {
+fn render(mode: Mode, pixels: &[u8], palette: Palette) -> Result<Image, DecodeError> {
     let (width, height) = match mode {
         Mode::Rows => (256, 192),
         Mode::Columns => (320, 256),
         Mode::WideColumns => (640, 256),
     };
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     for y in 0..height {
         for x in 0..width {
             let index = match mode {
@@ -131,7 +131,7 @@ pub(super) fn decode_nxi(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         Palette::Rgb333(palette)
     };
-    Ok(render(mode, pixels, palette))
+    render(mode, pixels, palette)
 }
 
 /// SL2: pixels first, then an optional palette; the file may start with a
@@ -156,7 +156,7 @@ pub(super) fn decode_sl2(data: &[u8]) -> Result<Image, DecodeError> {
         2 => Palette::Rgb333(tail),
         _ => Palette::Default,
     };
-    Ok(render(mode, pixels, palette))
+    render(mode, pixels, palette)
 }
 
 /// SLR: 128x96 lores, a byte per pixel in the default palette.
@@ -165,11 +165,11 @@ pub(super) fn decode_slr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 128 * 96 {
         return Err(DecodeError::Unrecognized);
     }
-    let mut frame = Frame::new(128, 96);
+    let mut frame = Frame::new(128, 96)?;
     for (i, &index) in data.iter().enumerate() {
         frame.set(i % 128, i / 128, rgb332(index));
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 #[cfg(test)]

@@ -216,7 +216,7 @@ fn decode_gim(data: &[u8]) -> Result<Image, DecodeError> {
             color(endian, format, &texel).unwrap_or(0)
         }
     });
-    Ok(Image::from_argb(width as u32, height as u32, argb))
+    Image::from_argb(width as u32, height as u32, argb)
 }
 
 /// The colors of a palette chunk, padded to 256 entries so that any index of

@@ -22,19 +22,19 @@ use crate::{DecodeError, Image};
 pub(super) fn decode_scr(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
         SCR_LEN => {
-            let mut frame = Frame::new(WIDTH, HEIGHT);
+            let mut frame = Frame::new(WIDTH, HEIGHT)?;
             draw_scr(&mut frame, 0, 0, data);
-            Ok(frame.into_image())
+            Ok(frame.into_image()?)
         }
         BITMAP_LEN => {
-            let mut frame = Frame::new(WIDTH, HEIGHT);
+            let mut frame = Frame::new(WIDTH, HEIGHT)?;
             frame.draw_screen(
                 0,
                 0,
                 |column, y| bitmap_byte(data, column, y),
                 |_, _, ink| if ink { 0xffffff } else { 0 },
             );
-            Ok(frame.into_image())
+            Ok(frame.into_image()?)
         }
         _ => Err(DecodeError::Unrecognized),
     }
@@ -45,7 +45,7 @@ pub(super) fn decode_atr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != ATTRIBUTES_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(attribute_frame(data, 8, |_, y| if y % 2 == 0 { 0x55 } else { 0xaa }).into_image())
+    attribute_frame(data, 8, |_, y| if y % 2 == 0 { 0x55 } else { 0xaa })?.into_image()
 }
 
 /// Gigascreen: two 6912-byte screens shown in alternation.
@@ -54,11 +54,13 @@ pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let frames = data.as_chunks::<SCR_LEN>().0.iter().map(|scr| {
-        let mut frame = Frame::new(WIDTH, HEIGHT);
+        let mut frame = Frame::new(WIDTH, HEIGHT)?;
         draw_scr(&mut frame, 0, 0, scr);
-        frame
+        Ok(frame)
     });
-    Ok(blend(&frames.collect::<alloc::vec::Vec<_>>()))
+    Ok(blend(
+        &frames.collect::<Result<alloc::vec::Vec<_>, DecodeError>>()?,
+    ))
 }
 
 /// LCE (zx-image): two 6912-byte screens shown at once on an interlaced
@@ -69,14 +71,11 @@ pub(super) fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (first, second) = data.split_at(SCR_LEN);
     let field = |scr| {
-        let mut frame = Frame::new(WIDTH, HEIGHT);
+        let mut frame = Frame::new(WIDTH, HEIGHT)?;
         draw_scr(&mut frame, 0, 0, scr);
         frame.into_image()
     };
-    Ok(super::super::sam_coupe::interlace(&[
-        field(first),
-        field(second),
-    ]))
+    super::super::sam_coupe::interlace(&[field(first)?, field(second)?])
 }
 
 const HLR_LEN: usize = 1628;
@@ -95,7 +94,9 @@ pub(super) fn decode_hlr(data: &[u8]) -> Result<Image, DecodeError> {
         .0
         .iter()
         .map(|attributes| attribute_frame(attributes, 8, |_, y| pattern[y % 8]));
-    Ok(blend(&frames.collect::<alloc::vec::Vec<_>>()))
+    Ok(blend(
+        &frames.collect::<Result<alloc::vec::Vec<_>, DecodeError>>()?,
+    ))
 }
 
 const STL_LEN: usize = 3072;
@@ -106,7 +107,7 @@ pub(super) fn decode_stl(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != STL_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let frames = [0, 2].map(|first| {
+    let frame = |first: usize| {
         let attributes: alloc::vec::Vec<u8> = data
             .as_chunks::<4>()
             .0
@@ -114,8 +115,8 @@ pub(super) fn decode_stl(data: &[u8]) -> Result<Image, DecodeError> {
             .flat_map(|group| [group[first], group[first + 1]])
             .collect();
         attribute_frame(&attributes, 4, |_, _| 0x0f)
-    });
-    Ok(blend(&frames))
+    };
+    Ok(blend(&[frame(0)?, frame(2)?]))
 }
 
 /// A frame of attribute cells `cell_height` pixels high, row-major, over a
@@ -124,12 +125,12 @@ fn attribute_frame(
     attributes: &[u8],
     cell_height: usize,
     pattern: impl Fn(usize, usize) -> u8,
-) -> Frame {
-    let mut frame = Frame::new(WIDTH, HEIGHT);
+) -> Result<Frame, DecodeError> {
+    let mut frame = Frame::new(WIDTH, HEIGHT)?;
     frame.draw_screen(0, 0, pattern, |column, y, ink| {
         attribute_color(attributes[y / cell_height * COLUMNS + column], ink)
     });
-    frame
+    Ok(frame)
 }
 
 const TRICOLOR_LEN: usize = 3 * BITMAP_LEN;
@@ -152,7 +153,7 @@ fn decode_tricolor(data: &[u8], channels: [u32; 3]) -> Result<Image, DecodeError
     if data.len() != TRICOLOR_LEN {
         return Err(DecodeError::Unrecognized);
     }
-    let mut frame = Frame::new(WIDTH, HEIGHT);
+    let mut frame = Frame::new(WIDTH, HEIGHT)?;
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             let offset = bitmap_offset(y) + x / 8;
@@ -166,5 +167,5 @@ fn decode_tricolor(data: &[u8], channels: [u32; 3]) -> Result<Image, DecodeError
             frame.set(x, y, color);
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }

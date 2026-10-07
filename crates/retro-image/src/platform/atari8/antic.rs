@@ -42,7 +42,7 @@ impl Bitmap<'_> {
         pixel_height: u32,
         color: impl Fn(usize, u8) -> u32,
     ) -> Result<Image, DecodeError> {
-        let mut image = Image::new(self.width() as u32, self.lines as u32);
+        let mut image = Image::new(self.width() as u32, self.lines as u32)?;
         for y in 0..self.lines {
             for x in 0..self.width() {
                 image.set(x as u32, y as u32, color(y, self.pixel(x, y)));

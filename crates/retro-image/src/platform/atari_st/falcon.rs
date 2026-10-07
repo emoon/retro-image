@@ -45,7 +45,7 @@ fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
 fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height * 2)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, pixel) in data.as_chunks::<2>().0.iter().enumerate() {
         let color = rgb565(u16::from_be_bytes([pixel[0], pixel[1]]));
         image.set((i % width) as u32, (i / width) as u32, color);
@@ -57,7 +57,7 @@ fn high_color(data: &[u8], width: usize, height: usize, x_scale: usize) -> Optio
 fn grey(data: &[u8], width: usize, height: usize, level: impl Fn(u8) -> u32) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, &v) in data.iter().enumerate() {
         image.set((i % width) as u32, (i / width) as u32, level(v) * 0x010101);
     }
@@ -300,7 +300,7 @@ fn decode_tre_inner(data: &[u8]) -> Option<Image> {
         }
         raw = !raw;
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, &word) in pixels.iter().take(total).enumerate() {
         image.set((i % width) as u32, (i / width) as u32, rgb565(word));
     }
@@ -372,7 +372,7 @@ fn decode_iim_inner(data: &[u8]) -> Option<Image> {
         4 | 5 => {
             let bytes = if kind == 4 { 3 } else { 4 };
             let body = body.get(..width * height * bytes)?;
-            let mut image = Image::new(width as u32, height as u32);
+            let mut image = Image::new(width as u32, height as u32).ok()?;
             for (i, p) in body.chunks_exact(bytes).enumerate() {
                 let rgb = &p[bytes - 3..];
                 let color = u32::from_be_bytes([0, rgb[0], rgb[1], rgb[2]]);

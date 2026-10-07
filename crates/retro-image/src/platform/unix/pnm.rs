@@ -355,7 +355,7 @@ fn decode_samples(data: &[u8], header: &Header) -> Result<Image, DecodeError> {
         text: Text { data, pos: raster },
         encoding,
     };
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let channel = |source: &mut Samples| source.next().map(|v| u32::from(to_byte(v, maxval)));
     for y in 0..height as u32 {
         for x in 0..width as u32 {

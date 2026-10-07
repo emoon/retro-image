@@ -124,7 +124,7 @@ pub(super) fn decode_gws_exepic(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         planar_pixels(&rows, width, height, row_len, planes, |plane, y| {
             (y * planes + plane) * row_len
-        })
+        })?
         .into_iter()
         .map(|v| v as u8)
         .collect()

@@ -72,7 +72,7 @@ pub(super) fn decode_p(data: &[u8]) -> Result<Image, DecodeError> {
         .and_then(|end| data.get(PROGRAM..end))
         .ok_or(DecodeError::Unrecognized)?;
     let screen = run(program).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(screen.as_flattened()))
+    render(screen.as_flattened())
 }
 
 /// ZXpaintyONE v2.0 `.RAW`: the display file without its leading HALT, 24
@@ -93,7 +93,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
             .ok_or(DecodeError::Unrecognized)?;
         cells.copy_from_slice(text);
     }
-    Ok(render(&codes))
+    render(&codes)
 }
 
 /// ZXpaintyONE `.ZP1`: the 768 character codes as two hex digits each
@@ -107,17 +107,17 @@ pub(super) fn decode_zp1(data: &[u8]) -> Result<Image, DecodeError> {
         let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Unrecognized);
         *code = (hex(pair[0])? << 4 | hex(pair[1])?) as u8;
     }
-    Ok(render(&codes))
+    render(&codes)
 }
 
 /// A 32x24 character screen, row by row; codes 0x40-0x7F and 0xC0-0xFF
 /// show the glyph of their low 6 bits like the others.
-fn render(codes: &[u8]) -> Image {
-    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32);
+fn render(codes: &[u8]) -> Result<Image, DecodeError> {
+    let mut image = Image::new((COLUMNS * 8) as u32, (ROWS * 8) as u32)?;
     for (i, &code) in codes.iter().enumerate() {
         draw_char(&mut image, i % COLUMNS, i / COLUMNS, code);
     }
-    image
+    Ok(image)
 }
 
 /// The screen a picture program prints, or `None` if it isn't one.

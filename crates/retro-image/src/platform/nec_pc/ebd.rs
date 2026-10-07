@@ -40,7 +40,7 @@ pub(in crate::platform) fn decode_ebd(data: &[u8]) -> Result<Image, DecodeError>
     let plane_len = body.len() / 4;
     let indices: Vec<u8> = planar_pixels(body, WIDTH, height, WIDTH / 8, 4, |plane, y| {
         plane * plane_len + y * (WIDTH / 8)
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

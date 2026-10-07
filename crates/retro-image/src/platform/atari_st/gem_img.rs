@@ -101,8 +101,9 @@ fn decode(data: &[u8]) -> Option<Image> {
             y * h.planes + plane
         };
         row * row_len
-    });
-    let mut image = Image::new(h.width as u32, h.height as u32);
+    })
+    .ok()?;
+    let mut image = Image::new(h.width as u32, h.height as u32).ok()?;
     for (y, row) in values.chunks_exact(h.width).enumerate() {
         for (x, &value) in row.iter().enumerate() {
             let index = value as usize;
@@ -153,7 +154,7 @@ fn true_color(data: &[u8], h: &Header) -> Option<Image> {
     let bytes = h.planes.div_ceil(8);
     let line_len = h.width * bytes;
     let bitmap = unpack(data, h.pattern_len, line_len, h.height)?;
-    let mut image = Image::new(h.width as u32, h.height as u32);
+    let mut image = Image::new(h.width as u32, h.height as u32).ok()?;
     for (y, line) in bitmap.chunks_exact(line_len).enumerate() {
         for (x, p) in line.chunks_exact(bytes).enumerate() {
             let color = match bytes {
@@ -174,7 +175,7 @@ fn true_color(data: &[u8], h: &Header) -> Option<Image> {
 /// pattern, solid and repeat records in it.
 fn bgr_literals(data: &[u8], h: &Header) -> Option<Image> {
     let total = h.width * h.height;
-    let mut image = Image::new(h.width as u32, h.height as u32);
+    let mut image = Image::new(h.width as u32, h.height as u32).ok()?;
     let (mut pos, mut pixel) = (0, 0);
     while pixel < total {
         if *data.get(pos)? != 0x80 {

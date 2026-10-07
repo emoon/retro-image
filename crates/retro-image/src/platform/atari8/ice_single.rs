@@ -117,7 +117,7 @@ pub(super) fn decode_ice_single(data: &[u8]) -> Result<Image, DecodeError> {
             _ => 0,
         }
     };
-    let mut image = Image::new(256, 288);
+    let mut image = Image::new(256, 288)?;
     for block in 0..9 {
         let (set_b, set_a) = (block / 3, block % 3);
         for row in 0..4 {

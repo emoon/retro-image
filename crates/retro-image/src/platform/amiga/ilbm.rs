@@ -119,7 +119,7 @@ fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<I
         .unwrap_or_default();
     let line_palettes = LinePalettes::parse(contents, header.height);
     let mode = Mode::detect(&header, camg, palette.len(), layout)?;
-    let mut image = Image::new(header.width as u32, header.height as u32);
+    let mut image = Image::new(header.width as u32, header.height as u32)?;
     for (y, row) in indices.chunks_exact(header.width).enumerate() {
         if let Some(line_palettes) = &line_palettes {
             line_palettes.apply(y, &mut palette);
@@ -299,16 +299,20 @@ fn read_planar(
             Layout::Contiguous => (plane * header.height + y) * row_len,
             _ => (y * stored_planes + plane) * row_len,
         },
-    );
-    let mask = (header.masking == 1 && layout == Layout::Interleaved).then(|| {
+    )?;
+    let mask = if header.masking == 1 && layout == Layout::Interleaved {
         // The mask plane follows the bitplanes of each row.
         let bits = planar_pixels(&data, header.width, header.height, row_len, 1, |_, y| {
             (y * stored_planes + header.planes) * row_len
-        });
-        bits.iter()
-            .map(|&bit| if bit != 0 { 255 } else { 0 })
-            .collect()
-    });
+        })?;
+        Some(
+            bits.iter()
+                .map(|&bit| if bit != 0 { 255 } else { 0 })
+                .collect(),
+        )
+    } else {
+        None
+    };
     Ok((values, mask))
 }
 

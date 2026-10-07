@@ -135,7 +135,7 @@ fn read_icon(data: &[u8]) -> Result<(Image, &[u8]), DecodeError> {
         }
     });
     let rest = &data[ICON_HEADER_LEN + 2 * size..];
-    Ok((Image::from_argb(width as u32, height as u32, pixels), rest))
+    Ok((Image::from_argb(width as u32, height as u32, pixels)?, rest))
 }
 
 #[cfg(test)]

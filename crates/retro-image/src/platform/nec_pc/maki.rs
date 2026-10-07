@@ -230,8 +230,13 @@ fn indexed(
     Image::from_indexed(width as u32, unpacked.height as u32, &indices, palette)
 }
 
-fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> Image {
-    let mut image = Image::new(width as u32, unpacked.height as u32);
+fn yjk_pixels(
+    unpacked: &Unpacked,
+    width: usize,
+    yae: bool,
+    palette: &[u32],
+) -> Result<Image, DecodeError> {
+    let mut image = Image::new(width as u32, unpacked.height as u32)?;
     let mut pal16 = [0; 16];
     for (dst, src) in pal16.iter_mut().zip(palette) {
         *dst = *src;
@@ -252,7 +257,7 @@ fn yjk_pixels(unpacked: &Unpacked, width: usize, yae: bool, palette: &[u32]) -> 
             }
         }
     }
-    image
+    Ok(image)
 }
 
 fn msx_picture(
@@ -270,7 +275,7 @@ fn msx_picture(
         // Screens 10/11 (YAE) and 12 (YJK): one byte per pixel.
         2 | 4 => {
             let width = unpacked.width * bpp / 8;
-            yjk_pixels(unpacked, width, screen == 2, palette)
+            yjk_pixels(unpacked, width, screen == 2, palette)?
         }
         // Screen 6: 2-bit pixels whatever the stored depth.
         6 => indexed(unpacked, 2, unpacked.width * bpp / 2, palette)?,

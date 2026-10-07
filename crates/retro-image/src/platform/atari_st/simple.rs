@@ -171,7 +171,7 @@ fn decode_palette_master(data: &[u8]) -> Option<Image> {
         }
         palettes.push((usize::from(record[0]), record));
     }
-    let mut image = Image::new(320, 200);
+    let mut image = Image::new(320, 200).ok()?;
     for y in 0..200 {
         let (_, palette) = palettes.iter().rev().find(|(line, _)| *line <= y)?;
         let line = &data[y * 160..(y + 1) * 160];
@@ -193,7 +193,7 @@ fn decode_gfa_artist_rasters(data: &[u8]) -> Option<Image> {
         return None;
     }
     let palettes = super::common::words(data.get(32004..32004 + 70 * 32)?);
-    let mut image = Image::new(320, 200);
+    let mut image = Image::new(320, 200).ok()?;
     for y in 0..200usize {
         let palette = &palettes[(2 + y.div_ceil(3)) * 16..][..16];
         let line = &data[4 + y * 160..4 + (y + 1) * 160];
@@ -302,7 +302,7 @@ pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
         &st_palette(&words(data, 4)?),
         1,
     );
-    ok(image.map(|image| super::common::crop(&image, width.into(), height.into())))
+    ok(image.and_then(|image| super::common::crop(&image, width.into(), height.into()).ok()))
 }
 
 /// DeskPic: `GF25`, colors, width, height, data size (longs), word-
@@ -418,7 +418,7 @@ fn image_manager_side(len: usize, planes: usize) -> Result<usize, DecodeError> {
 /// sample files and `recoil2png` output).
 pub(super) fn decode_im(data: &[u8]) -> Result<Image, DecodeError> {
     let side = image_manager_side(data.len(), 1)?;
-    let mut image = Image::new(side as u32, side as u32);
+    let mut image = Image::new(side as u32, side as u32)?;
     for (i, &v) in data.iter().enumerate() {
         image.set(
             (i % side) as u32,
@@ -435,7 +435,7 @@ pub(super) fn decode_im(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_aim_col(data: &[u8]) -> Result<Image, DecodeError> {
     let side = image_manager_side(data.len(), 4)?;
     let n = side * side;
-    let mut image = Image::new(side as u32, side as u32);
+    let mut image = Image::new(side as u32, side as u32)?;
     for i in 0..n {
         let color = u32::from_be_bytes([0, data[n + i], data[2 * n + i], data[3 * n + i]]);
         image.set((i % side) as u32, (i / side) as u32, color);
@@ -478,7 +478,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let gun = |i: usize| &data[i * DEGAS_LEN + 34..(i + 1) * DEGAS_LEN];
     let (red, green, blue) = (gun(0), gun(1), gun(2));
-    let mut image = Image::new(320, 200);
+    let mut image = Image::new(320, 200)?;
     for y in 0..200u32 {
         let start = y as usize * 160;
         for x in 0..320 {

@@ -61,7 +61,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     Some(if padded == width {
         image
     } else {
-        crop(&image, width, height)
+        crop(&image, width, height).ok()?
     })
 }
 

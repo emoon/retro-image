@@ -112,11 +112,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
         Some(len) => external_palette(companions, len).unwrap_or_else(|| gray_ramp(len)),
     };
     let argb = gx::decode(format, width, height, body, &palette).ok_or(fail)?;
-    Ok(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 
 /// The first `len` colors of the `.gvp` palette next to the texture.

@@ -97,7 +97,7 @@ fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = rows.iter().flat_map(|row| {
         (0..row.height()).flat_map(move |y| (0..row.width()).map(move |x| row.get_argb(x, y)))
     });
-    Ok(Image::from_argb(width, height, pixels))
+    Image::from_argb(width, height, pixels)
 }
 
 #[cfg(test)]

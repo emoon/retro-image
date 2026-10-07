@@ -25,7 +25,7 @@ pub(in crate::platform::atari8) fn decode_vsc(
         return Err(DecodeError::Unrecognized);
     }
     check_size(WIDTH, LINES * names.len())?;
-    let mut stacked = Image::new(WIDTH as u32, (LINES * names.len()) as u32);
+    let mut stacked = Image::new(WIDTH as u32, (LINES * names.len()) as u32)?;
     for (index, name) in names.into_iter().enumerate() {
         let name = core::str::from_utf8(name).map_err(|_| DecodeError::Unrecognized)?;
         let file = companions

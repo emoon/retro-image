@@ -220,7 +220,7 @@ fn render_page(
     if height == 0 {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(mode.screen_width() as u32, height as u32);
+    let mut image = Image::new(mode.screen_width() as u32, height as u32)?;
     draw_packed(mode, vram.bytes(), &mut image, palette);
     if sprites {
         draw_sprites_if_dumped(mode, vram, &mut image, palette);
@@ -350,7 +350,7 @@ pub(super) fn decode_bitmap_dump(
 /// 256-pixel modes so that pixels keep their shape.
 fn interlace(mode: Bitmap, even: &Image, odd: &Image) -> Result<Image, DecodeError> {
     let (width, height) = (even.width(), even.height());
-    let mut image = Image::new(width, height * 2);
+    let mut image = Image::new(width, height * 2)?;
     for y in 0..height * 2 {
         let page = if y % 2 == 0 { even } else { odd };
         for x in 0..width {
@@ -446,7 +446,7 @@ pub(super) fn decode_sri(data: &[u8], companions: &dyn Companions) -> Result<Ima
     }
     let mode = Bitmap::Graphic6;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
-    let mut image = Image::new(mode.screen_width() as u32, 424);
+    let mut image = Image::new(mode.screen_width() as u32, 424)?;
     draw_packed(mode, data, &mut image, &palette);
     Ok(image)
 }
@@ -484,7 +484,7 @@ pub(super) fn decode_dot_designer(
     let mode = Bitmap::Graphic4;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     let width = unpacked.bytes_per_line * 2;
-    let mut image = Image::new(width as u32, unpacked.lines as u32);
+    let mut image = Image::new(width as u32, unpacked.lines as u32)?;
     draw_packed(mode, &unpacked.bitmap, &mut image, &palette);
     Ok(image)
 }
@@ -508,7 +508,7 @@ pub(super) fn decode_copy(
     if pixels.len() < needed {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     draw_packed(mode, pixels, &mut image, &palette);
     mode.output(image)
@@ -552,7 +552,7 @@ pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, Decod
         Tiled::Graphic3 => vram.loaded() >= 0x4000,
         _ => vram.loaded() == 0x4000,
     };
-    Ok(render_tiled(mode, &vram, &palette, with_sprites))
+    render_tiled(mode, &vram, &palette, with_sprites)
 }
 
 /// Writes BASIC's Screen 3 name table: each pattern covers 4 character rows.
@@ -563,8 +563,13 @@ pub(super) fn set_basic_multicolour_names(vram: &mut Vram) {
 }
 
 /// Renders a pattern-based screen from its standard VRAM tables.
-pub(super) fn render_tiled(mode: Tiled, vram: &Vram, palette: &Palette, sprites: bool) -> Image {
-    let mut image = Image::new(256, 192);
+pub(super) fn render_tiled(
+    mode: Tiled,
+    vram: &Vram,
+    palette: &Palette,
+    sprites: bool,
+) -> Result<Image, DecodeError> {
+    let mut image = Image::new(256, 192)?;
     for y in 0..192 {
         for x in 0..256 {
             let cell = y / 8 * 32 + x / 8;
@@ -610,7 +615,7 @@ pub(super) fn render_tiled(mode: Tiled, vram: &Vram, palette: &Palette, sprites:
             }
         }
     }
-    image
+    Ok(image)
 }
 
 #[cfg(test)]

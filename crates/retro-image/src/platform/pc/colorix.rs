@@ -107,7 +107,7 @@ pub(super) fn decode_rix(data: &[u8]) -> Result<Image, DecodeError> {
         data.get(pos..pos + len).ok_or(fail)?.to_vec()
     };
     let indices = if planar {
-        planar_rows(&pixels, width, height, row_len)
+        planar_rows(&pixels, width, height, row_len)?
     } else {
         pixels
     };
@@ -139,24 +139,28 @@ pub(super) fn decode_ega_scr(data: &[u8]) -> Result<Image, DecodeError> {
     for (entry, &index) in palette.iter_mut().zip(data) {
         *entry = ega_64(index & 0x3f);
     }
-    let indices: Vec<u8> = planar_pixels(&pixels, EGA_WIDTH, EGA_HEIGHT, row_len, 4, |plane, y| {
-        plane * plane_len + y * row_len
-    })
-    .into_iter()
-    .map(|v| v as u8)
-    .collect();
+    let indices: Vec<u8> =
+        planar_pixels(&pixels, EGA_WIDTH, EGA_HEIGHT, row_len, 4, |plane, y| {
+            plane * plane_len + y * row_len
+        })?
+        .into_iter()
+        .map(|v| v as u8)
+        .collect();
     Image::from_indexed(EGA_WIDTH as u32, EGA_HEIGHT as u32, &indices, &palette)
 }
 
 /// Pixel indices of 4-bit rows holding their 4 planes one after the other.
-fn planar_rows(pixels: &[u8], width: usize, height: usize, row_len: usize) -> Vec<u8> {
+fn planar_rows(
+    pixels: &[u8],
+    width: usize,
+    height: usize,
+    row_len: usize,
+) -> Result<Vec<u8>, DecodeError> {
     let plane_len = row_len / 4;
-    planar_pixels(pixels, width, height, plane_len, 4, |plane, y| {
+    let values = planar_pixels(pixels, width, height, plane_len, 4, |plane, y| {
         y * row_len + plane * plane_len
-    })
-    .into_iter()
-    .map(|v| v as u8)
-    .collect()
+    })?;
+    Ok(values.into_iter().map(|v| v as u8).collect())
 }
 
 /// A node of the Huffman table is a branch.

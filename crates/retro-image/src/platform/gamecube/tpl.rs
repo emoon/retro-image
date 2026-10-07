@@ -63,11 +63,7 @@ pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let pixels = data.get(pixels_at..).ok_or(fail)?;
     let argb = gx::decode(format, width, height, pixels, &palette).ok_or(fail)?;
-    Ok(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 
 #[cfg(test)]

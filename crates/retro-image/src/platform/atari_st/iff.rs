@@ -128,7 +128,7 @@ fn decode(data: &[u8]) -> Option<Image> {
     if line_palettes.is_some() && h.planes > 4 {
         return None;
     }
-    let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32);
+    let mut image = Image::new(h.width as u32, (h.height * y_scale) as u32).ok()?;
     for (y, line) in bitmap.chunks_exact(row_len * h.planes).enumerate() {
         for x in 0..h.width {
             let mut index = 0;

@@ -245,7 +245,7 @@ pub(super) fn decode_pix(data: &[u8]) -> Result<Image, DecodeError> {
             row_len,
             planes,
             |plane, y| (plane * rows + y) * row_len,
-        );
+        )?;
         let visible = tile_columns.min(width - left);
         for (y, row) in values.chunks_exact(tile_columns).enumerate() {
             let start = (top + y) * width + left;

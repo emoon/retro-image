@@ -359,11 +359,7 @@ fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, Dec
             }
         }
     }
-    Ok(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 
 /// The first `len` colors of the `.pvp` file next to the texture, or a ramp of

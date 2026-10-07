@@ -98,7 +98,7 @@ fn decode(data: &[u8], vbxe: Option<bool>) -> Result<Image, DecodeError> {
     if vbxe.is_some_and(|vbxe| picture.vbxe.is_some() != vbxe) {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(picture.render())
+    picture.render()
 }
 
 fn parse(raw: &[u8]) -> Option<Picture<'_>> {

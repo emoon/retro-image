@@ -219,7 +219,7 @@ fn decode_palette(data: &[u8]) -> Result<Image, DecodeError> {
             .copied()
             .unwrap_or(0)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// The character set `data`, drawn as the screen of its `.nscr` companion if

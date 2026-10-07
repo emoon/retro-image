@@ -54,7 +54,7 @@ pub(super) fn decode_cgx(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (width, height) = (columns * 320, rows * 200);
     check_size(width, height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (i, frame) in frames.chunks_exact(frame_len).enumerate() {
         let (bitmap, rest) = frame.split_at(BITMAP_LEN);
         let (screen, rest) = rest.split_at(SCREEN_LEN);

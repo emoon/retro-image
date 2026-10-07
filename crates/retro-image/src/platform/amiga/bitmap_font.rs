@@ -217,7 +217,7 @@ impl Font {
         let rows = self.high / COLUMNS - self.low / COLUMNS + 1;
         check_size(COLUMNS * cell_w, rows * cell_h)?;
         let (width, height) = ((COLUMNS * cell_w) as u32, (rows * cell_h) as u32);
-        let mut image = Image::from_argb(width, height, core::iter::repeat(CLEAR));
+        let mut image = Image::from_argb(width, height, core::iter::repeat(CLEAR))?;
         for (i, &(offset, width)) in glyphs.iter().enumerate() {
             let code = self.low + i;
             let left = (code % COLUMNS) * cell_w + MARGIN;

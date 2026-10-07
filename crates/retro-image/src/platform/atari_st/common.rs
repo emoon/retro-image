@@ -13,6 +13,7 @@
 //!   12-bit STE (4-bit components times 0x11); medium resolution is shown
 //!   with every line doubled.
 
+use crate::DecodeError;
 use alloc::vec::Vec;
 
 use crate::bytes::be16;
@@ -151,7 +152,7 @@ pub(super) fn decode_screen_by_line(
     let (width, height) = (resolution.width(), resolution.height());
     let bitmap = bitmap.get(..SCREEN_LEN)?;
     let indices = interleaved_indices(bitmap, width, height, resolution.planes());
-    let mut image = Image::new(width, height);
+    let mut image = Image::new(width, height).ok()?;
     for (y, line) in indices.chunks_exact(width as usize).enumerate() {
         let colors = palette(y)?;
         for (x, &index) in line.iter().enumerate() {
@@ -237,14 +238,14 @@ pub(super) fn words(data: &[u8]) -> Vec<u16> {
 }
 
 /// Copies the top-left `width` x `height` pixels of `image`.
-pub(super) fn crop(image: &Image, width: u32, height: u32) -> Image {
-    let mut out = Image::new(width, height);
+pub(super) fn crop(image: &Image, width: u32, height: u32) -> Result<Image, DecodeError> {
+    let mut out = Image::new(width, height)?;
     for y in 0..height.min(image.height()) {
         for x in 0..width.min(image.width()) {
             out.set(x, y, image.get(x, y));
         }
     }
-    out
+    Ok(out)
 }
 
 /// VDI intensity (0-1000) to 8 bits, truncating (observed from

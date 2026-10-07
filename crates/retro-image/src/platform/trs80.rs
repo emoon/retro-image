@@ -118,7 +118,7 @@ fn decode_rle(data: &[u8]) -> Result<Image, DecodeError> {
     if runs.iter().any(|c| !(0x20..=0x7f).contains(c)) || shortfall > usize::from(end.is_some()) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(width, height);
+    let mut image = Image::new(width, height)?;
     let mut pos = 0;
     let mut foreground = false;
     let mut color = 0;

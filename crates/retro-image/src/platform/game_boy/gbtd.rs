@@ -258,7 +258,7 @@ pub(super) fn decode_gbr(data: &[u8]) -> Result<Image, DecodeError> {
         let tile = y / set.height * columns + x / set.width;
         set.color(&Cell::plain(tile), x % set.width, y % set.height)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 pub(super) fn decode_gbm(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
@@ -305,7 +305,7 @@ pub(super) fn decode_gbm(data: &[u8], companions: &dyn Companions) -> Result<Ima
         let cell = Cell::from_record(&records[cell * 3..cell * 3 + 3]);
         set.color(&cell, x % set.width, y % set.height)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// The GBR a map names (its path's last component), else the GBR next to

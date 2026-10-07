@@ -128,9 +128,5 @@ fn sprites(bank: &[u8]) -> Result<Image, DecodeError> {
             }
         }
     }
-    Ok(Image::from_colors(
-        width as u32,
-        height as u32,
-        pixels.into_iter(),
-    ))
+    Image::from_colors(width as u32, height as u32, pixels.into_iter())
 }

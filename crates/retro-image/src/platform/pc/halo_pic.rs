@@ -165,7 +165,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
             row_len,
             4,
             |plane, y| plane * found.plane_len + y * row_len,
-        );
+        )?;
         let indices: Vec<u8> = values.into_iter().map(|v| v as u8).collect();
         return Image::from_indexed(width, height, &indices, &CGA_PALETTE);
     }

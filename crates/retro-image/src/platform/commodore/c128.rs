@@ -89,7 +89,7 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(b"COLR")
         .ok_or(DecodeError::Unrecognized)?;
     let (colors, _) = unpack(packed, columns * attribute_rows).ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new((columns * 8) as u32, height as u32);
+    let mut image = Image::new((columns * 8) as u32, height as u32)?;
     for y in 0..height {
         let row = if interlaced {
             y / (2 * cell_height) * 2 + y % 2

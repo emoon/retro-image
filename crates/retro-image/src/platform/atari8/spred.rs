@@ -66,7 +66,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let mut image = Image::new(
         (layout.frames * frame_width - GAP) as u32,
         (layout.lines * repeat) as u32,
-    );
+    )?;
     // Color register of `player` on `line` of `frame`.
     let color = |player: usize, frame: usize, line: usize| {
         if layout.per_line {

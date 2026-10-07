@@ -121,8 +121,8 @@ impl Frame {
     }
 
     /// Draws the whole screen with one character set per band.
-    fn render(&self, charsets: &[&[u8]], screen: &[u8]) -> Image {
-        let mut image = Image::new(320, 192);
+    fn render(&self, charsets: &[&[u8]], screen: &[u8]) -> Result<Image, DecodeError> {
+        let mut image = Image::new(320, 192)?;
         for (index, &code) in screen.iter().enumerate() {
             let (row, column) = (index / 40, index % 40);
             let glyph_start = usize::from(code & 0x7f) * 8;
@@ -133,7 +133,7 @@ impl Frame {
                 }
             }
         }
-        image
+        Ok(image)
     }
 }
 
@@ -174,12 +174,12 @@ impl<'a> Parts<'a> {
     }
 
     /// The blend of the two frames.
-    fn render(&self, frames: [Frame; 2]) -> Image {
+    fn render(&self, frames: [Frame; 2]) -> Result<Image, DecodeError> {
         let [first, second] = frames;
-        Image::blend(&[
-            &first.render(&self.sets[0], self.screens[0]),
-            &second.render(&self.sets[1], self.screens[1]),
-        ])
+        Ok(Image::blend(&[
+            &first.render(&self.sets[0], self.screens[0])?,
+            &second.render(&self.sets[1], self.screens[1])?,
+        ]))
     }
 }
 
@@ -188,10 +188,10 @@ impl<'a> Parts<'a> {
 pub(super) fn decode_imn(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 6, 1, 1)?;
     let h = parts.header;
-    Ok(parts.render([
+    parts.render([
         Frame::antic4([h[1], h[2], h[3], h[4], h[5]]),
         Frame::mode9(h[1]),
-    ]))
+    ])
 }
 
 /// ICE CIN (`.ICN`): version 1, background, playfield 0-3. The first frame
@@ -201,7 +201,7 @@ pub(super) fn decode_imn(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 6, 1, 1)?;
     let h = parts.header;
-    Ok(parts.render([
+    parts.render([
         Frame::antic4([0, h[2], h[3], h[4], h[5]]),
         Frame::Gtia(core::array::from_fn(|v| {
             register_rgb(if v == 0 {
@@ -210,7 +210,7 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
                 h[1] | (v as u8) << 4
             })
         })),
-    ]))
+    ])
 }
 
 /// ICE PCIN (`.IPC`): version 1, then the registers COLPM0-3, COLPF0-3 and
@@ -219,12 +219,12 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_ipc(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 10, 1, 1)?;
     let h = parts.header;
-    Ok(parts.render(pcin_frames(
+    parts.render(pcin_frames(
         [h[1], h[2], h[3], h[4]],
         [h[5], h[6], h[7], h[8]],
         [h[5], h[6], h[7], h[8]],
         h[9],
-    )))
+    ))
 }
 
 /// ICE PCIN+ (`.IP2`): like PCIN, but the playfield colors of the two
@@ -233,12 +233,12 @@ pub(super) fn decode_ipc(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_ip2(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 14, 1, 1)?;
     let h = parts.header;
-    Ok(parts.render(pcin_frames(
+    parts.render(pcin_frames(
         [h[1], h[2], h[3], h[4]],
         [h[5], h[7], h[9], h[11]],
         [h[6], h[8], h[10], h[12]],
         h[13],
-    )))
+    ))
 }
 
 /// Mode 4 with playfield `first`, then mode 10 with `second`. In mode 10
@@ -262,10 +262,10 @@ fn pcin_frames(player: [u8; 4], first: [u8; 4], second: [u8; 4], background: u8)
 pub(super) fn decode_irg(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 6, 1, 2)?;
     let h = parts.header;
-    Ok(parts.render([
+    parts.render([
         Frame::antic4([h[1], h[2], h[3], h[4], h[5]]),
         Frame::antic4([h[1], h[2], h[3], h[4], h[5]]),
-    ]))
+    ])
 }
 
 /// Super IRG 2 (`.IR2`): like IRG, but the playfield colors of the two
@@ -274,10 +274,10 @@ pub(super) fn decode_irg(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_ir2(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 10, 1, 2)?;
     let h = parts.header;
-    Ok(parts.render([
+    parts.render([
         Frame::antic4([h[1], h[2], h[4], h[6], h[8]]),
         Frame::antic4([h[1], h[3], h[5], h[7], h[9]]),
-    ]))
+    ])
 }
 
 /// DIN: version 3, background, the text luminance of the first (mode 2)
@@ -285,7 +285,7 @@ pub(super) fn decode_ir2(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_din(data: &[u8]) -> Result<Image, DecodeError> {
     let parts = Parts::new(data, 7, 3, 1)?;
     let h = parts.header;
-    Ok(parts.render(din_frames(h)))
+    parts.render(din_frames(h))
 }
 
 /// The hires frame (text on the background's hue) and the mode 4 frame of
@@ -328,7 +328,7 @@ pub(super) fn decode_ice(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (header, sets) = data.split_at(header_len);
     let frames = frames(header);
-    let mut image = Image::new(32 * 8, 4 * 32);
+    let mut image = Image::new(32 * 8, 4 * 32)?;
     for (block, (first, second)) in VARIANTS.into_iter().enumerate() {
         for (row, first_code) in ROW_CODES.into_iter().enumerate() {
             for column in 0..32 {

@@ -273,7 +273,12 @@ fn expand_run_length(block: &[u8], marker: u8, limit: usize, out: &mut Vec<u8>) 
 
 /// Palette indices of the pixels, top row first (the file stores them
 /// bottom-up). `pixels` holds `layout.data_len(width, height)` bytes.
-fn indices(pixels: &[u8], width: usize, height: usize, layout: Layout) -> Vec<u8> {
+fn indices(
+    pixels: &[u8],
+    width: usize,
+    height: usize,
+    layout: Layout,
+) -> Result<Vec<u8>, DecodeError> {
     let row_len = layout.row_len(width);
     let stored: Vec<u8> = match layout {
         Layout::Packed(bpp) => {
@@ -289,20 +294,18 @@ fn indices(pixels: &[u8], width: usize, height: usize, layout: Layout) -> Vec<u8
         }
         Layout::Planar(planes) => {
             let stride = row_len * height;
-            planar_pixels(pixels, width, height, row_len, planes, |plane, y| {
+            let values = planar_pixels(pixels, width, height, row_len, planes, |plane, y| {
                 plane * stride + y * row_len
-            })
-            .into_iter()
-            .map(|v| v as u8)
-            .collect()
+            })?;
+            values.into_iter().map(|v| v as u8).collect()
         }
     };
-    stored
+    Ok(stored
         .chunks_exact(width)
         .rev()
         .flatten()
         .copied()
-        .collect()
+        .collect())
 }
 
 fn render(
@@ -317,7 +320,7 @@ fn render(
     }
     let colors = layout.colors();
     let palette = palette(colors, info);
-    let indices = indices(pixels, width, height, layout);
+    let indices = indices(pixels, width, height, layout)?;
     Image::from_indexed(width as u32, height as u32, &indices, &palette[..colors])
 }
 

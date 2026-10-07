@@ -171,7 +171,7 @@ pub(super) fn decode_utah_rle(data: &[u8]) -> Result<Image, DecodeError> {
     let ops = data.get(pos..).ok_or(FAIL)?;
 
     let mut canvas = Canvas {
-        image: Image::new(width as u32, height as u32),
+        image: Image::new(width as u32, height as u32)?,
         alpha: (flags & ALPHA != 0).then(|| alloc::vec![0; width * height]),
         colors,
     };

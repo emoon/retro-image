@@ -55,7 +55,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let pixels = unpack(packed, width * height)?;
-    let mut image = Image::new(4 * width as u32, height as u32);
+    let mut image = Image::new(4 * width as u32, height as u32)?;
     for x in 0..4 * width {
         for y in 0..height {
             let [a, b, c] = pixels[x / 4 * height + y];

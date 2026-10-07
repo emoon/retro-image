@@ -130,7 +130,7 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
     // Each line stores its planes from the highest bit down.
     let indices: Vec<u8> = planar_pixels(&lines, WIDTH, height, PLANE_BYTES, 4, |plane, y| {
         y * LINE_BYTES + (3 - plane) * PLANE_BYTES
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

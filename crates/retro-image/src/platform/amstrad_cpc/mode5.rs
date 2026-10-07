@@ -37,7 +37,7 @@ pub(super) fn decode_cm5(data: &[u8], companions: &dyn Companions) -> Result<Ima
     if colors.len() != CM5_LEN || gfx.len() != GFX_LEN || !colors.iter().all(valid) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         let line = &gfx[y * LINE_BYTES..][..LINE_BYTES];
         let line_colors = &colors[1 + y * LINE_COLORS..][..LINE_COLORS];

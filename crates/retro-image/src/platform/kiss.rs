@@ -219,7 +219,7 @@ fn picture(cel: &Cel, companions: &dyn Companions) -> Result<Image, DecodeError>
         cel.width as u32,
         cel.height as u32,
         core::iter::repeat(CLEAR),
-    );
+    )?;
     cel.draw(&mut image, 0, 0, &palette);
     Ok(image)
 }

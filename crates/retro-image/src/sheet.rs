@@ -50,7 +50,7 @@ impl Sheet {
         check_size(width, height)?;
         let background = core::iter::repeat(CLEAR);
         Ok(Self {
-            image: Image::from_argb(width as u32, height as u32, background),
+            image: Image::from_argb(width as u32, height as u32, background)?,
             columns,
             cell_width,
             cell_height,
@@ -92,7 +92,7 @@ mod tests {
 
     /// A black picture of `width` x `height` pixels.
     fn picture(width: usize, height: usize) -> Image {
-        Image::from_colors(width as u32, height as u32, core::iter::repeat(0x000000))
+        Image::from_colors(width as u32, height as u32, core::iter::repeat(0x000000)).unwrap()
     }
 
     #[test]

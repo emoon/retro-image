@@ -52,7 +52,7 @@ fn render(sprites: &[u8], colors: &Colors, trailing_gap: bool) -> Result<Image, 
     let width = columns * (SPRITE_WIDTH + GAP) - if trailing_gap { 0 } else { GAP };
     let height = rows * (SPRITE_HEIGHT + GAP) - GAP;
     check_size(width, height)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let background = rgb(colors.background);
     for y in 0..height {
         for x in 0..width {

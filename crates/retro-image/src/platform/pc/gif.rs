@@ -140,7 +140,7 @@ pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {
         None => 0xff00_0000,
     };
     let pixels = core::iter::repeat_n(fill, screen_w * screen_h);
-    let mut canvas = Image::from_argb(screen_w as u32, screen_h as u32, pixels);
+    let mut canvas = Image::from_argb(screen_w as u32, screen_h as u32, pixels)?;
     canvas.paste(&frame, left, top, width, height);
     Ok(canvas)
 }

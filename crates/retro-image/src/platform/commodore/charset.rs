@@ -41,7 +41,7 @@ pub(super) fn decode_star_painter_font(data: &[u8]) -> Result<Image, DecodeError
         let rows = record.get(1..).unwrap_or_default();
         glyph[..rows.len()].copy_from_slice(rows);
     }
-    Ok(sheet(&glyphs))
+    sheet(&glyphs)
 }
 
 /// Load address, then up to 256 characters of 8 bytes.
@@ -50,13 +50,13 @@ pub(super) fn decode_font(data: &[u8]) -> Result<Image, DecodeError> {
     if glyphs.is_empty() || glyphs.len() > 256 * 8 {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(sheet(glyphs))
+    sheet(glyphs)
 }
 
 /// Glyphs of 8 bytes, white on black, `PER_ROW` per row.
-fn sheet(glyphs: &[u8]) -> Image {
+fn sheet(glyphs: &[u8]) -> Result<Image, DecodeError> {
     let rows = glyphs.len().div_ceil(8 * PER_ROW);
-    let mut image = Image::new((PER_ROW * 8) as u32, (rows * 8) as u32);
+    let mut image = Image::new((PER_ROW * 8) as u32, (rows * 8) as u32)?;
     for (i, &byte) in glyphs.iter().enumerate() {
         let char = i / 8;
         let x = char % PER_ROW * 8;
@@ -67,5 +67,5 @@ fn sheet(glyphs: &[u8]) -> Image {
             }
         }
     }
-    image
+    Ok(image)
 }

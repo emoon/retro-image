@@ -65,7 +65,7 @@ pub(super) fn decode(kind: Kind, contents: &[u8]) -> Result<Image, DecodeError> 
     if total > body.len().saturating_mul(32768) {
         return Err(fail);
     }
-    let mut image = Image::new(header.width as u32, header.height as u32);
+    let mut image = Image::new(header.width as u32, header.height as u32)?;
     let (mut pos, mut done) = (0, 0);
     while done < total {
         let (color, count, used) = match kind {

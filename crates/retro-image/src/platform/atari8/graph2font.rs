@@ -39,6 +39,7 @@ pub(super) use vsc::decode_vsc;
 
 use super::gtia::{self, Colors, Pmg, WIDTH};
 use super::palette::rgb;
+use crate::DecodeError;
 use crate::Image;
 use alloc::vec::Vec;
 
@@ -105,8 +106,8 @@ struct Line {
 }
 
 impl Picture<'_> {
-    fn render(&self) -> Image {
-        let mut image = Image::new(WIDTH as u32, LINES as u32);
+    fn render(&self) -> Result<Image, DecodeError> {
+        let mut image = Image::new(WIDTH as u32, LINES as u32)?;
         for (y, line) in self.lines.iter().enumerate() {
             let row = self.rows[y / 8];
             let t = line.colors;
@@ -159,7 +160,7 @@ impl Picture<'_> {
                 image.set(x as u32, y as u32, rgb(color));
             }
         }
-        image
+        Ok(image)
     }
 
     /// The playfield at output pixel `x` of scanline `y`.

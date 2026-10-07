@@ -59,7 +59,7 @@ pub(super) fn decode_hcm(data: &[u8]) -> Result<Image, DecodeError> {
         lines: LINES,
         bits: 2,
     };
-    let mut image = Image::new(256, LINES as u32);
+    let mut image = Image::new(256, LINES as u32)?;
     for y in 0..LINES {
         let players = line_players(data, y, mode2);
         for x in 0..128 {

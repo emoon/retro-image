@@ -114,7 +114,7 @@ fn draw(
     let palette = palette.unwrap_or_else(|| gray_ramp(planes));
 
     let is_ham = mode & 0x800 != 0 && planes == 6;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let mut held = 0;
     for y in 0..height {
         let (lump, line) = (y / lump_lines, y % lump_lines);

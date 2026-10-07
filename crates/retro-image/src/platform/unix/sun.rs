@@ -114,7 +114,7 @@ pub(super) fn decode_sun(data: &[u8]) -> Result<Image, DecodeError> {
                 let alpha = if has_alpha { pixel[0] } else { 255 };
                 u32::from(alpha) << 24 | color
             });
-            Ok(Image::from_argb(w, h, colors))
+            Image::from_argb(w, h, colors)
         }
     }
 }

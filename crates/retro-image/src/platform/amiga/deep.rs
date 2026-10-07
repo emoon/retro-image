@@ -65,7 +65,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         5 => unpack_tvdc(contents, body, width, height, count).ok_or(fail)?,
         _ => return Err(fail),
     };
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (i, p) in pixels.chunks_exact(pixel_len).enumerate() {
         let color = u32::from(p[r]) << 16 | u32::from(p[g]) << 8 | u32::from(p[b]);
         image.set((i % width) as u32, (i / width) as u32, color);

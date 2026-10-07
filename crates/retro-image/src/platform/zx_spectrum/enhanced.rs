@@ -39,7 +39,7 @@ pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = data
         .get(bitmap_start..bitmap_start + bitmap_len)
         .ok_or(DecodeError::Unrecognized)?;
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     for y in 0..height {
         for x in 0..width {
             let index = if bits_per_pixel == 8 {
@@ -54,7 +54,7 @@ pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
             frame.set(x, y, tsconf_color(entry));
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// TS-Conf palette entry: 5 bits per channel (red 14-10, green 9-5, blue

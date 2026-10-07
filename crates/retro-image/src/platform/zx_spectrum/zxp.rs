@@ -39,14 +39,14 @@ pub(super) fn decode_zxp(data: &[u8]) -> Result<Image, DecodeError> {
         rows if height.is_multiple_of(rows) => height / rows,
         _ => return Err(DecodeError::Unrecognized),
     };
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     for (y, row) in rows.iter().enumerate() {
         for (x, &c) in row.iter().enumerate() {
             let attribute = attributes[y / cell_height][x / 8];
             frame.set(x, y, attribute_color(attribute, c == b'1'));
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// A line of `count` space-separated two-digit hex bytes.

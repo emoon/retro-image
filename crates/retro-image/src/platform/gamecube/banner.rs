@@ -158,11 +158,7 @@ fn picture(
             gx::decode(PixelFormat::C8, width, height, pixels, &colors)?
         }
     };
-    Some(Image::from_argb(
-        width as u32,
-        height as u32,
-        argb.into_iter(),
-    ))
+    Image::from_argb(width as u32, height as u32, argb.into_iter()).ok()
 }
 
 #[cfg(test)]

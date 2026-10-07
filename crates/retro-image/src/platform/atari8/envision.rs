@@ -169,7 +169,7 @@ fn render<'a>(
 ) -> Result<Image, DecodeError> {
     let (cell_width, cell_height, _) = mode.cell();
     let height = map.len() / width;
-    let mut image = Image::new(width as u32 * cell_width, height as u32 * cell_height);
+    let mut image = Image::new(width as u32 * cell_width, height as u32 * cell_height)?;
     for (y, codes) in map.chunks_exact(width).enumerate() {
         let font = font_of_row(y).ok_or(DecodeError::Unrecognized)?;
         for (x, &code) in codes.iter().enumerate() {

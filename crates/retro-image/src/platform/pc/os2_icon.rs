@@ -202,7 +202,7 @@ impl<'a> Record<'a> {
         self.mask.height / 2
     }
 
-    fn render(&self) -> Image {
+    fn render(&self) -> Result<Image, DecodeError> {
         let (mask, picture) = (&self.mask, &self.picture);
         let (width, height) = (self.width(), self.height());
         let color = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
@@ -259,7 +259,7 @@ pub(super) fn decode_os2_icon(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         Record::parse(data, 0)?
     };
-    Ok(record.render())
+    record.render()
 }
 
 #[cfg(test)]

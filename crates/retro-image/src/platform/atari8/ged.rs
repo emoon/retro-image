@@ -97,7 +97,7 @@ pub(super) fn decode_ged(data: &[u8]) -> Result<Image, DecodeError> {
         lines: LINES,
         bits: 2,
     };
-    let mut image = Image::new(320, LINES as u32);
+    let mut image = Image::new(320, LINES as u32)?;
     for y in 0..LINES {
         let mut graphics = [None; 5];
         gtia.write(

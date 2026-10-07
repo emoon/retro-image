@@ -164,7 +164,7 @@ pub(super) fn render(
         return Err(fail);
     }
     let rows = rows.min(MAX_PIXELS / row_pixels);
-    let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32);
+    let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32)?;
     // Per cell of the current text row, so its colors are expanded once
     // for all of its pixel lines.
     let mut painted = Vec::with_capacity(width);

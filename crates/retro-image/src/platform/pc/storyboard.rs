@@ -286,7 +286,7 @@ pub(super) fn decode_new(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let values = planar_pixels(&rows, width, height, strips, planes, |plane, y| {
         plane * plane_len + y * strips
-    });
+    })?;
     let indices: Vec<u8> = values.into_iter().map(|v| v as u8).collect();
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }

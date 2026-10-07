@@ -85,7 +85,11 @@ pub(super) fn attribute_colors(byte: u8) -> (usize, usize) {
 }
 
 /// 40 columns: RAMA holds the "forme" bits, RAMB the color bytes.
-pub(super) fn columns40(forme: Columns, couleur: Columns, palette: &[u32; 16]) -> Image {
+pub(super) fn columns40(
+    forme: Columns,
+    couleur: Columns,
+    palette: &[u32; 16],
+) -> Result<Image, DecodeError> {
     draw_bits(forme, palette, |x, y, bit| {
         let (foreground, background) = attribute_colors(couleur.at(x, y));
         if bit { foreground } else { background }
@@ -93,8 +97,12 @@ pub(super) fn columns40(forme: Columns, couleur: Columns, palette: &[u32; 16]) -
 }
 
 /// Bitmap 4: a pixel's color is `2 * RAMA bit + RAMB bit`.
-pub(super) fn bitmap4(rama: Columns, ramb: Columns, palette: &[u32; 16]) -> Image {
-    let mut image = Image::new((rama.count() * 8) as u32, rama.lines as u32);
+pub(super) fn bitmap4(
+    rama: Columns,
+    ramb: Columns,
+    palette: &[u32; 16],
+) -> Result<Image, DecodeError> {
+    let mut image = Image::new((rama.count() * 8) as u32, rama.lines as u32)?;
     for x in 0..rama.count() {
         for y in 0..rama.lines {
             let (a, b) = (rama.at(x, y), ramb.at(x, y));
@@ -104,12 +112,12 @@ pub(super) fn bitmap4(rama: Columns, ramb: Columns, palette: &[u32; 16]) -> Imag
             }
         }
     }
-    image
+    Ok(image)
 }
 
 /// Bitmap 16: two 4-bit pixels per byte, high nibble left, shown 2x1.
 pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Result<Image, DecodeError> {
-    let mut image = Image::new((bytes.count() * 2) as u32, bytes.lines as u32);
+    let mut image = Image::new((bytes.count() * 2) as u32, bytes.lines as u32)?;
     for x in 0..bytes.count() {
         for y in 0..bytes.lines {
             let byte = bytes.at(x, y);
@@ -126,7 +134,7 @@ pub(super) fn bitmap16(bytes: Columns, palette: &[u32; 16]) -> Result<Image, Dec
 
 /// 80 columns: set bits in color 1, clear bits in color 0, shown 1x2.
 pub(super) fn columns80(bytes: Columns, palette: &[u32; 16]) -> Result<Image, DecodeError> {
-    draw_bits(bytes, palette, |_, _, bit| usize::from(bit)).scaled(1, 2)
+    draw_bits(bytes, palette, |_, _, bit| usize::from(bit))?.scaled(1, 2)
 }
 
 /// 8 pixels per byte, MSB left; `color(x, y, bit)` picks the palette index
@@ -135,8 +143,8 @@ fn draw_bits(
     bytes: Columns,
     palette: &[u32; 16],
     color: impl Fn(usize, usize, bool) -> usize,
-) -> Image {
-    let mut image = Image::new((bytes.count() * 8) as u32, bytes.lines as u32);
+) -> Result<Image, DecodeError> {
+    let mut image = Image::new((bytes.count() * 8) as u32, bytes.lines as u32)?;
     for x in 0..bytes.count() {
         for y in 0..bytes.lines {
             let byte = bytes.at(x, y);
@@ -146,7 +154,7 @@ fn draw_bits(
             }
         }
     }
-    image
+    Ok(image)
 }
 
 #[cfg(test)]
@@ -181,7 +189,8 @@ mod tests {
                 lines: 1,
             },
             &PALETTE,
-        );
+        )
+        .unwrap();
         assert_eq!((image.width(), image.height()), (8, 1));
         let row: [u32; 8] = core::array::from_fn(|x| image.get(x as u32, 0));
         assert_eq!(row, [1, 2, 2, 2, 2, 2, 2, 1]);
@@ -199,7 +208,8 @@ mod tests {
                 lines: 1,
             },
             &PALETTE,
-        );
+        )
+        .unwrap();
         let row: [u32; 4] = core::array::from_fn(|x| image.get(x as u32, 0));
         assert_eq!(row, [3, 2, 1, 0]);
     }

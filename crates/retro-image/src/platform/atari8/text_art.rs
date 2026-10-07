@@ -52,7 +52,7 @@ pub(super) fn decode_ascii_art(data: &[u8]) -> Result<Image, DecodeError> {
             codes[row * width + column] = screen_code(c);
         }
     }
-    Ok(mode2(&codes, width))
+    mode2(&codes, width)
 }
 
 const ALL_HEADER: usize = 24;
@@ -84,7 +84,7 @@ pub(super) fn decode_all(data: &[u8]) -> Result<Image, DecodeError> {
         register(2),
         register(3),
     ];
-    let mut image = Image::new(320, 192);
+    let mut image = Image::new(320, 192)?;
     for (i, &code) in screen.iter().enumerate() {
         let (column, row) = ((i % 40) as u32, (i / 40) as u32);
         let font = &fonts[usize::from(rows[i / 40]) * FONT..][..FONT];

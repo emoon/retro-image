@@ -55,7 +55,7 @@ fn chunky(
 ) -> Option<Image> {
     check_size(width, height).ok()?;
     let data = data.get(..width * height * bytes)?;
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32).ok()?;
     for (i, pixel) in data.chunks_exact(bytes).enumerate() {
         image.set((i % width) as u32, (i / width) as u32, color(pixel));
     }
@@ -259,7 +259,7 @@ fn decode_pnt_inner(data: &[u8]) -> Option<Image> {
     Some(if padded == width {
         image
     } else {
-        super::common::crop(&image, width as u32, image.height())
+        super::common::crop(&image, width as u32, image.height()).ok()?
     })
 }
 

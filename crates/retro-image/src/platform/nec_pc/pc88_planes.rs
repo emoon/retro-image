@@ -31,7 +31,7 @@ pub(super) fn image(blue: &[u8], red: &[u8], green: &[u8]) -> Result<Image, Deco
     let planes = [blue, red, green].concat();
     let indices: Vec<u8> = planar_pixels(&planes, WIDTH, LINES, WIDTH / 8, 3, |plane, y| {
         plane * PLANE_BYTES + y * (WIDTH / 8)
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

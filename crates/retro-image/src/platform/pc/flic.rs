@@ -366,7 +366,7 @@ pub(super) fn decode_flic(data: &[u8]) -> Result<Image, DecodeError> {
     if magic == FLH {
         let mut screen = HiScreen::new(data, width, height, depth)?;
         return if first_picture(data, end, &mut screen) {
-            Ok(screen.into_image())
+            Ok(screen.into_image()?)
         } else {
             Err(FAIL)
         };

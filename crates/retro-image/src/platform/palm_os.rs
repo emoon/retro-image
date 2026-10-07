@@ -126,7 +126,7 @@ fn decode_imageviewer(data: &[u8]) -> Result<Image, DecodeError> {
         let level = 255 - (usize::from(byte >> (8 - bits - bit % 8)) & top) * 255 / top;
         level as u32 * 0x01_0101
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// `size` bytes of ImageViewer compression: a control above 128 repeats the

@@ -218,7 +218,7 @@ impl Painter {
             .iter()
             .enumerate()
             .map(|(i, &pixel)| register_rgb(self.row_colors[i / WIDTH][usize::from(pixel)]));
-        Image::from_colors(WIDTH as u32, HEIGHT as u32, colors).scaled(2, 1)
+        Image::from_colors(WIDTH as u32, HEIGHT as u32, colors)?.scaled(2, 1)
     }
 }
 

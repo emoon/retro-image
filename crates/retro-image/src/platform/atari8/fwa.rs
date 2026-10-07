@@ -59,7 +59,7 @@ pub(super) fn decode_fwa(data: &[u8]) -> Result<Image, DecodeError> {
     // Registers COLBK, COLPF0, COLPF1, COLPF2 as color values.
     let mut colors = [data[2], data[3], data[4], data[5]];
     let mut handlers = handlers.into_iter();
-    let mut image = Image::new(320, LINES as u32);
+    let mut image = Image::new(320, LINES as u32)?;
     for (line, &dli) in interrupts.iter().enumerate() {
         let start = if line < SPLIT {
             SCREEN + 40 * line

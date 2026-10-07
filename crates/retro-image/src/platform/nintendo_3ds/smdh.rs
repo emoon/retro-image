@@ -57,11 +57,11 @@ pub(super) fn icon(block: &[u8]) -> Result<Image, DecodeError> {
         let within = morton_index((x % TILE_SIDE) as u32, (y % TILE_SIDE) as u32) as usize;
         le16(pixels, (tile * TILE_SIDE * TILE_SIDE + within) * 2).map_or(0, rgb565)
     };
-    Ok(Image::from_colors(
+    Image::from_colors(
         SIDE as u32,
         SIDE as u32,
         (0..SIDE).flat_map(|y| (0..SIDE).map(move |x| color(x, y))),
-    ))
+    )
 }
 
 /// An SMDH block whose large icon holds the given 16-bit words at the given

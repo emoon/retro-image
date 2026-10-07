@@ -97,7 +97,7 @@ pub(super) fn decode_mbm(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(FAIL);
     }
     let first = le32(data, table.checked_add(4).ok_or(FAIL)?).ok_or(FAIL)? as usize;
-    Ok(opaque(&read_bitmap(data, first)?))
+    opaque(&read_bitmap(data, first)?)
 }
 
 /// The picture of a Sketch file.
@@ -113,7 +113,7 @@ pub(super) fn decode_sketch(data: &[u8]) -> Result<Image, DecodeError> {
         .and_then(|at| le32(data, at.checked_add(4)?))
         .ok_or(FAIL)? as usize;
     let at = section.checked_add(SKETCH_HEADER_LEN).ok_or(FAIL)?;
-    Ok(opaque(&read_bitmap(data, at)?))
+    opaque(&read_bitmap(data, at)?)
 }
 
 /// The first icon of an application info file, drawn through its mask.
@@ -135,7 +135,7 @@ pub(super) fn decode_aif(data: &[u8]) -> Result<Image, DecodeError> {
         .then(|| read_bitmap(data, first.checked_add(icon.section_len)?).ok())
         .flatten();
     let Some(mask) = mask else {
-        return Ok(opaque(&icon));
+        return opaque(&icon);
     };
     let colors = (0..icon.width * icon.height).map(|i| {
         let (x, y) = (i % icon.width, i / icon.width);
@@ -146,14 +146,10 @@ pub(super) fn decode_aif(data: &[u8]) -> Result<Image, DecodeError> {
         };
         (u32::from(alpha) << 24) | (u32::from(icon.levels[i]) * 0x01_0101)
     });
-    Ok(Image::from_argb(
-        icon.width as u32,
-        icon.height as u32,
-        colors,
-    ))
+    Image::from_argb(icon.width as u32, icon.height as u32, colors)
 }
 
-fn opaque(bitmap: &Gray) -> Image {
+fn opaque(bitmap: &Gray) -> Result<Image, DecodeError> {
     let colors = bitmap.levels.iter().map(|&v| u32::from(v) * 0x01_0101);
     Image::from_colors(bitmap.width as u32, bitmap.height as u32, colors)
 }

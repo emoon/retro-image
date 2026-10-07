@@ -160,7 +160,7 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
         .flatten()
         .filter(|_| mask_at >= HEADER_LEN)
         .and_then(|end| sprite.get(mask_at..end));
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     match format.kind {
         Kind::Indexed => {
             let colors = sprite_palette(palette, bpp);

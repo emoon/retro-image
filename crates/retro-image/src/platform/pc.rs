@@ -410,7 +410,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         planar_pixels(bitmap, width, height, planar_row, 4, |plane, y| {
             (y * 4 + plane) * planar_row
-        })
+        })?
         .into_iter()
         .map(|v| v as u8)
         .collect()

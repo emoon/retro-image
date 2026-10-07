@@ -78,7 +78,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         };
         yuv_to_rgb(i32::from(luma[i]) - 16, u, v)
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 /// BT.601 with `y` already less 16 and `u`, `v` less 128, as `0xRRGGBB`.

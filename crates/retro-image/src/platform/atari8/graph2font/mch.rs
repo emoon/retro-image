@@ -85,7 +85,7 @@ pub(in crate::platform::atari8) fn decode_mch(data: &[u8]) -> Result<Image, Deco
         vbxe: None,
         lines,
     };
-    Ok(picture.render())
+    picture.render()
 }
 
 #[cfg(test)]

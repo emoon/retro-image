@@ -82,7 +82,7 @@ pub(super) fn decode_minipaint(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let colors = Colors::from_registers(data[15], data[16]);
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             let byte = data[BITMAP + x / 8 * HEIGHT + y];
@@ -109,7 +109,7 @@ pub(super) fn decode_best_paint(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let colors = Colors::from_registers(0, data[data.len() - 1]);
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             let byte = data[2 + x / 8 * HEIGHT + y];
@@ -149,7 +149,7 @@ pub(super) fn decode_picasso(
         .ok_or(DecodeError::Unrecognized)?;
     let colors = Colors::from_registers(registers[14], registers[15]);
     let (width, height) = (COLUMNS * 8, ROWS * 16);
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for y in 0..height {
         for x in 0..width {
             let cell = y / 16 * COLUMNS + x / 8;

@@ -121,7 +121,7 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
         _ => false,
     };
     let mut alpha = has_alpha.then(|| alloc::vec![255u8; count]);
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (i, pixel) in raw.chunks_exact(bpp).enumerate() {
         let (color, a) = if mapped {
             let index = usize::from(pixel[0]).checked_sub(map_first).ok_or(fail)?;

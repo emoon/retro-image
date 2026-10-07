@@ -254,7 +254,7 @@ pub(super) fn decode_bru(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 64 || data.iter().any(|&b| b > 1) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(8, 8);
+    let mut image = Image::new(8, 8)?;
     for (i, &b) in data.iter().enumerate() {
         // Set pixels are white (observed from `recoil2png` output).
         image.set(i as u32 % 8, i as u32 / 8, u32::from(b) * 0xffffff);
@@ -373,7 +373,7 @@ pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
         Some(palette) => {
             let padded = (words * 16) as u32;
             planar_image(bitmap, padded, height as u32, 4, &palette, 1)
-                .map(|image| crop(&image, width as u32, height as u32))
+                .and_then(|image| crop(&image, width as u32, height as u32).ok())
         }
     };
     image.ok_or(DecodeError::Unrecognized)

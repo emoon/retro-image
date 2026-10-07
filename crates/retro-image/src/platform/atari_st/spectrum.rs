@@ -73,7 +73,7 @@ fn render(bitmap: &[u8], palettes: &[u16], depth: ColorDepth) -> Option<Image> {
 fn render_lines(bitmap: &[u8], palettes: &[u16], depth: ColorDepth, lines: usize) -> Option<Image> {
     let bitmap = bitmap.get(..lines * LINE_LEN)?;
     let palettes = palettes.get(..lines * 48)?;
-    let mut image = Image::new(320, lines as u32);
+    let mut image = Image::new(320, lines as u32).ok()?;
     for (y, (line, palette)) in bitmap
         .as_chunks::<LINE_LEN>()
         .0

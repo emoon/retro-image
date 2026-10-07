@@ -76,7 +76,7 @@ const CHARS_PER_ROW: usize = 32;
 /// Raw 128-character font; RECOIL also accepts 1 or 2 trailing bytes.
 pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        1024..=1026 => Ok(sheet(&[&data[..1024]])),
+        1024..=1026 => Ok(sheet(&[&data[..1024]])?),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -85,7 +85,7 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
 /// the top half, the second the bottom half.
 pub(super) fn decode_fn2(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
-        2048 => Ok(sheet(&[&data[..1024], &data[1024..]])),
+        2048 => Ok(sheet(&[&data[..1024], &data[1024..]])?),
         _ => Err(DecodeError::Unrecognized),
     }
 }
@@ -96,18 +96,18 @@ pub(super) fn decode_sif(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     const COLORS: [u8; 4] = [0x00, 0x4c, 0xcc, 0x8c];
-    let charset = |font: &[u8]| {
-        let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32);
+    let charset = |font: &[u8]| -> Result<Image, DecodeError> {
+        let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 32)?;
         for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
             let y = (index / CHARS_PER_ROW) as u32 * 8;
             draw_multicolor_glyph(&mut image, x, y, glyph, COLORS);
         }
-        image
+        Ok(image)
     };
     Ok(Image::blend(&[
-        &charset(&data[..1024]),
-        &charset(&data[1024..]),
+        &charset(&data[..1024])?,
+        &charset(&data[1024..])?,
     ]))
 }
 
@@ -119,7 +119,7 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (colors, charset) = data.split_at(4);
     let colors = [colors[0], colors[1], colors[2], colors[3]];
-    let mut image = Image::new(128, 64);
+    let mut image = Image::new(128, 64)?;
     for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
         let (x, y) = ((index % 16) as u32 * 8, (index / 16) as u32 * 8);
         draw_multicolor_glyph(&mut image, x, y, glyph, colors);
@@ -132,7 +132,7 @@ pub(super) fn decode_acs(data: &[u8]) -> Result<Image, DecodeError> {
 /// characters (first charset on top), in grays.
 pub(super) fn decode_jgp(data: &[u8]) -> Result<Image, DecodeError> {
     let charsets = binary_load(data, 2048).ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 64)?;
     for (part, charset) in charsets.as_chunks::<1024>().0.iter().enumerate() {
         for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
             let x = (index % CHARS_PER_ROW) as u32 * 8;
@@ -170,7 +170,7 @@ fn binary_load(data: &[u8], len: usize) -> Option<&[u8]> {
 pub(super) fn decode_sxs(data: &[u8]) -> Result<Image, DecodeError> {
     let font = binary_load(data, 1024).ok_or(DecodeError::Unrecognized)?;
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(256, 32);
+    let mut image = Image::new(256, 32)?;
     for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
         let (big, quarter) = (index / 4, index % 4);
         let x = (big % 16 * 16 + quarter % 2 * 8) as u32;
@@ -189,7 +189,7 @@ pub(super) fn decode_odf(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, 40)?;
     for (index, glyph) in data.as_chunks::<10>().0.iter().enumerate() {
         let x = (index % CHARS_PER_ROW) as u32 * 8;
         let y = (index / CHARS_PER_ROW) as u32 * 10;
@@ -208,7 +208,7 @@ pub(super) fn decode_f80(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 4, 32)?;
     for (pair, rows) in data.as_chunks::<8>().0.iter().enumerate() {
         for half in 0..2 {
             let index = 2 * pair + half;
@@ -248,7 +248,7 @@ pub(super) fn decode_nlq(data: &[u8]) -> Result<Image, DecodeError> {
 /// tall and drawn in 20x16 cells, 16 to a row, by character code from 32.
 fn decode_daisy_dot2(mut glyphs: &[u8]) -> Result<Image, DecodeError> {
     const CELL_WIDTH: u32 = 20;
-    let mut image = Image::new(16 * CELL_WIDTH, 96);
+    let mut image = Image::new(16 * CELL_WIDTH, 96)?;
     for code in daisy_dot_codes() {
         let (&width, rest) = glyphs.split_first().ok_or(DecodeError::Unrecognized)?;
         let width = usize::from(width);
@@ -300,7 +300,7 @@ fn decode_daisy_dot3(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .any(|&(_, width, glyph)| glyph.len() > 2 * width);
     let cell_height = if tall { 32 } else { 16 };
-    let mut image = Image::new(16 * CELL_WIDTH, 6 * cell_height);
+    let mut image = Image::new(16 * CELL_WIDTH, 6 * cell_height)?;
     for (code, width, glyph) in glyphs {
         let (x, y) = (
             (code - 32) % 16 * CELL_WIDTH,
@@ -356,10 +356,10 @@ pub(super) fn draw_multicolor_glyph(
 
 /// Draws 128 characters 32 to a row, white on black. Each character stacks
 /// its glyph from every font in `fonts`.
-fn sheet(fonts: &[&[u8]]) -> Image {
+fn sheet(fonts: &[&[u8]]) -> Result<Image, DecodeError> {
     let char_height = 8 * fonts.len() as u32;
     let rows = 128 / CHARS_PER_ROW as u32;
-    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, rows * char_height);
+    let mut image = Image::new(CHARS_PER_ROW as u32 * 8, rows * char_height)?;
     let (background, foreground) = (register_rgb(0x00), register_rgb(0x0e));
     for (part, font) in fonts.iter().enumerate() {
         for (index, glyph) in font.as_chunks::<8>().0.iter().enumerate() {
@@ -370,7 +370,7 @@ fn sheet(fonts: &[&[u8]]) -> Image {
             });
         }
     }
-    image
+    Ok(image)
 }
 
 /// Draws an 8x8 1-bit glyph with its top-left corner at (`x`, `y`).

@@ -65,7 +65,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             xrgb1555(be16(pixels, at).unwrap_or(0))
         })
     });
-    Ok(Image::from_colors(width as u32, height as u32, colors))
+    Image::from_colors(width as u32, height as u32, colors)
 }
 
 #[cfg(test)]

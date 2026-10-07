@@ -42,12 +42,12 @@ pub(super) fn decode_font(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let rows = FONT_LEN / 8 / SHEET_COLUMNS;
-    let mut frame = Frame::new(SHEET_COLUMNS * 8, rows * 8);
+    let mut frame = Frame::new(SHEET_COLUMNS * 8, rows * 8)?;
     for (index, glyph) in data.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % SHEET_COLUMNS * 8, index / SHEET_COLUMNS * 8);
         draw_cell(&mut frame, left, top, glyph, 0xffffff, 0);
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 const CHR_HEADER_LEN: usize = 7;
@@ -70,8 +70,8 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let frames: Vec<Frame> = (0..frame_count)
-        .map(|f| {
-            let mut frame = Frame::new(columns * 8, rows * 8);
+        .map(|f| -> Result<Frame, DecodeError> {
+            let mut frame = Frame::new(columns * 8, rows * 8)?;
             for (index, cell) in cells.chunks_exact(9 * frame_count).enumerate() {
                 let cell = &cell[f * 9..][..9];
                 let (left, top) = (index % columns * 8, index / columns * 8);
@@ -79,9 +79,9 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
                 let paper = attribute_color(cell[8], false);
                 draw_cell(&mut frame, left, top, &cell[..8], ink, paper);
             }
-            frame
+            Ok(frame)
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
     Ok(blend(&frames))
 }
 
@@ -104,7 +104,7 @@ pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
     let cells = data
         .get(SEV_HEADER_LEN..SEV_HEADER_LEN + columns * height.div_ceil(8) * 9)
         .ok_or(DecodeError::Unrecognized)?;
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     for y in 0..height {
         for x in 0..width {
             let cell = &cells[(y / 8 * columns + x / 8) * 9..][..9];
@@ -112,7 +112,7 @@ pub(super) fn decode_sev(data: &[u8]) -> Result<Image, DecodeError> {
             frame.set(x, y, attribute_color(cell[8], ink));
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 fn draw_cell(frame: &mut Frame, left: usize, top: usize, rows: &[u8], ink: u32, paper: u32) {
@@ -170,7 +170,7 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
         CHX_PER_ROW * slot_width,
         CHX_CHARACTERS / CHX_PER_ROW * slot_height,
     );
-    let mut frame = Frame::new(width, height);
+    let mut frame = Frame::new(width, height)?;
     let white = attribute_color(0x38, false);
     for y in 0..height {
         for x in 0..width {
@@ -189,7 +189,7 @@ pub(super) fn decode_chx(data: &[u8]) -> Result<Image, DecodeError> {
             draw_cell(&mut frame, x, y, &cell[..8], ink, paper);
         }
     }
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// The character at `offset`: flag (0 colored, 1 not), width and height in

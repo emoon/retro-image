@@ -69,7 +69,7 @@ fn render(lines: &[Line], width: usize) -> Result<Image, DecodeError> {
     let hires = lines.iter().any(|l| l.scb & MODE_640 != 0);
     let scale = if hires { 2 } else { 1 };
     let out_width = width * scale;
-    let mut image = Image::new(out_width as u32, (lines.len() * scale) as u32);
+    let mut image = Image::new(out_width as u32, (lines.len() * scale) as u32)?;
     let mut row = Vec::with_capacity(out_width);
     for (y, line) in lines.iter().enumerate() {
         row.clear();

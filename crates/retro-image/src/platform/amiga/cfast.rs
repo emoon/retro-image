@@ -90,7 +90,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let pixels = planar_pixels(&bitmap, width, height, row_len, planes, |plane, y| {
         (plane * height + y) * row_len
-    });
+    })?;
     let indices: Vec<u8> = pixels.into_iter().map(|v| v as u8).collect();
     Image::from_indexed(width as u32, height as u32, &indices, &palette)
 }

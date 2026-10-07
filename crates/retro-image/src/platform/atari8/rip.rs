@@ -157,7 +157,7 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
                 }
             };
             let mode9 = |y: usize, x: usize| rgb(nibble(&second[y * bytes_per_line..], x));
-            half_pixel_pair(out_width, height, mode9, mode10)
+            half_pixel_pair(out_width, height, mode9, mode10)?
         }
     })
 }

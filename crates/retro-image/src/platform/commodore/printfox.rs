@@ -41,8 +41,8 @@ fn unpack(packed: &[u8], word_count: bool, len: usize) -> Option<Vec<u8>> {
 }
 
 /// Renders `columns`×`rows` tiles of 8 bytes, row by row; set bits are black.
-pub(super) fn render(tiles: &[u8], columns: usize, rows: usize) -> Image {
-    let mut image = Image::new((columns * 8) as u32, (rows * 8) as u32);
+pub(super) fn render(tiles: &[u8], columns: usize, rows: usize) -> Result<Image, DecodeError> {
+    let mut image = Image::new((columns * 8) as u32, (rows * 8) as u32)?;
     for (i, &byte) in tiles.iter().enumerate().take(columns * rows * 8) {
         let tile = i / 8;
         let (x, y) = (tile % columns * 8, tile / columns * 8 + i % 8);
@@ -55,7 +55,7 @@ pub(super) fn render(tiles: &[u8], columns: usize, rows: usize) -> Image {
             image.set((x + bit) as u32, y as u32, color);
         }
     }
-    image
+    Ok(image)
 }
 
 fn decode(data: &[u8], kind: u8, columns: usize, rows: usize) -> Result<Image, DecodeError> {
@@ -64,7 +64,7 @@ fn decode(data: &[u8], kind: u8, columns: usize, rows: usize) -> Result<Image, D
         _ => return Err(DecodeError::Unrecognized),
     };
     let tiles = unpack(packed, true, columns * rows * 8).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(&tiles, columns, rows))
+    render(&tiles, columns, rows)
 }
 
 /// Printfox screen: `B`, 40×25 tiles.
@@ -87,7 +87,7 @@ pub(super) fn decode_star_painter(data: &[u8]) -> Result<Image, DecodeError> {
     if columns == 0 || rows == 0 || tiles.len() != columns * rows * 8 {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(render(tiles, columns, rows))
+    render(tiles, columns, rows)
 }
 
 /// Pagefox page: `P`, height and width in tiles, `K` contour data up to
@@ -106,5 +106,5 @@ pub(super) fn decode_pg(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let tiles =
         unpack(&rest[end + 1..], false, columns * rows * 8).ok_or(DecodeError::Unrecognized)?;
-    Ok(render(&tiles, columns, rows))
+    render(&tiles, columns, rows)
 }

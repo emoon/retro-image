@@ -77,10 +77,10 @@ impl Map {
         let columns = |bytes| Columns { bytes, lines };
         match &self.screen {
             Screen::Columns40 { rama, ramb } => {
-                Ok(video::columns40(columns(rama), columns(ramb), &palette))
+                Ok(video::columns40(columns(rama), columns(ramb), &palette)?)
             }
             Screen::Bitmap4 { rama, ramb } => {
-                Ok(video::bitmap4(columns(rama), columns(ramb), &palette))
+                Ok(video::bitmap4(columns(rama), columns(ramb), &palette)?)
             }
             Screen::Bitmap16(bytes) => video::bitmap16(columns(bytes), &palette),
             Screen::Columns80(bytes) => video::columns80(columns(bytes), &palette),

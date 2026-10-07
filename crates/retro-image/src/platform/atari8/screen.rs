@@ -255,7 +255,7 @@ pub(super) fn decode_tx0(data: &[u8]) -> Result<Image, DecodeError> {
     if pixels.iter().any(|&value| value > 15) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(16, 16);
+    let mut image = Image::new(16, 16)?;
     for (i, &value) in pixels.iter().enumerate() {
         image.set(i as u32 % 16, i as u32 / 16, rgb(hue | value));
     }
@@ -274,7 +274,7 @@ pub(super) fn decode_wnd(data: &[u8]) -> Result<Image, DecodeError> {
         .filter(|_| height > 0)
         .ok_or(DecodeError::Unrecognized)?;
     let colors = [0x00, 0x46, 0x88, 0x0e];
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     let bitmap = bitmap(screen, bytes_per_line, 2);
     for y in 0..height {
         for x in 0..width {

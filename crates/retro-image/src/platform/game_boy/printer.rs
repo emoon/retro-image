@@ -200,7 +200,7 @@ fn strip(tiles: &[u8], palette: u8) -> Result<Image, DecodeError> {
 fn stack(strips: &[Image]) -> Result<Image, DecodeError> {
     let height: usize = strips.iter().map(|s| s.height() as usize).sum();
     check_size(WIDTH, height)?;
-    let mut image = Image::new(WIDTH as u32, height as u32);
+    let mut image = Image::new(WIDTH as u32, height as u32)?;
     let mut y = 0u32;
     for strip in strips {
         for row in strip.rgb().as_chunks::<{ WIDTH * 3 }>().0 {

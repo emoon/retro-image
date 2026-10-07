@@ -74,7 +74,7 @@ pub(in crate::platform) fn decode_arv(data: &[u8]) -> Result<Image, DecodeError>
     let planes = planes.concat();
     let indices: Vec<u8> = planar_pixels(&planes, WIDTH, HEIGHT, WIDTH / 8, 4, |plane, y| {
         plane * PLANE_BYTES + y * (WIDTH / 8)
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

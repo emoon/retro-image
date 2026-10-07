@@ -10,6 +10,7 @@
 //! - Color levels (normal 0xCD, bright 0xFF) and gigascreen blending (the
 //!   per-channel average, rounded down): observed from `recoil2png` output.
 
+use crate::DecodeError;
 use alloc::vec::Vec;
 
 use crate::Image;
@@ -64,8 +65,8 @@ pub(super) fn attribute_color(attribute: u8, ink: bool) -> u32 {
 pub(super) struct Frame(Image);
 
 impl Frame {
-    pub(super) fn new(width: usize, height: usize) -> Self {
-        Self(Image::new(width as u32, height as u32))
+    pub(super) fn new(width: usize, height: usize) -> Result<Self, DecodeError> {
+        Ok(Self(Image::new(width as u32, height as u32)?))
     }
 
     pub(super) fn set(&mut self, x: usize, y: usize, color: u32) {
@@ -108,8 +109,8 @@ impl Frame {
         }
     }
 
-    pub(super) fn into_image(self) -> Image {
-        self.0
+    pub(super) fn into_image(self) -> Result<Image, DecodeError> {
+        Ok(self.0)
     }
 }
 

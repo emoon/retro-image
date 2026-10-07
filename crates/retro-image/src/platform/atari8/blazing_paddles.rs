@@ -63,7 +63,7 @@ fn decode(data: &[u8], len: usize, base: usize) -> Result<Image, DecodeError> {
     }
     let streams = streams(data, base).ok_or(DecodeError::Unrecognized)?;
     let sheet = layout(&streams).ok_or(DecodeError::Unrecognized)?;
-    Ok(sheet.draw())
+    sheet.draw()
 }
 
 /// The streams the pointer table selects, without their final `08`. The
@@ -186,8 +186,8 @@ fn layout<'a>(streams: &[&'a [u8]]) -> Option<Sheet<'a>> {
 }
 
 impl Sheet<'_> {
-    fn draw(&self) -> Image {
-        let mut image = Image::new(2 * self.width as u32, self.height as u32);
+    fn draw(&self) -> Result<Image, DecodeError> {
+        let mut image = Image::new(2 * self.width as u32, self.height as u32)?;
         let mut top = 0;
         for row in &self.rows {
             for placed in &row.placed {
@@ -200,7 +200,7 @@ impl Sheet<'_> {
             }
             top += row.max_y - row.min_y + 2;
         }
-        image
+        Ok(image)
     }
 }
 

@@ -100,7 +100,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         } else {
             (plane * height + y) * row_len
         }
-    })
+    })?
     .into_iter()
     .map(|v| v as u8)
     .collect();

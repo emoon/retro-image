@@ -112,7 +112,7 @@ pub(super) fn decode_pgr(data: &[u8]) -> Result<Image, DecodeError> {
         .ok_or(DecodeError::Unrecognized)?;
 
     let mut registers: Registers = core::array::from_fn(|n| memory.byte(initial_address(n)));
-    let mut image = Image::new(WIDTH as u32, LINES as u32);
+    let mut image = Image::new(WIDTH as u32, LINES as u32)?;
     for (y, (row, writes)) in rows.iter().zip(&writes).enumerate() {
         let writes = objects.with_fetches(&memory, y, writes);
         let line = Line {

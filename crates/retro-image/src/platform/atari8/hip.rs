@@ -48,12 +48,12 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
         }
         _ => return Err(DecodeError::Unrecognized),
     };
-    Ok(half_pixel_pair(
+    half_pixel_pair(
         320,
         gtia9.len() / 40,
         |y, x| rgb(nibble(&gtia9[y * 40..], x)),
         |y, x| register_rgb(registers[gtia10_register(nibble(&gtia10[y * 40..], x))]),
-    ))
+    )
 }
 
 /// VertiZontal Interlacing: two GTIA mode 9 frames; the second is drawn
@@ -63,12 +63,12 @@ pub(super) fn decode_vzi(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (first, second) = data.split_at(FRAME);
-    Ok(half_pixel_pair(
+    half_pixel_pair(
         320,
         200,
         |y, x| rgb(nibble(&second[y * 40..], x)),
         |y, x| rgb(nibble(&first[y * 40..], x)),
-    ))
+    )
 }
 
 /// Mixes two frames of `width` / 4 x `lines` given as `color(line, pixel)`:
@@ -79,9 +79,9 @@ pub(super) fn half_pixel_pair(
     lines: usize,
     left: impl Fn(usize, usize) -> u32,
     right: impl Fn(usize, usize) -> u32,
-) -> Image {
-    let mut left_frame = Image::new(width as u32, lines as u32);
-    let mut right_frame = Image::new(width as u32, lines as u32);
+) -> Result<Image, DecodeError> {
+    let mut left_frame = Image::new(width as u32, lines as u32)?;
+    let mut right_frame = Image::new(width as u32, lines as u32)?;
     for y in 0..lines {
         for x in 0..width {
             if x + 1 < width {
@@ -92,7 +92,7 @@ pub(super) fn half_pixel_pair(
             }
         }
     }
-    Image::blend(&[&left_frame, &right_frame])
+    Ok(Image::blend(&[&left_frame, &right_frame]))
 }
 
 /// The `len` bytes of a DOS binary-load segment (`FF FF`, start, end).

@@ -113,7 +113,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             mode,
         })
         .collect();
-    let mut image = Image::new(header.width as u32 / 2, header.height as u32);
+    let mut image = Image::new(header.width as u32 / 2, header.height as u32)?;
     for y in 0..header.height {
         let row = bitmap.row(y).ok_or(DecodeError::Unrecognized)?;
         let count = fields.len();

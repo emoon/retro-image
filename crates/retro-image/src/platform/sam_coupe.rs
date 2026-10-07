@@ -80,13 +80,13 @@ fn decode_mode(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
         let (screen, clut) = data.split_at(mode.ssx_len());
         let mut clut16 = [0; 16];
         clut16[..clut.len()].copy_from_slice(clut);
-        return Ok(render(mode, screen, BITMAP_LEN, &Palette::fixed(clut16)));
+        return render(mode, screen, BITMAP_LEN, &Palette::fixed(clut16));
     }
     let (screen, palette, len) = screen_file(data, mode)?;
     if len != data.len() {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(render(mode, screen, MODE2_FILE_ATTRIBUTES, &palette))
+    render(mode, screen, MODE2_FILE_ATTRIBUTES, &palette)
 }
 
 /// Parses the `SCREEN$` file at the start of `data`: screen memory,
@@ -112,16 +112,16 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     if first_len + second_len != data.len() {
         return Err(DecodeError::Unrecognized);
     }
-    Ok(interlace(&[
-        render(Mode::Four, first, 0, &first_palette),
-        render(Mode::Four, second, 0, &second_palette),
-    ]))
+    interlace(&[
+        render(Mode::Four, first, 0, &first_palette)?,
+        render(Mode::Four, second, 0, &second_palette)?,
+    ])
 }
 
 /// Shows two 256x192 fields interlaced as 512x384: the first on even lines,
 /// each pixel doubled horizontally. Also used by the Spectrum LCE variant.
-pub(super) fn interlace(fields: &[Image; 2]) -> Image {
-    let mut image = Image::new(512, 2 * HEIGHT as u32);
+pub(super) fn interlace(fields: &[Image; 2]) -> Result<Image, DecodeError> {
+    let mut image = Image::new(512, 2 * HEIGHT as u32)?;
     for (field, frame) in (0..).zip(fields) {
         for y in 0..frame.height() {
             for x in 0..frame.width() {
@@ -131,7 +131,7 @@ pub(super) fn interlace(fields: &[Image; 2]) -> Image {
             }
         }
     }
-    image
+    Ok(image)
 }
 
 const RAW_WIDTH: usize = 512;
@@ -146,7 +146,7 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     // One SAM color byte per pixel of the 512x192 display.
-    let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32)?;
     for (i, &value) in data.iter().enumerate() {
         let (x, y) = ((i % RAW_WIDTH) as u32, (i / RAW_WIDTH) as u32);
         image.set(x, y, color(value));
@@ -227,9 +227,14 @@ fn color(value: u8) -> u32 {
 }
 
 /// Renders a screen. `attributes` is where mode 2 attributes start.
-fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Image {
+fn render(
+    mode: Mode,
+    screen: &[u8],
+    attributes: usize,
+    palette: &Palette,
+) -> Result<Image, DecodeError> {
     let width = if mode == Mode::Three { 512 } else { 256 };
-    let mut image = Image::new(width as u32, HEIGHT as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..width {
             let entry = match mode {
@@ -261,9 +266,9 @@ fn render(mode: Mode, screen: &[u8], attributes: usize, palette: &Palette) -> Im
     }
     // Mode 3 pixels are half as wide as they are high.
     if mode == Mode::Three {
-        image.scaled(1, 2).expect("fixed-size screen")
+        image.scaled(1, 2)
     } else {
-        image
+        Ok(image)
     }
 }
 

@@ -164,7 +164,7 @@ pub(super) fn decode_pcx(data: &[u8]) -> Result<Image, DecodeError> {
     let (w, h) = (width as u32, height as u32);
 
     if bits == 8 && planes >= 3 {
-        let mut image = Image::new(w, h);
+        let mut image = Image::new(w, h)?;
         for y in 0..height {
             let row = &rows[y * row_len * planes..];
             for x in 0..width {
@@ -201,7 +201,7 @@ pub(super) fn decode_pcx(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels: Vec<u8> = if planes > 1 {
         planar_pixels(&rows, width, height, row_len, planes, |plane, y| {
             (y * planes + plane) * row_len
-        })
+        })?
         .into_iter()
         .map(|v| v as u8)
         .collect()

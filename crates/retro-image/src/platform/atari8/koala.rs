@@ -78,7 +78,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
         let [_, pf1, pf2, ..] = pic.colors;
         let paper = register_rgb(pf2);
         let ink = register_rgb(pf2 & 0xf0 | pf1 & 0x0f);
-        return Ok(mode2_colored(&pic.screen[..40 * 24], 40, paper, ink));
+        return mode2_colored(&pic.screen[..40 * 24], 40, paper, ink);
     }
     let bitmap = Bitmap {
         data: &pic.screen,

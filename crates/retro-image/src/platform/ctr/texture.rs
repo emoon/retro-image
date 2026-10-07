@@ -255,11 +255,11 @@ impl Texture<'_> {
                 }
             }
         }
-        Ok(Image::from_argb(
+        Image::from_argb(
             visible_width as u32,
             visible_height as u32,
             colors.into_iter(),
-        ))
+        )
     }
 }
 

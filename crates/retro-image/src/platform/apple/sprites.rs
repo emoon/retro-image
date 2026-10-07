@@ -26,7 +26,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         .filter(|token| !token.is_empty())
         .map(number);
     let mut next = move || numbers.next().ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     loop {
         let (width, height, _kind) = (next()?, next()?, next()?);
         let (x, y) = (next()?, next()?);

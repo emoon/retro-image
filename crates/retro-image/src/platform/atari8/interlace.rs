@@ -196,10 +196,10 @@ pub(super) fn decode_shc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 17920 {
         return Err(DecodeError::Unrecognized);
     }
-    let frame_image = |f: usize| {
+    let frame_image = |f: usize| -> Result<Image, DecodeError> {
         let bitmap = &data[f * SCREEN..(f + 1) * SCREEN];
         let colors = &data[2 * SCREEN + 1280 * f..];
-        let mut image = Image::new(320, 192);
+        let mut image = Image::new(320, 192)?;
         for y in 0..192 {
             for x in 0..320 {
                 let span = SPLITS[f].iter().filter(|&&split| x >= split).count();
@@ -209,9 +209,9 @@ pub(super) fn decode_shc(data: &[u8]) -> Result<Image, DecodeError> {
                 image.set(x as u32, y as u32, register_rgb(color));
             }
         }
-        image
+        Ok(image)
     };
-    Ok(Image::blend(&[&frame_image(0), &frame_image(1)]))
+    Ok(Image::blend(&[&frame_image(0)?, &frame_image(1)?]))
 }
 
 #[cfg(test)]

@@ -30,10 +30,10 @@ pub(super) fn decode_bsc(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let (scr, border) = data.split_at(SCR_LEN);
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_packed_border(&mut frame, border);
     draw_scr(&mut frame, LEFT, TOP, scr);
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 /// BMC4: interleaved bitmap, attributes for the upper and the lower 4 lines
@@ -44,7 +44,7 @@ pub(super) fn decode_bmc4(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let (bitmap, rest) = data.split_at(BITMAP_LEN);
     let (attributes, border) = rest.split_at(2 * ATTRIBUTES_LEN);
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_packed_border(&mut frame, border);
     frame.draw_screen(
         LEFT,
@@ -55,7 +55,7 @@ pub(super) fn decode_bmc4(data: &[u8]) -> Result<Image, DecodeError> {
             attribute_color(attributes[bank + y / 8 * COLUMNS + column], ink)
         },
     );
-    Ok(frame.into_image())
+    frame.into_image()
 }
 
 const BSP_HEADER_LEN: usize = 70;
@@ -102,7 +102,7 @@ pub(super) fn decode_bsp(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn bsp_frame(scr: &[u8], border: &[u8]) -> Result<Frame, DecodeError> {
-    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+    let mut frame = Frame::new(CANVAS_WIDTH, CANVAS_HEIGHT)?;
     draw_rle_border(&mut frame, border)?;
     draw_scr(&mut frame, LEFT, TOP, scr);
     Ok(frame)

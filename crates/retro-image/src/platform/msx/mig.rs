@@ -144,7 +144,7 @@ impl Vdp {
                 Tiled::Graphic3 => vdp::MSX2_PALETTE,
                 _ => vdp::MSX1_PALETTE,
             });
-            return Some(screen::render_tiled(tiled, &vram, &palette, false));
+            return screen::render_tiled(tiled, &vram, &palette, false).ok();
         }
         let bitmap = match (mode, r[25] & 0x18) {
             (0b01100, _) => Bitmap::Graphic4,

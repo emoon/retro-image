@@ -47,11 +47,11 @@ fn channels(planes: usize) -> Option<usize> {
 }
 
 /// Scales a `bits`-wide channel value to 8 bits.
-fn to_byte(value: u32, bits: usize) -> u32 {
+fn to_byte(value: u32, bits: usize) -> u8 {
     match bits {
-        4 => widen_channel(value, 4),
-        8 => value,
-        _ => value >> (bits - 8),
+        4 => widen_channel(value, 4) as u8,
+        8 => value as u8,
+        _ => (value >> (bits - 8)) as u8,
     }
 }
 
@@ -81,16 +81,18 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         1 => packbits::unpack(body, len).ok_or(fail)?.0,
         _ => return Err(fail),
     };
-    let channel = |index: usize| -> Vec<u32> {
-        planar_pixels(&data, width, height, row_len, bits, |plane, y| {
+    // Each channel is narrowed to bytes as soon as it is read, so only one
+    // channel at a time is held as 32-bit values.
+    let channel = |index: usize| -> Result<Vec<u8>, DecodeError> {
+        let values = planar_pixels(&data, width, height, row_len, bits, |plane, y| {
             (y * stored + index * bits + plane) * row_len
-        })
+        })?;
+        Ok(values.iter().map(|&v| to_byte(v, bits)).collect())
     };
-    let (red, green, blue) = (channel(0), channel(1), channel(2));
-    let colors = (0..width * height).map(|i| {
-        to_byte(red[i], bits) << 16 | to_byte(green[i], bits) << 8 | to_byte(blue[i], bits)
-    });
-    let image = Image::from_colors(width as u32, height as u32, colors);
+    let (red, green, blue) = (channel(0)?, channel(1)?, channel(2)?);
+    let colors = (0..width * height)
+        .map(|i| u32::from(red[i]) << 16 | u32::from(green[i]) << 8 | u32::from(blue[i]));
+    let image = Image::from_colors(width as u32, height as u32, colors)?;
     let camg = find(contents, b"CAMG")
         .and_then(|c| be32(c, 0))
         .unwrap_or(0);

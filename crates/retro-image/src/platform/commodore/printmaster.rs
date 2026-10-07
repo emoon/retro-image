@@ -30,7 +30,7 @@ pub(super) fn decode_gra(data: &[u8]) -> Result<Image, DecodeError> {
     if rows.iter().any(|row| row[0] != ROW_MARK) {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new((WIDTH_BYTES * 8) as u32, HEIGHT as u32);
+    let mut image = Image::new((WIDTH_BYTES * 8) as u32, HEIGHT as u32)?;
     for (y, row) in rows.iter().enumerate() {
         for (x, byte) in row[1..].iter().enumerate() {
             for bit in 0..8 {

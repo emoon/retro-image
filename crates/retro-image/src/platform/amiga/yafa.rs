@@ -171,7 +171,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             row_len,
             info.depth,
             |plane, y| plane * plane_len + y * row_len,
-        )
+        )?
         .into_iter()
         .map(|v| v as u8)
         .collect()

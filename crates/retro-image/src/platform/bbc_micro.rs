@@ -128,7 +128,7 @@ fn decode(data: &[u8], mode: &Mode) -> Result<Image, DecodeError> {
 fn render(data: &[u8], mode: &Mode, palette: &[u8; 16]) -> Result<Image, DecodeError> {
     let pixels_per_byte = 8 / mode.bits_per_pixel;
     let width = mode.row_bytes / 8 * pixels_per_byte;
-    let mut image = Image::new(width as u32, HEIGHT as u32);
+    let mut image = Image::new(width as u32, HEIGHT as u32)?;
     for y in 0..HEIGHT {
         for x in 0..width {
             let byte = data[y / 8 * mode.row_bytes + x / pixels_per_byte * 8 + y % 8];

@@ -29,7 +29,7 @@ pub(super) fn decode_grf(data: &[u8]) -> Result<Image, DecodeError> {
         return Err(DecodeError::Unrecognized);
     }
     let palette: [u32; 16] = core::array::from_fn(|i| grb332(data[PALETTE + i]));
-    let mut image = Image::new(WIDTH as u32, HEIGHT as u32);
+    let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
     for (cell, pair) in data[HEADER_LEN..].as_chunks::<2>().0.iter().enumerate() {
         let (bits, attribute) = (pair[0], pair[1]);
         let ink = attribute & 7 | (attribute >> 3) & 8;

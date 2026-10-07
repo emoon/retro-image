@@ -65,7 +65,7 @@ fn grey_blocks(
     width: u32,
     height: u32,
 ) -> Result<Image, DecodeError> {
-    let mut image = Image::new(width, height);
+    let mut image = Image::new(width, height)?;
     for (i, level) in levels.enumerate() {
         image.set(i as u32 % width, i as u32 / width, rgb(level));
     }
@@ -227,7 +227,7 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
                 [registers[7], registers[4], registers[5], registers[6]],
             ];
             let width = row_bytes as u32 * 4;
-            let mut image = Image::new(width, 2 * height as u32);
+            let mut image = Image::new(width, 2 * height as u32)?;
             for (frame, plane) in [first, second].into_iter().enumerate() {
                 let screen = bitmap(plane, row_bytes, 2);
                 for y in 0..height {

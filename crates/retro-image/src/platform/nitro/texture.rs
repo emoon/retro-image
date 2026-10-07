@@ -385,11 +385,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
                 u32::from_be_bytes([pixel[3], pixel[0], pixel[1], pixel[2]]);
         }
     }
-    Ok(Image::from_argb(
-        sheet_width as u32,
-        sheet_height as u32,
-        colors.into_iter(),
-    ))
+    Image::from_argb(sheet_width as u32, sheet_height as u32, colors.into_iter())
 }
 
 #[cfg(test)]

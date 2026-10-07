@@ -146,17 +146,17 @@ where
     pub fn render(&self, frames: &[bool]) -> Result<Image, DecodeError> {
         let frames: Vec<Image> = frames
             .iter()
-            .map(|&even_hue| {
-                let mut image = Image::new(160, self.lines as u32);
+            .map(|&even_hue| -> Result<Image, DecodeError> {
+                let mut image = Image::new(160, self.lines as u32)?;
                 for y in 0..self.lines {
                     for x in 0..160 {
                         let rgb = self.color(y, x, (y % 2 == 0) == even_hue);
                         image.set(x as u32, y as u32, rgb);
                     }
                 }
-                image
+                Ok(image)
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
         let frames: Vec<&Image> = frames.iter().collect();
         Image::blend(&frames).scaled(2, 1)
     }

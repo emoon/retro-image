@@ -156,11 +156,11 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         read_rows(source, &layout, &color, &mut pixels).ok_or(fail)?;
     }
-    Ok(Image::from_argb(
+    Image::from_argb(
         layout.width as u32,
         layout.height as u32,
         pixels.into_iter(),
-    ))
+    )
 }
 
 /// The cel's geometry and pixel format from its preamble words, `None` for

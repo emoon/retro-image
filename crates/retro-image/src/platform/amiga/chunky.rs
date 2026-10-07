@@ -137,7 +137,7 @@ pub(super) fn render(
     if data.len() < len {
         return Err(DecodeError::Unrecognized);
     }
-    let mut image = Image::new(rows.width as u32, rows.height as u32);
+    let mut image = Image::new(rows.width as u32, rows.height as u32)?;
     for (y, row) in data[..len].chunks_exact(rows.bytes_per_line).enumerate() {
         let out = image.row_mut(y as u32).as_chunks_mut::<3>().0;
         draw_row(pixels, row, palette, out);

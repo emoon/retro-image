@@ -40,7 +40,7 @@ fn decode_hrz(data: &[u8]) -> Result<Image, DecodeError> {
         .0
         .iter()
         .map(|&[r, g, b]| level(r) << 16 | level(g) << 8 | level(b));
-    Ok(Image::from_colors(WIDTH as u32, HEIGHT as u32, colors))
+    Image::from_colors(WIDTH as u32, HEIGHT as u32, colors)
 }
 
 #[cfg(test)]

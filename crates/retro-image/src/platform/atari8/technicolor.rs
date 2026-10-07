@@ -30,7 +30,7 @@ pub(super) fn decode_lum(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let luminances = plane(data).ok_or(DecodeError::Unrecognized)?;
     let hues = companions.get("col").and_then(|col| plane(&col));
     let nibble = |plane: &[u8], line: usize, x: usize| antic::nibble(&plane[line * 40..], x);
-    let mut image = Image::new(80, 2 * LINES as u32);
+    let mut image = Image::new(80, 2 * LINES as u32)?;
     for line in 0..LINES {
         for x in 0..80 {
             let now = nibble(&luminances, line, x);

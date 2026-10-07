@@ -110,11 +110,11 @@ fn first_frame(banner: &[u8]) -> Result<Image, DecodeError> {
         *color = 0xff00_0000 | bgr555(u16::from_le_bytes(word));
     }
     let icon = TILE.sheet_argb(bitmap, TILES_PER_ROW, &colors)?;
-    Ok(flipped(&icon, flips & 1 != 0, flips & 2 != 0))
+    flipped(&icon, flips & 1 != 0, flips & 2 != 0)
 }
 
 /// The icon mirrored left to right and/or top to bottom.
-fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Image {
+fn flipped(icon: &Image, horizontal: bool, vertical: bool) -> Result<Image, DecodeError> {
     let (width, height) = (icon.width(), icon.height());
     let source = |x: u32, y: u32| {
         let x = if horizontal { width - 1 - x } else { x };

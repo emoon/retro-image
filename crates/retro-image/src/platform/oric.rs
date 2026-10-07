@@ -41,7 +41,7 @@ fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     let file = tape_files(data)?
         .find(|file| file.start == HIRES_START && file.body.len() >= HIRES_LEN)
         .ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(240, 200);
+    let mut image = Image::new(240, 200)?;
     for (y, row) in file.body[..HIRES_LEN]
         .as_chunks::<40>()
         .0
@@ -88,7 +88,7 @@ fn decode_charset(data: &[u8]) -> Result<Image, DecodeError> {
             })
         })
         .ok_or(DecodeError::Unrecognized)?;
-    let mut image = Image::new(256, 24);
+    let mut image = Image::new(256, 24)?;
     for (index, glyph) in charset.as_chunks::<8>().0.iter().enumerate() {
         let (left, top) = (index % 32 * 8, index / 32 * 8);
         for (y, &byte) in glyph.iter().enumerate() {

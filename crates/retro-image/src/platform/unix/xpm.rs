@@ -340,7 +340,7 @@ fn decode_lines(lines: &[Cow<[u8]>]) -> Result<Image, DecodeError> {
         .collect::<Result<_, _>>()?;
     table.sort_by_key(|&(key, _)| key);
 
-    let mut image = Image::new(width as u32, height as u32);
+    let mut image = Image::new(width as u32, height as u32)?;
     for (y, row) in rows.iter().enumerate() {
         for (x, pixel) in row.chunks_exact(per_pixel).take(width).enumerate() {
             let key = pack(pixel);

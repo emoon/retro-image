@@ -363,11 +363,7 @@ impl Parts<'_> {
                 }
             }
         }
-        Ok(Image::from_argb(
-            pixel_width as u32,
-            pixel_height as u32,
-            colors.into_iter(),
-        ))
+        Image::from_argb(pixel_width as u32, pixel_height as u32, colors.into_iter())
     }
 
     /// Palette number `index`: from the `.pal` if there is one, and the

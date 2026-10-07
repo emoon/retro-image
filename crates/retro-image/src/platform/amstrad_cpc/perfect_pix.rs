@@ -48,8 +48,8 @@ pub(super) fn decode_pph(data: &[u8], companions: &dyn Companions) -> Result<Ima
     // mode 1 pixels.
     let output_per_pixel = 4 / mode.pixels_per_byte();
     let mut images = [
-        Image::new(width as u32, height as u32),
-        Image::new(width as u32, height as u32),
+        Image::new(width as u32, height as u32)?,
+        Image::new(width as u32, height as u32)?,
     ];
     let mut remaining_zones = zones.iter();
     let mut zone = remaining_zones.next().ok_or(DecodeError::Unrecognized)?;

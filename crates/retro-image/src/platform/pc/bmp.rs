@@ -361,7 +361,7 @@ fn decode_pixels(
             };
             let alpha_channel = Mask::new(alpha_mask);
             let mut alpha = (alpha_mask != 0 && bpp >= 16).then(|| vec![255u8; width * height]);
-            let mut image = Image::new(w, h);
+            let mut image = Image::new(w, h)?;
             for (row, y) in raw.chunks_exact(stride).zip(0..h) {
                 let y = if info.top_down { y } else { h - 1 - y };
                 for x in 0..width {
