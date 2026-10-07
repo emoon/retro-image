@@ -490,16 +490,16 @@ mod tests {
     #[test]
     fn many_full_frame_chunks_decode_quickly() {
         extern crate std;
-        // 3000 BLACK chunks on an 8192x8192 screen used to cost seconds.
-        let blacks = chunk_bytes(BLACK, &[]).repeat(3000);
+        // 65000 BLACK chunks on a 2048x2048 screen used to cost seconds.
+        let blacks = chunk_bytes(BLACK, &[]).repeat(65000);
         let mut file = flc(&blacks);
-        file[8..10].copy_from_slice(&8192u16.to_le_bytes());
-        file[10..12].copy_from_slice(&8192u16.to_le_bytes());
-        let count = 3001u16.to_le_bytes();
+        file[8..10].copy_from_slice(&2048u16.to_le_bytes());
+        file[10..12].copy_from_slice(&2048u16.to_le_bytes());
+        let count = 65001u16.to_le_bytes();
         file[HEADER_LEN + CHUNK_HEADER_LEN..][..2].copy_from_slice(&count);
         let started = std::time::Instant::now();
         let image = decode_flic(&file).unwrap();
-        assert_eq!(image.width(), 8192);
+        assert_eq!(image.width(), 2048);
         assert!(started.elapsed().as_millis() < 1000);
     }
 
