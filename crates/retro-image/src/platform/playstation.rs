@@ -20,7 +20,8 @@ pub(super) static FORMATS: &[Format] =
 fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
     let len = le32(data, 0)? as usize;
     let (width, height) = (usize::from(le16(data, 8)?), usize::from(le16(data, 10)?));
-    let body = data.get(12..12 + width * height * 2)?;
+    // Two 16-bit fields and a 2: this overflows a 32-bit usize.
+    let body = data.get(12..width.checked_mul(height)?.checked_mul(2)?.checked_add(12)?)?;
     Some((width, height, body, len))
 }
 

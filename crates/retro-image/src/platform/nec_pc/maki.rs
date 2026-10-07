@@ -172,7 +172,9 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
         let flag_byte = data.get(header.flag_a.checked_add(flag_bit / 8)?)?;
         if flag_byte & (0x80 >> (flag_bit % 8)) != 0 {
             action[slot] ^= byte(flag_b);
-            flag_b += 1;
+            // Offsets are 32-bit header words, so they saturate (and read
+            // as zero) instead of wrapping on a 32-bit usize.
+            flag_b = flag_b.saturating_add(1);
         }
         flag_bit += 1;
         let nibbles = action[slot];
@@ -183,8 +185,9 @@ fn unpack_mag(data: &[u8], header: &MagHeader) -> Option<Unpacked> {
             }
             let value = match nibble {
                 0 => {
-                    colour += 2;
-                    [byte(colour - 2), byte(colour - 1)]
+                    let at = colour;
+                    colour = colour.saturating_add(2);
+                    [byte(at), byte(at.saturating_add(1))]
                 }
                 n => {
                     let (units, rows) = COPY_FROM[n as usize - 1];

@@ -175,9 +175,13 @@ fn read_bitmap(data: &[u8], at: usize) -> Result<Gray, DecodeError> {
     }
     let pixels_at = at + BITMAP_HEADER_LEN;
     let rows: Cow<[u8]> = match compression {
-        Some(0) => Cow::Borrowed(data.get(pixels_at..pixels_at + size).ok_or(FAIL)?),
+        Some(0) => {
+            let end = pixels_at.checked_add(size).ok_or(FAIL)?;
+            Cow::Borrowed(data.get(pixels_at..end).ok_or(FAIL)?)
+        }
         Some(1) => {
-            let packed = data.get(pixels_at..at + section_len).ok_or(FAIL)?;
+            let end = at.checked_add(section_len).ok_or(FAIL)?;
+            let packed = data.get(pixels_at..end).ok_or(FAIL)?;
             Cow::Owned(unpack_rle8(packed, size).ok_or(FAIL)?)
         }
         _ => return Err(FAIL),
