@@ -40,13 +40,25 @@ impl Sheet {
         if count == 0 || count > MAX_PICTURES {
             return Err(DecodeError::Invalid);
         }
-        let (pitch_x, pitch_y) = (cell_width + GUTTER, cell_height + GUTTER);
-        // The fewest columns that make the sheet at least as wide as tall.
+        // Cell sizes come from file headers, so every sum and product is
+        // checked (usize is 32 bits on some targets) and a sheet that
+        // overflows is too large.
+        let pitch = |cell: usize| cell.checked_add(GUTTER).ok_or(DecodeError::TooLarge);
+        let (pitch_x, pitch_y) = (pitch(cell_width)?, pitch(cell_height)?);
+        // The fewest columns that make the sheet at least as wide as tall,
+        // compared in u64 where the products cannot overflow.
+        let (wide, tall) = (pitch_x as u64, pitch_y as u64);
         let columns = (1..=count)
-            .find(|c| c * c * pitch_x >= count * pitch_y)
+            .find(|&c| (c * c) as u64 * wide >= count as u64 * tall)
             .unwrap_or(count);
         let rows = count.div_ceil(columns);
-        let (width, height) = (columns * pitch_x + GUTTER, rows * pitch_y + GUTTER);
+        let size = |cells: usize, pitch: usize| {
+            cells
+                .checked_mul(pitch)
+                .and_then(|n| n.checked_add(GUTTER))
+                .ok_or(DecodeError::TooLarge)
+        };
+        let (width, height) = (size(columns, pitch_x)?, size(rows, pitch_y)?);
         check_size(width, height)?;
         let background = core::iter::repeat(CLEAR);
         Ok(Self {
