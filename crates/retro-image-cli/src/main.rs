@@ -25,6 +25,7 @@ mod freedesktop;
 mod thumbnail;
 
 use std::error::Error;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -56,29 +57,19 @@ struct Convert {
 }
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.as_slice() {
-        [flag] if flag == "--help" || flag == "-h" => {
-            println!("{}", usage());
-            return ExitCode::SUCCESS;
+    // OsString: a file name need not be UTF-8, and `args()` would panic.
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if let [flag] = args.as_slice() {
+        match flag.to_str() {
+            Some("--help" | "-h") => return print_stdout(&format!("{}\n", usage())),
+            Some("--version" | "-V") => {
+                return print_stdout(&format!("retro-image {}\n", env!("CARGO_PKG_VERSION")));
+            }
+            Some("--list-formats") => return print_stdout(&freedesktop::format_list()),
+            Some("--mime-xml") => return print_stdout(&freedesktop::mime_xml()),
+            Some("--thumbnailer") => return print_stdout(&freedesktop::thumbnailer()),
+            _ => {}
         }
-        [flag] if flag == "--version" || flag == "-V" => {
-            println!("retro-image {}", env!("CARGO_PKG_VERSION"));
-            return ExitCode::SUCCESS;
-        }
-        [flag] if flag == "--list-formats" => {
-            print!("{}", freedesktop::format_list());
-            return ExitCode::SUCCESS;
-        }
-        [flag] if flag == "--mime-xml" => {
-            print!("{}", freedesktop::mime_xml());
-            return ExitCode::SUCCESS;
-        }
-        [flag] if flag == "--thumbnailer" => {
-            print!("{}", freedesktop::thumbnailer());
-            return ExitCode::SUCCESS;
-        }
-        _ => {}
     }
     let Some(convert) = parse(&args) else {
         eprintln!("{}", usage());
@@ -88,6 +79,21 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("{}: {}", convert.input.display(), describe(e.as_ref()));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Writes `text` to standard output. A reader that went away (`| head`) is
+/// not an error: the output is simply no longer wanted.
+fn print_stdout(text: &str) -> ExitCode {
+    use std::io::Write;
+    let mut out = std::io::stdout().lock();
+    match out.write_all(text.as_bytes()).and_then(|()| out.flush()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("retro-image: cannot write to standard output: {e}");
             ExitCode::FAILURE
         }
     }
@@ -113,7 +119,7 @@ fn describe(error: &(dyn Error + 'static)) -> String {
     text
 }
 
-fn parse(args: &[String]) -> Option<Convert> {
+fn parse(args: &[OsString]) -> Option<Convert> {
     let mut input = None;
     let mut output = None;
     let mut size = None;
@@ -121,17 +127,19 @@ fn parse(args: &[String]) -> Option<Convert> {
     let mut max_image_mb = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "-i" => input = Some(PathBuf::from(args.next()?)),
-            "-o" => output = Some(PathBuf::from(args.next()?)),
-            "-s" => size = Some(args.next()?.parse().ok().filter(|&s| s > 0)?),
-            "--max-image-mb" => {
-                max_image_mb = Some(args.next()?.parse().ok().filter(|&mb| mb > 0)?);
+        // An argument that is not UTF-8 can only be a path.
+        match arg.to_str() {
+            Some("-i") => input = Some(PathBuf::from(args.next()?)),
+            Some("-o") => output = Some(PathBuf::from(args.next()?)),
+            Some("-s") => size = Some(args.next()?.to_str()?.parse().ok().filter(|&s| s > 0)?),
+            Some("--max-image-mb") => {
+                max_image_mb = Some(args.next()?.to_str()?.parse().ok().filter(|&mb| mb > 0)?);
             }
-            "--ext" => ext = Some(args.next()?.trim_start_matches('.').to_owned()),
-            positional if !positional.starts_with('-') && input.is_none() => {
-                input = Some(PathBuf::from(positional));
+            Some("--ext") => {
+                ext = Some(args.next()?.to_str()?.trim_start_matches('.').to_owned());
             }
+            Some(flag) if flag.starts_with('-') => return None,
+            _ if input.is_none() => input = Some(PathBuf::from(arg)),
             _ => return None,
         }
     }
