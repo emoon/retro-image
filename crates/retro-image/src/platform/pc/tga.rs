@@ -80,6 +80,10 @@ pub(super) fn decode_tga(data: &[u8]) -> Result<Image, DecodeError> {
         0 if map_type == 0 || map_len == 0 => 0,
         _ => return Err(fail),
     };
+    // A mapped image with no color map has nothing to index.
+    if mapped && map_entry == 0 {
+        return Err(fail);
+    }
     check_size(width, height)?;
 
     // Image ID, then the color map, then the pixels.
@@ -252,5 +256,13 @@ mod tests {
         assert!(decode_tga(&data).is_err());
         assert!(decode_tga(&data[..20]).is_err());
         assert!(decode_tga(&header(7, 8, 1, 1, 0)).is_err());
+    }
+
+    #[test]
+    fn mapped_image_without_map_is_rejected() {
+        let mut data = header(1, 8, 1, 1, 0);
+        data[1] = 1; // map present, but zero entries of zero bits
+        data.push(0);
+        assert!(decode_tga(&data).is_err());
     }
 }
