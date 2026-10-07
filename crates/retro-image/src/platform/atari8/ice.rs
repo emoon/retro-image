@@ -155,7 +155,7 @@ impl<'a> Parts<'a> {
         screens: usize,
     ) -> Result<Self, DecodeError> {
         if data.len() != header_len + CHARSETS * CHARSET + screens * SCREEN || data[0] != version {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (header, rest) = data.split_at(header_len);
         let (sets, rest) = rest.split_at(CHARSETS * CHARSET);
@@ -321,10 +321,10 @@ pub(super) fn decode_ice(data: &[u8]) -> Result<Image, DecodeError> {
         }),
         Some(3) => (7, din_frames),
         Some(12) => (3, |h| [Frame::hires(h[1], h[2]), Frame::mode9(h[1])]),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if data.len() != header_len + 2 * CHARSET {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (header, sets) = data.split_at(header_len);
     let frames = frames(header);

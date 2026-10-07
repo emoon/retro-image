@@ -27,7 +27,7 @@ const UNPACKED: usize = 7936;
 const COLORS: [u8; 4] = [0x00, 0x0c, 0x08, 0x04];
 
 pub(super) fn decode_cpi(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked = unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = unpack(data).ok_or(DecodeError::Invalid)?;
     let bitmap = Bitmap {
         data: &unpacked[..SCREEN],
         bytes_per_line: 40,

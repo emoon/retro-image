@@ -59,7 +59,7 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
     let colors: [u8; 4] = data
         .get(2 * FRAME..2 * FRAME + 4)
         .and_then(|c| c.try_into().ok())
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let color = |_, value: u8| register_rgb(colors[usize::from(value)]);
     Ok(Image::blend(&[
         &frame(data, 200).render(2, 1, color)?,
@@ -71,16 +71,14 @@ pub(super) fn decode_inp(data: &[u8]) -> Result<Image, DecodeError> {
 /// (background, playfield 0-2) of both frames, then both frames. (`.INT`
 /// files without the signature are InterPainter pictures.)
 pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
-    let rest = data
-        .strip_prefix(b"INT95a")
-        .ok_or(DecodeError::Unrecognized)?;
+    let rest = data.strip_prefix(b"INT95a").ok_or(DecodeError::Invalid)?;
     let [width, height, 0x0f, 0x2b, ref rest @ ..] = *rest else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(width), usize::from(height));
     let frame_len = width * height;
     if width == 0 || !(1..=239).contains(&height) || rest.len() != 8 + 2 * frame_len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (sets, frames) = rest.split_at(8);
     let frame_image = |frame: &[u8], set: &[u8]| {
@@ -104,7 +102,7 @@ pub(super) fn decode_int(data: &[u8]) -> Result<Image, DecodeError> {
 /// background and playfield 0-2.
 pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME + 6 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = &data[2 * FRAME..];
     let background = register_rgb(colors[0]);
@@ -128,7 +126,7 @@ pub(super) fn decode_hci(data: &[u8]) -> Result<Image, DecodeError> {
 /// at 16384 four tables of 200 per-line colors: background, playfield 0-2.
 pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 17184 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let tables = &data[16384..];
     let color = |line: usize, value: u8| register_rgb(tables[usize::from(value) * 200 + line]);
@@ -142,7 +140,7 @@ pub(super) fn decode_ist(data: &[u8]) -> Result<Image, DecodeError> {
 /// first frame uses the first set, on odd lines the second.
 pub(super) fn decode_mcp(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME + 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mcp_picture(data, 200)
 }
@@ -169,7 +167,7 @@ pub(super) fn mcp_picture(data: &[u8], lines: usize) -> Result<Image, DecodeErro
 pub(super) fn decode_mcpp(data: &[u8]) -> Result<Image, DecodeError> {
     const HALF: usize = FRAME / 2;
     if data.len() != 2 * HALF + 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let sets = color_sets(&data[2 * HALF..]);
     let mut lines = [0u8; 2 * HALF];
@@ -194,7 +192,7 @@ pub(super) fn decode_shc(data: &[u8]) -> Result<Image, DecodeError> {
     const SCREEN: usize = 7680;
     const SPLITS: [[usize; 5]; 2] = [[94, 166, 214, 262, 306], [46, 142, 190, 238, 286]];
     if data.len() != 17920 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frame_image = |f: usize| -> Result<Image, DecodeError> {
         let bitmap = &data[f * SCREEN..(f + 1) * SCREEN];

@@ -326,7 +326,7 @@ impl TileLayout {
         per_row: usize,
     ) -> Result<(u32, u32, Vec<u8>), DecodeError> {
         if per_row == 0 || !tiles.len().is_multiple_of(self.tile_len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let count = tiles.len() / self.tile_len();
         let width = per_row * self.width;

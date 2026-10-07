@@ -37,15 +37,15 @@ const DEFAULT_SIZE: (usize, usize) = (32, 30);
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(MAGIC) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (width, height) = match (number(data, b"VarNameW"), number(data, b"VarNameH")) {
         (Some(w), Some(h)) => (w, h),
         (None, None) => DEFAULT_SIZE,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if width == 0 || height == 0 || width > 256 || height > 256 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pattern = hex_field(data, b"CHRMain")?;
     let palette = hex_field(data, b"Palette")?;
@@ -57,7 +57,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         || names.len() != width * height
         || attributes.len() < attribute_columns * height.div_ceil(4)
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Nametable {
         width,
@@ -86,25 +86,24 @@ fn number(data: &[u8], key: &[u8]) -> Option<usize> {
 
 /// A field of hex bytes, `xx[n]` repeating a byte `n` times.
 fn hex_field(data: &[u8], key: &[u8]) -> Result<Vec<u8>, DecodeError> {
-    let text = field(data, key).ok_or(DecodeError::Unrecognized)?;
+    let text = field(data, key).ok_or(DecodeError::Invalid)?;
     let mut out = Vec::new();
     let mut rest = text;
     while !rest.is_empty() {
-        let byte = hex_byte(rest).ok_or(DecodeError::Unrecognized)?;
+        let byte = hex_byte(rest).ok_or(DecodeError::Invalid)?;
         rest = &rest[2..];
         let mut repeat = 1;
         if let Some(counted) = rest.strip_prefix(b"[") {
             let end = counted
                 .iter()
                 .position(|&b| b == b']')
-                .ok_or(DecodeError::Unrecognized)?;
-            let digits =
-                core::str::from_utf8(&counted[..end]).map_err(|_| DecodeError::Unrecognized)?;
-            repeat = usize::from_str_radix(digits, 16).map_err(|_| DecodeError::Unrecognized)?;
+                .ok_or(DecodeError::Invalid)?;
+            let digits = core::str::from_utf8(&counted[..end]).map_err(|_| DecodeError::Invalid)?;
+            repeat = usize::from_str_radix(digits, 16).map_err(|_| DecodeError::Invalid)?;
             rest = &counted[end + 1..];
         }
         if out.len().saturating_add(repeat) > MAX_FIELD {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         out.resize(out.len() + repeat, byte);
     }

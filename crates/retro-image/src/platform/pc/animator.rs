@@ -50,7 +50,7 @@ use crate::bytes::le16;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 0x9119;
 const PALETTE_AT: usize = 32;
 const PIXELS_AT: usize = PALETTE_AT + 256 * 3;

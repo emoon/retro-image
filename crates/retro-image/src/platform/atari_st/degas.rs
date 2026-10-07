@@ -28,11 +28,11 @@ pub(super) fn decode_pi(data: &[u8]) -> Result<Image, DecodeError> {
     }
     let resolution = be16(data, 0)
         .and_then(Resolution::from_index)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if data.len() < HEADER_LEN + SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let words = palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?;
+    let words = palette_words(data, 2, 16).ok_or(DecodeError::Invalid)?;
     let bitmap = &data[HEADER_LEN..];
     let tall_lines = (data.len() - HEADER_LEN) / 160;
     let image = if resolution == Resolution::Low
@@ -44,28 +44,28 @@ pub(super) fn decode_pi(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         decode_screen(resolution, bitmap, &words)
     };
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// DEGAS Elite compressed: resolution word with bit 15 set, palette,
 /// PackBits per line per plane.
 pub(super) fn decode_pc(data: &[u8]) -> Result<Image, DecodeError> {
-    let word = be16(data, 0).ok_or(DecodeError::Unrecognized)?;
+    let word = be16(data, 0).ok_or(DecodeError::Invalid)?;
     if word & 0x8000 == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let resolution = Resolution::from_index(word & 3).ok_or(DecodeError::Unrecognized)?;
-    let words = palette_words(data, 2, 16).ok_or(DecodeError::Unrecognized)?;
+    let resolution = Resolution::from_index(word & 3).ok_or(DecodeError::Invalid)?;
+    let words = palette_words(data, 2, 16).ok_or(DecodeError::Invalid)?;
     let (unpacked, _) =
-        packbits::unpack(&data[HEADER_LEN..], SCREEN_LEN).ok_or(DecodeError::Unrecognized)?;
+        packbits::unpack(&data[HEADER_LEN..], SCREEN_LEN).ok_or(DecodeError::Invalid)?;
     let bitmap = line_planes_to_interleaved(
         &unpacked,
         resolution.width(),
         resolution.height(),
         resolution.planes(),
     )
-    .ok_or(DecodeError::Unrecognized)?;
-    decode_screen(resolution, &bitmap, &words).ok_or(DecodeError::Unrecognized)
+    .ok_or(DecodeError::Invalid)?;
+    decode_screen(resolution, &bitmap, &words).ok_or(DecodeError::Invalid)
 }
 
 /// EZ-Art Professional: `EZ`, height word, palette, 4 unknown words, then
@@ -74,19 +74,18 @@ pub(super) fn decode_pc(data: &[u8]) -> Result<Image, DecodeError> {
 /// <http://fileformats.archiveteam.org/wiki/EZ-Art_Professional> (height word).
 pub(super) fn decode_eza(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(b"EZ") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let height = u32::from(be16(data, 2).ok_or(DecodeError::Unrecognized)?);
+    let height = u32::from(be16(data, 2).ok_or(DecodeError::Invalid)?);
     if !(1..=640).contains(&height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let words = palette_words(data, 4, 16).ok_or(DecodeError::Unrecognized)?;
-    let body = data.get(44..).ok_or(DecodeError::Unrecognized)?;
+    let words = palette_words(data, 4, 16).ok_or(DecodeError::Invalid)?;
+    let body = data.get(44..).ok_or(DecodeError::Invalid)?;
     let (unpacked, _) =
-        packbits::unpack(body, 160 * height as usize).ok_or(DecodeError::Unrecognized)?;
+        packbits::unpack(body, 160 * height as usize).ok_or(DecodeError::Invalid)?;
     let bitmap =
-        line_planes_to_interleaved(&unpacked, 320, height, 4).ok_or(DecodeError::Unrecognized)?;
+        line_planes_to_interleaved(&unpacked, 320, height, 4).ok_or(DecodeError::Invalid)?;
     let palette = super::common::st_palette(&words);
-    super::common::planar_image(&bitmap, 320, height, 4, &palette, 1)
-        .ok_or(DecodeError::Unrecognized)
+    super::common::planar_image(&bitmap, 320, height, 4, &palette, 1).ok_or(DecodeError::Invalid)
 }

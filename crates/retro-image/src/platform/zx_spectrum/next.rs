@@ -123,7 +123,7 @@ pub(super) fn decode_nxi(data: &[u8]) -> Result<Image, DecodeError> {
         l if l == ROWS_LEN + 512 => (Mode::Rows, 512),
         l if l == COLUMNS_LEN + 512 => (Mode::Columns, 512),
         l if l == COLUMNS_LEN + 32 => (Mode::WideColumns, 32),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (palette, pixels) = data.split_at(palette_len);
     let palette = if palette.is_empty() {
@@ -148,7 +148,7 @@ pub(super) fn decode_sl2(data: &[u8]) -> Result<Image, DecodeError> {
         l if l == COLUMNS_LEN + 512 => (Mode::Columns, COLUMNS_LEN, 2),
         l if l == COLUMNS_LEN + 16 => (Mode::WideColumns, COLUMNS_LEN, 1),
         l if l == COLUMNS_LEN + 32 => (Mode::WideColumns, COLUMNS_LEN, 2),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (pixels, tail) = data.split_at(pixels_len);
     let palette = match entry_len {
@@ -163,7 +163,7 @@ pub(super) fn decode_sl2(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_slr(data: &[u8]) -> Result<Image, DecodeError> {
     let data = strip_plus3dos(data);
     if data.len() != 128 * 96 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut frame = Frame::new(128, 96)?;
     for (i, &index) in data.iter().enumerate() {

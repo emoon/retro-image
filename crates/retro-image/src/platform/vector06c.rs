@@ -39,7 +39,7 @@ const SCREEN_LEN: usize = 4 * PLANE_LEN;
 /// palette and the stream are ignored.
 fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() <= PALETTE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (palette, stream) = data.split_at(PALETTE_LEN);
     let screen = unpack_backwards(stream)?;
@@ -63,7 +63,7 @@ fn unpack_backwards(stream: &[u8]) -> Result<Vec<u8>, DecodeError> {
     let mut screen = vec![0u8; SCREEN_LEN];
     let mut out = SCREEN_LEN;
     let mut bytes = stream.iter().rev().copied();
-    let mut next = || bytes.next().ok_or(DecodeError::Unrecognized);
+    let mut next = || bytes.next().ok_or(DecodeError::Invalid);
     while out > 0 {
         let control = next()?;
         let count = usize::from(control & 0x7f).min(out);

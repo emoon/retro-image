@@ -97,7 +97,7 @@ use crate::bytes::be32;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 100;
 const COLOR_LEN: usize = 12;
 const VERSION: u32 = 7;

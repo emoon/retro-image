@@ -56,30 +56,30 @@ fn to_byte(value: u32, bits: usize) -> u8 {
 }
 
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let bmhd = find(contents, b"BMHD")
         .filter(|b| b.len() >= 20)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let (width, height) = (
-        usize::from(be16(bmhd, 0).ok_or(fail)?),
-        usize::from(be16(bmhd, 2).ok_or(fail)?),
+        usize::from(be16(bmhd, 0).ok_or(FAIL)?),
+        usize::from(be16(bmhd, 2).ok_or(FAIL)?),
     );
     let (planes, masking, compression) = (usize::from(bmhd[8]), bmhd[9], bmhd[10]);
-    let bits = channels(planes).ok_or(fail)?;
+    let bits = channels(planes).ok_or(FAIL)?;
     check_size(width, height)?;
 
     let stored = planes + usize::from(masking == MASK_HAS_MASK);
     let row_len = width.div_ceil(16) * 2;
     let len = row_len * stored * height;
-    let body = find(contents, b"BODY").ok_or(fail)?;
+    let body = find(contents, b"BODY").ok_or(FAIL)?;
     // ByteRun1 never expands a byte past 128.
     if len > body.len().saturating_mul(128) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let data = match compression {
-        0 => body.get(..len).ok_or(fail)?.to_vec(),
-        1 => packbits::unpack(body, len).ok_or(fail)?.0,
-        _ => return Err(fail),
+        0 => body.get(..len).ok_or(FAIL)?.to_vec(),
+        1 => packbits::unpack(body, len).ok_or(FAIL)?.0,
+        _ => return Err(FAIL),
     };
     // Each channel is narrowed to bytes as soon as it is read, so only one
     // channel at a time is held as 32-bit values.

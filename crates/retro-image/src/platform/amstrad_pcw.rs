@@ -70,7 +70,7 @@ pub(super) static FORMATS: &[Format] = &[
     Format::new("Amstrad PCW", "Stop Press canvas", &["spc"], decode_spc),
 ];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const STAMP_LEN: usize = 128;
 /// Width and height (or their codes) before the rows of CUT and GRF.
 const HEADER_LEN: usize = 4;

@@ -87,22 +87,22 @@ const HEADER_LEN: usize = 44;
 /// also recognised by content: on disk, sprite files are often named
 /// `name,ff9`, which has no extension.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let word = |at: usize| le32(data, at).map(|w| w as usize).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let word = |at: usize| le32(data, at).map(|w| w as usize).ok_or(FAIL);
     // Offsets in the file are sprite-area offsets: 4 more than file offsets.
     let (count, first, free) = (word(0)?, word(4)?, word(8)?);
     if !(1..=10_000).contains(&count) || first < 16 || first % 4 != 0 || free % 4 != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let start = first - 4;
-    let end = free.checked_sub(4).ok_or(fail)?;
+    let end = free.checked_sub(4).ok_or(FAIL)?;
     if end > data.len() || start.checked_add(HEADER_LEN).is_none_or(|e| e > end) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let sprite = &data[start..];
     let size = word(start)?;
     if size < HEADER_LEN || size > sprite.len() {
-        return Err(fail);
+        return Err(FAIL);
     }
     // Some files have a palette added without the sprite size and the file
     // header being updated, so the image may run past both: it is only
@@ -112,36 +112,36 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Decodes one sprite: its header, palette and image.
 fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let word = |at: usize| le32(sprite, at).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let word = |at: usize| le32(sprite, at).ok_or(FAIL);
     if !valid_name(&sprite[4..16]) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let width_words = word(16)?.checked_add(1).ok_or(fail)? as usize;
-    let height = word(20)?.checked_add(1).ok_or(fail)? as usize;
+    let width_words = word(16)?.checked_add(1).ok_or(FAIL)? as usize;
+    let height = word(20)?.checked_add(1).ok_or(FAIL)? as usize;
     let (first_bit, last_bit) = (word(24)? as usize, word(28)? as usize);
     let image_at = word(32)? as usize;
-    let format = PixelFormat::from_mode_word(word(40)?).ok_or(fail)?;
+    let format = PixelFormat::from_mode_word(word(40)?).ok_or(FAIL)?;
     let bpp = format.bits_per_pixel();
     // New format sprites have no left-hand wastage.
     let first_bit = if format.is_mode_number { first_bit } else { 0 };
     if first_bit > 31 || last_bit > 31 || first_bit % bpp != 0 || (last_bit + 1) % bpp != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let row_bits = width_words.checked_mul(32).ok_or(fail)?;
+    let row_bits = width_words.checked_mul(32).ok_or(FAIL)?;
     let width = row_bits
         .checked_sub(first_bit + (31 - last_bit))
-        .ok_or(fail)?
+        .ok_or(FAIL)?
         / bpp;
     let stride = width_words * 4;
-    let pixels_len = stride.checked_mul(height).ok_or(fail)?;
+    let pixels_len = stride.checked_mul(height).ok_or(FAIL)?;
     let pixels = image_at
         .checked_add(pixels_len)
         .filter(|_| image_at >= HEADER_LEN)
         .and_then(|end| sprite.get(image_at..end))
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     if width == 0 || width > u32::MAX as usize || height > u32::MAX as usize {
-        return Err(fail);
+        return Err(FAIL);
     }
     // The palette runs from the header to the image.
     let (sx, sy) = format.pixel_scale;
@@ -175,7 +175,7 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
         Kind::Tbgr1555 => {
             for (y, row) in pixels.chunks_exact(stride).enumerate() {
                 for x in 0..width {
-                    let value = le16(row, x * 2).ok_or(fail)?;
+                    let value = le16(row, x * 2).ok_or(FAIL)?;
                     image.set(x as u32, y as u32, rgb555(value));
                 }
             }

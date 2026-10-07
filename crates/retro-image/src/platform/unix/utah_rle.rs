@@ -43,7 +43,7 @@ use crate::{DecodeError, Image};
 /// How many times the picture size plus the operation bytes the pixel writes
 /// may add up to before the file is refused.
 const WORK_FACTOR: usize = 8;
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 0xcc52;
 const FIXED_HEADER_LEN: usize = 15;
 const CLEAR_FIRST: u8 = 1;

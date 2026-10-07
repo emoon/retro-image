@@ -13,7 +13,7 @@ use crate::{DecodeError, Image};
 const WORDS: usize = SCREEN_LEN / 2;
 
 pub(super) fn decode_tny(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {

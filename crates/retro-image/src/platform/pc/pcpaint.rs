@@ -59,7 +59,7 @@ use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u16 = 0x1234;
 /// Palette flag of a version 2 header.
 const HAS_PALETTE_BLOCK: u8 = 0xff;

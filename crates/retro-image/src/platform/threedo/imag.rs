@@ -27,30 +27,30 @@ use crate::image::{check_size, xrgb1555};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     // A `VDL ` chunk (a color table per scanline) changes what the pixels
     // mean, and the documentation does not say how, so those pictures are not
     // read: the pixels alone show noise.
     if chunks(data).any(|chunk| &chunk.tag == b"VDL ") {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut all = chunks(data);
-    let header = all.find(|chunk| &chunk.tag == b"IMAG").ok_or(fail)?.body;
-    let pixels = all.find(|chunk| &chunk.tag == b"PDAT").ok_or(fail)?.body;
+    let header = all.find(|chunk| &chunk.tag == b"IMAG").ok_or(FAIL)?.body;
+    let pixels = all.find(|chunk| &chunk.tag == b"PDAT").ok_or(FAIL)?.body;
 
-    let width = be32(header, 0).ok_or(fail)? as usize;
-    let height = be32(header, 4).ok_or(fail)? as usize;
-    let row_len = be32(header, 8).ok_or(fail)? as usize;
+    let width = be32(header, 0).ok_or(FAIL)? as usize;
+    let height = be32(header, 4).ok_or(FAIL)? as usize;
+    let row_len = be32(header, 8).ok_or(FAIL)? as usize;
     // 16 bits per pixel, 3 components in 1 plane, RGB, uncompressed.
-    let [16, 3, 1, 0, 0, _, order] = header.get(12..19).ok_or(fail)? else {
-        return Err(fail);
+    let [16, 3, 1, 0, 0, _, order] = header.get(12..19).ok_or(FAIL)? else {
+        return Err(FAIL);
     };
     check_size(width, height)?;
     if *order > 2 || row_len < width * 2 || (*order != 0 && !height.is_multiple_of(2)) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    if row_len.checked_mul(height).ok_or(fail)? > pixels.len() {
-        return Err(fail);
+    if row_len.checked_mul(height).ok_or(FAIL)? > pixels.len() {
+        return Err(FAIL);
     }
     let colors = (0..height).flat_map(|y| {
         (0..width).map(move |x| {

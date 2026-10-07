@@ -49,22 +49,22 @@ struct Header {
 }
 
 fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let h = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let h = data.get(..HEADER_LEN).ok_or(FAIL)?;
     // Manufacturer 10, known version, RLE encoding.
     if h[0] != 0x0a || !matches!(h[1], 0 | 2 | 3 | 4 | 5) || h[2] != 1 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let bits = usize::from(h[3]);
     let planes = usize::from(h[65]);
     let supported = matches!((bits, planes), (1, 1..=4) | (2 | 4, 1) | (8, 1 | 3 | 4));
     if !supported {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let word = |at| le16(h, at).map(usize::from).ok_or(fail);
+    let word = |at| le16(h, at).map(usize::from).ok_or(FAIL);
     let (x0, y0, x1, y1) = (word(4)?, word(6)?, word(8)?, word(10)?);
     if x1 < x0 || y1 < y0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (width, height) = (x1 - x0 + 1, y1 - y0 + 1);
     let row_len = word(66)?;
@@ -74,7 +74,7 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
     let stored = row_len * 8 / bits;
     let width = if width == stored + 1 { stored } else { width };
     if row_len < (width * bits).div_ceil(8) {
-        return Err(fail);
+        return Err(FAIL);
     }
     // The padded raster is what gets unpacked and, for EGA planes, expanded
     // to a value per pixel, so it must fit the pixel budget too.
@@ -95,15 +95,15 @@ fn parse_header(data: &[u8]) -> Result<Header, DecodeError> {
 pub(super) fn unpack(data: &[u8], len: usize) -> Result<(Vec<u8>, usize), DecodeError> {
     // A two-byte run yields at most 63 bytes.
     if len > data.len().saturating_mul(32) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut out = Vec::with_capacity(len);
     let mut pos = 0;
     while out.len() < len {
-        let b = *data.get(pos).ok_or(DecodeError::Unrecognized)?;
+        let b = *data.get(pos).ok_or(DecodeError::Invalid)?;
         pos += 1;
         if b >= 0xc0 {
-            let value = *data.get(pos).ok_or(DecodeError::Unrecognized)?;
+            let value = *data.get(pos).ok_or(DecodeError::Invalid)?;
             pos += 1;
             let count = usize::from(b & 0x3f).min(len - out.len());
             out.resize(out.len() + count, value);

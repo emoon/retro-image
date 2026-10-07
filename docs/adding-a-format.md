@@ -7,7 +7,7 @@
    A module may become a directory (`atari_st.rs` + `atari_st/*.rs`).
    - The core crate is `no_std` + `alloc`: use `core::`/`alloc::`, never `std::`, and take
      input only as `&[u8]`.
-   - Return `DecodeError::Unrecognized` for any data the format can't accept, including
+   - Return `DecodeError::Invalid` for any data the format can't accept, including
      wrong sizes or truncated data. Never panic on bad input: check lengths before indexing.
    - Several formats share extensions. Validate size or magic bytes tightly so a decoder
      doesn't claim another format's files.

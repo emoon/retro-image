@@ -68,11 +68,11 @@ struct Gtia {
 
 pub(super) fn decode_ged(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN || !data.starts_with(&HEADER) || data[REGISTERS + 14] > 7 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // PRIOR bits 6-7 select GTIA modes 9-11, which are not drawn.
     if data[REGISTERS + 6] & GTIA_MODE != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let regs = &data[REGISTERS..REGISTERS + 16];
     let hardware = |position: u8| position.wrapping_add(LEFT_EDGE);
@@ -106,7 +106,7 @@ pub(super) fn decode_ged(data: &[u8]) -> Result<Image, DecodeError> {
             &mut graphics,
         );
         if gtia.prior & GTIA_MODE != 0 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let object = |index: usize, override_: Option<u8>| {
             override_.unwrap_or(data[OBJECTS + 256 * index + FIRST_LINE + y])

@@ -37,9 +37,9 @@ const VRAM_SIZE: usize = 0x20000;
 const MAX_STREAM: usize = VRAM_SIZE + 0x1000;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let stream = unpack(data).ok_or(DecodeError::Unrecognized)?;
-    let vdp = Vdp::run(&stream).ok_or(DecodeError::Unrecognized)?;
-    vdp.render().ok_or(DecodeError::Unrecognized)
+    let stream = unpack(data).ok_or(DecodeError::Invalid)?;
+    let vdp = Vdp::run(&stream).ok_or(DecodeError::Invalid)?;
+    vdp.render().ok_or(DecodeError::Invalid)
 }
 
 /// The command stream held in the BitBuster blocks.

@@ -54,26 +54,26 @@ pub(super) fn unpack_plane(data: &[u8], pos: &mut usize, len: usize) -> Option<V
 }
 
 pub(in crate::platform) fn decode_artmaster88(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     if !data.starts_with(SIGNATURE)
         || data.get(0x10) != Some(&b'I')
         || data.get(0x12..0x16) != Some(b"BBRG")
         || le16(data, 0x18) != Some(pc88_planes::WIDTH as u16)
         || le16(data, 0x1a) != Some(pc88_planes::LINES as u16)
     {
-        return Err(bad);
+        return Err(BAD);
     }
     let mut pos = RECORDS;
     for _ in 0..2 {
-        let length = usize::from(le16(data, pos).ok_or(bad)?);
+        let length = usize::from(le16(data, pos).ok_or(BAD)?);
         if length < 2 {
-            return Err(bad);
+            return Err(BAD);
         }
         pos += length;
     }
-    let blue = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
-    let red = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
-    let green = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(bad)?;
+    let blue = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(BAD)?;
+    let red = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(BAD)?;
+    let green = unpack_plane(data, &mut pos, PLANE_BYTES).ok_or(BAD)?;
 
     pc88_planes::image(&blue, &red, &green)
 }

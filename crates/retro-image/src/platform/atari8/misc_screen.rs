@@ -77,7 +77,7 @@ pub(super) fn decode_txs(data: &[u8]) -> Result<Image, DecodeError> {
     let pixels = exactly(data, 262)?
         .strip_prefix(&[0xff, 0xff, 0x00, 0x06, 0xff, 0x06])
         .filter(|pixels| pixels.iter().all(|&level| level <= 15))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     grey_blocks(pixels.iter().copied(), 16, 16)
 }
 
@@ -128,15 +128,15 @@ pub(super) fn decode_kss(data: &[u8]) -> Result<Image, DecodeError> {
 /// Gephard Hires Graphics: width (LE16), height, then the bitmap.
 pub(super) fn decode_ghg(data: &[u8]) -> Result<Image, DecodeError> {
     let [w0, w1, height, ref bits @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let width = u32::from(u16::from_le_bytes([w0, w1]));
     if !(1..=320).contains(&width) || !(1..=200).contains(&height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let row_len = width.div_ceil(8) as usize;
     if bits.len() != row_len * usize::from(height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mono(
         bits,
@@ -151,7 +151,7 @@ pub(super) fn decode_pi8(data: &[u8]) -> Result<Image, DecodeError> {
     match data.len() {
         7680 => four_color(bitmap(data, 40, 2), 2, 1, GREY_COLORS),
         7685 => hires(bitmap(&data[..7680], 40, 1), rgb(0x00), rgb(0x0e)),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -168,7 +168,7 @@ pub(super) fn decode_pi9(data: &[u8]) -> Result<Image, DecodeError> {
             0x00,
         ),
         7720 => super::apac::decode_interleaved(data),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -176,7 +176,7 @@ pub(super) fn decode_pi9(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_artist_art(data: &[u8]) -> Result<Image, DecodeError> {
     let data = exactly(data, 3206)?;
     let [7, c0, c1, c2, _, background] = data[..6] else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     four_color(bitmap(&data[6..], 40, 2), 2, 2, [background, c0, c1, c2])
 }
@@ -184,11 +184,11 @@ pub(super) fn decode_artist_art(data: &[u8]) -> Result<Image, DecodeError> {
 /// Monochrome ART: width and height minus one, bitmap, one spare byte.
 pub(super) fn decode_mono_art(data: &[u8]) -> Result<Image, DecodeError> {
     let [wide, high, ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (row_len, height) = (usize::from(wide) + 1, usize::from(high) + 1);
     if wide > 29 || high > 63 || data.len() != 3 + row_len * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Image::from_bits(
         row_len as u32 * 8,
@@ -203,7 +203,7 @@ pub(super) fn decode_mono_art(data: &[u8]) -> Result<Image, DecodeError> {
 /// Atari Graphics Studio.
 pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
     let Some((&[b'A', b'G', b'S', mode, row_bytes], rest)) = data.split_first_chunk::<5>() else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (row_bytes, height) = (
         usize::from(row_bytes),
@@ -211,10 +211,10 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
     );
     let plane_len = row_bytes * height;
     let (Some(registers), Some(planes)) = (rest.get(2..11), rest.get(11..)) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if plane_len == 0 || planes.len() != 2 * plane_len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // Both modes draw at most 8 pixels per row byte and 4 per line.
     check_size(8 * row_bytes, 4 * height)?;
@@ -239,7 +239,7 @@ pub(super) fn decode_ags(data: &[u8]) -> Result<Image, DecodeError> {
             }
             image.scaled(2, 1)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

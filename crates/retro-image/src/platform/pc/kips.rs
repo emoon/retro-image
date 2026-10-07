@@ -29,7 +29,7 @@ use crate::bytes::le16;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const SIGNATURE: &[u8; 8] = b"DFIMAG00";
 const HEADER_LEN: usize = 32;
 

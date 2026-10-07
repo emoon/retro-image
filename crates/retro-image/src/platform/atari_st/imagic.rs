@@ -23,7 +23,7 @@ const COLUMNS: usize = 160;
 const ROWS: usize = SCREEN_LEN / COLUMNS;
 
 pub(super) fn decode_ic(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {

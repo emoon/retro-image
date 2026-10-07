@@ -54,7 +54,7 @@ use crate::image::{CLEAR, check_size};
 use crate::macbinary::data_fork_or_self;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAX_CODES: usize = 4096;
 
 pub(super) fn decode_gif(data: &[u8]) -> Result<Image, DecodeError> {

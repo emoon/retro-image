@@ -86,7 +86,7 @@ fn narrow_frames(
 pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
     const MAGIC: [u8; 8] = [0xff, 0xff, 0xf6, 0xa3, 0xff, 0xbb, 0xff, 0x5f];
     if data.len() != 16 + 2 * 32 * 96 || data[..8] != MAGIC {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = &data[8..16];
     narrow_frames(&data[16..], 96, |frame, value| {
@@ -98,7 +98,7 @@ pub(super) fn decode_ige(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
     const GREYS: [u8; 4] = [0x00, 0x06, 0x02, 0x0a];
     if data.len() != 2 * 32 * 128 + 3 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     narrow_frames(data, 128, |_, value| {
         register_rgb(GREYS[usize::from(value)])
@@ -109,7 +109,7 @@ pub(super) fn decode_ild(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
     const FRAME: usize = 8192;
     if data.len() != 2 * FRAME {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let white = register_rgb(0x0e);
     let frame = |data: &[u8]| {
@@ -128,7 +128,7 @@ pub(super) fn decode_hr(data: &[u8]) -> Result<Image, DecodeError> {
 /// reverse of APA's order), plus 176 unread bytes.
 pub(super) fn decode_mga(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 7680 + 176 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (luminance, hue) = deinterleave(&data[..7680]);
     apac_80x96(&hue, &luminance)
@@ -142,17 +142,17 @@ pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
     let rest = data
         .strip_prefix(MAGIC)
         .and_then(|rest| rest.get(4..))
-        .ok_or(DecodeError::Unrecognized)?;
-    let title = usize::from(le16(rest, 0).ok_or(DecodeError::Unrecognized)?);
+        .ok_or(DecodeError::Invalid)?;
+    let title = usize::from(le16(rest, 0).ok_or(DecodeError::Invalid)?);
     // Each plane has its own 16-bit size word.
     let size = (PLANE as u16).to_le_bytes();
     let planes = rest
         .get(2 + title..)
         .and_then(|rest| rest.strip_prefix(&size))
         .filter(|planes| planes.len() == 2 * PLANE + 2)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let (luminance, hue) = planes.split_at(PLANE);
-    let hue = hue.strip_prefix(&size).ok_or(DecodeError::Unrecognized)?;
+    let hue = hue.strip_prefix(&size).ok_or(DecodeError::Invalid)?;
     let picture = Scanlines {
         lines: 239,
         luminance: |y, x| nibble(luminance, y, x / 2),
@@ -165,15 +165,13 @@ pub(super) fn decode_bgp(data: &[u8]) -> Result<Image, DecodeError> {
 /// Champions' Interlace, packed: unpacks to a 16384-byte CIN picture.
 pub(super) fn decode_cci(data: &[u8]) -> Result<Image, DecodeError> {
     const LINES: usize = 192;
-    let mut rest = data
-        .strip_prefix(b"CIN 1.2 ")
-        .ok_or(DecodeError::Unrecognized)?;
+    let mut rest = data.strip_prefix(b"CIN 1.2 ").ok_or(DecodeError::Invalid)?;
     let mut chunk = |size: usize| -> Result<Vec<u8>, DecodeError> {
-        let length = usize::from(le16(rest, 0).ok_or(DecodeError::Unrecognized)?);
+        let length = usize::from(le16(rest, 0).ok_or(DecodeError::Invalid)?);
         let (packed, after) = rest
             .get(4..)
             .and_then(|body| body.split_at_checked(length.checked_sub(2)?))
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         rest = after;
         unpack(packed, size)
     };
@@ -202,14 +200,14 @@ pub(super) fn decode_cci(data: &[u8]) -> Result<Image, DecodeError> {
 fn unpack(mut packed: &[u8], size: usize) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::with_capacity(size);
     while out.len() < size {
-        let (&control, rest) = packed.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&control, rest) = packed.split_first().ok_or(DecodeError::Invalid)?;
         let count = usize::from(control & 0x7f) + 1;
         if control & 0x80 != 0 {
-            let (&byte, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+            let (&byte, rest) = rest.split_first().ok_or(DecodeError::Invalid)?;
             out.resize(out.len() + count, byte);
             packed = rest;
         } else {
-            let literal = rest.get(..count).ok_or(DecodeError::Unrecognized)?;
+            let literal = rest.get(..count).ok_or(DecodeError::Invalid)?;
             out.extend_from_slice(literal);
             packed = &rest[count..];
         }

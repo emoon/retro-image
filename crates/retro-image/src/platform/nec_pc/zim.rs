@@ -78,15 +78,11 @@ fn unpack_line(packed: &[u8]) -> Option<[u8; LINE_BYTES]> {
 }
 
 pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     if !data.starts_with(SIGNATURE) || data.len() < TABLE_COUNT + 2 {
-        return Err(bad);
+        return Err(BAD);
     }
-    let word = |at: usize| {
-        le16(data, at)
-            .map(usize::from)
-            .ok_or(DecodeError::Unrecognized)
-    };
+    let word = |at: usize| le16(data, at).map(usize::from).ok_or(DecodeError::Invalid);
     let height = word(0x206)? + 1;
     if word(0x1fa)? != 0
         || word(0x200)? != 0
@@ -96,7 +92,7 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
         || word(0x214)? != 1
         || word(0x216)? == 0
     {
-        return Err(bad);
+        return Err(BAD);
     }
     let palette: Vec<u32> = (0..16)
         .map(|i| {
@@ -116,16 +112,16 @@ pub(in crate::platform) fn decode_zim(data: &[u8]) -> Result<Image, DecodeError>
             word(pos + 8)?,
         );
         if w != WIDTH || x != 0 || row != y || bytes != LINE_BYTES || size < 2 {
-            return Err(bad);
+            return Err(BAD);
         }
-        let packed = data.get(pos + 10..pos + 8 + size).ok_or(bad)?;
-        let line = unpack_line(packed).ok_or(bad)?;
+        let packed = data.get(pos + 10..pos + 8 + size).ok_or(BAD)?;
+        let line = unpack_line(packed).ok_or(BAD)?;
         lines.extend_from_slice(&line);
         pos += 8 + size;
     }
     // The line stream ends with a zero word; anything after it is ignored.
     if le16(data, pos) != Some(0) {
-        return Err(bad);
+        return Err(BAD);
     }
     // Each line stores its planes from the highest bit down.
     let indices: Vec<u8> = planar_pixels(&lines, WIDTH, height, PLANE_BYTES, 4, |plane, y| {

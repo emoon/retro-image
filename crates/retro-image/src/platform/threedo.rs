@@ -88,13 +88,13 @@ fn padded(size: usize) -> usize {
 fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let first = chunks(data)
         .find(|chunk| &chunk.tag != b"3DO ")
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     match &first.tag {
         b"IMAG" => imag::decode(data),
         b"CCB " | b"ANIM" | b"OFST" | b"PLUT" | b"CPYR" | b"DESC" | b"KWRD" | b"CRDT" | b"XTRA" => {
             cel::decode(data)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

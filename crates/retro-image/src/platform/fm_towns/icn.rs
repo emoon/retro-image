@@ -151,7 +151,7 @@ pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         None
     };
-    sheet(&icons.ok_or(DecodeError::Unrecognized)?)
+    sheet(&icons.ok_or(DecodeError::Invalid)?)
 }
 
 #[cfg(test)]

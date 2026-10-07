@@ -44,7 +44,7 @@ pub(super) fn decode_ctm(data: &[u8]) -> Result<Image, DecodeError> {
     };
     project
         .and_then(|project| project.render())
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 /// Whether tile and map sides are within CharPad's limits. Parsers check this

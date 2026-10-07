@@ -36,14 +36,14 @@ pub(super) fn decode_scr(data: &[u8]) -> Result<Image, DecodeError> {
             );
             Ok(frame.into_image()?)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
 /// 768 attribute bytes over a fixed checkered bitmap.
 pub(super) fn decode_atr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != ATTRIBUTES_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     attribute_frame(data, 8, |_, y| if y % 2 == 0 { 0x55 } else { 0xaa })?.into_image()
 }
@@ -51,7 +51,7 @@ pub(super) fn decode_atr(data: &[u8]) -> Result<Image, DecodeError> {
 /// Gigascreen: two 6912-byte screens shown in alternation.
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * SCR_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames = data.as_chunks::<SCR_LEN>().0.iter().map(|scr| {
         let mut frame = Frame::new(WIDTH, HEIGHT)?;
@@ -67,7 +67,7 @@ pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
 /// 512x384 display, the first on even lines, pixels doubled horizontally.
 pub(super) fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * SCR_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (first, second) = data.split_at(SCR_LEN);
     let field = |scr| {
@@ -86,7 +86,7 @@ const HLR_ATTRIBUTES: usize = 0x5c;
 /// screens shown as gigascreen.
 pub(super) fn decode_hlr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HLR_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pattern = &data[HLR_PATTERN..HLR_ATTRIBUTES];
     let frames = data[HLR_ATTRIBUTES..]
@@ -105,7 +105,7 @@ const STL_LEN: usize = 3072;
 /// interleaved in the file two bytes at a time.
 pub(super) fn decode_stl(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != STL_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frame = |first: usize| {
         let attributes: alloc::vec::Vec<u8> = data
@@ -151,7 +151,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
 /// rather than average (observed from `recoil2png` output).
 fn decode_tricolor(data: &[u8], channels: [u32; 3]) -> Result<Image, DecodeError> {
     if data.len() != TRICOLOR_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut frame = Frame::new(WIDTH, HEIGHT)?;
     for y in 0..HEIGHT {

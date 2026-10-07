@@ -32,7 +32,7 @@ const BK_SCREEN_LEN: usize = 16384;
 /// 256x256 color screen in the BK-0010 colors (BK-0011M palette 0).
 fn decode_bk_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != BK_SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     bk_color(data, 0)
 }
@@ -45,14 +45,14 @@ fn decode_bks(data: &[u8]) -> Result<Image, DecodeError> {
     let color = match palettes.len() {
         0 => false,
         n if n == screens => true,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     if !(1..=2).contains(&screens)
         || palettes
             .iter()
             .any(|&p| usize::from(p) >= BK_PALETTES.len())
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frames: Vec<Image> = pixels
         .as_chunks::<BK_SCREEN_LEN>()
@@ -127,7 +127,7 @@ const MC0515_LEN: usize = 16000;
 /// 640x200 monochrome, 80 bytes per line, most significant bit leftmost.
 fn decode_mc0515(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != MC0515_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(640, 200)?;
     for (i, &byte) in data.iter().enumerate() {

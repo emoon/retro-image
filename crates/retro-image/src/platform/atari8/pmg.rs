@@ -99,9 +99,9 @@ fn draw_missiles(image: &mut Image, x: u32, y: u32, line: u8, colors: &[u8]) {
 
 /// Four missiles: colors of missiles 0-3, then 240 lines.
 pub(super) fn decode_4mi(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, lines) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, lines) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     if lines.len() != PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(32, PM_LINES as u32)?;
     for (y, &line) in lines.iter().enumerate() {
@@ -122,9 +122,9 @@ fn draw_players(sheet: &mut Sheet, colors: &[u8], players: &[u8]) {
 
 /// Four players: colors of players 0-3, then 4 x 240 lines.
 pub(super) fn decode_4pl(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, players) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, players) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     if players.len() != 4 * PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut sheet = Sheet::new(4 * CELL, PM_LINES);
     draw_players(&mut sheet, colors, players);
@@ -134,12 +134,12 @@ pub(super) fn decode_4pl(data: &[u8]) -> Result<Image, DecodeError> {
 /// Four players and four missiles: colors of 0-3, 4 x 240 player lines,
 /// then 240 missile lines. The missiles sit right of the players.
 pub(super) fn decode_4pm(data: &[u8]) -> Result<Image, DecodeError> {
-    let (colors, rest) = data.split_at_checked(4).ok_or(DecodeError::Unrecognized)?;
+    let (colors, rest) = data.split_at_checked(4).ok_or(DecodeError::Invalid)?;
     let (players, missiles) = rest
         .split_at_checked(4 * PM_LINES)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if missiles.len() != PM_LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut sheet = Sheet::new(4 * CELL, PM_LINES);
     draw_players(&mut sheet, colors, players);
@@ -176,10 +176,10 @@ pub(super) fn decode_apl(data: &[u8]) -> Result<Image, DecodeError> {
         ..,
     ] = *data
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if data.len() != 1677 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (frames, height, offset) = (
         usize::from(frames),
@@ -221,13 +221,13 @@ pub(super) fn decode_pmd(data: &[u8]) -> Result<Image, DecodeError> {
         ref blocks @ ..,
     ] = *data
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let colors = [c0, c1, c2, c3];
     let frames = usize::from(a) * usize::from(b);
     let (players, height) = (usize::from(players), usize::from(height));
     if frames == 0 || frames > 160 || blocks.len() != players * frames * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let sprites = players / 2 * frames;
     let per_row = sprites.min(16);
@@ -264,15 +264,15 @@ pub(super) fn decode_ldm(data: &[u8]) -> Result<Image, DecodeError> {
         .strip_prefix(&TEXT)
         .and_then(|rest| rest.split_first_chunk::<4>())
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let frames = frames
         .get(256..)
         .filter(|frames| frames.len() >= usize::from(*count) * 4 * LINES)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let (count, skip) = (usize::from(*count), usize::from(*skip));
     if !(1..=100).contains(&count) || skip >= count {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let shown = count - skip;
     let per_row = shown.min(8);

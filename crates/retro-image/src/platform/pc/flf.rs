@@ -25,7 +25,7 @@ pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     match fluff.kind {
         0x0b => decode_cga(&fluff),
         0x1b => flf::decode_paletted(&fluff, WIDTH, HEIGHT),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -35,7 +35,7 @@ fn decode_cga(fluff: &Fluff) -> Result<Image, DecodeError> {
         3 => cga_set([11, 13, 15]),
         4 => cga_set([2, 4, 6]),
         5 => cga_set([10, 12, 14]),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (pixels, rest) = fluff.split(PAYLOAD + 1, WIDTH * HEIGHT)?;
     flf::trailer(rest, true)?;

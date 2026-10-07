@@ -76,9 +76,9 @@ pub(super) fn decode_hps(data: &[u8]) -> Result<Image, DecodeError> {
 /// Unpacks `data`, which must unpack to one of `lens` bytes, and decodes the
 /// result with `decode`.
 fn packed(data: &[u8], lens: &[usize], decode: Decoder) -> Result<Image, DecodeError> {
-    let unpacked = unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = unpack(data).ok_or(DecodeError::Invalid)?;
     if !lens.contains(&unpacked.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode(&unpacked)
 }

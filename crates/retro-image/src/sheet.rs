@@ -38,7 +38,7 @@ impl Sheet {
         cell_height: usize,
     ) -> Result<Self, DecodeError> {
         if count == 0 || count > MAX_PICTURES {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (pitch_x, pitch_y) = (cell_width + GUTTER, cell_height + GUTTER);
         // The fewest columns that make the sheet at least as wide as tall.
@@ -148,7 +148,7 @@ mod tests {
             (image.get_argb(16, 6), image.get_argb(18, 6)),
             (OPAQUE_BLACK, CLEAR)
         );
-        assert_eq!(sheet(&[]).err(), Some(DecodeError::Unrecognized));
+        assert_eq!(sheet(&[]).err(), Some(DecodeError::Invalid));
         let many = alloc::vec![picture(1, 1); MAX_PICTURES + 1];
         assert!(sheet(&many).is_err());
         assert!(sheet(&many[1..]).is_ok());

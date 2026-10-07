@@ -26,8 +26,8 @@ const FOOTER_LEN: usize = 0x28;
 const BYTE_ORDER_MARK: u16 = 0xfeff;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let footer_at = data.len().checked_sub(FOOTER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let footer_at = data.len().checked_sub(FOOTER_LEN).ok_or(FAIL)?;
     let footer = &data[footer_at..];
     let sound = footer.starts_with(b"CLIM")
         && le16(footer, 4) == Some(BYTE_ORDER_MARK)
@@ -37,13 +37,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         && le32(footer, 0x18) == Some(0x10)
         && le32(footer, 0x24) == u32::try_from(footer_at).ok();
     if !sound {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let width = usize::from(le16(footer, 0x1c).ok_or(fail)?);
-    let height = usize::from(le16(footer, 0x1e).ok_or(fail)?);
-    let format = Format::from_clim(footer[0x20]).ok_or(fail)?;
+    let width = usize::from(le16(footer, 0x1c).ok_or(FAIL)?);
+    let height = usize::from(le16(footer, 0x1e).ok_or(FAIL)?);
+    let format = Format::from_clim(footer[0x20]).ok_or(FAIL)?;
     if width == 0 || height == 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let padded = |side: usize| side.next_power_of_two().max(8);
     Texture {

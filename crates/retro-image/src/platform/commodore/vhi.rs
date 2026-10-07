@@ -32,23 +32,21 @@ pub(super) fn decode_vhi(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() == FILE_LEN {
         return decode_image(data);
     }
-    let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.get(2..).ok_or(DecodeError::Invalid)?;
     // `Prg` wants the load-address header in front of the memory image.
     decode_image(&with_header(unpack(packed)?))
 }
 
 fn decode_image(data: &[u8]) -> Result<Image, DecodeError> {
     let prg = Prg::new(data, LOAD);
-    let screen = prg
-        .at(SCREEN, SCREEN_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+    let screen = prg.at(SCREEN, SCREEN_LEN).ok_or(DecodeError::Invalid)?;
     let frame = |addr| {
         let bitmap = prg.at(addr, BITMAP_LEN)?;
         Frame::hires(&Bitmap::hires(bitmap, screen), 200)
     };
     let (first, second) = frame(LOAD)
         .zip(frame(SECOND_BITMAP))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     Ok(first.blend(&second, 0))
 }
 
@@ -68,7 +66,7 @@ fn unpack(packed: &[u8]) -> Result<Vec<u8>, DecodeError> {
                 out.extend_from_slice(&tail[..n]);
                 rest = &tail[n..];
             }
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         }
     }
     out.truncate(PICTURE_LEN);
@@ -83,7 +81,7 @@ mod tests {
     fn unpacks_runs_and_literals_until_complete() {
         // Two runs of 256 and a 0-count literal block shorter than 256.
         let mut packed = alloc::vec![1, 0, 7, 0, 3, 1, 2, 3];
-        assert_eq!(unpack(&packed), Err(DecodeError::Unrecognized));
+        assert_eq!(unpack(&packed), Err(DecodeError::Invalid));
         packed.extend([1, 0, 9].repeat(PICTURE_LEN / 256));
         let out = unpack(&packed).unwrap();
         assert_eq!(out.len(), PICTURE_LEN);
@@ -93,6 +91,6 @@ mod tests {
 
     #[test]
     fn rejects_unknown_tokens() {
-        assert_eq!(unpack(&[2, 0, 0]), Err(DecodeError::Unrecognized));
+        assert_eq!(unpack(&[2, 0, 0]), Err(DecodeError::Invalid));
     }
 }

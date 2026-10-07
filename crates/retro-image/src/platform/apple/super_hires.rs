@@ -64,7 +64,7 @@ fn read_palette(words: &[u8], reversed: bool) -> Palette {
 /// Draws lines; `width` is the pixel count of a 320-mode line.
 fn render(lines: &[Line], width: usize) -> Result<Image, DecodeError> {
     if lines.is_empty() || width == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let hires = lines.iter().any(|l| l.scb & MODE_640 != 0);
     let scale = if hires { 2 } else { 1 };
@@ -108,7 +108,7 @@ fn render(lines: &[Line], width: usize) -> Result<Image, DecodeError> {
 /// $C1/0000: a 32 KB dump of screen memory.
 pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 0x8000 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let lines: Vec<Line> = (0..200)
         .map(|y| {
@@ -132,7 +132,7 @@ pub(super) fn decode_screen(data: &[u8]) -> Result<Image, DecodeError> {
 /// Observed from the corpus; the rule is not in the File Type Note.
 pub(super) fn decode_checked_screen(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 0x8000 || crate::platform::amstrad_cpc::has_amsdos_header(data) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let valid = |palette: usize| {
         data[0x7e00 + palette * 32..][..32]
@@ -145,7 +145,7 @@ pub(super) fn decode_checked_screen(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .all(|&scb| valid(usize::from(scb & 15)))
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_screen(data)
 }
@@ -157,7 +157,7 @@ pub(super) fn decode_packed_screen(data: &[u8]) -> Result<Image, DecodeError> {
     // the data, so an exact result means nothing is left over.
     let screen = pack_bytes::unpack(data, 0x8001)
         .filter(|s| s.len() == 0x8000)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     decode_screen(&screen)
 }
 
@@ -180,7 +180,7 @@ pub(super) fn render_3200(pixels: &[u8], palettes: &[u8]) -> Result<Image, Decod
 /// $C1/0002 (Brooks): pixels, then 200 palettes.
 pub(super) fn decode_brooks(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCREEN_LEN + 200 * 32 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (pixels, palettes) = data.split_at(SCREEN_LEN);
     render_3200(pixels, palettes)
@@ -190,11 +190,11 @@ pub(super) fn decode_brooks(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_3201(data: &[u8]) -> Result<Image, DecodeError> {
     const PIXELS_AT: usize = 4 + 200 * 32;
     if data.len() <= PIXELS_AT || data[..4] != [0xc1, 0xd0, 0xd0, 0] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels = pack_bytes::unpack(&data[PIXELS_AT..], SCREEN_LEN)
         .filter(|p| p.len() == SCREEN_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     render_3200(&pixels, &data[4..PIXELS_AT])
 }
 
@@ -204,14 +204,14 @@ pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
     const PIXELS_AT: usize = 0x222;
     // Color words are `0RGB`: the high nibble of each high byte is zero.
     if data.len() <= PIXELS_AT || data[..32].iter().skip(1).step_by(2).any(|&b| b > 15) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels =
-        pack_bytes::unpack(&data[PIXELS_AT..], 396 * LINE_LEN).ok_or(DecodeError::Unrecognized)?;
+        pack_bytes::unpack(&data[PIXELS_AT..], 396 * LINE_LEN).ok_or(DecodeError::Invalid)?;
     let height = match pixels.len() / LINE_LEN {
         396.. => 396,
         200.. => 200,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let palette = read_palette(&data[..32], false);
     let lines: Vec<Line> = pixels
@@ -233,21 +233,21 @@ pub(super) fn decode_paintworks(data: &[u8]) -> Result<Image, DecodeError> {
 /// frame delay, a flags word and the changes that make up the other frames.
 /// Only the length ties the file to the format, so it must match exactly.
 pub(super) fn decode_animation(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let after = data
         .len()
         .checked_sub(0x8008)
         .filter(|&n| n > 0)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     if le32(data, 0x8000).map(|length| length as usize) != Some(after) {
-        return Err(fail);
+        return Err(FAIL);
     }
     decode_screen(&data[..0x8000])
 }
 
 /// $C0/0002 (Apple Preferred Format): a list of named blocks.
 pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut main = None;
     let mut multipal = None;
     let mut rest = data;
@@ -266,8 +266,8 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
         }
         rest = &rest[len..];
     }
-    let main = main.ok_or(fail)?;
-    let field = |at: usize| le16(main, at).ok_or(fail);
+    let main = main.ok_or(FAIL)?;
+    let field = |at: usize| le16(main, at).ok_or(FAIL);
     let master_640 = field(0)? as u8 & MODE_640;
     let width = usize::from(field(2)?);
     let tables = usize::from(field(4)?);
@@ -276,16 +276,16 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
     let line_count = usize::from(field(lines_at)?);
     // Far beyond any IIGS screen; keeps corrupt headers from making huge images.
     if width > 2048 || line_count > 4096 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let directory = main
         .get(lines_at + 2..lines_at + 2 + line_count * 4)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let mut packed = &main[lines_at + 2 + line_count * 4..];
     let multipal = match multipal {
         Some(block) => {
-            let count = usize::from(le16(block, 0).ok_or(fail)?);
-            let palettes = block.get(2..2 + count * 32).ok_or(fail)?;
+            let count = usize::from(le16(block, 0).ok_or(FAIL)?);
+            let palettes = block.get(2..2 + count * 32).ok_or(FAIL)?;
             Some(palettes)
         }
         None => None,
@@ -306,9 +306,9 @@ pub(super) fn decode_apf(data: &[u8]) -> Result<Image, DecodeError> {
         } else {
             width.div_ceil(2)
         };
-        let bytes = packed.get(..packed_len).ok_or(fail)?;
+        let bytes = packed.get(..packed_len).ok_or(FAIL)?;
         packed = &packed[packed_len..];
-        let pixels = pack_bytes::unpack(bytes, line_len).ok_or(fail)?;
+        let pixels = pack_bytes::unpack(bytes, line_len).ok_or(FAIL)?;
         unpacked.push((pixels, scb));
     }
     let table = |index: usize| {

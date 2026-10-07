@@ -39,7 +39,7 @@
 use crate::bytes::le16;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: [u8; 4] = [1, 0, 1, 0];
 const HEADER_LEN: usize = 8;
 /// Largest width or height accepted, as in Deark.

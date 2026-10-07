@@ -18,14 +18,14 @@ use crate::image::{check_size, widen_channel};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_block(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 /// A NEOchrome Master picture needs its rasters: without them `recoil2png`
 /// renders the FORM as a plain (Amiga) ILBM, whatever the extension.
 pub(super) fn decode_neochrome_master(data: &[u8]) -> Result<Image, DecodeError> {
     if !is_neochrome_master(data) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_block(data)
 }

@@ -68,50 +68,50 @@ pub(super) fn decode_gvr(data: &[u8], companions: &dyn Companions) -> Result<Ima
 }
 
 pub(super) fn decode_gvm(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    if data.get(..4) != Some(b"GVMH") || be16(data, 10).ok_or(fail)? == 0 {
-        return Err(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    if data.get(..4) != Some(b"GVMH") || be16(data, 10).ok_or(FAIL)? == 0 {
+        return Err(FAIL);
     }
-    let first = (le32(data, 4).ok_or(fail)? as usize)
+    let first = (le32(data, 4).ok_or(FAIL)? as usize)
         .checked_add(8)
         .filter(|&at| at >= 12)
-        .ok_or(fail)?;
-    decode_texture(data.get(first..).ok_or(fail)?, companions)
+        .ok_or(FAIL)?;
+    decode_texture(data.get(first..).ok_or(FAIL)?, companions)
 }
 
 /// The texture at the start of `data`: an optional global index chunk, then
 /// the `GVRT` chunk.
 fn decode_texture(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let start = match data.get(..4) {
         Some(b"GBIX" | b"GCIX") => 16,
         _ => 0,
     };
-    let chunk = data.get(start..).ok_or(fail)?;
+    let chunk = data.get(start..).ok_or(FAIL)?;
     if chunk.get(..4) != Some(b"GVRT") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let flags = *chunk.get(10).ok_or(fail)?;
-    let code = *chunk.get(11).ok_or(fail)?;
+    let flags = *chunk.get(10).ok_or(FAIL)?;
+    let code = *chunk.get(11).ok_or(FAIL)?;
     let format = PixelFormat::from_code(u32::from(code))
         .filter(|&f| f != PixelFormat::C14X2)
-        .ok_or(fail)?;
-    let width = usize::from(be16(chunk, 12).ok_or(fail)?);
-    let height = usize::from(be16(chunk, 14).ok_or(fail)?);
+        .ok_or(FAIL)?;
+    let width = usize::from(be16(chunk, 12).ok_or(FAIL)?);
+    let height = usize::from(be16(chunk, 14).ok_or(FAIL)?);
     check_size(width, height)?;
 
-    let mut body = chunk.get(16..).ok_or(fail)?;
+    let mut body = chunk.get(16..).ok_or(FAIL)?;
     let palette = match format.palette_len() {
         None => Vec::new(),
         Some(len) if flags & INTERNAL_PALETTE != 0 => {
-            let palette_format = PaletteFormat::from_code(u32::from(chunk[10] >> 4)).ok_or(fail)?;
-            let palette = gx::decode_palette(palette_format, body, len).ok_or(fail)?;
+            let palette_format = PaletteFormat::from_code(u32::from(chunk[10] >> 4)).ok_or(FAIL)?;
+            let palette = gx::decode_palette(palette_format, body, len).ok_or(FAIL)?;
             body = &body[len * 2..];
             palette
         }
         Some(len) => external_palette(companions, len).unwrap_or_else(|| gray_ramp(len)),
     };
-    let argb = gx::decode(format, width, height, body, &palette).ok_or(fail)?;
+    let argb = gx::decode(format, width, height, body, &palette).ok_or(FAIL)?;
     Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 

@@ -48,7 +48,7 @@ pub(super) struct Multicolor {
 impl Multicolor {
     pub(super) fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         if !self.sizes.contains(&data.len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.decode_unchecked(data)
     }
@@ -58,7 +58,7 @@ impl Multicolor {
         let prg = Prg::new(data, self.load);
         self.frame(&prg)
             .map(|frame| frame.to_image(0))
-            .ok_or(DecodeError::Unrecognized)
+            .ok_or(DecodeError::Invalid)
     }
 
     pub(super) fn frame(&self, prg: &Prg) -> Option<Frame> {
@@ -83,7 +83,7 @@ pub(super) struct Hires {
 impl Hires {
     pub(super) fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         if !self.sizes.contains(&data.len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.decode_unchecked(data)
     }
@@ -91,7 +91,7 @@ impl Hires {
     pub(super) fn decode_unchecked(&self, data: &[u8]) -> Result<Image, DecodeError> {
         self.frame(&Prg::new(data, self.load))
             .map(|f| f.to_image(0))
-            .ok_or(DecodeError::Unrecognized)
+            .ok_or(DecodeError::Invalid)
     }
 
     pub(super) fn frame(&self, prg: &Prg) -> Option<Frame> {
@@ -260,7 +260,7 @@ pub(super) fn decode_hi_pic_creator(data: &[u8]) -> Result<Image, DecodeError> {
 /// whole color RAM, border, screen.
 pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 9332 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, 0x3f8e);
     let frame = (|| {
@@ -273,9 +273,7 @@ pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
         );
         Frame::multicolor(&bitmap, HEIGHT)
     })();
-    frame
-        .map(|f| f.to_image(0))
-        .ok_or(DecodeError::Unrecognized)
+    frame.map(|f| f.to_image(0)).ok_or(DecodeError::Invalid)
 }
 
 /// Micro Illustrator, uncompressed: 22-byte header (load address, magic
@@ -285,10 +283,10 @@ pub(super) fn decode_paint_magic(data: &[u8]) -> Result<Image, DecodeError> {
 /// docs/research/gaps-corpus-other.md.
 pub(super) fn decode_micro_illustrator(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 10022 || data[7] != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = Bitmap::multicolor(&data[2022..], &data[22..], &data[1022..], data[8]);
-    let frame = Frame::multicolor(&bitmap, HEIGHT).ok_or(DecodeError::Unrecognized)?;
+    let frame = Frame::multicolor(&bitmap, HEIGHT).ok_or(DecodeError::Invalid)?;
     Ok(frame.to_image(0))
 }
 
@@ -343,21 +341,18 @@ pub(super) fn decode_cheese(data: &[u8]) -> Result<Image, DecodeError> {
 /// Rainbow Painter: screen, bitmap and color RAM from `$5C00`, on black.
 pub(super) fn decode_rainbow_painter(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 10242 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, 0x5c00);
     let bitmap = Bitmap::multicolor(
-        prg.at(0x6000, BITMAP_LEN)
-            .ok_or(DecodeError::Unrecognized)?,
-        prg.at(0x5c00, SCREEN_LEN)
-            .ok_or(DecodeError::Unrecognized)?,
-        prg.at(0x8000, SCREEN_LEN)
-            .ok_or(DecodeError::Unrecognized)?,
+        prg.at(0x6000, BITMAP_LEN).ok_or(DecodeError::Invalid)?,
+        prg.at(0x5c00, SCREEN_LEN).ok_or(DecodeError::Invalid)?,
+        prg.at(0x8000, SCREEN_LEN).ok_or(DecodeError::Invalid)?,
         0,
     );
     Frame::multicolor(&bitmap, HEIGHT)
         .map(|frame| frame.to_image(0))
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 pub(super) fn decode_image_system_multi(data: &[u8]) -> Result<Image, DecodeError> {
@@ -401,16 +396,16 @@ pub(super) fn draz_unpack(
     magics: &[&[u8; 13]],
     len: usize,
 ) -> Result<Vec<u8>, DecodeError> {
-    let header = data.get(2..15).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(2..15).ok_or(DecodeError::Invalid)?;
     let (&escape, packed) = data
         .get(15..)
         .and_then(|d| d.split_first())
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if !magics.iter().any(|magic| header == *magic) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut unpacked =
-        escape_rle(packed, escape, Run::CountValue, len).ok_or(DecodeError::Unrecognized)?;
+        escape_rle(packed, escape, Run::CountValue, len).ok_or(DecodeError::Invalid)?;
     unpacked.resize(len, 0);
     Ok(with_header(unpacked))
 }
@@ -445,15 +440,14 @@ pub(super) fn with_header(unpacked: Vec<u8>) -> Vec<u8> {
 
 /// Koala compressed (GG): load address, then `$FE value count` RLE.
 pub(super) fn decode_koala_packed(data: &[u8]) -> Result<Image, DecodeError> {
-    let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
-    let unpacked =
-        escape_rle(packed, 0xfe, Run::ValueCount, 10001).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.get(2..).ok_or(DecodeError::Invalid)?;
+    let unpacked = escape_rle(packed, 0xfe, Run::ValueCount, 10001).ok_or(DecodeError::Invalid)?;
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
 }
 
 /// Zoomatic: a Koala picture in the escape-last RLE.
 pub(super) fn decode_zoomatic(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked = escape_last_rle(data, 10001).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = escape_last_rle(data, 10001).ok_or(DecodeError::Invalid)?;
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
 }
 
@@ -461,11 +455,11 @@ pub(super) fn decode_zoomatic(data: &[u8]) -> Result<Image, DecodeError> {
 /// stream is accepted (load `$6000`, the packed bytes used up exactly), so
 /// other files with these extensions are not claimed.
 pub(super) fn decode_koala_packed_exact(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
-    let packed = data.strip_prefix(&[0x00, 0x60]).ok_or(bad)?;
-    let (unpacked, used) = escape_rle_counted(packed, 0xfe, Run::ValueCount, 10001).ok_or(bad)?;
+    const BAD: DecodeError = DecodeError::Invalid;
+    let packed = data.strip_prefix(&[0x00, 0x60]).ok_or(BAD)?;
+    let (unpacked, used) = escape_rle_counted(packed, 0xfe, Run::ValueCount, 10001).ok_or(BAD)?;
     if unpacked.len() != 10001 || used != packed.len() {
-        return Err(bad);
+        return Err(BAD);
     }
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
 }
@@ -474,7 +468,7 @@ pub(super) fn decode_koala_packed_exact(data: &[u8]) -> Result<Image, DecodeErro
 /// (9026 bytes up to a full 9217): the missing tail reads as zero.
 pub(super) fn decode_doodle_trimmed(data: &[u8]) -> Result<Image, DecodeError> {
     if !(9026..9218).contains(&data.len()) || data[..2] != [0x00, 0x5c] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut full = data.to_vec();
     full.resize(9218, 0);
@@ -485,19 +479,19 @@ pub(super) fn decode_doodle_trimmed(data: &[u8]) -> Result<Image, DecodeError> {
 /// load address `$2000` (Koala uses `$6000`, `$4400` or `$4000`).
 pub(super) fn decode_advanced_art_studio_koa(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(&[0x00, 0x20]) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ADVANCED_ART_STUDIO.decode(data)
 }
 
 /// Doodle compressed (JJ): load address, then `$FE value count` RLE.
 pub(super) fn decode_doodle_packed(data: &[u8]) -> Result<Image, DecodeError> {
-    let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.get(2..).ok_or(DecodeError::Invalid)?;
     // Some files end right after the bitmap ($7F3F).
     let mut unpacked =
-        escape_rle(packed, 0xfe, Run::ValueCount, 9216).ok_or(DecodeError::Unrecognized)?;
+        escape_rle(packed, 0xfe, Run::ValueCount, 9216).ok_or(DecodeError::Invalid)?;
     if unpacked.len() < 9024 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     unpacked.resize(9216, 0);
     DOODLE.decode_unchecked(&with_header(unpacked))
@@ -505,9 +499,8 @@ pub(super) fn decode_doodle_packed(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Amica Paint: load address, then `$C2 count value` RLE; Koala layout.
 pub(super) fn decode_amica(data: &[u8]) -> Result<Image, DecodeError> {
-    let packed = data.get(2..).ok_or(DecodeError::Unrecognized)?;
-    let unpacked =
-        escape_rle(packed, 0xc2, Run::CountValue, 10001).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.get(2..).ok_or(DecodeError::Invalid)?;
+    let unpacked = escape_rle(packed, 0xc2, Run::CountValue, 10001).ok_or(DecodeError::Invalid)?;
     koala_at(0, &[]).decode_unchecked(&with_header(unpacked))
 }
 
@@ -528,10 +521,10 @@ pub(super) fn decode_giga_cad(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn mono(data: &[u8], len: usize, colors: u8) -> Result<Image, DecodeError> {
     if data.len() != len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let screen = [colors; SCREEN_LEN];
-    let frame = Frame::hires(&Bitmap::hires(&data[2..], &screen), HEIGHT)
-        .ok_or(DecodeError::Unrecognized)?;
+    let frame =
+        Frame::hires(&Bitmap::hires(&data[2..], &screen), HEIGHT).ok_or(DecodeError::Invalid)?;
     Ok(frame.to_image(0))
 }

@@ -57,15 +57,15 @@ use alloc::vec::Vec;
 const MAX_CODE_LENGTH: usize = 15;
 
 pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     if data.len() < 18 || !data.starts_with(b"RIP") {
-        return Err(bad);
+        return Err(BAD);
     }
     let mode = data[7];
     let field = |n: usize| {
         be16(data, 8 + 2 * n)
             .map(usize::from)
-            .ok_or(DecodeError::Unrecognized)
+            .ok_or(DecodeError::Invalid)
     };
     let (packed, width, height, title) = (field(0)?, field(2)?, field(3)?, field(4)?);
     let bytes_per_line = width / 2;
@@ -74,26 +74,26 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
         || !(2..=80).contains(&width)
         || !(1..=239).contains(&height)
     {
-        return Err(bad);
+        return Err(BAD);
     }
-    let rest = data.get(18..).ok_or(DecodeError::Unrecognized)?;
-    let rest = rest.strip_prefix(b"T:").ok_or(DecodeError::Unrecognized)?;
-    let rest = rest.get(title..).ok_or(DecodeError::Unrecognized)?;
-    let rest = rest.strip_prefix(b"\t").ok_or(DecodeError::Unrecognized)?;
-    let rest = rest.strip_prefix(b"CM:").ok_or(DecodeError::Unrecognized)?;
-    let (registers, body) = rest.split_at_checked(9).ok_or(DecodeError::Unrecognized)?;
+    let rest = data.get(18..).ok_or(DecodeError::Invalid)?;
+    let rest = rest.strip_prefix(b"T:").ok_or(DecodeError::Invalid)?;
+    let rest = rest.get(title..).ok_or(DecodeError::Invalid)?;
+    let rest = rest.strip_prefix(b"\t").ok_or(DecodeError::Invalid)?;
+    let rest = rest.strip_prefix(b"CM:").ok_or(DecodeError::Invalid)?;
+    let (registers, body) = rest.split_at_checked(9).ok_or(DecodeError::Invalid)?;
 
     let frame = height * bytes_per_line;
     let size = match mode {
         0x0e => frame,
         0x1e | 0x10 | 0x20 => 2 * frame,
         0x30 => 2 * frame + 8 * height.div_ceil(2),
-        _ => return Err(bad),
+        _ => return Err(BAD),
     };
     let unpacked;
     // The header-length field (offset 10) gives the start of the packed data;
     // some files carry extra bytes between the colors and the packer.
-    let packed_at = usize::from(be16(data, 10).ok_or(bad)?);
+    let packed_at = usize::from(be16(data, 10).ok_or(BAD)?);
     let body = match data.get(packed_at..) {
         Some(tail) if tail.starts_with(b"PCK") => tail,
         _ => body,
@@ -104,7 +104,7 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
             &unpacked[..]
         }
         None if body.len() >= size => body,
-        None => return Err(bad),
+        None => return Err(BAD),
     };
 
     let gr15 = |data: &[u8], colors: &dyn Fn(usize) -> [u8; 4]| {
@@ -127,7 +127,7 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
         })?,
         0x1e => {
             let colors = |_| [registers[8], registers[4], registers[5], registers[6]];
-            Image::blend(&[&gr15(first, &colors)?, &gr15(second.ok_or(bad)?, &colors)?])
+            Image::blend(&[&gr15(first, &colors)?, &gr15(second.ok_or(BAD)?, &colors)?])
         }
         0x10 => {
             // The two sets of four registers swap between the frames on
@@ -142,11 +142,11 @@ pub(super) fn decode_rip(data: &[u8]) -> Result<Image, DecodeError> {
             };
             Image::blend(&[
                 &gr15(first, &|y| set(1 - y % 2))?,
-                &gr15(second.ok_or(bad)?, &|y| set(y % 2))?,
+                &gr15(second.ok_or(BAD)?, &|y| set(y % 2))?,
             ])
         }
         _ => {
-            let second = second.ok_or(bad)?;
+            let second = second.ok_or(BAD)?;
             let tail = &screen[2 * frame..];
             let mode10 = |y: usize, x: usize| {
                 let value = nibble(&first[y * bytes_per_line..], x);

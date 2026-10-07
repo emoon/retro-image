@@ -44,32 +44,28 @@ const PAGE_BANK_7: u8 = 10;
 
 /// Z80 snapshot, any of the three versions.
 pub(super) fn decode_z80(data: &[u8]) -> Result<Image, DecodeError> {
-    let header = data
-        .get(..Z80_HEADER_LEN)
-        .ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..Z80_HEADER_LEN).ok_or(DecodeError::Invalid)?;
     if le16(header, 6) != Some(0) {
         return decode_z80_v1(header, &data[Z80_HEADER_LEN..]);
     }
-    let extension = usize::from(le16(data, 30).ok_or(DecodeError::Unrecognized)?);
+    let extension = usize::from(le16(data, 30).ok_or(DecodeError::Invalid)?);
     let version_3 = match extension {
         23 => false,
         54 | 55 => true,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
-    let hardware = *data.get(34).ok_or(DecodeError::Unrecognized)?;
-    let port_7ffd = *data.get(35).ok_or(DecodeError::Unrecognized)?;
+    let hardware = *data.get(34).ok_or(DecodeError::Invalid)?;
+    let port_7ffd = *data.get(35).ok_or(DecodeError::Invalid)?;
     let page = if z80_has_banks(hardware, version_3, port_7ffd)? && port_7ffd & SHADOW_SCREEN != 0 {
         PAGE_BANK_7
     } else {
         PAGE_BANK_5
     };
-    let mut blocks = data
-        .get(32 + extension..)
-        .ok_or(DecodeError::Unrecognized)?;
+    let mut blocks = data.get(32 + extension..).ok_or(DecodeError::Invalid)?;
     while let (Some(length), Some(&number)) = (le16(blocks, 0), blocks.get(2)) {
         let raw = length == 0xffff;
         let size = if raw { BANK_LEN } else { usize::from(length) };
-        let body = blocks.get(3..3 + size).ok_or(DecodeError::Unrecognized)?;
+        let body = blocks.get(3..3 + size).ok_or(DecodeError::Invalid)?;
         if number == page {
             return if raw {
                 decode_scr(&body[..SCR_LEN])
@@ -79,7 +75,7 @@ pub(super) fn decode_z80(data: &[u8]) -> Result<Image, DecodeError> {
         }
         blocks = &blocks[3 + size..];
     }
-    Err(DecodeError::Unrecognized)
+    Err(DecodeError::Invalid)
 }
 
 /// Whether the machine has the 128K paging port (so the screen select bit
@@ -92,7 +88,7 @@ fn z80_has_banks(hardware: u8, version_3: bool, port: u8) -> Result<bool, Decode
         (true, 14) if port == 0 => Ok(false),
         (false, 0 | 1) | (true, 0 | 1 | 3) => Ok(false),
         (false, 3 | 4) | (true, 4..=10 | 12 | 13) => Ok(true),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -104,7 +100,7 @@ fn decode_z80_v1(header: &[u8], body: &[u8]) -> Result<Image, DecodeError> {
     } else if body.len() >= 3 * BANK_LEN {
         decode_scr(&body[..SCR_LEN])
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -114,12 +110,12 @@ fn z80_unpack(packed: &[u8]) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::with_capacity(SCR_LEN);
     let mut at = 0;
     while out.len() < SCR_LEN {
-        let byte = *packed.get(at).ok_or(DecodeError::Unrecognized)?;
+        let byte = *packed.get(at).ok_or(DecodeError::Invalid)?;
         if byte == 0xed && packed.get(at + 1) == Some(&0xed) {
-            let count = *packed.get(at + 2).ok_or(DecodeError::Unrecognized)?;
-            let value = *packed.get(at + 3).ok_or(DecodeError::Unrecognized)?;
+            let count = *packed.get(at + 2).ok_or(DecodeError::Invalid)?;
+            let value = *packed.get(at + 3).ok_or(DecodeError::Invalid)?;
             if count == 0 {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             out.resize((out.len() + usize::from(count)).min(SCR_LEN), value);
             at += 4;
@@ -133,19 +129,17 @@ fn z80_unpack(packed: &[u8]) -> Result<Vec<u8>, DecodeError> {
 
 /// SNA snapshot, 48K or 128K.
 pub(super) fn decode_sna(data: &[u8]) -> Result<Image, DecodeError> {
-    let ram = data
-        .get(SNA_HEADER_LEN..)
-        .ok_or(DecodeError::Unrecognized)?;
+    let ram = data.get(SNA_HEADER_LEN..).ok_or(DecodeError::Invalid)?;
     if ram.len() == 3 * BANK_LEN {
         return decode_scr(&ram[..SCR_LEN]);
     }
     // 128K: banks 5, 2 and the paged one, PC, port 0x7FFD, TR-DOS flag, then
     // every other bank in ascending order.
-    let port_7ffd = *ram.get(3 * BANK_LEN + 2).ok_or(DecodeError::Unrecognized)?;
+    let port_7ffd = *ram.get(3 * BANK_LEN + 2).ok_or(DecodeError::Invalid)?;
     let paged = port_7ffd & 7;
     let mut trailing = (0..8).filter(|&bank| !matches!(bank, 5 | 2) && bank != paged);
     if ram.len() != 3 * BANK_LEN + 4 + trailing.clone().count() * BANK_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let start = if port_7ffd & SHADOW_SCREEN == 0 {
         0 // bank 5 comes first

@@ -74,17 +74,17 @@ impl Mode {
 /// Envision (Atari): see the module docs.
 pub(super) fn decode_map(data: &[u8]) -> Result<Image, DecodeError> {
     let [mode, w, h, colors @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (Some(mode), Some(&colors)) = (Mode::from_byte(*mode), colors.first_chunk::<5>()) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(*w) + 1, usize::from(*h) + 1);
     let map_end = HEADER + width * height;
     let table = map_end + IGNORED_TABLE;
     let fonts = table + ROW_TABLE;
     let (Some(map), Some(font_of_row)) = (data.get(HEADER..map_end), data.get(table..fonts)) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let font_count = usize::from(font_of_row[FONT_COUNT_ENTRY]);
     // The first font has no number: just a name and the glyphs.
@@ -94,7 +94,7 @@ pub(super) fn decode_map(data: &[u8]) -> Result<Image, DecodeError> {
         || font_of_row[VERSION_ENTRY] != 1
         || data.len() != first + FONT + (font_count - 1) * EXTRA_FONT
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let font = |number: usize| -> Option<&[u8]> {
         let start = match number {
@@ -132,27 +132,25 @@ pub(super) fn decode_map_pc(data: &[u8]) -> Result<Image, DecodeError> {
         ref rest @ ..,
     ] = *data
     else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     // Bit 7 of the mode byte is not accepted here.
     let mode = Mode::from_byte(mode)
         .filter(|_| mode & 0x80 == 0)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let width = usize::from(u16::from_le_bytes([w_low, w_high]));
     let height = usize::from(u16::from_le_bytes([h_low, h_high]));
     let (cell_width, cell_height, _) = mode.cell();
     if width > 32767 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     check_size(width * cell_width as usize, height * cell_height as usize)?;
     let (map, rest) = rest
         .split_at_checked(width * height)
-        .ok_or(DecodeError::Unrecognized)?;
-    let (font, padding) = rest
-        .split_at_checked(FONT)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let (font, padding) = rest.split_at_checked(FONT).ok_or(DecodeError::Invalid)?;
     if padding.iter().any(|&byte| byte != 0) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(mode, width, map, [pf0, pf1, pf2, pf3, background], |_| {
         Some(font)
@@ -171,7 +169,7 @@ fn render<'a>(
     let height = map.len() / width;
     let mut image = Image::new(width as u32 * cell_width, height as u32 * cell_height)?;
     for (y, codes) in map.chunks_exact(width).enumerate() {
-        let font = font_of_row(y).ok_or(DecodeError::Unrecognized)?;
+        let font = font_of_row(y).ok_or(DecodeError::Invalid)?;
         for (x, &code) in codes.iter().enumerate() {
             let origin = (x as u32 * cell_width, y as u32 * cell_height);
             draw_cell(&mut image, origin, mode, code, font, colors);

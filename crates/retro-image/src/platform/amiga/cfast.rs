@@ -30,21 +30,21 @@ use crate::{DecodeError, Image};
 const TAGS: [&[u8; 4]; 3] = [b"GUCF", b"LOCK", b"STDY"];
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let tag = data.get(..4).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let tag = data.get(..4).ok_or(FAIL)?;
     if !TAGS.iter().any(|t| tag == &t[..]) {
-        return Err(fail);
+        return Err(FAIL);
     }
     // `LOCK` and `STDY` files carry a message before the header.
     let mut at = 4;
     if tag != b"GUCF" {
-        at += 2 + usize::from(be16(data, at).ok_or(fail)?);
+        at += 2 + usize::from(be16(data, at).ok_or(FAIL)?);
     }
-    let width = be32(data, at).ok_or(fail)? as usize;
-    let height = be32(data, at + 4).ok_or(fail)? as usize;
-    let planes = usize::from(*data.get(at + 16).ok_or(fail)?);
+    let width = be32(data, at).ok_or(FAIL)? as usize;
+    let height = be32(data, at + 4).ok_or(FAIL)? as usize;
+    let planes = usize::from(*data.get(at + 16).ok_or(FAIL)?);
     if !(1..=5).contains(&planes) || width > 0xffff || height > 0xffff {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     // The first two colors, then the extra block (a length byte and bytes).
@@ -57,34 +57,34 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         ]))
     };
     let mut palette = alloc::vec![0u32; 1 << planes];
-    palette[0] = rgb(at + 17).ok_or(fail)?;
-    palette[1] = rgb(at + 20).ok_or(fail)?;
+    palette[0] = rgb(at + 17).ok_or(FAIL)?;
+    palette[1] = rgb(at + 20).ok_or(FAIL)?;
     at += 17 + 6;
-    at += 1 + usize::from(*data.get(at).ok_or(fail)?);
-    let frames = be32(data, at).ok_or(fail)?;
+    at += 1 + usize::from(*data.get(at).ok_or(FAIL)?);
+    let frames = be32(data, at).ok_or(FAIL)?;
     at += 4;
     if frames == 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
 
     let row_len = width.div_ceil(16) * 2;
     let plane_len = row_len * height;
     let mut bitmap = alloc::vec![0u8; plane_len * planes];
     for plane in bitmap.chunks_exact_mut(plane_len) {
-        let size = be32(data, at).ok_or(fail)? as usize;
+        let size = be32(data, at).ok_or(FAIL)? as usize;
         at += 4;
         let packed = data
-            .get(at..at.checked_add(size).ok_or(fail)?)
-            .ok_or(fail)?;
+            .get(at..at.checked_add(size).ok_or(FAIL)?)
+            .ok_or(FAIL)?;
         at += size;
-        unpack_plane(packed, plane, row_len, height).ok_or(fail)?;
+        unpack_plane(packed, plane, row_len, height).ok_or(FAIL)?;
     }
 
     // The palette of this frame: a count, then red, green and blue bytes,
     // which replace the header's colors from index 0 on (a count of 0 keeps
     // them).
-    let count = usize::from(*data.get(at).ok_or(fail)?);
-    let colors = data.get(at + 1..at + 1 + count * 3).ok_or(fail)?;
+    let count = usize::from(*data.get(at).ok_or(FAIL)?);
+    let colors = data.get(at + 1..at + 1 + count * 3).ok_or(FAIL)?;
     for (entry, c) in palette.iter_mut().zip(colors.as_chunks::<3>().0) {
         *entry = u32::from_be_bytes([0, c[0], c[1], c[2]]);
     }

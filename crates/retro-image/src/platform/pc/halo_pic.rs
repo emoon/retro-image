@@ -56,7 +56,7 @@ use crate::bytes::le16;
 use crate::image::planar_pixels;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const BLOCK: usize = 512;
 const HERCULES: u8 = 0x07;
 

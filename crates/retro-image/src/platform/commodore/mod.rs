@@ -487,5 +487,5 @@ fn decode_generic(data: &[u8]) -> Result<Image, DecodeError> {
     LAYOUTS
         .iter()
         .find_map(|decode| decode(data).ok())
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }

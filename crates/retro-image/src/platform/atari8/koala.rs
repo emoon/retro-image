@@ -49,10 +49,10 @@ pub(super) struct Pic {
 /// Reads the header and unpacks the screen.
 pub(super) fn parse(data: &[u8]) -> Result<Pic, DecodeError> {
     if data.len() < HEADER_MIN || data[..4] != [0xff, 0x80, 0xc9, 0xc7] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let header_len = usize::from(u16::from_le_bytes([data[4], data[5]])) + 1;
-    let body = data.get(header_len..).ok_or(DecodeError::Unrecognized)?;
+    let body = data.get(header_len..).ok_or(DecodeError::Invalid)?;
     let window = Window::new(data[9], data[10], data[11], data[12])?;
     let mut screen = [0u8; LINE * LINES];
     let positions = window.positions(data[7] == 1);
@@ -63,7 +63,7 @@ pub(super) fn parse(data: &[u8]) -> Result<Pic, DecodeError> {
             }
         }
         1 | 2 => unpack(body, &mut screen, &positions)?,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     }
     Ok(Pic {
         screen,
@@ -93,7 +93,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
             bitmap.render(2, 1, |_, value| register_rgb(colors[usize::from(value)]))
         }
         ANTIC_F => gtia9(bitmap, background),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -120,7 +120,7 @@ impl Window {
         {
             Ok(window)
         } else {
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         }
     }
 
@@ -145,7 +145,7 @@ impl Window {
 /// Unpacks run-length entries until every position is filled.
 fn unpack(mut packed: &[u8], screen: &mut [u8], positions: &[usize]) -> Result<(), DecodeError> {
     let mut next = || -> Result<u8, DecodeError> {
-        let (&byte, rest) = packed.split_first().ok_or(DecodeError::Unrecognized)?;
+        let (&byte, rest) = packed.split_first().ok_or(DecodeError::Invalid)?;
         packed = rest;
         Ok(byte)
     };

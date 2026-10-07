@@ -22,6 +22,16 @@ pub struct Format {
     signature: bool,
 }
 
+impl PartialEq for Format {
+    /// Formats are the registry's own entries, so two are equal when they are
+    /// the same entry.
+    fn eq(&self, other: &Self) -> bool {
+        core::ptr::eq(self, other)
+    }
+}
+
+impl Eq for Format {}
+
 #[derive(Debug, Clone, Copy)]
 enum Decoder {
     Single(fn(&[u8]) -> Result<Image, DecodeError>),

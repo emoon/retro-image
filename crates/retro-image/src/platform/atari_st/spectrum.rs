@@ -98,7 +98,7 @@ fn st_depth(palettes: &[u16]) -> ColorDepth {
 
 pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SPU_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palettes = words(&data[LINE_LEN + BITMAP_LEN..]);
     let depth = if &data[..4] == b"5BIT" {
@@ -106,7 +106,7 @@ pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         st_depth(&palettes)
     };
-    render(&data[LINE_LEN..], &palettes, depth).ok_or(DecodeError::Unrecognized)
+    render(&data[LINE_LEN..], &palettes, depth).ok_or(DecodeError::Invalid)
 }
 
 /// Spectrum 512 Extended: `SPX`, version, two compression flags, screen
@@ -115,7 +115,7 @@ pub(super) fn decode_spu(data: &[u8]) -> Result<Image, DecodeError> {
 /// `recoil2png` output) and their palettes (unpacked, each part packed
 /// with Pack-Ice, or version 2's backward LZ packer over both).
 pub(super) fn decode_spx(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_spx_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_spx_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_spx_inner(data: &[u8]) -> Option<Image> {
@@ -271,7 +271,7 @@ fn header(data: &[u8]) -> Option<(&[u8], &[u8])> {
 }
 
 pub(super) fn decode_spc(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_spc_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_spc_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_spc_inner(data: &[u8]) -> Option<Image> {
@@ -317,7 +317,7 @@ fn unpack_spc(data: &[u8]) -> Option<Vec<u8>> {
 }
 
 pub(super) fn decode_sps(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_sps_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_sps_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_sps_inner(data: &[u8]) -> Option<Image> {

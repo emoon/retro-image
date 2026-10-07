@@ -25,26 +25,26 @@ fn block(data: &[u8]) -> Option<(usize, usize, &[u8], usize)> {
 }
 
 fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if le32(data, 0) != Some(0x10) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let flags = le32(data, 4).ok_or(fail)?;
+    let flags = le32(data, 4).ok_or(FAIL)?;
     let depth = flags & 7;
     let has_clut = flags & 8 != 0;
     // The other flag bits are reserved but not always zero (PSn00bSDK's
     // tiles_256.tim); recoil2png ignores them too.
     if depth > 3 || (depth < 2) != has_clut {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut pos = 8;
     let clut = if has_clut {
-        let (w, h, body, len) = block(&data[pos..]).ok_or(fail)?;
+        let (w, h, body, len) = block(&data[pos..]).ok_or(FAIL)?;
         // The length locates the pixel block, so it must match. (The pixel
         // block's own length is wrong in some files, e.g. PSn00bSDK's
         // texture.tim, and is not needed.)
         if len != 12 + body.len() {
-            return Err(fail);
+            return Err(FAIL);
         }
         pos += len;
         // The first palette row.
@@ -52,7 +52,7 @@ fn decode_tim(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         &[]
     };
-    let (w, height, pixels, _) = block(data.get(pos..).ok_or(fail)?).ok_or(fail)?;
+    let (w, height, pixels, _) = block(data.get(pos..).ok_or(FAIL)?).ok_or(FAIL)?;
     let width = match depth {
         0 => w * 4,
         1 => w * 2,
@@ -103,6 +103,6 @@ mod tests {
         data.extend_from_slice(&(halfwords as u16).to_le_bytes());
         data.extend_from_slice(&(height as u16).to_le_bytes());
         data.resize(data.len() + halfwords * 2 * height, 0);
-        assert!(matches!(decode_tim(&data), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode_tim(&data), Err(DecodeError::TooLarge)));
     }
 }

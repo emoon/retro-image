@@ -55,7 +55,7 @@ use crate::codec::packbits;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const STANDARD_HEADER_LEN: usize = 8;
 const HIGH_HEADER_LEN: usize = 12;
 const HIGH_MARK: u16 = 0xffff;

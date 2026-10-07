@@ -22,7 +22,7 @@ const RECORDS_LEN: usize = 8 * 48;
 const LINE_PALETTES_LEN: usize = 200 * 32 * 2;
 
 pub(super) fn decode_pbx(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {

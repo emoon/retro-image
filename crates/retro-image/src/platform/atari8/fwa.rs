@@ -49,12 +49,12 @@ pub(super) fn decode_fwa(data: &[u8]) -> Result<Image, DecodeError> {
     let handler_len = le16(data, TRAILER).map(usize::from);
     let expected = data.len().checked_sub(HANDLERS);
     if !data.starts_with(&[0xfe, 0xfe]) || handler_len.is_none() || handler_len != expected {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let interrupts = interrupt_lines(data).ok_or(DecodeError::Unrecognized)?;
-    let handlers = parse_handlers(&data[HANDLERS..]).ok_or(DecodeError::Unrecognized)?;
+    let interrupts = interrupt_lines(data).ok_or(DecodeError::Invalid)?;
+    let handlers = parse_handlers(&data[HANDLERS..]).ok_or(DecodeError::Invalid)?;
     if handlers.len() < interrupts.iter().filter(|&&dli| dli).count() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // Registers COLBK, COLPF0, COLPF1, COLPF2 as color values.
     let mut colors = [data[2], data[3], data[4], data[5]];

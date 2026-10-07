@@ -46,7 +46,7 @@ use super::cga::{deinterlace, unpack_2bit};
 use super::pcpaint::CGA_4;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const FILE_LEN: usize = 64008;
 const MAGIC_AT: usize = 32000;
 const MAGIC: [u8; 8] = [1, 4, 0, 0, 0, 0, 0, 0];

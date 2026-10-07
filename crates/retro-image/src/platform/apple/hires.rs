@@ -23,7 +23,7 @@ fn line_offset(y: usize) -> usize {
 
 pub(super) fn decode_hgr(data: &[u8]) -> Result<Image, DecodeError> {
     if !matches!(data.len(), 0x1ff8 | 0x1ffc | PAGE_LEN) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let indices: Vec<u8> = (0..HEIGHT)
         .flat_map(|y| line_pixels(&data[line_offset(y)..line_offset(y) + 40]))
@@ -40,7 +40,7 @@ fn line_pixels(bytes: &[u8]) -> impl Iterator<Item = u8> + '_ {
 
 pub(super) fn decode_dhgr(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * PAGE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (aux, main) = data.split_at(PAGE_LEN);
     let mut indices = Vec::with_capacity(560 * HEIGHT);

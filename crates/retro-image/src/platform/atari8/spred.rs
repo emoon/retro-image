@@ -41,15 +41,15 @@ const PIXEL: u32 = 2;
 const GAP: usize = 4;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..HEADER_LEN).ok_or(FAIL)?;
     if &header[..4] != b"Spr!" || header[9] > 1 {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let layout = Layout::parse(header).ok_or(fail)?;
-    let mut body = data.get(HEADER_LEN..).ok_or(fail)?;
+    let layout = Layout::parse(header).ok_or(FAIL)?;
+    let mut body = data.get(HEADER_LEN..).ok_or(FAIL)?;
     let mut take = |len: usize| -> Result<&[u8], DecodeError> {
-        let (head, rest) = body.split_at_checked(len).ok_or(fail)?;
+        let (head, rest) = body.split_at_checked(len).ok_or(FAIL)?;
         body = rest;
         Ok(head)
     };

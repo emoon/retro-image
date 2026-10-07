@@ -105,7 +105,7 @@ fn area(
 }
 
 pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     let mut reader = Reader { data, pos: 0 };
     let mut cells: Vec<Option<Cell>> = vec![None; COLUMNS * ROWS];
     // Whether the segments use mode 0 (all of them or none).
@@ -114,30 +114,30 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let mut budget = WORK_FACTOR * (COLUMNS * ROWS + data.len());
 
     loop {
-        let count = reader.byte().ok_or(bad)?;
+        let count = reader.byte().ok_or(BAD)?;
         if count == RAW_MARKER {
             break;
         }
         if *half_height.get_or_insert(count == 0) != (count == 0) {
-            return Err(bad);
+            return Err(BAD);
         }
         let cell: Cell = match count {
-            0 => top_only(reader.take().ok_or(bad)?),
+            0 => top_only(reader.take().ok_or(BAD)?),
             1 => {
-                let [a, b, c]: [u8; 3] = reader.take().ok_or(bad)?;
+                let [a, b, c]: [u8; 3] = reader.take().ok_or(BAD)?;
                 [a, b, c, a, b, c]
             }
-            _ => reader.take().ok_or(bad)?,
+            _ => reader.take().ok_or(BAD)?,
         };
         loop {
-            let first = reader.byte().ok_or(bad)?;
+            let first = reader.byte().ok_or(BAD)?;
             if first == RAW_MARKER {
                 break;
             }
-            let (columns, rows) = area(&mut reader, first).ok_or(bad)?;
+            let (columns, rows) = area(&mut reader, first).ok_or(BAD)?;
             budget = budget
                 .checked_sub(columns.clone().count() * rows.clone().count())
-                .ok_or(bad)?;
+                .ok_or(BAD)?;
             for row in rows {
                 for column in columns.clone() {
                     cells[row * COLUMNS + column] = Some(cell);
@@ -145,15 +145,15 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
             }
         }
         loop {
-            let column = reader.byte().ok_or(bad)?;
+            let column = reader.byte().ok_or(BAD)?;
             if column == RAW_MARKER {
                 break;
             }
-            let row = reader.byte().ok_or(bad)?;
+            let row = reader.byte().ok_or(BAD)?;
             let slot = cells
                 .get_mut(usize::from(row) * COLUMNS + usize::from(column))
                 .filter(|_| usize::from(row) < ROWS && usize::from(column) < COLUMNS)
-                .ok_or(bad)?;
+                .ok_or(BAD)?;
             *slot = Some(cell);
         }
     }
@@ -161,13 +161,13 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let full_height = half_height == Some(false);
     for slot in cells.iter_mut().filter(|slot| slot.is_none()) {
         *slot = Some(if full_height {
-            reader.take().ok_or(bad)?
+            reader.take().ok_or(BAD)?
         } else {
-            top_only(reader.take().ok_or(bad)?)
+            top_only(reader.take().ok_or(BAD)?)
         });
     }
     if reader.pos != data.len() {
-        return Err(bad);
+        return Err(BAD);
     }
 
     // A cell is two tiles of 2 rows, or one in a half-height picture.
@@ -175,7 +175,7 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let height = ROWS * halves * 2;
     let mut indices = vec![0u8; WIDTH * height];
     for (n, cell) in cells.iter().enumerate() {
-        let cell = cell.as_ref().ok_or(bad)?;
+        let cell = cell.as_ref().ok_or(BAD)?;
         let (x, y) = (n % COLUMNS * 4, n / COLUMNS * halves * 2);
         for (half, tile) in cell.chunks(3).take(halves).enumerate() {
             for bit in 0..8 {

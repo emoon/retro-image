@@ -79,7 +79,7 @@ const COLORS: usize = BITMAP + WIDTH / 8 * HEIGHT;
 /// MiniPaint: load address, header, bitmap, color RAM, display routine.
 pub(super) fn decode_minipaint(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != COLORS + 240 || data[..2] != [0xf1, 0x10] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = Colors::from_registers(data[15], data[16]);
     let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
@@ -102,11 +102,11 @@ pub(super) fn decode_minipaint(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_best_paint(data: &[u8]) -> Result<Image, DecodeError> {
     const COLOR_RAM: usize = 2 + WIDTH / 8 * HEIGHT;
     if data.len() != COLOR_RAM + 20 * 12 + 1 || data[..2] != [0x00, 0x11] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let color_ram = &data[COLOR_RAM..COLOR_RAM + 20 * 12];
     if color_ram.iter().any(|color| color & 8 != 0) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = Colors::from_registers(0, data[data.len() - 1]);
     let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;
@@ -135,18 +135,18 @@ pub(super) fn decode_picasso(
     const ROWS: usize = 11;
     const BITMAP_LEN: usize = COLUMNS * ROWS * 16;
     if data.len() != 2 + BITMAP_LEN + 16 || data[..2] != [0x00, 0x0d] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, registers) = data[2..].split_at(BITMAP_LEN);
     // 22 columns, 11 rows of 8×16 characters, the screen and character
     // memory the program uses.
     if (registers[2], registers[3], registers[5]) != (0x96, 0x17, 0x8c) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let color_ram = companions
         .get("pic1")
         .filter(|c| c.len() == 2 + COLUMNS * ROWS)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let colors = Colors::from_registers(registers[14], registers[15]);
     let (width, height) = (COLUMNS * 8, ROWS * 16);
     let mut image = Image::new(width as u32, height as u32)?;

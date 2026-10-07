@@ -17,9 +17,9 @@ pub(super) fn decode_zxp(data: &[u8]) -> Result<Image, DecodeError> {
     let mut lines = data
         .split(|&b| b == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
-    let header = lines.next().ok_or(DecodeError::Unrecognized)?;
+    let header = lines.next().ok_or(DecodeError::Invalid)?;
     if !header.starts_with(b"ZX-Paintbrush") || lines.next() != Some(&[][..]) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let rows: Vec<&[u8]> = lines.by_ref().take_while(|line| !line.is_empty()).collect();
     let width = rows.first().map_or(0, |row| row.len());
@@ -28,16 +28,16 @@ pub(super) fn decode_zxp(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .all(|row| row.len() == width && row.iter().all(|&c| c == b'0' || c == b'1'));
     if width == 0 || !width.is_multiple_of(8) || !height.is_multiple_of(8) || !bitmap_ok {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let attributes = lines
         .take_while(|line| !line.is_empty())
         .map(|line| parse_hex_row(line, width / 8))
         .collect::<Result<Vec<_>, _>>()?;
     let cell_height = match attributes.len() {
-        0 => return Err(DecodeError::Unrecognized),
+        0 => return Err(DecodeError::Invalid),
         rows if height.is_multiple_of(rows) => height / rows,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let mut frame = Frame::new(width, height)?;
     for (y, row) in rows.iter().enumerate() {
@@ -58,11 +58,11 @@ fn parse_hex_row(line: &[u8], count: usize) -> Result<Vec<u8>, DecodeError> {
             core::str::from_utf8(word)
                 .ok()
                 .and_then(|s| u8::from_str_radix(s, 16).ok())
-                .ok_or(DecodeError::Unrecognized)
+                .ok_or(DecodeError::Invalid)
         })
         .collect::<Result<Vec<u8>, _>>()?;
     if values.len() != count {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(values)
 }

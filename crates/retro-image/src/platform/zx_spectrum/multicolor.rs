@@ -29,7 +29,7 @@ pub(super) fn decode_ifl(data: &[u8]) -> Result<Image, DecodeError> {
 /// MC: 192 linear bitmap rows of 32 bytes, then 8x1 attributes row by row.
 pub(super) fn decode_mc(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * BITMAP_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, attributes) = data.split_at(BITMAP_LEN);
     let mut frame = Frame::new(WIDTH, HEIGHT)?;
@@ -44,7 +44,7 @@ pub(super) fn decode_mc(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode_single(data: &[u8], cell_height: usize) -> Result<Image, DecodeError> {
     if data.len() != BITMAP_LEN + attributes_len(cell_height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, attributes) = data.split_at(BITMAP_LEN);
     multicolor_frame(bitmap, attributes, cell_height)?.into_image()
@@ -84,13 +84,13 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
         && data[3] == 1
         && data[4] == cell_height;
     if !header_ok {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmaps = &data[MGH_HEADER_LEN..MGH_BITMAPS];
     let attributes = &data[MGH_BITMAPS..];
     let frames: Vec<Frame> = if cell_height == 1 {
         if attributes.len() != 2 * (MG1_INNER_LEN + MG1_OUTER_LEN) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let (inner, outer) = attributes.split_at(2 * MG1_INNER_LEN);
         (0..2)
@@ -104,7 +104,7 @@ pub(super) fn decode_mgh(data: &[u8], cell_height: u8) -> Result<Image, DecodeEr
     } else {
         let len = attributes_len(usize::from(cell_height));
         if attributes.len() != 2 * len {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         bitmaps
             .as_chunks::<BITMAP_LEN>()

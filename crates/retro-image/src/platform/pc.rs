@@ -264,24 +264,24 @@ pub(super) const fn cga_set(colours: [usize; 3]) -> [u32; 4] {
 const MSP_HEADER_LEN: usize = 32;
 
 fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..MSP_HEADER_LEN).ok_or(fail)?;
-    let word = |at| le16(header, at).map(usize::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..MSP_HEADER_LEN).ok_or(FAIL)?;
+    let word = |at| le16(header, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(4)?, word(6)?);
     check_size(width, height)?;
     let row_len = width.div_ceil(8);
     let bitmap = match &header[..4] {
         b"DanM" => data
             .get(MSP_HEADER_LEN..MSP_HEADER_LEN + row_len * height)
-            .ok_or(fail)?
+            .ok_or(FAIL)?
             .to_vec(),
         b"LinS" => {
             let map_end = MSP_HEADER_LEN + height * 2;
-            let map = data.get(MSP_HEADER_LEN..map_end).ok_or(fail)?;
+            let map = data.get(MSP_HEADER_LEN..map_end).ok_or(FAIL)?;
             // A 3-byte run gives at most 255 bytes; this keeps corrupt
             // sizes from allocating huge bitmaps.
             if row_len * height > data.len().saturating_mul(85) {
-                return Err(fail);
+                return Err(FAIL);
             }
             let mut bitmap = vec![0u8; row_len * height];
             let mut pos = map_end;
@@ -292,13 +292,13 @@ fn decode_msp(data: &[u8]) -> Result<Image, DecodeError> {
                 .map(|w| usize::from(u16::from_le_bytes([w[0], w[1]])))
                 .enumerate()
             {
-                let line = data.get(pos..pos + size).ok_or(fail)?;
+                let line = data.get(pos..pos + size).ok_or(FAIL)?;
                 pos += size;
                 unpack_msp_line(line, &mut bitmap[y * row_len..(y + 1) * row_len]);
             }
             bitmap
         }
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     mono(&bitmap, width, height, row_len)
 }
@@ -347,16 +347,16 @@ fn unpack_msp_line(src: &[u8], out: &mut [u8]) {
 /// 14-byte bitmaps of the cells, row by row.
 fn decode_epa_cells(data: &[u8]) -> Result<Image, DecodeError> {
     const CELL_HEIGHT: usize = 14;
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (columns, rows) = match data {
-        [b'A', b'W', b'B', b'M', ..] => return Err(fail),
+        [b'A', b'W', b'B', b'M', ..] => return Err(FAIL),
         [c, r, ..] => (usize::from(*c), usize::from(*r)),
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let cells = columns * rows;
     let bitmaps = 2 + cells;
     if cells == 0 || data.len() < bitmaps + cells * CELL_HEIGHT {
-        return Err(fail);
+        return Err(FAIL);
     }
     let (width, height) = (columns * 8, rows * CELL_HEIGHT);
     let indices: Vec<u8> = (0..height)
@@ -377,12 +377,12 @@ fn decode_epa_cells(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Version 2: width, height, bitmap, then "RGB " and the palette.
 fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..8).ok_or(fail)?;
-    let word = |at| le16(header, at).map(usize::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..8).ok_or(FAIL)?;
+    let word = |at| le16(header, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(4)?, word(6)?);
     if &header[..4] != b"AWBM" {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     let palette_at = |bitmap_len: usize, colors: usize| {
@@ -396,7 +396,7 @@ fn decode_awbm(data: &[u8]) -> Result<Image, DecodeError> {
     } else if let Some(at) = palette_at(planar_row * 4 * height, 16) {
         (16, at, false)
     } else {
-        return Err(fail);
+        return Err(FAIL);
     };
     let palette: Vec<u32> = data[palette_start..palette_start + colors * 3]
         .as_chunks::<3>()
@@ -445,7 +445,7 @@ pub(super) fn dac_rounded(v: u8) -> u32 {
 fn decode_hs2(data: &[u8]) -> Result<Image, DecodeError> {
     const ROW_LEN: usize = 105;
     if data.is_empty() || !data.len().is_multiple_of(ROW_LEN) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mono(data, ROW_LEN * 8, data.len() / ROW_LEN, ROW_LEN)
 }

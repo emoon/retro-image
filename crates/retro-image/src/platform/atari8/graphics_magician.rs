@@ -223,7 +223,7 @@ impl Painter {
 }
 
 pub(super) fn decode_spc(data: &[u8]) -> Result<Image, DecodeError> {
-    run(data).ok_or(DecodeError::Unrecognized)?.into_image()
+    run(data).ok_or(DecodeError::Invalid)?.into_image()
 }
 
 fn run(data: &[u8]) -> Option<Painter> {

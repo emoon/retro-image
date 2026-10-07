@@ -26,7 +26,7 @@ const LINE: usize = 40;
 /// Raw Micro Illustrator screen with its 5-byte color tail.
 pub(super) fn decode_mic_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 7685 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_mic(data, &NoCompanions)
 }
@@ -34,7 +34,7 @@ pub(super) fn decode_mic_pic(data: &[u8]) -> Result<Image, DecodeError> {
 /// Bare Graphics 8 screen.
 pub(super) fn decode_gr8_pic(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 7680 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_gr8(data)
 }
@@ -42,7 +42,7 @@ pub(super) fn decode_gr8_pic(data: &[u8]) -> Result<Image, DecodeError> {
 /// BLASTER: Graphics 15 with color registers reloaded per line.
 pub(super) fn decode_blaster(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 5 + LINES * LINE + 5 * LINES {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (head, rest) = data.split_at(5);
     let (screen, tables) = rest.split_at(LINES * LINE);

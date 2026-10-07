@@ -22,7 +22,7 @@ use crate::image::{check_size, planar_pixels, rgb565, xrgb1555};
 use crate::{DecodeError, Image};
 
 pub(super) fn decode_img(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 struct Header {
@@ -382,6 +382,6 @@ mod tests {
     #[test]
     fn rejects_truncated_data() {
         let header = [0, 1, 0, 8, 0, 1, 0, 2, 0, 85, 0, 85, 0, 16, 0, 2];
-        assert_eq!(decode_img(&header), Err(DecodeError::Unrecognized));
+        assert_eq!(decode_img(&header), Err(DecodeError::Invalid));
     }
 }

@@ -32,7 +32,7 @@ fn blend(
     second: Option<Frame>,
     shift: Option<u8>,
 ) -> Result<Image, DecodeError> {
-    let (first, second) = first.zip(second).ok_or(DecodeError::Unrecognized)?;
+    let (first, second) = first.zip(second).ok_or(DecodeError::Invalid)?;
     let second = match shift {
         Some(background) => second.shift_right(background),
         None => second,
@@ -62,7 +62,7 @@ const TRUE_PAINT: [Multicolor; 2] = [
 /// True Paint: MCI, the second frame shifted by one pixel.
 pub(super) fn decode_true_paint(data: &[u8]) -> Result<Image, DecodeError> {
     if !TRUE_PAINT[0].sizes.contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     true_paint(data)
 }
@@ -84,32 +84,32 @@ const PAYLOAD_AT: usize = 0x8e;
 /// backwards after a depacker stub. The end code (`00` and the fifth
 /// flag) at `$8E` is checked before unpacking.
 pub(super) fn decode_true_paint_packed(data: &[u8]) -> Result<Image, DecodeError> {
-    let bad = DecodeError::Unrecognized;
+    const BAD: DecodeError = DecodeError::Invalid;
     if data.len() < PAYLOAD_AT + 2
         || data.len() >= 19434
         || data[..PACKED_STUB.len()] != PACKED_STUB
     {
-        return Err(bad);
+        return Err(BAD);
     }
-    let flags: &[u8; 9] = data[FLAGS_AT..FLAGS_AT + 9].try_into().map_err(|_| bad)?;
-    let values: &[u8; 4] = data[VALUES_AT..VALUES_AT + 4].try_into().map_err(|_| bad)?;
+    let flags: &[u8; 9] = data[FLAGS_AT..FLAGS_AT + 9].try_into().map_err(|_| BAD)?;
+    let values: &[u8; 4] = data[VALUES_AT..VALUES_AT + 4].try_into().map_err(|_| BAD)?;
     if data[PAYLOAD_AT..PAYLOAD_AT + 2] != [0, flags[4]] {
-        return Err(bad);
+        return Err(BAD);
     }
     // The output is a 130-byte viewer, then the image.
     let unpacked =
-        flag_table_rle(&data[PAYLOAD_AT..], flags, values, 2 * TRUE_PAINT_BODY).ok_or(bad)?;
+        flag_table_rle(&data[PAYLOAD_AT..], flags, values, 2 * TRUE_PAINT_BODY).ok_or(BAD)?;
     let body = unpacked
         .len()
         .checked_sub(TRUE_PAINT_BODY)
         .map(|start| &unpacked[start..])
-        .ok_or(bad)?;
+        .ok_or(BAD)?;
     true_paint(&super::bitmap::with_header(body.to_vec()))
 }
 
 fn true_paint(data: &[u8]) -> Result<Image, DecodeError> {
     let prg = Prg::new(data, 0x9c00);
-    let background = prg.byte(0x9fe8).ok_or(DecodeError::Unrecognized)?;
+    let background = prg.byte(0x9fe8).ok_or(DecodeError::Invalid)?;
     blend(
         TRUE_PAINT[0].frame(&prg),
         TRUE_PAINT[1].frame(&prg),
@@ -141,7 +141,7 @@ const DRAZLACE_LEN: usize = 0x4740;
 /// Drazlace, unpacked.
 pub(super) fn decode_drazlace(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != DRAZLACE[0].sizes[0] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode_drazlace_unchecked(data)
 }
@@ -154,8 +154,8 @@ pub(super) fn decode_drazlace_packed(data: &[u8]) -> Result<Image, DecodeError> 
 
 fn decode_drazlace_unchecked(data: &[u8]) -> Result<Image, DecodeError> {
     let prg = Prg::new(data, 0x5800);
-    let shift = prg.byte(0x7f42).ok_or(DecodeError::Unrecognized)? != 0;
-    let shift = shift.then_some(prg.byte(0x7f40).ok_or(DecodeError::Unrecognized)?);
+    let shift = prg.byte(0x7f42).ok_or(DecodeError::Invalid)? != 0;
+    let shift = shift.then_some(prg.byte(0x7f40).ok_or(DecodeError::Invalid)?);
     blend(DRAZLACE[0].frame(&prg), DRAZLACE[1].frame(&prg), shift)
 }
 
@@ -177,7 +177,7 @@ const HIRES_INTERLACE: [Hires; 2] = [
 /// Hires-Interlace (Feniks).
 pub(super) fn decode_hires_interlace(data: &[u8]) -> Result<Image, DecodeError> {
     if !HIRES_INTERLACE[0].sizes.contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, 0x2000);
     blend(
@@ -205,7 +205,7 @@ const HIRESLACE: [Hires; 2] = [
 /// Hireslace Editor (Hires-Lace v1.5).
 pub(super) fn decode_hireslace(data: &[u8]) -> Result<Image, DecodeError> {
     if !HIRESLACE[0].sizes.contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, 0x4000);
     blend(HIRESLACE[0].frame(&prg), HIRESLACE[1].frame(&prg), None)
@@ -217,7 +217,7 @@ pub(super) fn decode_interlace_hires_editor(data: &[u8]) -> Result<Image, Decode
     const LEN: usize = 2 + 0x3f40;
     const SECOND: usize = 2 + 0x2000;
     if data.len() != LEN || data[..2] != [0x00, 0x20] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // Set bits use the screen's high nibble (black), clear bits its low one.
     let screen = [0x0c; SCREEN_LEN];
@@ -238,7 +238,7 @@ pub(super) fn decode_multi_lace(data: &[u8]) -> Result<Image, DecodeError> {
     const FRAME_LEN: usize = 0x800;
     const HEIGHT: usize = 56;
     if data.len() != 2 + 2 * FRAME_LEN || data[..2] != [0x00, 0x20] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let screen = [0x98; SCREEN_LEN];
     let color = [5; SCREEN_LEN];
@@ -262,7 +262,7 @@ pub(super) fn decode_interlaced_logo_editor(data: &[u8]) -> Result<Image, Decode
     const HEIGHT: usize = 48;
     const COLORS_AT: usize = 2 + FRAME_LEN + 2044;
     if data.len() != 2 + 2 * FRAME_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let [background, multi1, multi2, color_ram] = [0, 1, 2, 3].map(|i| data[COLORS_AT + i]);
     let screen = [multi1 << 4 | multi2 & 15; SCREEN_LEN];

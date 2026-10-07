@@ -35,18 +35,18 @@ const MAX_TAIL: usize = 128;
 /// character (the samples have up to 1 in 16, arbitrary binary data about
 /// 1 in 11), and an EOF character may be followed by at most 128 bytes.
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (text, sauce) = sauce::split(data);
     let width = sauce
         .filter(|s| s.is_character(AVATAR_FILE_TYPE))
         .as_ref()
         .and_then(Sauce::width)
         .unwrap_or(80);
-    let mut avatar = Avatar::new(Terminal::new(width).ok_or(fail)?);
+    let mut avatar = Avatar::new(Terminal::new(width).ok_or(FAIL)?);
     avatar.feed(text)?;
     let tail = text.len() - avatar.end;
     if avatar.commands < 2 || avatar.controls * 12 > avatar.glyphs || tail > MAX_TAIL {
-        return Err(fail);
+        return Err(FAIL);
     }
     avatar.terminal.finish(&DEFAULT_STYLE)
 }
@@ -190,7 +190,7 @@ impl Avatar {
             12 => 3,
             13 => 4,
             25 => args.first().map_or(0, |&n| usize::from(n) + 2),
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         };
         Ok((used.min(args.len()), used <= args.len()))
     }

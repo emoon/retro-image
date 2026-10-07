@@ -16,17 +16,17 @@ const UNPACKED_LEN: usize = 0x8000;
 
 pub(super) fn decode_ecp(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(&[0x00, 0x40]) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let (&escape, packed) = data[2..].split_first().ok_or(DecodeError::Unrecognized)?;
+    let (&escape, packed) = data[2..].split_first().ok_or(DecodeError::Invalid)?;
     let mut memory = Vec::with_capacity(UNPACKED_LEN + 2);
     memory.extend_from_slice(&data[..2]);
     let mut bytes = packed.iter().copied();
     while memory.len() < UNPACKED_LEN + 2 {
-        let byte = bytes.next().ok_or(DecodeError::Unrecognized)?;
+        let byte = bytes.next().ok_or(DecodeError::Invalid)?;
         if byte == escape {
-            let count = bytes.next().ok_or(DecodeError::Unrecognized)?;
-            let value = bytes.next().ok_or(DecodeError::Unrecognized)?;
+            let count = bytes.next().ok_or(DecodeError::Invalid)?;
+            let value = bytes.next().ok_or(DecodeError::Invalid)?;
             memory.extend(core::iter::repeat_n(value, usize::from(count)));
         } else {
             memory.push(byte);

@@ -36,27 +36,24 @@ struct Symbols<'a> {
 impl Symbols<'_> {
     fn next(&mut self) -> Result<u8, DecodeError> {
         loop {
-            let (&first, rest) = self.data.split_first().ok_or(DecodeError::Unrecognized)?;
+            let (&first, rest) = self.data.split_first().ok_or(DecodeError::Invalid)?;
             self.data = rest;
             let symbol = match first {
                 b'\r' | b'\n' => continue,
                 0x20..=0x7e => first - 0x20,
                 0xa1..=0xdf => 96 + (first - 0xa1),
                 0xef => {
-                    let (tail, rest) = self
-                        .data
-                        .split_at_checked(2)
-                        .ok_or(DecodeError::Unrecognized)?;
+                    let (tail, rest) = self.data.split_at_checked(2).ok_or(DecodeError::Invalid)?;
                     self.data = rest;
                     let code = 0xf000 | u32::from(tail[0] & 0x3f) << 6 | u32::from(tail[1] & 0x3f);
                     match code.checked_sub(0xff61) {
                         Some(n) if n < 63 && tail[0] & 0xc0 == 0x80 && tail[1] & 0xc0 == 0x80 => {
                             96 + n as u8
                         }
-                        _ => return Err(DecodeError::Unrecognized),
+                        _ => return Err(DecodeError::Invalid),
                     }
                 }
-                _ => return Err(DecodeError::Unrecognized),
+                _ => return Err(DecodeError::Invalid),
             };
             // U+007F (symbol 95) is not valid; it is outside the ranges above.
             return Ok(symbol);
@@ -75,7 +72,7 @@ pub(in crate::platform) fn decode_nl3(data: &[u8]) -> Result<Image, DecodeError>
         let low = u32::from(symbols.next()?);
         let value = low + 128 * u32::from(symbols.next()?);
         if value >= 729 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         *entry = level(value / 81) << 16 | level(value / 9 % 9) << 8 | level(value % 9);
     }
@@ -90,7 +87,7 @@ pub(in crate::platform) fn decode_nl3(data: &[u8]) -> Result<Image, DecodeError>
             let left = WIDTH * HEIGHT - columns.len();
             columns.resize(columns.len() + length.min(left), symbol - 64);
         } else {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
     }
     let mut indices = alloc::vec![0u8; WIDTH * HEIGHT];

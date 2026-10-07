@@ -35,7 +35,7 @@ use super::amstrad_cpc::has_amsdos_header;
 /// and +3 tools) is skipped.
 fn scr(data: &[u8], decode: fn(&[u8]) -> Result<Image, DecodeError>) -> Result<Image, DecodeError> {
     if has_amsdos_header(data) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     decode(next::strip_plus3dos(data))
 }

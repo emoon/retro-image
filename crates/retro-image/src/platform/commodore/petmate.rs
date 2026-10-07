@@ -186,10 +186,10 @@ impl Cell {
 /// The screen the workspace shows first, as a picture.
 pub(super) fn decode_petmate(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(b"{\"version\":") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let root = Value::parse(data).ok_or(DecodeError::Unrecognized)?;
-    render(&root).ok_or(DecodeError::Unrecognized)
+    let root = Value::parse(data).ok_or(DecodeError::Invalid)?;
+    render(&root).ok_or(DecodeError::Invalid)
 }
 
 fn render(root: &Value) -> Option<Image> {

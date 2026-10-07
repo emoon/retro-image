@@ -325,11 +325,11 @@ fn match_palette(palettes: &Dict, name: &[u8], index: usize) -> Option<usize> {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let chunk = tex0_chunk(data).ok_or(fail)?;
-    let at = |offset: usize| le32(chunk, offset).map(|v| v as usize).ok_or(fail);
-    let textures = Dict::parse(chunk, usize::from(le16(chunk, 0xe).ok_or(fail)?), 8).ok_or(fail)?;
-    let palettes = Dict::parse(chunk, at(0x34)?, 4).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let chunk = tex0_chunk(data).ok_or(FAIL)?;
+    let at = |offset: usize| le32(chunk, offset).map(|v| v as usize).ok_or(FAIL);
+    let textures = Dict::parse(chunk, usize::from(le16(chunk, 0xe).ok_or(FAIL)?), 8).ok_or(FAIL)?;
+    let palettes = Dict::parse(chunk, at(0x34)?, 4).ok_or(FAIL)?;
     let blocks = Blocks {
         chunk,
         texture: at(0x14)?,
@@ -342,7 +342,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let (mut x, mut y, mut row_height, mut sheet_width) = (0, 0, 0, 0);
     for i in 0..textures.count {
         let entry = textures.entry(i, 8);
-        let texture = Texture::new(le32(entry, 0).ok_or(fail)?);
+        let texture = Texture::new(le32(entry, 0).ok_or(FAIL)?);
         if texture.format == 0 {
             continue;
         }
@@ -374,7 +374,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         sheet_width = sheet_width.max(x - GAP);
     }
     if placed.is_empty() {
-        return Err(fail);
+        return Err(FAIL);
     }
     let sheet_height = y + row_height;
     check_size(sheet_width, sheet_height)?;

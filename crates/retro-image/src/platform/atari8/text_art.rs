@@ -33,9 +33,7 @@ const MAX_ROWS: usize = 24;
 
 /// Ascii-Art Editor picture.
 pub(super) fn decode_ascii_art(data: &[u8]) -> Result<Image, DecodeError> {
-    let text = data
-        .strip_suffix(&[0x9b])
-        .ok_or(DecodeError::Unrecognized)?;
+    let text = data.strip_suffix(&[0x9b]).ok_or(DecodeError::Invalid)?;
     let lines: Vec<&[u8]> = text.split(|&c| c == 0x9b).collect();
     let width = lines
         .iter()
@@ -44,7 +42,7 @@ pub(super) fn decode_ascii_art(data: &[u8]) -> Result<Image, DecodeError> {
         .unwrap_or(0)
         .max(1);
     if lines.len() > MAX_ROWS || width > MAX_COLUMNS {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut codes = alloc::vec![0; width * lines.len()];
     for (row, line) in lines.iter().enumerate() {
@@ -67,12 +65,12 @@ pub(super) fn decode_all(data: &[u8]) -> Result<Image, DecodeError> {
         .len()
         .checked_sub(fixed)
         .filter(|len| *len > 0 && len % FONT == 0)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let (rows, rest) = data.split_at(ALL_HEADER);
     let (fonts, rest) = rest.split_at(fonts_len);
     let (screen, colors) = rest.split_at(SCREEN);
     if rows.iter().any(|&f| usize::from(f) >= fonts_len / FONT) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let register = |i: usize| register_rgb(colors[i]);
     // Value 0 is the background (COLOR4); 1-3 are COLOR0-2; COLOR3 is the

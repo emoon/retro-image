@@ -64,7 +64,7 @@ struct Cvt<'a> {
 impl<'a> Cvt<'a> {
     /// Accepts a file with the given structure and info-block class text prefix.
     fn parse(data: &'a [u8], class: &[u8], structure: Structure) -> Result<Self, DecodeError> {
-        let signature = data.get(0x1e..0x3a).ok_or(DecodeError::Unrecognized)?;
+        let signature = data.get(0x1e..0x3a).ok_or(DecodeError::Invalid)?;
         let formatted = &signature[3..];
         let sig_ok = signature.starts_with(b"PRG") || signature.starts_with(b"SEQ");
         let structure_byte = u8::from(structure == Structure::Vlir);
@@ -74,7 +74,7 @@ impl<'a> Cvt<'a> {
             || data[0x15] != structure_byte
             || class_text != Some(class)
         {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(Self { data })
     }
@@ -85,7 +85,7 @@ impl<'a> Cvt<'a> {
         let table = self
             .data
             .get(TABLE_AT..RECORDS_AT)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         let mut at = RECORDS_AT;
         let mut records = Vec::with_capacity(VLIR_ENTRIES);
         for entry in table.as_chunks::<2>().0.iter().take(VLIR_ENTRIES) {
@@ -94,7 +94,7 @@ impl<'a> Cvt<'a> {
             let record = self
                 .data
                 .get(at.min(self.data.len())..end.min(self.data.len()))
-                .ok_or(DecodeError::Unrecognized)?;
+                .ok_or(DecodeError::Invalid)?;
             records.push(record);
             at = end;
         }
@@ -113,7 +113,7 @@ pub(super) fn decode_geopaint(data: &[u8]) -> Result<Image, DecodeError> {
     let used = pages
         .iter()
         .rposition(|r| !r.is_empty())
-        .ok_or(DecodeError::Unrecognized)?
+        .ok_or(DecodeError::Invalid)?
         + 1;
     let height = used * 16;
     let palette: [u32; 16] = vic2::PALETTE;
@@ -153,7 +153,7 @@ pub(super) fn decode_photo_album(data: &[u8]) -> Result<Image, DecodeError> {
         .into_iter()
         .filter(|r| !r.is_empty())
         .find_map(|r| decode_scrap_data(r).ok())
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 pub(super) fn decode_photo_scrap(data: &[u8]) -> Result<Image, DecodeError> {
@@ -161,11 +161,11 @@ pub(super) fn decode_photo_scrap(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode_scrap_data(data: &[u8]) -> Result<Image, DecodeError> {
-    let (&cards, rest) = data.split_first().ok_or(DecodeError::Unrecognized)?;
-    let height = usize::from(le16(rest, 0).ok_or(DecodeError::Unrecognized)?);
+    let (&cards, rest) = data.split_first().ok_or(DecodeError::Invalid)?;
+    let height = usize::from(le16(rest, 0).ok_or(DecodeError::Invalid)?);
     let row_len = usize::from(cards);
     if row_len == 0 || height == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     check_size(row_len * 8, height)?;
     let bitmap = unpack_bitmap(&rest[2..], row_len * height)?;
@@ -186,33 +186,33 @@ fn unpack_paint(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::with_capacity(PAINT_RECORD_LEN);
     let mut at = 0;
     while out.len() < PAINT_RECORD_LEN {
-        let code = *data.get(at).ok_or(DecodeError::Unrecognized)?;
+        let code = *data.get(at).ok_or(DecodeError::Invalid)?;
         at += 1;
         match code {
             0x01..=0x3f => {
                 let n = usize::from(code);
-                out.extend_from_slice(data.get(at..at + n).ok_or(DecodeError::Unrecognized)?);
+                out.extend_from_slice(data.get(at..at + n).ok_or(DecodeError::Invalid)?);
                 at += n;
             }
             0x41..=0x7f => {
-                let card = data.get(at..at + 8).ok_or(DecodeError::Unrecognized)?;
+                let card = data.get(at..at + 8).ok_or(DecodeError::Invalid)?;
                 at += 8;
                 for _ in 0..code - 0x40 {
                     out.extend_from_slice(card);
                 }
             }
             0x81..=0xff => {
-                let byte = *data.get(at).ok_or(DecodeError::Unrecognized)?;
+                let byte = *data.get(at).ok_or(DecodeError::Invalid)?;
                 at += 1;
                 out.resize(out.len() + usize::from(code - 0x80), byte);
             }
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         }
     }
     if out.len() == PAINT_RECORD_LEN {
         Ok(out)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -224,24 +224,22 @@ fn unpack_bitmap(data: &[u8], len: usize) -> Result<Vec<u8>, DecodeError> {
     let mut out = Vec::new();
     let mut at = 0;
     while out.len() < len {
-        let code = *data.get(at).ok_or(DecodeError::Unrecognized)?;
+        let code = *data.get(at).ok_or(DecodeError::Invalid)?;
         at += 1;
         match code {
             0..=127 => {
-                let byte = *data.get(at).ok_or(DecodeError::Unrecognized)?;
+                let byte = *data.get(at).ok_or(DecodeError::Invalid)?;
                 at += 1;
                 out.resize(out.len() + usize::from(code), byte);
             }
             128..=219 => {
                 let n = usize::from(code - 128);
-                out.extend_from_slice(data.get(at..at + n).ok_or(DecodeError::Unrecognized)?);
+                out.extend_from_slice(data.get(at..at + n).ok_or(DecodeError::Invalid)?);
                 at += n;
             }
             220..=255 => {
-                let n = usize::from(*data.get(at).ok_or(DecodeError::Unrecognized)?);
-                let pattern = data
-                    .get(at + 1..at + 1 + n)
-                    .ok_or(DecodeError::Unrecognized)?;
+                let n = usize::from(*data.get(at).ok_or(DecodeError::Invalid)?);
+                let pattern = data.get(at + 1..at + 1 + n).ok_or(DecodeError::Invalid)?;
                 at += 1 + n;
                 for _ in 0..code - 220 {
                     out.extend_from_slice(pattern);

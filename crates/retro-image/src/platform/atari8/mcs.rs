@@ -42,7 +42,7 @@ const PRIOR: u8 = 0x04;
 
 pub(super) fn decode_mcs(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colors = Colors {
         player: [data[0], data[1], data[2], data[3]],

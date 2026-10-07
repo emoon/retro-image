@@ -59,7 +59,7 @@ use crate::bytes::le32;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 /// The first UID of every file store.
 const FILE_STORE: u32 = 0x1000_0037;
 const SKETCH_SECTION: u32 = 0x1000_007d;

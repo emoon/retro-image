@@ -34,12 +34,12 @@ use crate::{DecodeError, Image};
 /// Public Painter: escape byte, size byte (0 = 640x400, 200 = 640x800),
 /// then literal bytes or `escape, count - 1, value` runs.
 pub(super) fn decode_cmp(data: &[u8]) -> Result<Image, DecodeError> {
-    let (&escape, rest) = data.split_first().ok_or(DecodeError::Unrecognized)?;
-    let (&size, body) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+    let (&escape, rest) = data.split_first().ok_or(DecodeError::Invalid)?;
+    let (&size, body) = rest.split_first().ok_or(DecodeError::Invalid)?;
     let height = match size {
         0 => 400,
         200 => 800,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let len = 80 * height;
     let mut bitmap = Vec::with_capacity(len);
@@ -48,8 +48,8 @@ pub(super) fn decode_cmp(data: &[u8]) -> Result<Image, DecodeError> {
         let cmd = body[pos];
         pos += 1;
         if cmd == escape {
-            let count = usize::from(*body.get(pos).ok_or(DecodeError::Unrecognized)?) + 1;
-            let value = *body.get(pos + 1).ok_or(DecodeError::Unrecognized)?;
+            let count = usize::from(*body.get(pos).ok_or(DecodeError::Invalid)?) + 1;
+            let value = *body.get(pos + 1).ok_or(DecodeError::Invalid)?;
             pos += 2;
             bitmap.extend(core::iter::repeat_n(value, count));
         } else {
@@ -57,16 +57,16 @@ pub(super) fn decode_cmp(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     if bitmap.len() < len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    mono_image(&bitmap, 640, height as u32, 80).ok_or(DecodeError::Unrecognized)
+    mono_image(&bitmap, 640, height as u32, 80).ok_or(DecodeError::Invalid)
 }
 
 /// STAD: `pM85` (row order) or `pM86` (column order), id byte, pack byte,
 /// special byte, then literal bytes, `id, n` (pack byte n + 1 times) or
 /// `special, d, n` (d n + 1 times). Always 640x400.
 pub(super) fn decode_pac(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_pac_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_pac_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_pac_inner(data: &[u8]) -> Option<Image> {
@@ -111,7 +111,7 @@ fn decode_pac_inner(data: &[u8]) -> Option<Image> {
 /// 1-bit bitmap; compressed data expands `0, n` and `255, n` to n + 1
 /// copies of 0 or 255.
 pub(super) fn decode_bld(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_bld_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_bld_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_bld_inner(data: &[u8]) -> Option<Image> {
@@ -159,7 +159,7 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
     let chars = match data.len() {
         2050 => 128,
         4096 | 4098 => 256,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let rows = chars / 32;
     let mut bitmap = alloc::vec![0u8; chars * 16];
@@ -169,7 +169,7 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
             bitmap[(c / 32 * 16 + line) * 32 + c % 32] = !bits;
         }
     }
-    mono_image(&bitmap, 256, (rows * 16) as u32, 32).ok_or(DecodeError::Unrecognized)
+    mono_image(&bitmap, 256, (rows * 16) as u32, 32).ok_or(DecodeError::Invalid)
 }
 
 /// GDOS font: 88-byte header, character offset table and one raster form
@@ -181,7 +181,7 @@ pub(super) fn decode_fnt(data: &[u8]) -> Result<Image, DecodeError> {
 /// laid out as running text, wrapping at 16 times the form height; columns
 /// past the form are blank.
 pub(super) fn decode_gdos_fnt(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_gdos_fnt_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_gdos_fnt_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_gdos_fnt_inner(data: &[u8]) -> Option<Image> {
@@ -252,7 +252,7 @@ fn decode_gdos_fnt_inner(data: &[u8]) -> Option<Image> {
 /// the byte-per-pixel layout is derived from the sample file.
 pub(super) fn decode_bru(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 64 || data.iter().any(|&b| b > 1) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(8, 8)?;
     for (i, &b) in data.iter().enumerate() {
@@ -267,7 +267,7 @@ pub(super) fn decode_bru(data: &[u8]) -> Result<Image, DecodeError> {
 /// screen. Source (including Lonny Pursell's public-domain decoder):
 /// <https://temlib.org/AtariForumWiki/index.php/Picworks_file_format>.
 pub(super) fn decode_cp3(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_cp3_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_cp3_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_cp3_inner(data: &[u8]) -> Option<Image> {
@@ -300,7 +300,7 @@ fn decode_cp3_inner(data: &[u8]) -> Option<Image> {
 /// of the icon. Source:
 /// <https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Icon_file_format>.
 pub(super) fn decode_icn(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_icn_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_icn_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_icn_inner(data: &[u8]) -> Option<Image> {
@@ -359,13 +359,13 @@ pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
     let word = |i: usize| be16(body, i).map(usize::from);
     let (width, height, planes) = match (word(0), word(2), word(4)) {
         (Some(w), Some(h), Some(p)) => (w + 1, h + 1, p),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     check_size(width, height)?;
     let words = width.div_ceil(16);
     let planes_wanted = if palette.is_some() { 4 } else { 1 };
     if planes != planes_wanted || body.len() != 6 + words * 2 * planes * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = &body[6..];
     let image = match palette {
@@ -376,7 +376,7 @@ pub(super) fn decode_obj(data: &[u8]) -> Result<Image, DecodeError> {
                 .and_then(|image| crop(&image, width as u32, height as u32).ok())
         }
     };
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 /// The 16 decimal palette lines (CR LF) of a color object, as colors,
@@ -401,7 +401,7 @@ fn obj_text_palette(data: &[u8]) -> Option<(Vec<u32>, &[u8])> {
 
 /// Calamus Raster Graphic: 42-byte header, byte RLE.
 pub(super) fn decode_crg(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_crg_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_crg_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_crg_inner(data: &[u8]) -> Option<Image> {

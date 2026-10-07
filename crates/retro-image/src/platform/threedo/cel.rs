@@ -100,15 +100,15 @@ impl Layout {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let mut all = chunks(data).skip_while(|chunk| &chunk.tag != b"CCB ");
-    let ccb = Ccb::parse(all.next().ok_or(fail)?.body).ok_or(fail)?;
+    let ccb = Ccb::parse(all.next().ok_or(FAIL)?.body).ok_or(FAIL)?;
     // The picture's own chunks lie before the next cel control block.
     let own: alloc::vec::Vec<Chunk> = all.take_while(|chunk| &chunk.tag != b"CCB ").collect();
     let source = own
         .iter()
         .find(|chunk| &chunk.tag == b"PDAT")
-        .ok_or(fail)?
+        .ok_or(FAIL)?
         .body;
     let plut = own
         .iter()
@@ -120,20 +120,20 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     let (pre0, pre1, data_at) = if ccb.flags & CCBPRE != 0 {
         (ccb.pre0, ccb.pre1, 0)
     } else if packed {
-        (be32(source, 0).ok_or(fail)?, 0, 4)
+        (be32(source, 0).ok_or(FAIL)?, 0, 4)
     } else {
         (
-            be32(source, 0).ok_or(fail)?,
-            be32(source, 4).ok_or(fail)?,
+            be32(source, 0).ok_or(FAIL)?,
+            be32(source, 4).ok_or(FAIL)?,
             8,
         )
     };
-    let layout = layout(&ccb, pre0, pre1).ok_or(fail)?;
+    let layout = layout(&ccb, pre0, pre1).ok_or(FAIL)?;
     check_size(layout.width, layout.height)?;
-    let source = source.get(data_at..).ok_or(fail)?;
+    let source = source.get(data_at..).ok_or(FAIL)?;
     // Header-sized buffers only once the data can fill them.
     if source.len() < layout.least_source_len() {
-        return Err(fail);
+        return Err(FAIL);
     }
 
     let colors = palette(plut);
@@ -152,9 +152,9 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 
     let mut pixels = alloc::vec![0u32; layout.width * layout.height];
     if layout.packed {
-        unpack_rows(source, &layout, &color, &mut pixels).ok_or(fail)?;
+        unpack_rows(source, &layout, &color, &mut pixels).ok_or(FAIL)?;
     } else {
-        read_rows(source, &layout, &color, &mut pixels).ok_or(fail)?;
+        read_rows(source, &layout, &color, &mut pixels).ok_or(FAIL)?;
     }
     Image::from_argb(
         layout.width as u32,

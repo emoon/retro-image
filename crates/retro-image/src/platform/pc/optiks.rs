@@ -51,7 +51,7 @@ use crate::codec::packbits;
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const STUB: [u8; 8] = [0xe9, 0x39, 0x01, 0x0d, 0x0a, b'O', b'P', b'T'];
 /// Where the code that tells the viewer version sits.
 const VERSION_AT: usize = 316;

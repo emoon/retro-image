@@ -24,16 +24,16 @@ const MODE: usize = PAYLOAD + 1;
 pub(super) fn decode_flf(data: &[u8]) -> Result<Image, DecodeError> {
     let fluff = Fluff::parse(data)?;
     if fluff.kind != 0x1a {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (width, logical, scale) = match fluff.byte(MODE)? {
         4 => (320, &TWO_COLORS[..2], 1),
         5 => (160, &FOUR_COLORS[..4], 2),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (pixels, rest) = fluff.split(MODE, width * HEIGHT)?;
     // One more stored byte, then the closing block.
-    let (_, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+    let (_, rest) = rest.split_first().ok_or(DecodeError::Invalid)?;
     flf::trailer(rest, true)?;
     let mut palette = [0u32; 256];
     for (color, &physical) in palette.iter_mut().zip(logical) {

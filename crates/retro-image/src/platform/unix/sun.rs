@@ -37,7 +37,7 @@ use crate::bytes::be32;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: u32 = 0x59a6_6a95;
 const HEADER_LEN: usize = 32;
 /// Type 3: pixels in RGB order instead of BGR.

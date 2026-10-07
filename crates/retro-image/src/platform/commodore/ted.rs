@@ -49,7 +49,7 @@ const LEN: usize = 2 + 1024 + 1024 + 8000;
 /// Botticelli (hires) or Multi Botticelli (`MULT` tag) picture.
 pub(super) fn decode_p4i(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let luma = &data[2..1026];
     let chroma = &data[1026..2050];
@@ -93,7 +93,7 @@ const FOUR_GREYS: [u8; 4] = [0x00, 0x31, 0x51, 0x71];
 /// significant pixel pair first. Shown with pixels doubled horizontally.
 pub(super) fn decode_p4i_grey(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FOUR_GREYS_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(2 * 4 * STRIPS as u32, STRIP_LINES as u32)?;
     for (strip, column) in data[2..].as_chunks::<STRIP_LINES>().0.iter().enumerate() {

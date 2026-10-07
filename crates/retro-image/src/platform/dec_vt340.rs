@@ -73,7 +73,7 @@ use crate::{DecodeError, Format, Image};
 pub(super) static FORMATS: &[Format] =
     &[Format::new("DEC VT340", "Sixel", &["six", "sixel"], decode_sixel).signature()];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const ESC: u8 = 0x1b;
 const C1_ST: u8 = 0x9c;
 /// How far into the file the control string may start: files begin with a

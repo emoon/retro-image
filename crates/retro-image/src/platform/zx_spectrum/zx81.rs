@@ -66,12 +66,12 @@ pub(super) fn decode_p(data: &[u8]) -> Result<Image, DecodeError> {
     let d_file = data
         .get(D_FILE..D_FILE + 2)
         .map(|b| usize::from(u16::from_le_bytes([b[0], b[1]])))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let program = d_file
         .checked_sub(0x4009)
         .and_then(|end| data.get(PROGRAM..end))
-        .ok_or(DecodeError::Unrecognized)?;
-    let screen = run(program).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let screen = run(program).ok_or(DecodeError::Invalid)?;
     render(screen.as_flattened())
 }
 
@@ -79,7 +79,7 @@ pub(super) fn decode_p(data: &[u8]) -> Result<Image, DecodeError> {
 /// lines of 32 character codes each ended by NEWLINE (0x76).
 pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != ROWS * (COLUMNS + 1) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut codes = [0; ROWS * COLUMNS];
     for (line, cells) in data
@@ -88,9 +88,7 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
         .iter()
         .zip(codes.as_chunks_mut::<COLUMNS>().0)
     {
-        let text = line
-            .strip_suffix(&[NEWLINE])
-            .ok_or(DecodeError::Unrecognized)?;
+        let text = line.strip_suffix(&[NEWLINE]).ok_or(DecodeError::Invalid)?;
         cells.copy_from_slice(text);
     }
     render(&codes)
@@ -99,12 +97,10 @@ pub(super) fn decode_raw(data: &[u8]) -> Result<Image, DecodeError> {
 /// ZXpaintyONE `.ZP1`: the 768 character codes as two hex digits each
 /// (either case); anything after them is ignored.
 pub(super) fn decode_zp1(data: &[u8]) -> Result<Image, DecodeError> {
-    let digits = data
-        .get(..2 * ROWS * COLUMNS)
-        .ok_or(DecodeError::Unrecognized)?;
+    let digits = data.get(..2 * ROWS * COLUMNS).ok_or(DecodeError::Invalid)?;
     let mut codes = [0; ROWS * COLUMNS];
     for (code, pair) in codes.iter_mut().zip(digits.as_chunks::<2>().0) {
-        let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Unrecognized);
+        let hex = |c: u8| char::from(c).to_digit(16).ok_or(DecodeError::Invalid);
         *code = (hex(pair[0])? << 4 | hex(pair[1])?) as u8;
     }
     render(&codes)

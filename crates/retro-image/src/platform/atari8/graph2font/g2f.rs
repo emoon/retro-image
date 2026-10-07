@@ -90,13 +90,11 @@ pub(super) fn decode_plain_or_vbxe(data: &[u8]) -> Result<Image, DecodeError> {
 }
 
 fn decode(data: &[u8], vbxe: Option<bool>) -> Result<Image, DecodeError> {
-    let packed = data
-        .strip_prefix(b"G2FZLIB")
-        .ok_or(DecodeError::Unrecognized)?;
-    let raw = inflate::zlib(packed, MAX_INFLATED).ok_or(DecodeError::Unrecognized)?;
-    let picture = parse(&raw).ok_or(DecodeError::Unrecognized)?;
+    let packed = data.strip_prefix(b"G2FZLIB").ok_or(DecodeError::Invalid)?;
+    let raw = inflate::zlib(packed, MAX_INFLATED).ok_or(DecodeError::Invalid)?;
+    let picture = parse(&raw).ok_or(DecodeError::Invalid)?;
     if vbxe.is_some_and(|vbxe| picture.vbxe.is_some() != vbxe) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     picture.render()
 }

@@ -84,7 +84,7 @@ fn decode(
     expect: impl FnOnce(Screen) -> Option<Screen>,
 ) -> Result<Image, DecodeError> {
     let mut map = map::parse(data)?;
-    map.screen = expect(map.screen).ok_or(DecodeError::Unrecognized)?;
+    map.screen = expect(map.screen).ok_or(DecodeError::Invalid)?;
     let palette = map
         .palette
         .or_else(|| companion_palette(companions, palette_extension))

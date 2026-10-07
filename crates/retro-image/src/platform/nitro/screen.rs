@@ -115,7 +115,7 @@ impl Screen {
         character: &Character,
         palette: Option<&Palette>,
     ) -> Result<Image, DecodeError> {
-        let tiles = character.tiles().ok_or(DecodeError::Unrecognized)?;
+        let tiles = character.tiles().ok_or(DecodeError::Invalid)?;
         let count = character.tile_count();
         let (width, height) = (self.width * TILE, self.height * TILE);
         check_size(width, height)?;

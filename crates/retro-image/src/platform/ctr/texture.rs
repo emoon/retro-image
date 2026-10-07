@@ -233,7 +233,7 @@ impl Texture<'_> {
                 .data_len(width, height)
                 .is_some_and(|len| self.data.len() >= len);
         if !sound {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         check_size(visible_width, visible_height)?;
         let tiles_per_row = width / TILE;

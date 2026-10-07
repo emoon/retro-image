@@ -62,7 +62,7 @@ use crate::bytes::{le16, le32};
 use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const FILE_HEADER_LEN: usize = 14;
 /// `BA` entries followed in one array: far more than any icon file holds.
 const MAX_ENTRIES: usize = 64;

@@ -43,7 +43,7 @@ use super::pcx::decode_pcx;
 use crate::bytes::le32;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const MAGIC: [u8; 4] = [0xb1, 0x68, 0xde, 0x3a];
 /// Where the offset table starts, after the magic.
 const TABLE_AT: usize = 4;

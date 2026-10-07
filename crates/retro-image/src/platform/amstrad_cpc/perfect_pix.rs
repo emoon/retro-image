@@ -23,22 +23,22 @@ const HEADER_LEN: usize = 6;
 /// PPH with its ODD and EVE companions; the header alone has no pixels.
 pub(super) fn decode_pph(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     let pph = strip_amsdos(data);
-    let header = pph.get(..HEADER_LEN).ok_or(DecodeError::Unrecognized)?;
+    let header = pph.get(..HEADER_LEN).ok_or(DecodeError::Invalid)?;
     let (mode, shifted) = match header[0] {
         3 => (Mode::Zero, true),
         4 => (Mode::Zero, false),
         5 => (Mode::One, false),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let width = usize::from(u16::from_le_bytes([header[1], header[2]]));
     let height = usize::from(u16::from_le_bytes([header[3], header[4]]));
     let zones = parse_zones(&pph[HEADER_LEN..], usize::from(header[5]), mode)?;
     let line_bytes = width.div_ceil(4);
     let frame = |extension| {
-        let file = companions.get(extension).ok_or(DecodeError::Unrecognized)?;
+        let file = companions.get(extension).ok_or(DecodeError::Invalid)?;
         let pixels = strip_amsdos(&file);
         if width == 0 || height == 0 || pixels.len() != line_bytes * height {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(pixels.to_vec())
     };
@@ -52,7 +52,7 @@ pub(super) fn decode_pph(data: &[u8], companions: &dyn Companions) -> Result<Ima
         Image::new(width as u32, height as u32)?,
     ];
     let mut remaining_zones = zones.iter();
-    let mut zone = remaining_zones.next().ok_or(DecodeError::Unrecognized)?;
+    let mut zone = remaining_zones.next().ok_or(DecodeError::Invalid)?;
     let mut zone_end = zone.lines;
     for y in 0..height {
         while y >= zone_end {
@@ -99,14 +99,14 @@ fn parse_zones(
 ) -> Result<alloc::vec::Vec<Zone>, DecodeError> {
     let pen_count = 1 << (8 / mode.pixels_per_byte());
     if count == 0 || data.len() != count * (pen_count + 1) - 1 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     data.chunks(pen_count + 1)
         .map(|chunk| {
             let mut pens = [0; 16];
             for (pen, &color) in pens.iter_mut().zip(&chunk[..pen_count]) {
                 if color > 26 {
-                    return Err(DecodeError::Unrecognized);
+                    return Err(DecodeError::Invalid);
                 }
                 *pen = firmware_color(usize::from(color));
             }

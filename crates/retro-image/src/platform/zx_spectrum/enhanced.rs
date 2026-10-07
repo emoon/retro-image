@@ -19,13 +19,13 @@ const SXG_HEADER_LEN: usize = 16;
 /// offsets, each relative to the end of its own field.
 pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() < SXG_HEADER_LEN || !data.starts_with(b"\x7fSXG") || data[6] != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let word = |offset: usize| usize::from(u16::from_le_bytes([data[offset], data[offset + 1]]));
     let bits_per_pixel = match data[7] {
         1 => 4,
         2 => 8,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (width, height) = (word(8), word(10));
     let palette_start = 14 + word(12);
@@ -33,12 +33,12 @@ pub(super) fn decode_sxg(data: &[u8]) -> Result<Image, DecodeError> {
     check_size(width, height)?;
     let bitmap_len = (width * height * bits_per_pixel).div_ceil(8);
     if palette_start > bitmap_start {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = &data[palette_start.min(data.len())..bitmap_start.min(data.len())];
     let bitmap = data
         .get(bitmap_start..bitmap_start + bitmap_len)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let mut frame = Frame::new(width, height)?;
     for y in 0..height {
         for x in 0..width {

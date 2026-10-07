@@ -102,8 +102,8 @@ impl<'a> Stream<'a> {
 }
 
 pub(in super::super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let header = data.get(..HEADER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let header = data.get(..HEADER_LEN).ok_or(FAIL)?;
     let flags = header[0];
     let pages = if flags & TWO_PAGES != 0 { 2 } else { 1 };
     let patterns = if flags & NO_PATTERNS != 0 {
@@ -111,24 +111,24 @@ pub(in super::super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     } else {
         PATTERNS_LEN
     };
-    let mut stream = Stream(data.get(HEADER_LEN + patterns..).ok_or(fail)?);
+    let mut stream = Stream(data.get(HEADER_LEN + patterns..).ok_or(FAIL)?);
     let mut packed = Vec::with_capacity(pages * PAGE_ROWS * ROW_LEN);
     // Both persist across rows and pages: the row above, and the last byte.
     let mut row = [0u8; ROW_LEN];
     let mut last = 0u8;
     for _ in 0..pages {
-        if usize::from(stream.byte().ok_or(fail)?) != PAGE_ROWS {
-            return Err(fail);
+        if usize::from(stream.byte().ok_or(FAIL)?) != PAGE_ROWS {
+            return Err(FAIL);
         }
         for _ in 0..PAGE_ROWS {
-            unpack_row(&mut stream, &mut row, &mut last).ok_or(fail)?;
+            unpack_row(&mut stream, &mut row, &mut last).ok_or(FAIL)?;
             packed.extend_from_slice(&row);
         }
     }
     // The file ends with the last row, maybe followed by zero padding up to
     // a multiple of 128 bytes (six of the 19 samples).
     if stream.0.iter().any(|&b| b != 0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     picture(
         320,

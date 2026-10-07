@@ -46,7 +46,7 @@ fn unpack(data: &[u8]) -> Option<Vec<[u8; 3]>> {
 }
 
 pub(in crate::platform) fn decode_davinci(data: &[u8]) -> Result<Image, DecodeError> {
-    let columns = unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let columns = unpack(data).ok_or(DecodeError::Invalid)?;
     let plane = |channel: usize| -> Vec<u8> { columns.iter().map(|c| c[channel]).collect() };
     pc88_planes::image(&plane(0), &plane(1), &plane(2))
 }

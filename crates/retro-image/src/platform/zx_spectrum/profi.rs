@@ -26,7 +26,7 @@ const GRF_LEN: usize = HEADER_LEN + WIDTH / 8 * 2 * HEIGHT;
 
 pub(super) fn decode_grf(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != GRF_LEN || !data.starts_with(&HEADER) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette: [u32; 16] = core::array::from_fn(|i| grb332(data[PALETTE + i]));
     let mut image = Image::new(WIDTH as u32, HEIGHT as u32)?;

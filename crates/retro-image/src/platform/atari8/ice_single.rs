@@ -95,10 +95,10 @@ fn color(mode: u8, h: &[u8], glyph: Glyph, set: usize, v: u8) -> u32 {
 }
 
 pub(super) fn decode_ice_single(data: &[u8]) -> Result<Image, DecodeError> {
-    let mode = *data.first().ok_or(DecodeError::Unrecognized)?;
-    let header_len = header_len(mode).ok_or(DecodeError::Unrecognized)?;
+    let mode = *data.first().ok_or(DecodeError::Invalid)?;
+    let header_len = header_len(mode).ok_or(DecodeError::Invalid)?;
     if data.len() != header_len + CHARSET {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (header, font) = data.split_at(header_len);
     // Pixel `p` of glyph `n` on glyph line `line`.

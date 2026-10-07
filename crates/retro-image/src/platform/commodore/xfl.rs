@@ -50,11 +50,11 @@ const FIRST_LINE: [usize; 8] = [0, 1, 42, 43, 84, 85, 126, 127];
 /// X-FLI Editor.
 pub(super) fn decode_xfl(data: &[u8]) -> Result<Image, DecodeError> {
     let [0x00, 0x40, escape, packed @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     match backward_rle_filled(packed, *escape, MEM_LEN) {
         Some((mem, true)) => Ok(render(&mem)),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

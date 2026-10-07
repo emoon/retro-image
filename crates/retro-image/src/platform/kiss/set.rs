@@ -33,7 +33,7 @@ use super::{full_palette, read_cel, read_palette};
 use crate::image::{CLEAR, check_size};
 use crate::{Companions, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const DEFAULT_SIZE: (usize, usize) = (448, 320);
 const MAX_SIDE: usize = 4096;
 /// Cel entries, set positions and palette files read from a file.

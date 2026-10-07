@@ -61,8 +61,8 @@ const WIDTH: usize = TILES_PER_ROW * 8;
 const MAX_TILE_BYTES: usize = 1 << 20;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let bytes = capture_bytes(data).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let bytes = capture_bytes(data).ok_or(FAIL)?;
     let mut strips: Vec<Image> = Vec::new();
     let mut tiles: Vec<u8> = Vec::new();
     let mut total = 0;
@@ -82,13 +82,13 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
             DATA => {
                 let before = tiles.len();
                 if packet.compressed {
-                    unrle(packet.data, &mut tiles).ok_or(fail)?;
+                    unrle(packet.data, &mut tiles).ok_or(FAIL)?;
                 } else {
                     tiles.extend_from_slice(packet.data);
                 }
                 total += tiles.len() - before;
                 if total > MAX_TILE_BYTES {
-                    return Err(fail);
+                    return Err(FAIL);
                 }
             }
             PRINT if packet.data.len() == 4 && !tiles.is_empty() => {

@@ -32,14 +32,14 @@ fn decode_grob(data: &[u8]) -> Result<Image, DecodeError> {
     let nibbles = if data.starts_with(b"HPHP48-") && data.len() > 8 {
         data[8..].iter().flat_map(|&b| [b & 15, b >> 4]).collect()
     } else {
-        text_nibbles(data).ok_or(DecodeError::Unrecognized)?
+        text_nibbles(data).ok_or(DecodeError::Invalid)?
     };
     let grobs = match field(&nibbles, 0) {
         Some(GROB) => Vec::from_iter(Grob::parse(&nibbles)),
         Some(DIRECTORY | PROGRAM) => embedded_grobs(&nibbles),
         _ => Vec::new(),
     };
-    render(&grobs).ok_or(DecodeError::Unrecognized)
+    render(&grobs).ok_or(DecodeError::Invalid)
 }
 
 /// The nibbles of a text GROB, with a binary-style header synthesised.

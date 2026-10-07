@@ -59,10 +59,10 @@ pub(super) fn decode_chr(data: &[u8]) -> Result<Image, DecodeError> {
 
 fn decode(data: &[u8], len: usize, base: usize) -> Result<Image, DecodeError> {
     if data.len() != len {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let streams = streams(data, base).ok_or(DecodeError::Unrecognized)?;
-    let sheet = layout(&streams).ok_or(DecodeError::Unrecognized)?;
+    let streams = streams(data, base).ok_or(DecodeError::Invalid)?;
+    let sheet = layout(&streams).ok_or(DecodeError::Invalid)?;
     sheet.draw()
 }
 

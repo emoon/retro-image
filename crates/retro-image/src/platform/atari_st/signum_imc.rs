@@ -55,23 +55,23 @@ impl Bits<'_> {
 }
 
 pub(super) fn decode_imc(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if data.get(..8) != Some(b"bimc0002") {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let field = |at| be16(data, at).map(usize::from).ok_or(fail);
+    let field = |at| be16(data, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (field(12)?, field(14)?);
     let (across, down) = (field(16)?, field(18)?);
-    let bits_len = be32(data, 20).ok_or(fail)? as usize;
-    let xor = be16(data, 28).ok_or(fail)?;
+    let bits_len = be32(data, 20).ok_or(FAIL)? as usize;
+    let xor = be16(data, 28).ok_or(FAIL)?;
     if width == 0 || height == 0 || across * CHUNK < width || down * CHUNK < height {
-        return Err(fail);
+        return Err(FAIL);
     }
     // Only as many chunks as the picture needs; a smaller grid would leave
     // part of the picture undefined.
     check_size(across * CHUNK, down * CHUNK)?;
-    let body = data.get(HEADER_LEN..).ok_or(fail)?;
-    let (bits, bytes) = (body.get(..bits_len).ok_or(fail)?, &body[bits_len..]);
+    let body = data.get(HEADER_LEN..).ok_or(FAIL)?;
+    let (bits, bytes) = (body.get(..bits_len).ok_or(FAIL)?, &body[bits_len..]);
 
     let row_len = across * 2;
     let mut bitmap = alloc::vec![0u8; row_len * down * CHUNK];
@@ -81,14 +81,14 @@ pub(super) fn decode_imc(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let mut bytes = bytes.iter().copied();
     for chunk_row in 0..down {
-        if !bits.bit().ok_or(fail)? {
+        if !bits.bit().ok_or(FAIL)? {
             continue;
         }
         for chunk_col in 0..across {
-            if !bits.bit().ok_or(fail)? {
+            if !bits.bit().ok_or(FAIL)? {
                 continue;
             }
-            let chunk = read_chunk(&mut bits, &mut bytes).ok_or(fail)?;
+            let chunk = read_chunk(&mut bits, &mut bytes).ok_or(FAIL)?;
             for (line, pair) in chunk.as_chunks::<2>().0.iter().enumerate() {
                 let at = (chunk_row * CHUNK + line) * row_len + chunk_col * 2;
                 bitmap[at..at + 2].copy_from_slice(pair);

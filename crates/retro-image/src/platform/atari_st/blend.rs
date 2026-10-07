@@ -31,7 +31,7 @@ fn unpack_ice(data: &[u8]) -> Result<Option<Vec<u8>>, DecodeError> {
     }
     crate::codec::pack_ice::unpack(data)
         .map(Some)
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 const PCI_WIDTH: usize = 352;
@@ -45,7 +45,7 @@ pub(super) fn decode_pci(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = unpack_ice(data)?;
     let data = unpacked.as_deref().unwrap_or(data);
     if data.len() != 2 * (PCI_SCREEN_LEN + PCI_PALETTE_LEN) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (screens, palettes) = data.split_at(2 * PCI_SCREEN_LEN);
     let all = words(palettes);
@@ -74,7 +74,7 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = unpack_ice(data)?;
     let data = unpacked.as_deref().unwrap_or(data);
     if data.len() != 64000 + 28000 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palettes = words(&data[64000..]);
     let ste = uses_ste_bits(palettes.iter().copied());
@@ -92,8 +92,8 @@ pub(super) fn decode_hrm(data: &[u8]) -> Result<Image, DecodeError> {
         }
         Some(image)
     };
-    let even = field(0).ok_or(DecodeError::Unrecognized)?;
-    let odd = field(1).ok_or(DecodeError::Unrecognized)?;
+    let even = field(0).ok_or(DecodeError::Invalid)?;
+    let odd = field(1).ok_or(DecodeError::Invalid)?;
     Image::blend(&[&even, &odd]).scaled(1, 2)
 }
 
@@ -114,7 +114,7 @@ fn hrm_index(x: usize, c: usize) -> Option<usize> {
 /// sharing the palette. Derived from sample files and `recoil2png`
 /// output (the survey found no documentation).
 pub(super) fn decode_p3c(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_p3c_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_p3c_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_p3c_inner(data: &[u8]) -> Option<Image> {
@@ -144,9 +144,9 @@ const PL4_LEN: usize = 64070;
 
 /// PL4: an LZ4 frame holding two DEGAS-like low-resolution screens.
 pub(super) fn decode_pl4(data: &[u8]) -> Result<Image, DecodeError> {
-    let unpacked = super::lz4::decompress_frame(data, PL4_LEN).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = super::lz4::decompress_frame(data, PL4_LEN).ok_or(DecodeError::Invalid)?;
     if unpacked.len() != PL4_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let frame = |at: usize| {
         let words = palette_words(&unpacked, at + 2, 16)?;
@@ -155,7 +155,7 @@ pub(super) fn decode_pl4(data: &[u8]) -> Result<Image, DecodeError> {
         }
         decode_screen(Resolution::Low, &unpacked[at + 34..][..SCREEN_LEN], &words)
     };
-    let a = frame(0).ok_or(DecodeError::Unrecognized)?;
-    let b = frame(34 + SCREEN_LEN + 2).ok_or(DecodeError::Unrecognized)?;
+    let a = frame(0).ok_or(DecodeError::Invalid)?;
+    let b = frame(34 + SCREEN_LEN + 2).ok_or(DecodeError::Invalid)?;
     Ok(Image::blend(&[&a, &b]))
 }

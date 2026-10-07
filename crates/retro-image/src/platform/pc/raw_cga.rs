@@ -30,7 +30,7 @@ const PALETTE: [u32; 4] = CGA_4[3];
 
 pub(super) fn decode_raw_cga(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FILE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, &unpack_2bit(data), &PALETTE)
 }

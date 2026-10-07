@@ -19,25 +19,25 @@ const GREEN: u16 = 2;
 const BLUE: u16 = 3;
 
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let dgbl = find(contents, b"DGBL")
         .filter(|c| c.len() >= 8)
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let dpel = find(contents, b"DPEL")
         .filter(|c| c.len() >= 4)
-        .ok_or(fail)?;
-    let body = find(contents, b"DBOD").ok_or(fail)?;
+        .ok_or(FAIL)?;
+    let body = find(contents, b"DBOD").ok_or(FAIL)?;
     let (width, height) = match find(contents, b"DLOC").filter(|c| c.len() >= 4) {
         Some(dloc) => (be16(dloc, 0), be16(dloc, 2)),
         None => (be16(dgbl, 0), be16(dgbl, 2)),
     };
     let (width, height) = (
-        usize::from(width.ok_or(fail)?),
-        usize::from(height.ok_or(fail)?),
+        usize::from(width.ok_or(FAIL)?),
+        usize::from(height.ok_or(FAIL)?),
     );
-    let compression = be16(dgbl, 4).ok_or(fail)?;
+    let compression = be16(dgbl, 4).ok_or(FAIL)?;
     // Element types; every element must be 8 bits deep.
-    let count = be32(dpel, 0).ok_or(fail)? as usize;
+    let count = be32(dpel, 0).ok_or(FAIL)? as usize;
     let elements: Vec<u16> = dpel[4..]
         .as_chunks::<4>()
         .0
@@ -45,25 +45,25 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         .take(count)
         .map(|e| be16(e, 2).filter(|&depth| depth == 8).and(be16(e, 0)))
         .collect::<Option<_>>()
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     if elements.len() != count || count == 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
-    let channel = |kind| elements.iter().position(|&k| k == kind).ok_or(fail);
+    let channel = |kind| elements.iter().position(|&k| k == kind).ok_or(FAIL);
     let (r, g, b) = (channel(RED)?, channel(GREEN)?, channel(BLUE)?);
     let pixel_len = count;
     let row_len = width * pixel_len;
     // Neither compression expands a byte to more than 128 bytes; checking
     // this first keeps corrupt sizes from allocating huge buffers.
     if row_len * height > body.len().saturating_mul(128) {
-        return Err(fail);
+        return Err(FAIL);
     }
     let pixels = match compression {
-        0 => body.get(..row_len * height).ok_or(fail)?.to_vec(),
-        1 => unpack_pixel_rle(body, pixel_len, width * height).ok_or(fail)?,
-        5 => unpack_tvdc(contents, body, width, height, count).ok_or(fail)?,
-        _ => return Err(fail),
+        0 => body.get(..row_len * height).ok_or(FAIL)?.to_vec(),
+        1 => unpack_pixel_rle(body, pixel_len, width * height).ok_or(FAIL)?,
+        5 => unpack_tvdc(contents, body, width, height, count).ok_or(FAIL)?,
+        _ => return Err(FAIL),
     };
     let mut image = Image::new(width as u32, height as u32)?;
     for (i, p) in pixels.chunks_exact(pixel_len).enumerate() {

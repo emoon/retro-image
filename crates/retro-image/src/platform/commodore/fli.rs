@@ -68,7 +68,7 @@ pub(super) enum Bg {
 impl Fli {
     pub(super) fn decode(&self, data: &[u8]) -> Result<Image, DecodeError> {
         if !self.sizes.contains(&data.len()) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         self.decode_unchecked(data)
     }
@@ -76,7 +76,7 @@ impl Fli {
     pub(super) fn decode_unchecked(&self, data: &[u8]) -> Result<Image, DecodeError> {
         self.frame(&Prg::new(data, self.load))
             .map(|frame| frame.skip_lines(self.skip).to_image(FLI_BUG))
-            .ok_or(DecodeError::Unrecognized)
+            .ok_or(DecodeError::Invalid)
     }
 
     pub(super) fn frame(&self, prg: &Prg) -> Option<Frame> {
@@ -174,18 +174,18 @@ pub(super) fn decode_fli_designer(data: &[u8]) -> Result<Image, DecodeError> {
 /// escape byte, end of packed data, end of unpacked data, zero padding to
 /// `$3900`, then data packed backwards that unpacks to `start..=end`.
 fn unpack_38f0(data: &[u8], start: u16) -> Result<Vec<u8>, DecodeError> {
-    let header = data.get(..18).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..18).ok_or(DecodeError::Invalid)?;
     let packed_end = usize::from(u16::from_le_bytes([header[3], header[4]]));
     let unpacked_end = u16::from_le_bytes([header[5], header[6]]);
     if header[..2] != [0xf0, 0x38] || packed_end + 1 != 0x38f0 + data.len() - 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let len = usize::from(
         unpacked_end
             .checked_sub(start)
-            .ok_or(DecodeError::Unrecognized)?,
+            .ok_or(DecodeError::Invalid)?,
     ) + 1;
-    let unpacked = backward_rle(&data[18..], header[2], len).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = backward_rle(&data[18..], header[2], len).ok_or(DecodeError::Invalid)?;
     Ok(with_header(unpacked))
 }
 
@@ -195,7 +195,7 @@ pub(super) fn decode_flimatic(data: &[u8]) -> Result<Image, DecodeError> {
         background: Bg::Byte(0x7f7f),
         ..FLI_DESIGNER
     };
-    let unpacked = escape_last_rle(data, 0x7f80 - 0x3c00).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = escape_last_rle(data, 0x7f80 - 0x3c00).ok_or(DecodeError::Invalid)?;
     FLIMATIC.decode_unchecked(&with_header(unpacked))
 }
 
@@ -227,7 +227,7 @@ pub(super) fn decode_hires_fli_designer(data: &[u8]) -> Result<Image, DecodeErro
 /// a fixed `$AA` bitmap.
 pub(super) fn decode_cfli(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 + SCREENS_LEN || data[..2] != [0x00, 0x40] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = [0xaa; BITMAP_LEN];
     let bitmap = Bitmap {
@@ -241,7 +241,7 @@ pub(super) fn decode_cfli(data: &[u8]) -> Result<Image, DecodeError> {
     };
     Frame::hires(&bitmap, 200)
         .map(|frame| frame.to_image(FLI_BUG))
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 const FLI_PROFI: Fli = Fli {
@@ -265,10 +265,10 @@ const FLI_PROFI: Fli = Fli {
 /// `11` the high nibble of `$3B00 + y`.
 pub(super) fn decode_fli_profi(data: &[u8]) -> Result<Image, DecodeError> {
     if !FLI_PROFI.sizes.contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let prg = Prg::new(data, FLI_PROFI.load);
-    let fli = FLI_PROFI.frame(&prg).ok_or(DecodeError::Unrecognized)?;
+    let fli = FLI_PROFI.frame(&prg).ok_or(DecodeError::Invalid)?;
     // All addresses below lie inside the size checked above.
     let byte = |addr: usize| prg.byte(addr as u16).unwrap_or(0);
     let frame = Frame::from_fn(200, |x, y| {
@@ -310,14 +310,14 @@ pub(super) fn decode_hires_manager(data: &[u8]) -> Result<Image, DecodeError> {
 /// data, then data packed backwards: `$00 count value` runs, and literal
 /// sequences `count+1 data...` (read backwards).
 fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
-    let header = data.get(..6).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..6).ok_or(DecodeError::Invalid)?;
     let packed_end = usize::from(u16::from_le_bytes([header[2], header[3]]));
     let unpacked_end = usize::from(u16::from_le_bytes([header[4], header[5]]));
     if header[..2] != [0x00, 0x40]
         || packed_end + 1 != 0x4000 + data.len() - 2
         || !(0x4000..0x8000).contains(&unpacked_end)
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut out = alloc::vec![0u8; 0x8000 - 0x4000];
     // The stored end is exclusive.
@@ -333,8 +333,8 @@ fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
             break;
         };
         if byte == 0 {
-            let count = usize::from(next().ok_or(DecodeError::Unrecognized)?);
-            let value = next().ok_or(DecodeError::Unrecognized)?;
+            let count = usize::from(next().ok_or(DecodeError::Invalid)?);
+            let value = next().ok_or(DecodeError::Invalid)?;
             let start = end.saturating_sub(count);
             out[start..end].fill(value);
             end = start;
@@ -343,7 +343,7 @@ fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
                 let Some(value) = next() else {
                     break;
                 };
-                end = end.checked_sub(1).ok_or(DecodeError::Unrecognized)?;
+                end = end.checked_sub(1).ok_or(DecodeError::Invalid)?;
                 out[end] = value;
             }
         }
@@ -355,7 +355,7 @@ fn unpack_hires_manager(data: &[u8]) -> Result<Vec<u8>, DecodeError> {
 /// (reverse engineered from samples, compared against `recoil2png`).
 pub(super) fn decode_fed(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 17665 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     FLI_GRAPH.decode(data)
 }

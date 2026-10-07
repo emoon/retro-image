@@ -218,7 +218,7 @@ fn render_page(
 ) -> Result<Image, DecodeError> {
     let height = page_height(mode, vram);
     if height == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(mode.screen_width() as u32, height as u32)?;
     draw_packed(mode, vram.bytes(), &mut image, palette);
@@ -307,14 +307,14 @@ impl Dump {
                     .then(|| zeroed_header_body(data))
                     .flatten()
             })
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         let vram = Vram::new(body);
         let table = mode
             .palette_table()
             .and_then(|(address, count)| vram.palette(address, count));
         // YAE pictures are only accepted with their palette.
         if mode == Bitmap::Yae && table.is_none() {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let palette = table.unwrap_or_else(|| mode.default_palette());
         Ok(Self { vram, palette })
@@ -330,7 +330,7 @@ pub(super) fn decode_bitmap_dump(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Invalid)?;
     let even = Dump::load(mode, &data)?;
     let odd = companions
         .get(mode.interlace_extension())
@@ -383,7 +383,7 @@ pub(super) fn decode_graph_saurus(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Invalid)?;
     let vram = graph_saurus_vram(mode, &data)?;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     // Graph Saurus pages show no sprites, except Screen 8 ones.
@@ -404,10 +404,10 @@ fn graph_saurus_vram(mode: Bitmap, data: &[u8]) -> Result<Vram, DecodeError> {
         Some(0xfe) => Ok(Vram::new(
             bsave_body(data)
                 .or_else(|| bsave_body_at(data, page_1?))
-                .ok_or(DecodeError::Unrecognized)?,
+                .ok_or(DecodeError::Invalid)?,
         )),
         Some(0xfd) if data.len() > 7 => Ok(Vram::new(&unpack_graph_saurus(&data[7..]))),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -420,8 +420,8 @@ pub(super) fn decode_graph_saurus_interlaced(
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
     let mode = Bitmap::Graphic6;
-    let palette = palette_file(mode, companions).ok_or(DecodeError::Unrecognized)?;
-    let data = ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
+    let palette = palette_file(mode, companions).ok_or(DecodeError::Invalid)?;
+    let data = ukp::unwrap(data).ok_or(DecodeError::Invalid)?;
     let even = graph_saurus_vram(mode, &data)?;
     let even_page = render_page(mode, &even, &palette, false)?;
     let odd_page = companions
@@ -442,7 +442,7 @@ const SRI_SIZE: usize = 2 * 212 * 256;
 /// in `PL7` when available.
 pub(super) fn decode_sri(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
     if data.len() != SRI_SIZE {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mode = Bitmap::Graphic6;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
@@ -480,7 +480,7 @@ pub(super) fn decode_dot_designer(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let unpacked = dot_designer::unpack(data).ok_or(DecodeError::Unrecognized)?;
+    let unpacked = dot_designer::unpack(data).ok_or(DecodeError::Invalid)?;
     let mode = Bitmap::Graphic4;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
     let width = unpacked.bytes_per_line * 2;
@@ -496,17 +496,17 @@ pub(super) fn decode_copy(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    let data = &ukp::unwrap(data).ok_or(DecodeError::Unrecognized)?;
-    let header = data.get(..4).ok_or(DecodeError::Unrecognized)?;
+    let data = &ukp::unwrap(data).ok_or(DecodeError::Invalid)?;
+    let header = data.get(..4).ok_or(DecodeError::Invalid)?;
     let width = u16::from_le_bytes([header[0], header[1]]) as usize;
     let height = u16::from_le_bytes([header[2], header[3]]) as usize;
     if width == 0 || height == 0 || width > 512 || height > 1024 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let needed = (width * height * mode.bits_per_pixel()).div_ceil(8);
     let pixels = &data[4..];
     if pixels.len() < needed {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(width as u32, height as u32)?;
     let palette = palette_file(mode, companions).unwrap_or_else(|| mode.default_palette());
@@ -527,14 +527,14 @@ pub(super) enum Tiled {
 
 /// BSAVE dump of a pattern-based screen.
 pub(super) fn decode_tiled_dump(mode: Tiled, data: &[u8]) -> Result<Image, DecodeError> {
-    let body = bsave_body(data).ok_or(DecodeError::Unrecognized)?;
+    let body = bsave_body(data).ok_or(DecodeError::Invalid)?;
     let mut vram = Vram::new(body);
     let (palette_table, minimum) = match mode {
         Tiled::Multicolour => (0x2020, 0x600),
         _ => (0x1b80, 0x3800),
     };
     if vram.loaded() < minimum {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = vram
         .palette(palette_table, 16)
@@ -668,7 +668,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (2, 2));
         assert_eq!(
             decode_copy(Bitmap::Graphic5, &data[..4], &NoCompanions),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 

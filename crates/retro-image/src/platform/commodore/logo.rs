@@ -27,7 +27,7 @@ const WITH_VIEWER_LEN: usize = PLAIN_LEN + 76;
 /// Logo Painter 3: screen codes and a multicolor character set.
 pub(super) fn decode_logo_painter(data: &[u8]) -> Result<Image, DecodeError> {
     if data.get(..2) != Some(&[0x00, 0x18]) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let [background, color_ram, multi1, multi2] = match data.len() {
         PLAIN_LEN => [0, 1, 10, 2],
@@ -37,7 +37,7 @@ pub(super) fn decode_logo_painter(data: &[u8]) -> Result<Image, DecodeError> {
             data[COLORS + 2],
             data[COLORS + 3],
         ],
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let screen = &data[2..2 + COLUMNS * ROWS];
     let charset = &data[CHARSET..PLAIN_LEN];

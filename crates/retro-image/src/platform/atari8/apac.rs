@@ -35,7 +35,7 @@ const LINE: usize = 40;
 /// A 7684-byte file has 4 unused bytes at the end.
 pub(super) fn decode_planar(data: &[u8]) -> Result<Image, DecodeError> {
     if !matches!(data.len(), 7680 | 7684) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (hue, luminance) = (&data[..3840], &data[3840..7680]);
     apac_80x96(hue, luminance)
@@ -45,7 +45,7 @@ pub(super) fn decode_planar(data: &[u8]) -> Result<Image, DecodeError> {
 /// A 7720-byte file has 40 unused bytes at the end.
 pub(super) fn decode_interleaved(data: &[u8]) -> Result<Image, DecodeError> {
     if !matches!(data.len(), 7680 | 7720) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (hue, luminance) = deinterleave(&data[..7680]);
     apac_80x96(&hue, &luminance)
@@ -57,7 +57,7 @@ pub(super) fn decode_interlaced(data: &[u8]) -> Result<Image, DecodeError> {
     let hue_offset = match data.len() {
         15360 | 15362 => 7680,
         15872 => 8192,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (luminance, hue) = (&data[..7680], &data[hue_offset..hue_offset + 7680]);
     let picture = Scanlines {
@@ -78,7 +78,7 @@ pub(super) fn decode_cin(data: &[u8]) -> Result<Image, DecodeError> {
         16004 => (200, &|_, value| data[16000 + usize::from(value)]),
         16384 => (192, &|y, value| data[15360 + 256 * usize::from(value) + y]),
         15360 => (192, &|_, value| GREY_COLORS[usize::from(value)]),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let (gr15, hue) = data.split_at(lines * LINE);
     let register = |y: usize, x: usize| {

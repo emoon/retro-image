@@ -37,7 +37,7 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
         16009 => {
             let registers = data[2 * FRAME..]
                 .try_into()
-                .map_err(|_| DecodeError::Unrecognized)?;
+                .map_err(|_| DecodeError::Invalid)?;
             (&data[..FRAME], &data[FRAME..2 * FRAME], registers)
         }
         16012 | 15372 => {
@@ -46,7 +46,7 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
             let second = binary_segment(&data[frame + 6..], frame)?;
             (second, first, DEFAULT_REGISTERS)
         }
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     half_pixel_pair(
         320,
@@ -60,7 +60,7 @@ pub(super) fn decode_hip(data: &[u8]) -> Result<Image, DecodeError> {
 /// half a pixel left of the first.
 pub(super) fn decode_vzi(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * FRAME {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (first, second) = data.split_at(FRAME);
     half_pixel_pair(
@@ -99,7 +99,7 @@ pub(super) fn half_pixel_pair(
 fn binary_segment(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     match data {
         [0xff, 0xff, _, _, _, _, rest @ ..] if rest.len() >= len => Ok(&rest[..len]),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

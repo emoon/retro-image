@@ -25,7 +25,7 @@ pub(super) fn decode_hgb(data: &[u8]) -> Result<Image, DecodeError> {
         strip_amsdos(data)
     };
     if screen.len() != HGB_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut pens = [0; 16];
     pens[1] = 0xffffff;

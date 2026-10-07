@@ -23,7 +23,7 @@ use crate::{DecodeError, Image};
 pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
     let header = data.strip_prefix(b"TIP\x01\x00");
     let Some(&[width, height, len_low, len_high, ref frames @ ..]) = header else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(width), usize::from(height));
     let line_len = width / 4;
@@ -35,7 +35,7 @@ pub(super) fn decode_tip(data: &[u8]) -> Result<Image, DecodeError> {
         || frame_len != line_len * height
         || frames.len() != 3 * frame_len
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (gtia9, rest) = frames.split_at(frame_len);
     let (gtia10, gtia11) = rest.split_at(frame_len);

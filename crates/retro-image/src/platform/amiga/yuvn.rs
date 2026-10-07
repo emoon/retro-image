@@ -40,22 +40,22 @@ fn chroma_span(mode: u8) -> Option<Option<usize>> {
 }
 
 pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let header = find(contents, b"YCHD")
         .filter(|h| h.len() >= HEADER_LEN)
-        .ok_or(fail)?;
-    let width = usize::from(be16(header, 0).ok_or(fail)?);
-    let height = usize::from(be16(header, 2).ok_or(fail)?);
+        .ok_or(FAIL)?;
+    let width = usize::from(be16(header, 0).ok_or(FAIL)?);
+    let height = usize::from(be16(header, 2).ok_or(FAIL)?);
     let (compress, mode) = (header[14], header[16]);
-    let span = chroma_span(mode).ok_or(fail)?;
+    let span = chroma_span(mode).ok_or(FAIL)?;
     if compress != COMPRESS_NONE || span.is_some_and(|s| width % s != 0) {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
 
     let luma = find(contents, b"DATY")
         .and_then(|y| y.get(..width * height))
-        .ok_or(fail)?;
+        .ok_or(FAIL)?;
     let chroma = match span {
         None => None,
         Some(span) => {
@@ -63,8 +63,8 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
             let plane = |id: &[u8; 4]| find(contents, id).and_then(|c| c.get(..len));
             Some((
                 span,
-                plane(b"DATU").ok_or(fail)?,
-                plane(b"DATV").ok_or(fail)?,
+                plane(b"DATU").ok_or(FAIL)?,
+                plane(b"DATV").ok_or(FAIL)?,
             ))
         }
     };

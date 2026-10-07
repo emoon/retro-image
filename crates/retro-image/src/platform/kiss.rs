@@ -55,7 +55,7 @@ pub(super) static BY_SIZE: &[Format] = &[Format::with_companions(
     decode_old_cel,
 )];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 32;
 const CEL_MARK: u8 = 0x20;
 const CKISS_MARK: u8 = 0x21;

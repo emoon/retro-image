@@ -39,7 +39,7 @@ use super::c_source::Tokens;
 use crate::image::check_size;
 use crate::{BitOrder, DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const WHITE: u32 = 0xff_ffff;
 const BLACK: u32 = 0;
 

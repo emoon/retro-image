@@ -35,7 +35,7 @@ const SPRITE_LINES: usize = 84;
 /// Super Hires Editor.
 pub(super) fn decode_she(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(render(NARROW, HEIGHT, |x, y| {
         if y < SPRITE_LINES {

@@ -57,10 +57,10 @@ const NON_BLINK_FLAG: u8 = 8;
 const CHARS_512_FLAG: u8 = 16;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (content, _) = sauce::split(data);
-    let header = content.get(..HEADER_LEN).ok_or(fail)?;
-    let word = |at| le16(header, at).map(usize::from).ok_or(fail);
+    let header = content.get(..HEADER_LEN).ok_or(FAIL)?;
+    let word = |at| le16(header, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(5)?, word(7)?);
     let (font_height, flags) = (usize::from(header[9]), header[10]);
     let cells = width * height;
@@ -71,21 +71,21 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         || height == 0
         || cells > MAX_CELLS
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut pos = HEADER_LEN;
     let mut take = |len: usize| {
-        let bytes = content.get(pos..pos + len).ok_or(fail);
+        let bytes = content.get(pos..pos + len).ok_or(FAIL);
         pos += len;
         bytes
     };
     let palette = match flags & PALETTE_FLAG {
         0 => PALETTE,
-        _ => screen::vga_palette(take(48)?).ok_or(fail)?,
+        _ => screen::vga_palette(take(48)?).ok_or(FAIL)?,
     };
     let font = match flags & FONT_FLAG {
         0 => VGA_8X16,
-        _ => Font::new(font_height, take(256 * font_height)?).ok_or(fail)?,
+        _ => Font::new(font_height, take(256 * font_height)?).ok_or(FAIL)?,
     };
     let image_data = &content[pos..];
     let mut pairs = match flags & COMPRESS_FLAG {

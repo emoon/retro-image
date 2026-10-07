@@ -54,7 +54,7 @@ use crate::bytes::{le16, le32};
 use crate::image::check_size;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const HEADER_LEN: usize = 128;
 /// Bytes of a chunk header (size and type) and of a frame header before its
 /// sub-chunks (header, sub-chunk count, 8 reserved bytes).

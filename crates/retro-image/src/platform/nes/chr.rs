@@ -39,7 +39,7 @@ const ATARI_FONT_LEN: usize = 1024;
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() > MAX_LEN || !data.len().is_multiple_of(BLOCK_LEN) || data.len() == ATARI_FONT_LEN
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     sheet(data)
 }

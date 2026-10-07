@@ -41,12 +41,12 @@ const SLOT: usize = 256;
 
 pub(super) fn decode_hcm(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != LEN || !data.starts_with(MAGIC) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (prior, mode2) = match data[6] {
         0 => (0x00, false),
         2 => (0x24, true),
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let colors = Colors {
         player: [data[8], data[9], data[9], 0],

@@ -28,7 +28,7 @@ use super::gif::decode_gif;
 use crate::bytes::le16;
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const PAGE: usize = 512;
 
 /// Where the program image declared by the MZ header ends.

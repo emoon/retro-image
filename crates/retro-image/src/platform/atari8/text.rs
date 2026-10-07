@@ -76,7 +76,7 @@ pub(super) fn mode2_colored(
 /// competitions.
 pub(super) fn decode_gr0(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.len().is_multiple_of(40) || !(24..=30).contains(&(data.len() / 40)) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     mode2(data, 40)
 }
@@ -89,14 +89,12 @@ fn sized(
     max_rows: usize,
 ) -> Result<(&[u8], &[u8], usize), DecodeError> {
     let [max_x, max_y, ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(max_x) + 1, usize::from(max_y) + 1);
-    let (head, codes) = data
-        .split_at_checked(header)
-        .ok_or(DecodeError::Unrecognized)?;
+    let (head, codes) = data.split_at_checked(header).ok_or(DecodeError::Invalid)?;
     if columns > 40 || rows > max_rows || codes.len() != columns * rows {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok((head, codes, columns))
 }
@@ -111,7 +109,7 @@ pub(super) fn decode_an2(data: &[u8]) -> Result<Image, DecodeError> {
 /// are an 11-character line of ATASCII.
 pub(super) fn decode_dlm(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 256 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut codes = [0u8; 16 * 11];
     for (line, entry) in codes
@@ -167,7 +165,7 @@ fn decode_mode6(data: &[u8], len: usize, line_height: u32) -> Result<Image, Deco
     let colors = match data.get(len..) {
         Some([]) => [background, pf0, pf1, pf2, OS_PF3],
         Some(&[c4, c0, c1, c2, c3]) => [c4, c0, c1, c2, c3],
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     mode6(&data[..len], line_height, colors)
 }

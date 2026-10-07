@@ -63,7 +63,7 @@ use super::{gif, pcpaint, pcx};
 use crate::bytes::{le16, le32};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const INDEX_AT: usize = 2;
 const ENTRY_LEN: usize = 17;
 const NAME_LEN: usize = 13;

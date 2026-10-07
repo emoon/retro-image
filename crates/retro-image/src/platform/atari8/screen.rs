@@ -81,7 +81,7 @@ pub(super) const GREY_COLORS: [u8; 4] = [0x00, 0x04, 0x08, 0x0c];
 pub(super) fn lines(data: &[u8]) -> Result<(Bitmap<'_>, &[u8]), DecodeError> {
     let lines = data.len() / LINE;
     if !(1..=MAX_LINES).contains(&lines) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (screen, tail) = data.split_at(lines * LINE);
     Ok((bitmap(screen, LINE, 1), tail))
@@ -102,7 +102,7 @@ pub(super) fn exactly(data: &[u8], len: usize) -> Result<&[u8], DecodeError> {
     if data.len() == len {
         Ok(data)
     } else {
-        Err(DecodeError::Unrecognized)
+        Err(DecodeError::Invalid)
     }
 }
 
@@ -199,7 +199,7 @@ pub(super) fn decode_rap(data: &[u8]) -> Result<Image, DecodeError> {
 /// RECOIL accepts up to 68 trailing bytes.
 pub(super) fn decode_psf(data: &[u8]) -> Result<Image, DecodeError> {
     if !(572..=640).contains(&data.len()) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     hires(bitmap(&data[..572], 11, 1), rgb(0x0e), rgb(0x00))
 }
@@ -229,7 +229,7 @@ pub(super) fn decode_g09(data: &[u8]) -> Result<Image, DecodeError> {
             }
             gtia9(bitmap(&wide, 2 * LINE, 4), 0x00)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -250,10 +250,10 @@ pub(super) fn decode_zm4(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_tx0(data: &[u8]) -> Result<Image, DecodeError> {
     let data = exactly(data, 257)?;
     let (pixels, &[hue]) = data.split_at(256) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if pixels.iter().any(|&value| value > 15) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(16, 16)?;
     for (i, &value) in pixels.iter().enumerate() {
@@ -272,7 +272,7 @@ pub(super) fn decode_wnd(data: &[u8]) -> Result<Image, DecodeError> {
     let screen = data
         .get(2..2 + bytes_per_line * height)
         .filter(|_| height > 0)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let colors = [0x00, 0x46, 0x88, 0x0e];
     let mut image = Image::new(width as u32, height as u32)?;
     let bitmap = bitmap(screen, bytes_per_line, 2);
@@ -287,15 +287,13 @@ pub(super) fn decode_wnd(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// Graphics 10: screen, then the 9 registers 704-712.
 pub(super) fn decode_g10(data: &[u8]) -> Result<Image, DecodeError> {
-    let screen_len = data.len().checked_sub(9).ok_or(DecodeError::Unrecognized)?;
+    let screen_len = data.len().checked_sub(9).ok_or(DecodeError::Invalid)?;
     if screen_len % LINE != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (screen, registers) = data.split_at(screen_len);
     let (bitmap, _) = lines(screen)?;
-    let registers = registers
-        .try_into()
-        .map_err(|_| DecodeError::Unrecognized)?;
+    let registers = registers.try_into().map_err(|_| DecodeError::Invalid)?;
     gtia10(bitmap, registers)
 }
 
@@ -333,7 +331,7 @@ pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
     let rainbow = match data[5] {
         3 => true,
         4 => false,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let mut screen = [0; 3840];
     screen[..3839].copy_from_slice(&data[6..]);
@@ -350,7 +348,7 @@ pub(super) fn decode_mgp(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_mgp_pic(data: &[u8]) -> Result<Image, DecodeError> {
     let data = exactly(data, 3845)?;
     if data[4] != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, _) = lines(&data[5..])?;
     four_color(bitmap, 2, 2, [data[3], data[0], data[1], data[2]])
@@ -387,7 +385,7 @@ pub(super) fn decode_mic(data: &[u8], companions: &dyn Companions) -> Result<Ima
     let colors = match *tail {
         [] | [_, _, _] => GREY_COLORS,
         [background, pf0, pf1, pf2] | [pf0, pf1, pf2, background, _] => [background, pf0, pf1, pf2],
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let tables = (bitmap.lines == 240)
         .then(|| companions.get("col"))
@@ -412,9 +410,7 @@ pub(super) fn decode_skp(data: &[u8]) -> Result<Image, DecodeError> {
 pub(super) fn decode_agp(data: &[u8]) -> Result<Image, DecodeError> {
     let data = exactly(data, 7690)?;
     let (header, screen) = data.split_at(10);
-    let registers: &[u8; 9] = header[1..]
-        .try_into()
-        .map_err(|_| DecodeError::Unrecognized)?;
+    let registers: &[u8; 9] = header[1..].try_into().map_err(|_| DecodeError::Invalid)?;
     let [.., pf0, pf1, pf2, _, background] = *registers;
     let (bitmap, _) = lines(screen)?;
     match header[0] {
@@ -427,7 +423,7 @@ pub(super) fn decode_agp(data: &[u8]) -> Result<Image, DecodeError> {
         10 => gtia10(bitmap, registers),
         11 => gtia11(bitmap, background),
         15 => four_color(bitmap, 2, 1, [background, pf0, pf1, pf2]),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -454,7 +450,7 @@ mod tests {
         assert_eq!(decode_mic(&five, &crate::NoCompanions).unwrap(), four);
         assert_eq!(
             decode_mic(&[0; 41], &crate::NoCompanions),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 

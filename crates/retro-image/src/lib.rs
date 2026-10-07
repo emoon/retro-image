@@ -19,6 +19,8 @@
 
 extern crate alloc;
 
+use alloc::vec::Vec;
+
 mod bytes;
 mod codec;
 mod error;
@@ -32,7 +34,7 @@ mod sheet;
 mod simd;
 mod tiles;
 
-pub use error::DecodeError;
+pub use error::{Attempt, DecodeError};
 pub use format::{Companions, Format, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
 pub use image::Image;
@@ -58,13 +60,16 @@ pub fn decode_with(
     data: &[u8],
     companions: &dyn Companions,
 ) -> Result<Image, DecodeError> {
-    candidates(filename)
-        .find_map(|format| format.decode_with(data, companions).ok())
-        .ok_or_else(|| {
-            if formats().any(|f| f.matches_filename(filename)) {
-                DecodeError::Unrecognized
-            } else {
-                DecodeError::UnknownFormat
-            }
-        })
+    let mut attempts = Vec::new();
+    for format in candidates(filename) {
+        match format.decode_with(data, companions) {
+            Ok(image) => return Ok(image),
+            Err(error) => attempts.push(Attempt::new(format, error)),
+        }
+    }
+    if formats().any(|f| f.matches_filename(filename)) {
+        Err(DecodeError::NoMatch { attempts })
+    } else {
+        Err(DecodeError::UnknownFormat)
+    }
 }

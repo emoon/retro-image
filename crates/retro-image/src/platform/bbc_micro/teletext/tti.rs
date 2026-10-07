@@ -64,12 +64,12 @@ pub(in crate::platform) fn decode_tti(data: &[u8]) -> Result<Image, DecodeError>
     let mut page = Page::blank();
     let mut drawn = false;
     if lines.clone().next().and_then(tag).is_none() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     for line in lines {
         match tag(line) {
             Some(b"OL") => {
-                let (row, text) = packet(line).ok_or(DecodeError::Unrecognized)?;
+                let (row, text) = packet(line).ok_or(DecodeError::Invalid)?;
                 if row < ROWS {
                     page.set_row(row, codes(text).take(COLUMNS));
                     drawn = true;
@@ -80,7 +80,7 @@ pub(in crate::platform) fn decode_tti(data: &[u8]) -> Result<Image, DecodeError>
         }
     }
     if !drawn {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     page.render(Dialect::Broadcast)
 }

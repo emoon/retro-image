@@ -42,14 +42,14 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
 
 /// The large icon of an SMDH block that starts at the beginning of `block`.
 pub(super) fn icon(block: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let block = block.get(..LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let block = block.get(..LEN).ok_or(FAIL)?;
     if !block.starts_with(MAGIC)
         || RESERVED
             .iter()
             .any(|run| block[run.clone()].iter().any(|&b| b != 0))
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let pixels = &block[LARGE_ICON_AT..];
     let color = |x: usize, y: usize| {

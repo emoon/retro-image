@@ -60,8 +60,8 @@ const COLUMNS: usize = 16;
 const MARGIN: usize = 1;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let hunk = font_hunk(data).ok_or(DecodeError::Unrecognized)?;
-    let font = Font::parse(hunk).ok_or(DecodeError::Unrecognized)?;
+    let hunk = font_hunk(data).ok_or(DecodeError::Invalid)?;
+    let font = Font::parse(hunk).ok_or(DecodeError::Invalid)?;
     font.sheet(hunk)
 }
 
@@ -210,9 +210,9 @@ impl Font {
     }
 
     fn sheet(&self, hunk: &[u8]) -> Result<Image, DecodeError> {
-        let fail = DecodeError::Unrecognized;
-        let glyphs = self.glyphs(hunk).ok_or(fail)?;
-        let widest = glyphs.iter().map(|&(_, width)| width).max().ok_or(fail)?;
+        const FAIL: DecodeError = DecodeError::Invalid;
+        let glyphs = self.glyphs(hunk).ok_or(FAIL)?;
+        let widest = glyphs.iter().map(|&(_, width)| width).max().ok_or(FAIL)?;
         let (cell_w, cell_h) = (widest + 2 * MARGIN, self.height + 2 * MARGIN);
         let rows = self.high / COLUMNS - self.low / COLUMNS + 1;
         check_size(COLUMNS * cell_w, rows * cell_h)?;

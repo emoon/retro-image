@@ -30,7 +30,7 @@ pub(super) fn decode_pho(data: &[u8]) -> Result<Image, DecodeError> {
         Screen::Columns40 { rama, ramb } | Screen::Bitmap4 { rama, ramb } => {
             Screen::Bitmap4 { rama, ramb }
         }
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     map.render(&map.palette.unwrap_or(PALETTE))
 }

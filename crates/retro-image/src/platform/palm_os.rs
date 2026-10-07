@@ -54,7 +54,7 @@ use crate::{BitOrder, DecodeError, Format, Image};
 pub(super) static FORMATS: &[Format] =
     &[Format::new("Palm OS", "ImageViewer", &["pdb"], decode_imageviewer).signature()];
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 /// The database header, which is followed by the record list.
 const HEADER_LEN: usize = 78;
 const ENTRY_LEN: usize = 8;

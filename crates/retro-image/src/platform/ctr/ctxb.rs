@@ -45,29 +45,29 @@ fn format(opentk_format: u16, data_type: u16) -> Option<Format> {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(b"ctxb")
         || data.get(0x18..0x1c) != Some(b"tex ")
-        || le32(data, 4).ok_or(fail)? as usize != data.len()
-        || le32(data, 0x20).ok_or(fail)? == 0
+        || le32(data, 4).ok_or(FAIL)? as usize != data.len()
+        || le32(data, 0x20).ok_or(FAIL)? == 0
         || data.get(0x2b) != Some(&0)
     {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let base = le32(data, 0x14).ok_or(fail)? as usize;
-    let size = le32(data, 0x24).ok_or(fail)? as usize;
+    let base = le32(data, 0x14).ok_or(FAIL)? as usize;
+    let size = le32(data, 0x24).ok_or(FAIL)? as usize;
     let (width, height) = (
-        usize::from(le16(data, 0x2c).ok_or(fail)?),
-        usize::from(le16(data, 0x2e).ok_or(fail)?),
+        usize::from(le16(data, 0x2c).ok_or(FAIL)?),
+        usize::from(le16(data, 0x2e).ok_or(FAIL)?),
     );
     let format =
-        format(le16(data, 0x30).ok_or(fail)?, le16(data, 0x32).ok_or(fail)?).ok_or(fail)?;
+        format(le16(data, 0x30).ok_or(FAIL)?, le16(data, 0x32).ok_or(FAIL)?).ok_or(FAIL)?;
     let offset = base
-        .checked_add(le32(data, 0x34).ok_or(fail)? as usize)
-        .ok_or(fail)?;
+        .checked_add(le32(data, 0x34).ok_or(FAIL)? as usize)
+        .ok_or(FAIL)?;
     let pixels = data
-        .get(offset..offset.checked_add(size).ok_or(fail)?)
-        .ok_or(fail)?;
+        .get(offset..offset.checked_add(size).ok_or(FAIL)?)
+        .ok_or(FAIL)?;
     Texture {
         format,
         width,

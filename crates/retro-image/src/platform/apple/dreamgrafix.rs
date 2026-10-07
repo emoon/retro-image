@@ -57,25 +57,25 @@ const SIZE_256: usize = PIXELS_LEN + 256 + 512 + 512;
 const SIZE_3200: usize = PIXELS_LEN + COLORS_3200_LEN + 512;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let footer_at = data.len().checked_sub(FOOTER_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let footer_at = data.len().checked_sub(FOOTER_LEN).ok_or(FAIL)?;
     let (packed, footer) = data.split_at(footer_at);
     if &footer[6..] != SIGNATURE || le16(footer, 2) != Some(200) || le16(footer, 4) != Some(320) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    match le16(footer, 0).ok_or(fail)? {
+    match le16(footer, 0).ok_or(FAIL)? {
         0 => {
-            let screen = unpack(packed, SIZE_256).ok_or(fail)?;
+            let screen = unpack(packed, SIZE_256).ok_or(FAIL)?;
             super_hires::decode_screen(&screen[..SCREEN_LEN])
         }
         1 => {
-            let screen = unpack(packed, SIZE_3200).ok_or(fail)?;
+            let screen = unpack(packed, SIZE_3200).ok_or(FAIL)?;
             super_hires::render_3200(
                 &screen[..PIXELS_LEN],
                 &screen[PIXELS_LEN..][..COLORS_3200_LEN],
             )
         }
-        _ => Err(fail),
+        _ => Err(FAIL),
     }
 }
 

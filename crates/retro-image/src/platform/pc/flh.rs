@@ -43,7 +43,7 @@ impl<'a> HiScreen<'a> {
         depth: u16,
     ) -> Result<Self, DecodeError> {
         if depth != 15 && depth != 16 {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         Ok(Self {
             data,

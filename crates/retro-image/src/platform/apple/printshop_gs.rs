@@ -62,7 +62,7 @@ const PALETTE: [u32; 8] = [
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != FILE_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels = planar_pixels(data, WIDTH, HEIGHT, ROW_LEN, PLANES, |plane, y| {
         plane * PLANE_LEN + y * ROW_LEN

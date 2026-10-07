@@ -49,14 +49,14 @@ const PIXELS_AT: usize = 22;
 
 fn decode_pnt(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(b"\x13PNT") || data.len() <= PIXELS_AT {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let len = WIDTH / 2 * HEIGHT;
     let src = &data[PIXELS_AT..];
     let pixels = if src.len() == len {
         src.to_vec()
     } else {
-        unpack_runs(src, len).ok_or(DecodeError::Unrecognized)?
+        unpack_runs(src, len).ok_or(DecodeError::Invalid)?
     };
     let indices: Vec<u8> = pixels.iter().flat_map(|&b| [b >> 4, b & 15]).collect();
     Image::from_indexed(WIDTH as u32, HEIGHT as u32, &indices, &PALETTE)

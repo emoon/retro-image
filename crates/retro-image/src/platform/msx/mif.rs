@@ -72,7 +72,7 @@ impl Mode {
 }
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_inner(data: &[u8]) -> Option<Image> {

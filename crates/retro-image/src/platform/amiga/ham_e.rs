@@ -100,10 +100,10 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
     let bitmap = read_ilbm(contents)?;
     let camg = bitmap.camg.unwrap_or(0);
     let header = &bitmap.header;
-    let first = bitmap.row(0).ok_or(DecodeError::Unrecognized)?;
-    let mode = palette_line_mode(first).ok_or(DecodeError::Unrecognized)?;
+    let first = bitmap.row(0).ok_or(DecodeError::Invalid)?;
+    let mode = palette_line_mode(first).ok_or(DecodeError::Invalid)?;
     if header.planes != 4 || camg & CAMG_HIRES == 0 || camg & CAMG_HAM != 0 || header.width < 2 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let lace = camg & CAMG_LACE != 0;
     let mut fields: Vec<Field> = (0..if lace { 2 } else { 1 })
@@ -115,7 +115,7 @@ pub(super) fn decode(contents: &[u8]) -> Result<Image, DecodeError> {
         .collect();
     let mut image = Image::new(header.width as u32 / 2, header.height as u32)?;
     for y in 0..header.height {
-        let row = bitmap.row(y).ok_or(DecodeError::Unrecognized)?;
+        let row = bitmap.row(y).ok_or(DecodeError::Invalid)?;
         let count = fields.len();
         let field = &mut fields[y % count];
         match palette_line_mode(row) {

@@ -80,7 +80,7 @@ const MODES: [Mode; 4] = [
 ];
 
 pub(super) fn decode_mpp(data: &[u8]) -> Result<Image, DecodeError> {
-    decode(data).ok_or(DecodeError::Unrecognized)
+    decode(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode(data: &[u8]) -> Option<Image> {
@@ -218,7 +218,7 @@ mod tests {
     fn rejects_short_file() {
         assert_eq!(
             decode_mpp(b"MPP\x01\x00\0\0\0\0\0\0\0"),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 }

@@ -33,10 +33,10 @@ fn rows(file_len: usize) -> Option<usize> {
 }
 
 pub(super) fn decode_print_shop(data: &[u8]) -> Result<Image, DecodeError> {
-    let height = rows(data.len()).ok_or(DecodeError::Unrecognized)?;
+    let height = rows(data.len()).ok_or(DecodeError::Invalid)?;
     let bitmap = data
         .strip_prefix(&LOAD_ADDRESS)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     Image::from_bits(
         (ROW_BYTES * 8) as u32,
         height as u32,

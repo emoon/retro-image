@@ -46,11 +46,11 @@ const PLANES: usize = 4;
 const SHEET_WIDTH: usize = 320;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !data.starts_with(TAG) {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let bank = data.get(BANK_AT..).ok_or(fail)?;
+    let bank = data.get(BANK_AT..).ok_or(FAIL)?;
     if be32(bank, 0) == Some(SPRITE_MAGIC) {
         sprites(bank)
     } else {
@@ -66,32 +66,32 @@ struct Frame {
 }
 
 fn sprites(bank: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let count = usize::from(be16(bank, LOW_COUNT_AT).ok_or(fail)?);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let count = usize::from(be16(bank, LOW_COUNT_AT).ok_or(FAIL)?);
     let table = LOW_OFFSET_AT
-        .checked_add(be32(bank, LOW_OFFSET_AT).ok_or(fail)? as usize)
-        .ok_or(fail)?;
-    let palette_at = table.checked_add(count * FRAME_ENTRY_LEN).ok_or(fail)?;
+        .checked_add(be32(bank, LOW_OFFSET_AT).ok_or(FAIL)? as usize)
+        .ok_or(FAIL)?;
+    let palette_at = table.checked_add(count * FRAME_ENTRY_LEN).ok_or(FAIL)?;
     if count == 0
-        || bank.get(palette_at..palette_at.checked_add(4).ok_or(fail)?) != Some(PALETTE_TAG)
+        || bank.get(palette_at..palette_at.checked_add(4).ok_or(FAIL)?) != Some(PALETTE_TAG)
     {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let palette = st_palette(&palette_words(bank, palette_at + PALETTE_TAG.len(), 16).ok_or(fail)?);
+    let palette = st_palette(&palette_words(bank, palette_at + PALETTE_TAG.len(), 16).ok_or(FAIL)?);
 
     let mut frames = Vec::with_capacity(count);
     for i in 0..count {
         let entry = table + i * FRAME_ENTRY_LEN;
         let data_at = table
-            .checked_add(be32(bank, entry).ok_or(fail)? as usize)
-            .ok_or(fail)?;
-        let size = bank.get(entry + 4..entry + 6).ok_or(fail)?;
+            .checked_add(be32(bank, entry).ok_or(FAIL)? as usize)
+            .ok_or(FAIL)?;
+        let size = bank.get(entry + 4..entry + 6).ok_or(FAIL)?;
         let (words, lines) = (usize::from(size[0]), usize::from(size[1]));
         let end = data_at
             .checked_add(words * lines * (2 + 2 * PLANES))
-            .ok_or(fail)?;
+            .ok_or(FAIL)?;
         if words == 0 || lines == 0 || bank.get(data_at..end).is_none() {
-            return Err(fail);
+            return Err(FAIL);
         }
         frames.push(Frame {
             data_at,
@@ -113,9 +113,9 @@ fn sprites(bank: &[u8]) -> Result<Image, DecodeError> {
         for line in 0..frame.lines {
             for word in 0..frame.words {
                 let cell = line * frame.words + word;
-                let mask = be16(bank, frame.data_at + cell * 2).ok_or(fail)?;
+                let mask = be16(bank, frame.data_at + cell * 2).ok_or(FAIL)?;
                 let planes: Vec<u16> = (0..PLANES)
-                    .map(|p| be16(bank, planes + (cell * PLANES + p) * 2).ok_or(fail))
+                    .map(|p| be16(bank, planes + (cell * PLANES + p) * 2).ok_or(FAIL))
                     .collect::<Result<_, _>>()?;
                 for bit in 0..16 {
                     if mask >> (15 - bit) & 1 == 0 {

@@ -89,7 +89,7 @@ use super::c_source::Tokens;
 use crate::image::{CLEAR, check_size};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 
 /// X11 color names from `rgb.txt` that have no number (`red3` and `gray50` do),
 /// lower case and without spaces, sorted for binary search.

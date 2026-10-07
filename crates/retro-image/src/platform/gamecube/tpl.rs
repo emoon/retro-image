@@ -32,37 +32,37 @@ use crate::{DecodeError, Image};
 const MAGIC: u32 = 0x0020_af30;
 
 pub(super) fn decode_tpl(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    if be32(data, 0) != Some(MAGIC) || be32(data, 4).ok_or(fail)? == 0 {
-        return Err(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    if be32(data, 0) != Some(MAGIC) || be32(data, 4).ok_or(FAIL)? == 0 {
+        return Err(FAIL);
     }
     // Offsets come from the file: add to them without overflowing.
     let word = |base: usize, offset: usize| be32(data, base.checked_add(offset)?);
     let half = |base: usize, offset: usize| be16(data, base.checked_add(offset)?);
-    let table = be32(data, 8).ok_or(fail)? as usize;
-    let image_header = word(table, 0).ok_or(fail)? as usize;
-    let palette_header = word(table, 4).ok_or(fail)? as usize;
+    let table = be32(data, 8).ok_or(FAIL)? as usize;
+    let image_header = word(table, 0).ok_or(FAIL)? as usize;
+    let palette_header = word(table, 4).ok_or(FAIL)? as usize;
 
-    let height = usize::from(half(image_header, 0).ok_or(fail)?);
-    let width = usize::from(half(image_header, 2).ok_or(fail)?);
-    let format = PixelFormat::from_code(word(image_header, 4).ok_or(fail)?).ok_or(fail)?;
-    let pixels_at = word(image_header, 8).ok_or(fail)? as usize;
+    let height = usize::from(half(image_header, 0).ok_or(FAIL)?);
+    let width = usize::from(half(image_header, 2).ok_or(FAIL)?);
+    let format = PixelFormat::from_code(word(image_header, 4).ok_or(FAIL)?).ok_or(FAIL)?;
+    let pixels_at = word(image_header, 8).ok_or(FAIL)? as usize;
     check_size(width, height)?;
 
     let palette = match format.palette_len() {
         None => Vec::new(),
         Some(len) if palette_header == 0 => gray_ramp(len),
         Some(len) => {
-            let count = usize::from(half(palette_header, 0).ok_or(fail)?).min(len);
+            let count = usize::from(half(palette_header, 0).ok_or(FAIL)?).min(len);
             let palette_format =
-                PaletteFormat::from_code(word(palette_header, 4).ok_or(fail)?).ok_or(fail)?;
-            let colors_at = word(palette_header, 8).ok_or(fail)? as usize;
-            let colors = data.get(colors_at..).ok_or(fail)?;
-            gx::decode_palette(palette_format, colors, count).ok_or(fail)?
+                PaletteFormat::from_code(word(palette_header, 4).ok_or(FAIL)?).ok_or(FAIL)?;
+            let colors_at = word(palette_header, 8).ok_or(FAIL)? as usize;
+            let colors = data.get(colors_at..).ok_or(FAIL)?;
+            gx::decode_palette(palette_format, colors, count).ok_or(FAIL)?
         }
     };
-    let pixels = data.get(pixels_at..).ok_or(fail)?;
-    let argb = gx::decode(format, width, height, pixels, &palette).ok_or(fail)?;
+    let pixels = data.get(pixels_at..).ok_or(FAIL)?;
+    let argb = gx::decode(format, width, height, pixels, &palette).ok_or(FAIL)?;
     Image::from_argb(width as u32, height as u32, argb.into_iter())
 }
 

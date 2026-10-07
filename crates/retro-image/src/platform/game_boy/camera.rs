@@ -34,7 +34,7 @@ const TILES_HIGH: usize = 14;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SAVE_LEN || data.get(MAGIC_AT..MAGIC_AT + 5) != Some(b"Magic") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let slot = first_photo_slot(&data[STATE_VECTOR..STATE_VECTOR + SLOTS])?;
     let start = SLOT_BASE + slot * SLOT_LEN;
@@ -52,12 +52,12 @@ fn first_photo_slot(vector: &[u8]) -> Result<usize, DecodeError> {
             continue;
         }
         if usize::from(photo) >= SLOTS || seen.contains(&photo) {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         seen.push(photo);
         if first.is_none_or(|(lowest, _)| photo < lowest) {
             first = Some((photo, slot));
         }
     }
-    first.map(|(_, slot)| slot).ok_or(DecodeError::Unrecognized)
+    first.map(|(_, slot)| slot).ok_or(DecodeError::Invalid)
 }

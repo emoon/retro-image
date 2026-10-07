@@ -61,9 +61,9 @@ pub(super) fn render(tiles: &[u8], columns: usize, rows: usize) -> Result<Image,
 fn decode(data: &[u8], kind: u8, columns: usize, rows: usize) -> Result<Image, DecodeError> {
     let packed = match data {
         [first, packed @ ..] if *first == kind => packed,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
-    let tiles = unpack(packed, true, columns * rows * 8).ok_or(DecodeError::Unrecognized)?;
+    let tiles = unpack(packed, true, columns * rows * 8).ok_or(DecodeError::Invalid)?;
     render(&tiles, columns, rows)
 }
 
@@ -81,11 +81,11 @@ pub(super) fn decode_gb(data: &[u8]) -> Result<Image, DecodeError> {
 /// height in tiles, then the tiles, unpacked.
 pub(super) fn decode_star_painter(data: &[u8]) -> Result<Image, DecodeError> {
     let [columns, rows, tiles @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(*columns), usize::from(*rows));
     if columns == 0 || rows == 0 || tiles.len() != columns * rows * 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(tiles, columns, rows)
 }
@@ -94,17 +94,16 @@ pub(super) fn decode_star_painter(data: &[u8]) -> Result<Image, DecodeError> {
 /// `$00`, then the tiles.
 pub(super) fn decode_pg(data: &[u8]) -> Result<Image, DecodeError> {
     let [b'P', rows, columns, b'K', rest @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (columns, rows) = (usize::from(*columns), usize::from(*rows));
     let end = rest
         .iter()
         .position(|&b| b == 0)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if columns == 0 || rows == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let tiles =
-        unpack(&rest[end + 1..], false, columns * rows * 8).ok_or(DecodeError::Unrecognized)?;
+    let tiles = unpack(&rest[end + 1..], false, columns * rows * 8).ok_or(DecodeError::Invalid)?;
     render(&tiles, columns, rows)
 }

@@ -79,7 +79,7 @@ use crate::bytes::le16;
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 
 // `EP_CAP` files.
 const OLD_MAGIC: &[u8] = b"EP_CAP";

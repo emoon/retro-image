@@ -27,10 +27,10 @@ const PLAYER_PIXEL: u32 = 2;
 /// Single player: height (always 40), color, 40 lines of 8 pixels.
 pub(super) fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
     let [40, color, ref lines @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if lines.len() != 40 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = Bitmap {
         data: lines,
@@ -51,10 +51,10 @@ pub(super) fn decode_spr(data: &[u8]) -> Result<Image, DecodeError> {
 /// Single missile: height (always 34), color, 34 lines of 2 pixels.
 pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
     let [34, color, ref lines @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if lines.len() != 34 || lines.iter().any(|&line| line > 3) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let color = register_rgb(color);
     let mut image = Image::new(2 * PLAYER_PIXEL, 34)?;
@@ -78,10 +78,10 @@ pub(super) fn decode_msl(data: &[u8]) -> Result<Image, DecodeError> {
 /// AtariTools-800 player: color, then 240 lines of 8 pixels.
 pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
     let [color, ref lines @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if lines.len() != 240 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = Bitmap {
         data: lines,
@@ -101,10 +101,10 @@ pub(super) fn decode_pla(data: &[u8]) -> Result<Image, DecodeError> {
 /// 2 pixels, 4 lines to a byte, first line in the high bits.
 pub(super) fn decode_mis(data: &[u8]) -> Result<Image, DecodeError> {
     let [color, ref lines @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if lines.len() != 60 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bitmap = Bitmap {
         data: lines,
@@ -144,10 +144,10 @@ pub(super) fn decode_mpl(data: &[u8]) -> Result<Image, DecodeError> {
     };
     let (header, players) = data
         .split_at_checked(header_len)
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let height = usize::from(header[0]);
     if height == 0 || players.len() != 4 * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let positions = &header[1..5];
     let colors = &header[5..9];
@@ -178,11 +178,11 @@ pub(super) fn decode_mpl(data: &[u8]) -> Result<Image, DecodeError> {
 /// instead of playfield 2.
 pub(super) fn decode_tl4(data: &[u8]) -> Result<Image, DecodeError> {
     let [width @ 1..=4, height @ 1..=5, ref chars @ ..] = *data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let (width, height) = (usize::from(width), usize::from(height));
     if chars.len() != 9 * width * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let [background, pf0, pf1, pf2] = OS_COLORS;
     let pf3 = 0x46;

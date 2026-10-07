@@ -37,12 +37,10 @@ const HUES: [u8; 3] = [0x30, 0xc0, 0x70];
 const GR15_LUMINANCE: [u8; 4] = [0, 4, 10, 14];
 
 pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
-    let rest = data
-        .strip_prefix(b"RGB1")
-        .ok_or(DecodeError::Unrecognized)?;
-    let (&title, rest) = rest.split_first().ok_or(DecodeError::Unrecognized)?;
+    let rest = data.strip_prefix(b"RGB1").ok_or(DecodeError::Invalid)?;
+    let (&title, rest) = rest.split_first().ok_or(DecodeError::Invalid)?;
     let &[mode, width, height, 1, ..] = rest.get(usize::from(title)..).unwrap_or(&[]) else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let packed = &rest[usize::from(title) + 4..];
     let (width, height) = (usize::from(width), usize::from(height));
@@ -52,7 +50,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
         || width > 80
         || !(1..=192).contains(&height)
     {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let pixels = unpack(packed, width * height)?;
     let mut image = Image::new(4 * width as u32, height as u32)?;
@@ -83,7 +81,7 @@ pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
 /// Unpacks `count` pixels of three frame values from the nibble stream.
 fn unpack(packed: &[u8], count: usize) -> Result<Vec<[u8; 3]>, DecodeError> {
     let mut nibbles = packed.iter().flat_map(|&byte| [byte >> 4, byte & 0x0f]);
-    let mut next = || nibbles.next().ok_or(DecodeError::Unrecognized);
+    let mut next = || nibbles.next().ok_or(DecodeError::Invalid);
     let mut pixels = Vec::with_capacity(count);
     while pixels.len() < count {
         let token = next()?;

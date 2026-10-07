@@ -106,7 +106,7 @@ pub(super) fn decode_acbm(contents: &[u8]) -> Result<Image, DecodeError> {
 fn decode_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Image, DecodeError> {
     let bitmap = read_bitmap(contents, body_id, layout)?;
     if bitmap.is_dctv() || bitmap.is_ham_e() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let Bitmap {
         header,
@@ -158,8 +158,8 @@ pub(super) fn read_ilbm(contents: &[u8]) -> Result<Bitmap, DecodeError> {
 }
 
 fn read_bitmap(contents: &[u8], body_id: &[u8; 4], layout: Layout) -> Result<Bitmap, DecodeError> {
-    let header = Header::parse(contents).ok_or(DecodeError::Unrecognized)?;
-    let body = find(contents, body_id).ok_or(DecodeError::Unrecognized)?;
+    let header = Header::parse(contents).ok_or(DecodeError::Invalid)?;
+    let body = find(contents, body_id).ok_or(DecodeError::Invalid)?;
     let camg = find(contents, b"CAMG").and_then(|c| be32(c, 0));
     let (indices, mask) = match layout {
         Layout::Chunky => (read_chunky(&header, body)?, None),
@@ -255,11 +255,11 @@ fn unpack_body(header: &Header, body: &[u8], len: usize) -> Result<Vec<u8>, Deco
         0 => body
             .get(..len)
             .map(<[u8]>::to_vec)
-            .ok_or(DecodeError::Unrecognized),
+            .ok_or(DecodeError::Invalid),
         1 => packbits::unpack(body, len)
             .map(|(out, _)| out)
-            .ok_or(DecodeError::Unrecognized),
-        _ => Err(DecodeError::Unrecognized),
+            .ok_or(DecodeError::Invalid),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -271,7 +271,7 @@ fn read_planar(
     layout: Layout,
 ) -> Result<(Vec<u32>, Option<Vec<u8>>), DecodeError> {
     if header.planes == 0 || header.planes > 32 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let stored_planes = header.planes + usize::from(header.masking == 1);
     let row_len = header.plane_row_len();
@@ -280,13 +280,14 @@ fn read_planar(
     // can, but not in real files); this keeps corrupt sizes from allocating
     // huge buffers.
     if len > body.len().saturating_mul(128) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let data = match layout {
         // ABIT is never compressed, whatever BMHD says.
-        Layout::Contiguous => body.get(..len).ok_or(DecodeError::Unrecognized)?.to_vec(),
-        _ if header.compression == 2 => vdat::unpack(body, stored_planes, row_len, header.height)
-            .ok_or(DecodeError::Unrecognized)?,
+        Layout::Contiguous => body.get(..len).ok_or(DecodeError::Invalid)?.to_vec(),
+        _ if header.compression == 2 => {
+            vdat::unpack(body, stored_planes, row_len, header.height).ok_or(DecodeError::Invalid)?
+        }
         _ => unpack_body(header, body, len)?,
     };
     let values = planar_pixels(
@@ -318,11 +319,11 @@ fn read_planar(
 
 fn read_chunky(header: &Header, body: &[u8]) -> Result<Vec<u32>, DecodeError> {
     if header.planes != 8 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let row_len = header.width + (header.width & 1);
     if row_len * header.height > body.len().saturating_mul(128) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let data = unpack_body(header, body, row_len * header.height)?;
     Ok(data
@@ -361,7 +362,7 @@ impl Mode {
             6 if camg.is_none() && colors == 16 => Self::Ham6,
             1..=8 => Self::Indexed,
             24 => Self::TrueColor,
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         })
     }
 
@@ -546,9 +547,6 @@ mod tests {
             contents.extend_from_slice(&(data.len() as u32).to_be_bytes());
             contents.extend_from_slice(&data);
         }
-        assert!(matches!(
-            decode_ilbm(&contents),
-            Err(DecodeError::Unrecognized)
-        ));
+        assert!(matches!(decode_ilbm(&contents), Err(DecodeError::TooLarge)));
     }
 }

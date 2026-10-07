@@ -64,16 +64,16 @@ fn unpack(packed: &[u8], len: usize) -> Option<(Vec<u8>, usize)> {
 /// pictures even and odd lines (the two fields) use alternate attribute
 /// rows; otherwise each attribute row covers one cell's lines.
 pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
-    let header = data.get(..18).ok_or(DecodeError::Unrecognized)?;
+    let header = data.get(..18).ok_or(DecodeError::Invalid)?;
     if &header[2..7] != b"BRUS\x04" || header[10] != 1 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let cell_height = match header[11] {
         1 => 2,
         2 => 4,
         3 => 8,
         4 => 16,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let columns = usize::from(header[12]);
     let height = usize::from(u16::from_le_bytes([header[13], header[14]]));
@@ -81,14 +81,14 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
     let attribute_rows = height.div_ceil(2 * cell_height) * 2;
     // The bitmap must fit in the VDC's 64K.
     if columns == 0 || height == 0 || columns * height > 0x10000 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let packed = &data[18..];
-    let (bitmap, used) = unpack(packed, columns * height).ok_or(DecodeError::Unrecognized)?;
+    let (bitmap, used) = unpack(packed, columns * height).ok_or(DecodeError::Invalid)?;
     let packed = packed[used..]
         .strip_prefix(b"COLR")
-        .ok_or(DecodeError::Unrecognized)?;
-    let (colors, _) = unpack(packed, columns * attribute_rows).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let (colors, _) = unpack(packed, columns * attribute_rows).ok_or(DecodeError::Invalid)?;
     let mut image = Image::new((columns * 8) as u32, height as u32)?;
     for y in 0..height {
         let row = if interlaced {
@@ -110,13 +110,13 @@ pub(super) fn decode_brus(data: &[u8]) -> Result<Image, DecodeError> {
 /// bits, most significant bit leftmost, each row padded to whole bytes.
 pub(super) fn decode_vbm(data: &[u8]) -> Result<Image, DecodeError> {
     let [b'B', b'M', 0xcb, 2, w0, w1, h0, h1, bits @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     let width = usize::from(u16::from_be_bytes([*w0, *w1]));
     let height = usize::from(u16::from_be_bytes([*h0, *h1]));
     let stride = width.div_ceil(8);
     if bits.len() != stride * height {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     check_size(width, height)?;
     Image::from_bits(

@@ -22,15 +22,15 @@ const RECORD: usize = 10;
 
 pub(super) fn decode_mwin(data: &[u8]) -> Result<Image, DecodeError> {
     let [_, x, y, width, height, cells @ ..] = data else {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     };
     if x % 4 != 0 || y % 8 != 0 || *width == 0 || *height == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (width, height) = (usize::from(*width), usize::from(*height));
     let columns = width.div_ceil(4);
     if cells.len() != columns * height.div_ceil(8) * RECORD {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut pixels = Vec::with_capacity(width * 2 * height);
     for py in 0..height {

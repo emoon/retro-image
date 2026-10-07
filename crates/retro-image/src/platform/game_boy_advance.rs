@@ -102,7 +102,7 @@ mod tests {
         assert_eq!(image.get(1, 1), 0xff_ffff);
         assert_eq!(
             decode(&tile[..31], &NoCompanions, 4),
-            Err(DecodeError::Unrecognized)
+            Err(DecodeError::Invalid)
         );
     }
 

@@ -84,7 +84,7 @@ fn decode_mode(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
     }
     let (screen, palette, len) = screen_file(data, mode)?;
     if len != data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     render(mode, screen, MODE2_FILE_ATTRIBUTES, &palette)
 }
@@ -92,9 +92,7 @@ fn decode_mode(data: &[u8], mode: Mode) -> Result<Image, DecodeError> {
 /// Parses the `SCREEN$` file at the start of `data`: screen memory,
 /// palette and the file's length.
 fn screen_file(data: &[u8], mode: Mode) -> Result<(&[u8], Palette, usize), DecodeError> {
-    let screen = data
-        .get(..mode.memory_len())
-        .ok_or(DecodeError::Unrecognized)?;
+    let screen = data.get(..mode.memory_len()).ok_or(DecodeError::Invalid)?;
     let (mut palette, palette_len) = Palette::from_screen_file(&data[mode.memory_len()..])?;
     if mode == Mode::Three {
         // Pixel values 1 and 2 select CLUT entries 2 and 1 (observed from
@@ -110,7 +108,7 @@ fn decode_lce(data: &[u8]) -> Result<Image, DecodeError> {
     let (first, first_palette, first_len) = screen_file(data, Mode::Four)?;
     let (second, second_palette, second_len) = screen_file(&data[first_len..], Mode::Four)?;
     if first_len + second_len != data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     interlace(&[
         render(Mode::Four, first, 0, &first_palette)?,
@@ -143,7 +141,7 @@ fn decode_ssx(data: &[u8]) -> Result<Image, DecodeError> {
         }
     }
     if data.len() != RAW_WIDTH * HEIGHT {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // One SAM color byte per pixel of the 512x192 display.
     let mut image = Image::new(RAW_WIDTH as u32, HEIGHT as u32)?;
@@ -175,9 +173,7 @@ impl Palette {
     /// after the given one (observed from `recoil2png` output). Returns the
     /// palette and the number of bytes used.
     fn from_screen_file(tail: &[u8]) -> Result<(Self, usize), DecodeError> {
-        let table = tail
-            .get(..PALETTE_TABLE_LEN)
-            .ok_or(DecodeError::Unrecognized)?;
+        let table = tail.get(..PALETTE_TABLE_LEN).ok_or(DecodeError::Invalid)?;
         let mut clut = [0; 16];
         clut.copy_from_slice(&table[..16]);
         let mut changes = Vec::new();
@@ -188,7 +184,7 @@ impl Palette {
                 Some(&[line, entry, value, _]) if entry < 16 => {
                     changes.push((usize::from(line), usize::from(entry), value));
                 }
-                _ => return Err(DecodeError::Unrecognized),
+                _ => return Err(DecodeError::Invalid),
             }
         }
         let used = PALETTE_TABLE_LEN + 4 * changes.len() + 1;

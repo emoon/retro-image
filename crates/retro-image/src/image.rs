@@ -28,7 +28,7 @@ const MAX_PIXELS: usize = 1 << 26;
 fn within_limit(width: usize, height: usize) -> Result<(), DecodeError> {
     match width.checked_mul(height) {
         Some(pixels) if pixels <= MAX_PIXELS => Ok(()),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::TooLarge),
     }
 }
 
@@ -37,7 +37,7 @@ fn within_limit(width: usize, height: usize) -> Result<(), DecodeError> {
 /// with a smaller hard limit states it locally.
 pub(crate) fn check_size(width: usize, height: usize) -> Result<(), DecodeError> {
     if width == 0 || height == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     within_limit(width, height)
 }
@@ -413,7 +413,7 @@ impl Image {
         let outside = max_byte(indices).is_some_and(|max| usize::from(max) >= palette.len());
         let pixels = (width as usize).checked_mul(height as usize);
         if pixels != Some(indices.len()) || outside {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let mut table = [0; 256];
         let used = palette.len().min(256);
@@ -469,7 +469,7 @@ impl Image {
             .checked_mul(height as usize)
             .is_some_and(|len| len <= bitmap.len());
         if !fits || row_len.saturating_mul(8) < width as usize {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         // The rows form one bit stream, so a single `expand_plane` call
         // covers the image; the padding bits are cropped afterwards.
@@ -606,7 +606,7 @@ pub(crate) fn planar_pixels(
 ) -> Result<Vec<u32>, DecodeError> {
     let stride = row_len.saturating_mul(8);
     if planes > 32 || stride < width {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     // The padding bits of each row are expanded too, so they count.
     within_limit(stride, height)?;
@@ -621,7 +621,7 @@ pub(crate) fn planar_pixels(
         for y in 0..height {
             let row = (row_start(plane, y).checked_add(row_len))
                 .and_then(|end| data.get(end - row_len..end));
-            grouped.extend_from_slice(row.ok_or(DecodeError::Unrecognized)?);
+            grouped.extend_from_slice(row.ok_or(DecodeError::Invalid)?);
         }
     }
     let mut values = alloc::vec![0u32; stride * height];

@@ -71,7 +71,7 @@ use crate::bytes::{le16, le32};
 use crate::image::{check_size, planar_pixels};
 use crate::{DecodeError, Image};
 
-const FAIL: DecodeError = DecodeError::Unrecognized;
+const FAIL: DecodeError = DecodeError::Invalid;
 const REVISION: u16 = 3;
 const INDEX_AT: usize = 4;
 const ITEM_LEN: usize = 8;

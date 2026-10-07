@@ -102,7 +102,7 @@ pub(super) fn decode_bin(data: &[u8]) -> Result<Image, DecodeError> {
         // A BinaryText record without a width: Deark's 160 columns.
         Some(_) => 160,
         _ if plausible_screen(pairs) => 80,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let ice = sauce.as_ref().is_some_and(|s| s.ice());
     let (cells, rows) = screen::attribute_cells(pairs, width, &PALETTE, ice)?;
@@ -139,20 +139,20 @@ const ADF_COLORS: [usize; 16] = [0, 1, 2, 3, 4, 5, 20, 7, 56, 57, 58, 59, 60, 61
 /// values and whole 80-column rows must all check out (`.adf` is also the
 /// Amiga disk image extension).
 pub(super) fn decode_adf(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (content, _) = sauce::split(data);
-    let ega = content.get(1..ADF_FONT_AT).ok_or(fail)?;
-    let pairs = content.get(ADF_SCREEN_AT..).ok_or(fail)?;
+    let ega = content.get(1..ADF_FONT_AT).ok_or(FAIL)?;
+    let pairs = content.get(ADF_SCREEN_AT..).ok_or(FAIL)?;
     let palette_ok = ega.iter().all(|&v| v <= 63) && ega.iter().any(|&v| v != 0);
     if content[0] != 1 || !palette_ok || pairs.is_empty() || pairs.len() % 160 != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let rgb: Vec<u8> = ADF_COLORS
         .iter()
         .flat_map(|&i| ega[i * 3..i * 3 + 3].iter().copied())
         .collect();
-    let palette = screen::vga_palette(&rgb).ok_or(fail)?;
-    let font = Font::new(16, &content[ADF_FONT_AT..ADF_SCREEN_AT]).ok_or(fail)?;
+    let palette = screen::vga_palette(&rgb).ok_or(FAIL)?;
+    let font = Font::new(16, &content[ADF_FONT_AT..ADF_SCREEN_AT]).ok_or(FAIL)?;
     let (cells, rows) = screen::attribute_cells(pairs, 80, &palette, true)?;
     screen::render(&cells, 80, rows, &with_font(font))
 }
@@ -163,11 +163,11 @@ const IDF_PALETTE_LEN: usize = 48;
 
 /// iCE Draw: the "\x04" "1.4" header, a valid width and 0-63 palette values.
 pub(super) fn decode_idf(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let (content, _) = sauce::split(data);
-    let word = |at| le16(content, at).map(usize::from).ok_or(fail);
+    let word = |at| le16(content, at).map(usize::from).ok_or(FAIL);
     if !content.starts_with(b"\x041.4") || word(4)? > word(8)? {
-        return Err(fail);
+        return Err(FAIL);
     }
     let width = word(8)? + 1;
     let tail = IDF_FONT_LEN + IDF_PALETTE_LEN;
@@ -175,9 +175,9 @@ pub(super) fn decode_idf(data: &[u8]) -> Result<Image, DecodeError> {
         .len()
         .checked_sub(tail)
         .filter(|&end| end >= IDF_HEADER_LEN)
-        .ok_or(fail)?;
-    let palette = screen::vga_palette(&content[content.len() - IDF_PALETTE_LEN..]).ok_or(fail)?;
-    let font = Font::new(16, &content[screen_end..screen_end + IDF_FONT_LEN]).ok_or(fail)?;
+        .ok_or(FAIL)?;
+    let palette = screen::vga_palette(&content[content.len() - IDF_PALETTE_LEN..]).ok_or(FAIL)?;
+    let font = Font::new(16, &content[screen_end..screen_end + IDF_FONT_LEN]).ok_or(FAIL)?;
     let pairs = unpack_idf(&content[IDF_HEADER_LEN..screen_end], width)?;
     let (cells, rows) = screen::attribute_cells(&pairs, width, &palette, true)?;
     screen::render(&cells, width, rows, &with_font(font))
@@ -205,7 +205,7 @@ fn unpack_idf(src: &[u8], width: usize) -> Result<Vec<u8>, DecodeError> {
             i += 2;
         }
         if pairs.len() > limit {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
     }
     Ok(pairs)

@@ -155,13 +155,13 @@ pub(super) fn render(
     rows: usize,
     style: &Style,
 ) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let cell_width = if style.nine_pixels { 9 } else { 8 };
     let cell_height = style.font.height();
     let cells_ok = width > 0 && rows > 0 && width <= MAX_COLUMNS && width * rows <= MAX_CELLS;
     let row_pixels = width * cell_width * cell_height;
     if !cells_ok || row_pixels > MAX_PIXELS {
-        return Err(fail);
+        return Err(FAIL);
     }
     let rows = rows.min(MAX_PIXELS / row_pixels);
     let mut image = Image::new((width * cell_width) as u32, (rows * cell_height) as u32)?;
@@ -355,7 +355,7 @@ pub(super) fn attribute_cells(
     let count = pairs.len() / 2;
     let rows = count.div_ceil(width.max(1));
     if width == 0 || width > MAX_COLUMNS || rows == 0 || rows * width > MAX_CELLS {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut cells = vec![Cell::from_attribute(0, 0, palette, ice); rows * width];
     for (cell, pair) in cells.iter_mut().zip(pairs.as_chunks::<2>().0) {

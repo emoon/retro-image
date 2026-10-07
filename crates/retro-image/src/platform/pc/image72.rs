@@ -30,7 +30,7 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         _ if data.len() == HEADERLESS_LEN && !has_amsdos_header(data) => {
             sheet(data, 8, PER_ROW * HEADERLESS_ROWS)
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 

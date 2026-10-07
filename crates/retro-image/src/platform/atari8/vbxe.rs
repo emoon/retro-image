@@ -17,7 +17,7 @@ const PIXELS: usize = WIDTH * HEIGHT;
 
 pub(super) fn decode_dap(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != PIXELS + 768 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (pixels, planes) = data.split_at(PIXELS);
     let palette: [u32; 256] = core::array::from_fn(|index| {

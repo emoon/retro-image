@@ -33,37 +33,37 @@ pub(super) fn decode_sgx(data: &[u8]) -> Result<Image, DecodeError> {
         let (header_len, line_bytes, part_width, part_height, sixteen_colors) = match kind {
             0 => break,
             255 => {
-                rest = rest.get(3..).ok_or(DecodeError::Unrecognized)?;
+                rest = rest.get(3..).ok_or(DecodeError::Invalid)?;
                 y += line_height;
                 (x, line_height) = (0, 0);
                 continue;
             }
             1..=63 => {
-                let header = rest.get(..3).ok_or(DecodeError::Unrecognized)?;
+                let header = rest.get(..3).ok_or(DecodeError::Invalid)?;
                 let (w, h) = (usize::from(header[1]), usize::from(header[2]));
                 (3, usize::from(kind), w, h, false)
             }
             64 => {
-                let header = rest.get(..8).ok_or(DecodeError::Unrecognized)?;
+                let header = rest.get(..8).ok_or(DecodeError::Invalid)?;
                 let word = |i: usize| usize::from(u16::from_le_bytes([header[i], header[i + 1]]));
                 let sixteen_colors = match header[1] {
                     0 => false,
                     5 => true,
-                    _ => return Err(DecodeError::Unrecognized),
+                    _ => return Err(DecodeError::Invalid),
                 };
                 (8, word(2), word(4), word(6), sixteen_colors)
             }
             // Bit 7 marks ZX0-compressed parts.
-            _ => return Err(DecodeError::Unrecognized),
+            _ => return Err(DecodeError::Invalid),
         };
         let pixels_per_byte = if sixteen_colors { 2 } else { 4 };
         if part_width == 0 || part_height == 0 || part_width > line_bytes * pixels_per_byte {
-            return Err(DecodeError::Unrecognized);
+            return Err(DecodeError::Invalid);
         }
         let len = line_bytes * part_height;
         let pixels = rest
             .get(header_len..header_len + len)
-            .ok_or(DecodeError::Unrecognized)?;
+            .ok_or(DecodeError::Invalid)?;
         parts.push(Part {
             x,
             y,
@@ -82,7 +82,7 @@ pub(super) fn decode_sgx(data: &[u8]) -> Result<Image, DecodeError> {
     // Parts hold at most 4 pixels per byte; a canvas far larger than that
     // would be mostly gaps, so treat it as corrupt rather than allocate it.
     if parts.is_empty() || width * height > 8 * data.len() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(width as u32, height as u32)?;
     for part in &parts {

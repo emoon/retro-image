@@ -22,13 +22,13 @@ const ENTRY_LEN: usize = 0x20;
 const TYPE_2D: u8 = 2;
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let count = usize::from(le16(data, 6).ok_or(fail)?);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let count = usize::from(le16(data, 6).ok_or(FAIL)?);
     let entries_end = count
         .checked_mul(ENTRY_LEN)
         .and_then(|len| len.checked_add(ENTRIES_AT))
-        .ok_or(fail)?;
-    let texture_data = le32(data, 8).ok_or(fail)? as usize;
+        .ok_or(FAIL)?;
+    let texture_data = le32(data, 8).ok_or(FAIL)? as usize;
     if !data.starts_with(b"CTPK")
         || le16(data, 4) != Some(1)
         || count == 0
@@ -36,23 +36,23 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         || texture_data < entries_end
         || texture_data > data.len()
     {
-        return Err(fail);
+        return Err(FAIL);
     }
     let entries = data[ENTRIES_AT..entries_end].as_chunks::<ENTRY_LEN>().0;
     let entry = entries
         .iter()
         .find(|entry| entry[0x15] == TYPE_2D && entry[0x14] > 0)
-        .ok_or(fail)?;
-    let size = le32(entry, 4).ok_or(fail)? as usize;
-    let offset = (le32(entry, 8).ok_or(fail)? as usize)
+        .ok_or(FAIL)?;
+    let size = le32(entry, 4).ok_or(FAIL)? as usize;
+    let offset = (le32(entry, 8).ok_or(FAIL)? as usize)
         .checked_add(texture_data)
-        .ok_or(fail)?;
-    let format = Format::from_gpu(le32(entry, 0xc).ok_or(fail)?).ok_or(fail)?;
-    let width = usize::from(le16(entry, 0x10).ok_or(fail)?);
-    let height = usize::from(le16(entry, 0x12).ok_or(fail)?);
+        .ok_or(FAIL)?;
+    let format = Format::from_gpu(le32(entry, 0xc).ok_or(FAIL)?).ok_or(FAIL)?;
+    let width = usize::from(le16(entry, 0x10).ok_or(FAIL)?);
+    let height = usize::from(le16(entry, 0x12).ok_or(FAIL)?);
     let pixels = data
-        .get(offset..offset.checked_add(size).ok_or(fail)?)
-        .ok_or(fail)?;
+        .get(offset..offset.checked_add(size).ok_or(FAIL)?)
+        .ok_or(FAIL)?;
     Texture {
         format,
         width,

@@ -76,11 +76,11 @@ const PALETTE_2X: [u32; 8] = [
 const BACKGROUND: u32 = PALETTE_2X[0];
 
 pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let object = data.get(..DISK_OBJECT_LEN).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let object = data.get(..DISK_OBJECT_LEN).ok_or(FAIL)?;
     // Magic and version 1.
-    if be16(object, 0).ok_or(fail)? != 0xe310 || be16(object, 2).ok_or(fail)? != 1 {
-        return Err(fail);
+    if be16(object, 0).ok_or(FAIL)? != 0xe310 || be16(object, 2).ok_or(FAIL)? != 1 {
+        return Err(FAIL);
     }
     if let Some(extras) = Extras::find(data) {
         let glow = extras.glow.map(|form| glowicon::decode(form, BACKGROUND));
@@ -102,26 +102,26 @@ fn first_image(object: &[u8]) -> Option<usize> {
 
 /// The first classic image, drawn with the Workbench pens.
 fn decode_classic(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let palette: &[u32] = if data[47] == 0 {
         &PALETTE_1X
     } else {
         &PALETTE_2X
     };
-    let start = first_image(data).ok_or(fail)?;
-    let header = data.get(start..start + IMAGE_HEADER_LEN).ok_or(fail)?;
-    let width = usize::from(be16(header, 4).ok_or(fail)?);
-    let height = usize::from(be16(header, 6).ok_or(fail)?);
-    let depth = usize::from(be16(header, 8).ok_or(fail)?);
+    let start = first_image(data).ok_or(FAIL)?;
+    let header = data.get(start..start + IMAGE_HEADER_LEN).ok_or(FAIL)?;
+    let width = usize::from(be16(header, 4).ok_or(FAIL)?);
+    let height = usize::from(be16(header, 6).ok_or(FAIL)?);
+    let depth = usize::from(be16(header, 8).ok_or(FAIL)?);
     // Only depths whose colors all have a known pen.
     if !(2..=3).contains(&depth) || 1 << depth > palette.len() {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     let row_len = width.div_ceil(16) * 2;
     let plane_len = row_len * height;
     let start = start + IMAGE_HEADER_LEN;
-    let planes = data.get(start..start + plane_len * depth).ok_or(fail)?;
+    let planes = data.get(start..start + plane_len * depth).ok_or(FAIL)?;
     let indices: Vec<u8> = (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
         .map(|(x, y)| {
@@ -216,7 +216,7 @@ mod tests {
         image[9] = 2;
         data.extend(image);
         data.resize(data.len() + width.div_ceil(16) * 2 * height * 2, 0);
-        assert!(matches!(decode(&data), Err(DecodeError::Unrecognized)));
+        assert!(matches!(decode(&data), Err(DecodeError::TooLarge)));
     }
 
     /// A DiskObject with one 16x1, 2-plane image, the given tool types and

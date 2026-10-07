@@ -54,22 +54,22 @@ const CUT_HEADER_LEN: usize = 6;
 const PAL_HEADER_LEN: usize = 40;
 
 pub(super) fn decode_cut(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let word = |at| le16(data, at).map(usize::from).ok_or(fail);
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let word = |at| le16(data, at).map(usize::from).ok_or(FAIL);
     let (width, height) = (word(0)?, word(2)?);
     if word(4)? != 0 {
-        return Err(fail);
+        return Err(FAIL);
     }
     check_size(width, height)?;
     // Each line costs at least its count word and a terminator.
     if height > data.len() / 3 {
-        return Err(fail);
+        return Err(FAIL);
     }
     let mut pixels = Vec::with_capacity(width * height);
     let mut pos = CUT_HEADER_LEN;
     for _ in 0..height {
         let len = word(pos)?;
-        let line = data.get(pos + 2..pos + 2 + len).ok_or(fail)?;
+        let line = data.get(pos + 2..pos + 2 + len).ok_or(FAIL)?;
         pos += 2 + len;
         unpack_line(line, width, &mut pixels)?;
     }
@@ -91,7 +91,7 @@ fn grey_ramp(pixels: &[u8]) -> Vec<u32> {
 
 /// Appends exactly `width` pixels decoded from one line's run data.
 fn unpack_line(line: &[u8], width: usize, out: &mut Vec<u8>) -> Result<(), DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     let start = out.len();
     let mut pos = 0;
     while let Some(&control) = line.get(pos) {
@@ -101,21 +101,21 @@ fn unpack_line(line: &[u8], width: usize, out: &mut Vec<u8>) -> Result<(), Decod
             break;
         }
         if out.len() - start + n > width {
-            return Err(fail);
+            return Err(FAIL);
         }
         if control & 0x80 != 0 {
-            let value = *line.get(pos).ok_or(fail)?;
+            let value = *line.get(pos).ok_or(FAIL)?;
             pos += 1;
             out.resize(out.len() + n, value);
         } else {
-            out.extend_from_slice(line.get(pos..pos + n).ok_or(fail)?);
+            out.extend_from_slice(line.get(pos..pos + n).ok_or(FAIL)?);
             pos += n;
         }
     }
     if out.len() - start == width {
         Ok(())
     } else {
-        Err(fail)
+        Err(FAIL)
     }
 }
 

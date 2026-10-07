@@ -26,7 +26,7 @@ const HIRES_LEN: usize = 2 * BITMAP_LEN + 1;
 /// Hi-color: interleaved bitmap, then 8x1 attributes in the same interleave.
 pub(super) fn decode_hicolor(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HICOLOR_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, attributes) = data.split_at(BITMAP_LEN);
     let mut frame = Frame::new(WIDTH, HEIGHT)?;
@@ -42,7 +42,7 @@ pub(super) fn decode_hicolor(data: &[u8]) -> Result<Image, DecodeError> {
 /// Hi-res: 512x192 from two bitmaps, see [`draw_hires`].
 pub(super) fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != HIRES_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     draw_hires(data)?.into_image()?.scaled(1, 2)
 }
@@ -50,7 +50,7 @@ pub(super) fn decode_hires(data: &[u8]) -> Result<Image, DecodeError> {
 /// HRG: two hi-res screens shown as gigascreen.
 pub(super) fn decode_hrg(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * HIRES_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (first, second) = data.split_at(HIRES_LEN);
     blend(&[draw_hires(first)?, draw_hires(second)?]).scaled(1, 2)
@@ -88,7 +88,7 @@ const ULAPLUS_LEN: usize = SCR_LEN + 64;
 /// Attribute bits 7-6 pick one of 4 CLUTs of 8 inks then 8 papers.
 pub(super) fn decode_ulaplus(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != ULAPLUS_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (bitmap, rest) = data.split_at(BITMAP_LEN);
     let (attributes, palette) = rest.split_at(COLUMNS * HEIGHT / 8);

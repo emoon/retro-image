@@ -88,17 +88,17 @@ fn plus_color(low: u8, high: u8) -> u32 {
 /// Screen mode: iMPdraw's BASIC `MODE n`; the other tool's pictures are
 /// all mode 0 (its mode byte at 0x800).
 fn screen_mode(memory: &Memory, body: &[u8], impdraw: bool) -> Result<Mode, DecodeError> {
-    let fail = DecodeError::Unrecognized;
+    const FAIL: DecodeError = DecodeError::Invalid;
     if !impdraw {
-        return (memory.get(0x800) == 0).then_some(Mode::Zero).ok_or(fail);
+        return (memory.get(0x800) == 0).then_some(Mode::Zero).ok_or(FAIL);
     }
     if body.get(IMPDRAW_MODE_AT - IMPDRAW_MODE_PREFIX.len()..IMPDRAW_MODE_AT)
         != Some(&IMPDRAW_MODE_PREFIX)
     {
-        return Err(fail);
+        return Err(FAIL);
     }
-    let constant = body.get(IMPDRAW_MODE_AT).ok_or(fail)?;
-    Mode::from_number(constant.wrapping_sub(BASIC_ZERO)).ok_or(fail)
+    let constant = body.get(IMPDRAW_MODE_AT).ok_or(FAIL)?;
+    Mode::from_number(constant.wrapping_sub(BASIC_ZERO)).ok_or(FAIL)
 }
 
 /// Pens of the picture.
@@ -121,7 +121,7 @@ fn palette(memory: &Memory, impdraw: bool) -> Result<[u32; 16], DecodeError> {
         for (i, pen) in pens.iter_mut().enumerate() {
             let ink = usize::from(memory.get(0x801 + i));
             if ink > 26 {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             *pen = firmware_color(ink);
         }
@@ -130,17 +130,17 @@ fn palette(memory: &Memory, impdraw: bool) -> Result<[u32; 16], DecodeError> {
 }
 
 pub(super) fn decode_overscan(data: &[u8]) -> Result<Image, DecodeError> {
-    let fail = DecodeError::Unrecognized;
-    let body = amsdos_body(data).ok_or(fail)?;
+    const FAIL: DecodeError = DecodeError::Invalid;
+    let body = amsdos_body(data).ok_or(FAIL)?;
     if amsdos_extension(data) != Some(*b"SCR") {
-        return Err(fail);
+        return Err(FAIL);
     }
     let field = |at: usize| usize::from(u16::from_le_bytes([data[at], data[at + 1]]));
     let (kind, load, entry) = (data[18], field(21), field(26));
     let impdraw = match (kind, load, entry, body.len()) {
         (0, 0x170, 0, IMPDRAW_LEN) if body.starts_with(&IMPDRAW_SIGNATURE) => true,
         (2, 0x200, 0x811, OTHER_LEN) => false,
-        _ => return Err(fail),
+        _ => return Err(FAIL),
     };
     let memory = Memory { load, bytes: body };
     let pens = palette(&memory, impdraw)?;

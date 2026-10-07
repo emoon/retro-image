@@ -268,7 +268,7 @@ fn msx_picture(
     let screen = header.flags >> 4;
     let interlaced = header.flags & 0x0c == 0;
     if header.flags & 8 != 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let bpp = header.bits_per_pixel();
     let image = match screen {
@@ -280,7 +280,7 @@ fn msx_picture(
         // Screen 6: 2-bit pixels whatever the stored depth.
         6 => indexed(unpacked, 2, unpacked.width * bpp / 2, palette)?,
         0 | 1 | 5 => indexed(unpacked, bpp, unpacked.width, palette)?,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     let wide_screen = matches!(screen, 0 | 6);
     let (sx, sy) = (
@@ -292,9 +292,9 @@ fn msx_picture(
 
 /// Decodes a MAG picture if it was saved on `machine`.
 pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<Image, DecodeError> {
-    let header = MagHeader::parse(data).ok_or(DecodeError::Unrecognized)?;
+    let header = MagHeader::parse(data).ok_or(DecodeError::Invalid)?;
     if header.machine() != machine {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let colours = if header.bits_per_pixel() == 8 {
         256
@@ -303,8 +303,8 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
     };
     let grb = data
         .get(header.palette..header.palette + colours * 3)
-        .ok_or(DecodeError::Unrecognized)?;
-    let unpacked = unpack_mag(data, &header).ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
+    let unpacked = unpack_mag(data, &header).ok_or(DecodeError::Invalid)?;
     let mode_200_lines = header.mode & 1 != 0;
     let image = if header.machine == 0x03 {
         let palette = read_palette(grb, Precision::Bits(3));
@@ -326,7 +326,7 @@ pub(in crate::platform) fn decode_mag(data: &[u8], machine: Machine) -> Result<I
             .scaled(1, 1 + u32::from(double_height))?
     };
     if image.width() == 0 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     Ok(image)
 }
@@ -336,12 +336,12 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
     let xor_rows = match data.get(..8) {
         Some(b"MAKI01A ") => 2,
         Some(b"MAKI01B ") => 4,
-        _ => return Err(DecodeError::Unrecognized),
+        _ => return Err(DecodeError::Invalid),
     };
     const FLAG_A: usize = 96;
     const FLAG_B: usize = FLAG_A + 1000;
     if data.len() < FLAG_B {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let (precision, detected) = match &data[8..12] {
         b"X68K" => (Precision::X68000, Machine::X68000),
@@ -349,7 +349,7 @@ pub(in crate::platform) fn decode_mki(data: &[u8], machine: Machine) -> Result<I
         _ => (Precision::Bits(4), Machine::Pc98),
     };
     if detected != machine {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let palette = read_palette(&data[48..96], precision);
     let byte = |i: usize| data.get(i).copied().unwrap_or(0);
@@ -425,10 +425,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (8, 1));
         assert_eq!(&image.rgb()[..6], &[0xff, 0, 0, 0, 0, 0]);
         assert_eq!(&image.rgb()[9..12], &[0xff, 0, 0]);
-        assert_eq!(
-            decode_mag(&data, Machine::Msx),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_mag(&data, Machine::Msx), Err(DecodeError::Invalid));
     }
 
     #[test]
@@ -469,10 +466,7 @@ mod tests {
         assert_eq!((image.width(), image.height()), (8, 1));
         // X68000 precision: 5-bit red, intensity bit clear.
         assert_eq!(&image.rgb()[..3], &[0xfb, 0, 0]);
-        assert_eq!(
-            decode_mag(&data, Machine::Pc98),
-            Err(DecodeError::Unrecognized)
-        );
+        assert_eq!(decode_mag(&data, Machine::Pc98), Err(DecodeError::Invalid));
     }
 
     #[test]

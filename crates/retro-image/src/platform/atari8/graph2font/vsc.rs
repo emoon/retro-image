@@ -22,15 +22,13 @@ pub(in crate::platform::atari8) fn decode_vsc(
 ) -> Result<Image, DecodeError> {
     let names: Vec<&[u8]> = names(data).collect();
     if names.is_empty() {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     check_size(WIDTH, LINES * names.len())?;
     let mut stacked = Image::new(WIDTH as u32, (LINES * names.len()) as u32)?;
     for (index, name) in names.into_iter().enumerate() {
-        let name = core::str::from_utf8(name).map_err(|_| DecodeError::Unrecognized)?;
-        let file = companions
-            .get_named(name)
-            .ok_or(DecodeError::Unrecognized)?;
+        let name = core::str::from_utf8(name).map_err(|_| DecodeError::Invalid)?;
+        let file = companions.get_named(name).ok_or(DecodeError::Invalid)?;
         let picture = g2f::decode_plain_or_vbxe(&file)?;
         for (y, row) in picture
             .rgb()

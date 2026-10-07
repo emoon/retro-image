@@ -51,22 +51,20 @@ const CANVAS_FLAG: u16 = 0xbabe;
 const DEGAS_LEN: usize = 34 + SCREEN_LEN;
 
 fn ok(image: Option<Image>) -> Result<Image, DecodeError> {
-    image.ok_or(DecodeError::Unrecognized)
+    image.ok_or(DecodeError::Invalid)
 }
 
 fn words(data: &[u8], offset: usize) -> Result<alloc::vec::Vec<u16>, DecodeError> {
-    palette_words(data, offset, 16).ok_or(DecodeError::Unrecognized)
+    palette_words(data, offset, 16).ok_or(DecodeError::Invalid)
 }
 
 /// NEOchrome: flag word, resolution word, 16 palette words, ..., screen at 128.
 /// A NEOchrome Master `.RST` file next to a low-resolution picture adds
 /// rasters (see `rasters`).
 pub(super) fn decode_neo(data: &[u8], companions: &dyn Companions) -> Result<Image, DecodeError> {
-    let flag = be16(data, 0).ok_or(DecodeError::Unrecognized)?;
+    let flag = be16(data, 0).ok_or(DecodeError::Invalid)?;
     let words = words(data, 4)?;
-    let bitmap = data
-        .get(NEO_HEADER_LEN..)
-        .ok_or(DecodeError::Unrecognized)?;
+    let bitmap = data.get(NEO_HEADER_LEN..).ok_or(DecodeError::Invalid)?;
     ok(match flag {
         0 if data.len() == NEO_HEADER_LEN + SCREEN_LEN => be16(data, 2)
             .and_then(Resolution::from_index)
@@ -95,7 +93,7 @@ pub(super) fn decode_mur(data: &[u8], companions: &dyn Companions) -> Result<Ima
         Some(palette) if data.len() == SCREEN_LEN => {
             ok(planar_image(data, 320, 200, 4, &palette, 1))
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -104,7 +102,7 @@ const MUR_PALETTE_LEN: usize = 16 * 3 * 2;
 /// Doodle: a raw 32000-byte high-resolution screen.
 pub(super) fn decode_doo(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(decode_screen(Resolution::High, data, &[]))
 }
@@ -113,13 +111,13 @@ pub(super) fn decode_doo(data: &[u8]) -> Result<Image, DecodeError> {
 /// no palette in the file, so the pens are a gray ramp.
 pub(super) fn decode_raw_screen(data: &[u8]) -> Result<Image, DecodeError> {
     let unpacked = if crate::codec::pack_ice::is_packed(data) {
-        Some(crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Unrecognized)?)
+        Some(crate::codec::pack_ice::unpack(data).ok_or(DecodeError::Invalid)?)
     } else {
         None
     };
     let screen = unpacked.as_deref().unwrap_or(data);
     if screen.len() != SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let resolution = Resolution::Low;
     let greys: alloc::vec::Vec<u32> = (0..16u32).map(|i| i * 0x11_11_11).collect();
@@ -146,7 +144,7 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
         32512 => {
             let palette = usize::from(data[SCREEN_LEN + 287]);
             if palette >= 8 {
-                return Err(DecodeError::Unrecognized);
+                return Err(DecodeError::Invalid);
             }
             let words = words(data, SCREEN_LEN + palette * 32)?;
             ok(decode_screen(Resolution::Low, data, &words))
@@ -155,7 +153,7 @@ pub(super) fn decode_art(data: &[u8]) -> Result<Image, DecodeError> {
         // GFA Artist "1000 colors on": planes word, reserved word, screen,
         // normal palette, 69 raster palettes, color cycling tables.
         34360 => ok(decode_gfa_artist_rasters(data)),
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -218,7 +216,7 @@ pub(super) fn decode_bil(data: &[u8]) -> Result<Image, DecodeError> {
             let words = words(data, 2)?;
             ok(decode_screen(Resolution::Low, &data[34..], &words))
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -242,7 +240,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
                 resolution.y_scale(),
             ))
         }
-        _ => Err(DecodeError::Unrecognized),
+        _ => Err(DecodeError::Invalid),
     }
 }
 
@@ -250,7 +248,7 @@ pub(super) fn decode_pic(data: &[u8]) -> Result<Image, DecodeError> {
 /// resolution comes from the extension.
 fn decode_dali(data: &[u8], resolution: Resolution) -> Result<Image, DecodeError> {
     if data.len() != 128 + SCREEN_LEN || data[..4] != [0; 4] {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(decode_screen(resolution, &data[128..], &words(data, 4)?))
 }
@@ -270,7 +268,7 @@ pub(super) fn decode_sd2(data: &[u8]) -> Result<Image, DecodeError> {
 /// Synthetic Arts: medium-resolution screen, 3 words, palette.
 pub(super) fn decode_srt(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != SCREEN_LEN + 38 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(decode_screen(
         Resolution::Medium,
@@ -283,17 +281,15 @@ pub(super) fn decode_srt(data: &[u8]) -> Result<Image, DecodeError> {
 /// low-resolution bitmap of that size.
 pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
     if be16(data, 0) != Some(0xffff) || be16(data, 2) != Some(0) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
-    let width = be16(data, 58).ok_or(DecodeError::Unrecognized)?;
-    let height = be16(data, 60).ok_or(DecodeError::Unrecognized)?;
+    let width = be16(data, 58).ok_or(DecodeError::Invalid)?;
+    let height = be16(data, 60).ok_or(DecodeError::Invalid)?;
     if !(1..=320).contains(&width) || !(1..=200).contains(&height) {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let groups = u32::from(width).div_ceil(16);
-    let bitmap = data
-        .get(NEO_HEADER_LEN..)
-        .ok_or(DecodeError::Unrecognized)?;
+    let bitmap = data.get(NEO_HEADER_LEN..).ok_or(DecodeError::Invalid)?;
     let image = planar_image(
         bitmap,
         groups * 16,
@@ -308,7 +304,7 @@ pub(super) fn decode_cel(data: &[u8]) -> Result<Image, DecodeError> {
 /// DeskPic: `GF25`, colors, width, height, data size (longs), word-
 /// interleaved bitmap, then 256 VDI (0-1000) RGB triplets in pen order.
 pub(super) fn decode_gfb(data: &[u8]) -> Result<Image, DecodeError> {
-    decode_gfb_inner(data).ok_or(DecodeError::Unrecognized)
+    decode_gfb_inner(data).ok_or(DecodeError::Invalid)
 }
 
 fn decode_gfb_inner(data: &[u8]) -> Option<Image> {
@@ -340,20 +336,20 @@ fn decode_gfb_inner(data: &[u8]) -> Option<Image> {
 /// (the id line is 36 bytes long in sample files, not 43).
 pub(super) fn decode_pablo(data: &[u8]) -> Result<Image, DecodeError> {
     if !data.starts_with(b"PABLO PACKED PICTURE: Groupe CDND \r\n") {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let line_end = data[36..]
         .windows(2)
         .position(|w| w == b"\r\n")
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     let pos = 36 + line_end + 2;
     let resolution = data
         .get(pos)
         .and_then(|&r| Resolution::from_index(r.into()))
-        .ok_or(DecodeError::Unrecognized)?;
+        .ok_or(DecodeError::Invalid)?;
     if data.get(pos + 1) != Some(&0) {
         // Compression type 29 is undocumented.
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let words = words(data, pos + 4)?;
     ok(decode_screen(resolution, &data[pos + 36..], &words))
@@ -411,7 +407,7 @@ fn image_manager_side(len: usize, planes: usize) -> Result<usize, DecodeError> {
     [128, 256]
         .into_iter()
         .find(|side| side * side * planes == len)
-        .ok_or(DecodeError::Unrecognized)
+        .ok_or(DecodeError::Invalid)
 }
 
 /// Atari Image Manager `IM`: a square 8-bit gray plane (derived from
@@ -446,7 +442,7 @@ pub(super) fn decode_aim_col(data: &[u8]) -> Result<Image, DecodeError> {
 /// Sinbad Slideshow: low-resolution screen, palette, padding to 32768.
 pub(super) fn decode_ssb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 32768 {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(decode_screen(
         Resolution::Low,
@@ -458,7 +454,7 @@ pub(super) fn decode_ssb(data: &[u8]) -> Result<Image, DecodeError> {
 /// PaintShop `DA4`: raw 640x800 monochrome.
 pub(super) fn decode_da4(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 2 * SCREEN_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     ok(planar_image(
         data,
@@ -474,7 +470,7 @@ pub(super) fn decode_da4(data: &[u8]) -> Result<Image, DecodeError> {
 /// green and blue component (0-15) of each pixel.
 pub(super) fn decode_rgb(data: &[u8]) -> Result<Image, DecodeError> {
     if data.len() != 3 * DEGAS_LEN {
-        return Err(DecodeError::Unrecognized);
+        return Err(DecodeError::Invalid);
     }
     let gun = |i: usize| &data[i * DEGAS_LEN + 34..(i + 1) * DEGAS_LEN];
     let (red, green, blue) = (gun(0), gun(1), gun(2));
