@@ -84,14 +84,14 @@ dependencies = [
 
 [[package]]
 name = "retro-image"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "png",
 ]
 
 [[package]]
 name = "retro-image-cli"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "png",
  "retro-image",

@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/retro-image", "crates/retro-image-cli"]
 
 [workspace.package]
-version = "0.0.1"
+version = "1.0.0"
 edition = "2024"
 # Safe `__cpuid` in the x86_64 SIMD dispatch needs 1.94.
 rust-version = "1.94"
@@ -12,7 +12,7 @@ repository = "https://github.com/emoon/retro-image"
 readme = "README.md"
 
 [workspace.dependencies]
-retro-image = { path = "crates/retro-image", version = "0.0.1" }
+retro-image = { path = "crates/retro-image", version = "1.0.0" }
 png = "0.18"
 
 [workspace.lints.rust]

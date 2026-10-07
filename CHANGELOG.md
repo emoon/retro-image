@@ -7,7 +7,7 @@ All notable changes are listed here. The format follows
 The minimum supported Rust version is 1.94 (the SIMD dispatch needs it). Raising it is a
 minor-version change.
 
-## [Unreleased]
+## [1.0.0] - 2026-10-07
 
 ### Added
 

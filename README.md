@@ -28,7 +28,7 @@ gives you pixels. It never touches the filesystem.
 
 ```toml
 [dependencies]
-retro-image = "0.0.1"
+retro-image = "1.0"
 ```
 
 ```rust
