@@ -145,7 +145,14 @@ fn decode_sprite(sprite: &[u8]) -> Result<Image, DecodeError> {
     }
     // The palette runs from the header to the image.
     let (sx, sy) = format.pixel_scale;
-    check_size(width * sx as usize, height * sy as usize)?;
+    // The width comes from a 32-bit header word, so the scaled size is checked.
+    let scaled_width = width
+        .checked_mul(sx as usize)
+        .ok_or(DecodeError::TooLarge)?;
+    let scaled_height = height
+        .checked_mul(sy as usize)
+        .ok_or(DecodeError::TooLarge)?;
+    check_size(scaled_width, scaled_height)?;
     let palette = &sprite[HEADER_LEN..image_at];
 
     // The mask has the image's layout for a mode number, else 1 bit per pixel.

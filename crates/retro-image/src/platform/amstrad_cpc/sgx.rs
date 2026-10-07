@@ -81,7 +81,8 @@ pub(super) fn decode_sgx(data: &[u8]) -> Result<Image, DecodeError> {
     }
     // Parts hold at most 4 pixels per byte; a canvas far larger than that
     // would be mostly gaps, so treat it as corrupt rather than allocate it.
-    if parts.is_empty() || width * height > 8 * data.len() {
+    let canvas = width.checked_mul(height);
+    if parts.is_empty() || canvas.is_none_or(|pixels| pixels > 8 * data.len()) {
         return Err(DecodeError::Invalid);
     }
     let mut image = Image::new(width as u32, height as u32)?;

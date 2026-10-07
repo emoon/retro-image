@@ -37,9 +37,14 @@ pub(super) fn decode(data: &[u8]) -> Result<Image, DecodeError> {
         if depth > 6 {
             return Err(FAIL);
         }
-        let len = width / 8 * height * depth;
-        let planes = data.get(pos + 10..pos + 10 + len).ok_or(FAIL)?;
-        pos += 10 + len;
+        // The product of three header words overflows a 32-bit usize.
+        let len = (width / 8)
+            .checked_mul(height)
+            .and_then(|n| n.checked_mul(depth))
+            .ok_or(FAIL)?;
+        let end = (pos + 10).checked_add(len).ok_or(FAIL)?;
+        let planes = data.get(pos + 10..end).ok_or(FAIL)?;
+        pos = end;
         objects.push(Object {
             width,
             height,
