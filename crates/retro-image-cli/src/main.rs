@@ -3,6 +3,7 @@
 //! ```text
 //! retro-image INPUT [-o OUTPUT]
 //! retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]   (thumbnailer mode)
+//! retro-image ... [--max-image-mb MB]   (size limit, default 32)
 //! retro-image --list-formats
 //! retro-image --mime-xml | --thumbnailer
 //! ```
@@ -32,6 +33,7 @@ const MAX_INPUT_LEN: u64 = 32 << 20;
 
 const USAGE: &str = "usage: retro-image INPUT [-o OUTPUT]
        retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]
+       retro-image ... [--max-image-mb MB]
        retro-image --list-formats | --mime-xml | --thumbnailer";
 
 struct Convert {
@@ -42,6 +44,8 @@ struct Convert {
     /// Extension to choose the format by, instead of the input's own (the
     /// input may be a symlink target without one).
     ext: Option<String>,
+    /// Largest decoded picture, in MiB; the library's default if not given.
+    max_image_mb: Option<usize>,
 }
 
 fn main() -> ExitCode {
@@ -79,12 +83,16 @@ fn parse(args: &[String]) -> Option<Convert> {
     let mut output = None;
     let mut size = None;
     let mut ext = None;
+    let mut max_image_mb = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-i" => input = Some(PathBuf::from(args.next()?)),
             "-o" => output = Some(PathBuf::from(args.next()?)),
             "-s" => size = Some(args.next()?.parse().ok().filter(|&s| s > 0)?),
+            "--max-image-mb" => {
+                max_image_mb = Some(args.next()?.parse().ok().filter(|&mb| mb > 0)?);
+            }
             "--ext" => ext = Some(args.next()?.trim_start_matches('.').to_owned()),
             positional if !positional.starts_with('-') && input.is_none() => {
                 input = Some(PathBuf::from(positional));
@@ -103,10 +111,19 @@ fn parse(args: &[String]) -> Option<Convert> {
         output,
         size,
         ext,
+        max_image_mb,
     })
 }
 
 fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
+    if let Some(mb) = convert.max_image_mb {
+        let bytes = mb
+            .checked_mul(1 << 20)
+            .ok_or("--max-image-mb is too large")?;
+        retro_image::Limits::default()
+            .with_max_image_bytes(bytes)
+            .install();
+    }
     let data = read_input(&convert.input)?;
     let filename = match &convert.ext {
         Some(ext) => format!("input.{ext}"),
