@@ -3,9 +3,10 @@
 //! ```text
 //! retro-image INPUT [-o OUTPUT]
 //! retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]   (thumbnailer mode)
-//! retro-image ... [--max-image-mb MB]   (size limit, default 32)
+//! retro-image ... [--max-image-mb MB]   (size limit, library default)
 //! retro-image --list-formats
 //! retro-image --mime-xml | --thumbnailer
+//! retro-image --help | --version
 //! ```
 //!
 //! On failure nothing is written and the exit code is non-zero, as
@@ -31,10 +32,16 @@ use std::process::ExitCode;
 /// comes close, so such a file is not a retro image.
 const MAX_INPUT_LEN: u64 = 32 << 20;
 
-const USAGE: &str = "usage: retro-image INPUT [-o OUTPUT]
+fn usage() -> String {
+    format!(
+        "usage: retro-image INPUT [-o OUTPUT]
        retro-image -i INPUT -o OUTPUT [-s SIZE] [--ext EXT]
-       retro-image ... [--max-image-mb MB]
-       retro-image --list-formats | --mime-xml | --thumbnailer";
+       retro-image ... [--max-image-mb MB]   (default {})
+       retro-image --list-formats | --mime-xml | --thumbnailer
+       retro-image --help | --version",
+        retro_image::DEFAULT_MAX_IMAGE_BYTES >> 20
+    )
+}
 
 struct Convert {
     input: PathBuf,
@@ -51,6 +58,14 @@ struct Convert {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.as_slice() {
+        [flag] if flag == "--help" || flag == "-h" => {
+            println!("{}", usage());
+            return ExitCode::SUCCESS;
+        }
+        [flag] if flag == "--version" || flag == "-V" => {
+            println!("retro-image {}", env!("CARGO_PKG_VERSION"));
+            return ExitCode::SUCCESS;
+        }
         [flag] if flag == "--list-formats" => {
             print!("{}", freedesktop::format_list());
             return ExitCode::SUCCESS;
@@ -66,16 +81,36 @@ fn main() -> ExitCode {
         _ => {}
     }
     let Some(convert) = parse(&args) else {
-        eprintln!("{USAGE}");
+        eprintln!("{}", usage());
         return ExitCode::from(2);
     };
     match run(&convert) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("{}: {e}", convert.input.display());
+            eprintln!("{}: {}", convert.input.display(), describe(e.as_ref()));
             ExitCode::FAILURE
         }
     }
+}
+
+/// The message for a failure. A decode failure lists each format that was
+/// tried and why it refused the file, so "unknown format" is not all a user
+/// sees.
+fn describe(error: &(dyn Error + 'static)) -> String {
+    use retro_image::DecodeError;
+    let Some(DecodeError::NoMatch { attempts }) = error.downcast_ref::<DecodeError>() else {
+        return error.to_string();
+    };
+    let mut text = error.to_string();
+    for attempt in attempts {
+        text.push_str(&format!(
+            "\n  {} {}: {}",
+            attempt.format().platform(),
+            attempt.format().name(),
+            attempt.error()
+        ));
+    }
+    text
 }
 
 fn parse(args: &[String]) -> Option<Convert> {
