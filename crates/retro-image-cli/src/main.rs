@@ -351,22 +351,45 @@ mod tests {
             .into_image()
     }
 
+    /// A scratch directory for one test, removed by the caller.
+    #[cfg(unix)]
+    fn scratch_dir(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("retro-image-cli-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
     #[cfg(unix)]
     #[test]
-    fn companions_work_for_non_utf8_names_and_stop_at_the_budget() {
+    fn companion_reads_stop_at_the_budget() {
         use retro_image::Companions;
-        use std::os::unix::ffi::OsStrExt;
-        let dir = std::env::temp_dir().join(format!("retro-image-cli-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let input = dir.join(std::ffi::OsStr::from_bytes(b"p\xFFic.mic"));
-        let companion = dir.join(std::ffi::OsStr::from_bytes(b"P\xFFIC.col"));
-        std::fs::write(&companion, [7u8; 1000]).unwrap();
+        let dir = scratch_dir("budget");
+        let input = dir.join("pic.mic");
+        std::fs::write(dir.join("PIC.col"), [7u8; 1000]).unwrap();
 
         let siblings = SiblingFiles::new(&input);
         siblings.budget.set(1500);
         assert_eq!(siblings.get("col").unwrap().len(), 1000);
         // 500 bytes left: the same file no longer fits.
         assert!(siblings.get("col").is_none());
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    // macOS file systems reject names that are not valid UTF-8.
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn companions_work_for_non_utf8_names() {
+        use retro_image::Companions;
+        use std::os::unix::ffi::OsStrExt;
+        let dir = scratch_dir("non-utf8");
+        let input = dir.join(std::ffi::OsStr::from_bytes(b"p\xFFic.mic"));
+        let companion = dir.join(std::ffi::OsStr::from_bytes(b"P\xFFIC.col"));
+        std::fs::write(&companion, [7u8; 1000]).unwrap();
+
+        let siblings = SiblingFiles::new(&input);
+        assert_eq!(siblings.get("col").unwrap().len(), 1000);
 
         std::fs::remove_dir_all(&dir).unwrap();
     }
