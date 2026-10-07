@@ -184,7 +184,9 @@ pub(crate) fn unpack(data: &[u8]) -> Option<Vec<u8>> {
         } else {
             distance_values[which - 1][selector]
         };
-        let distance = 1 + base + reader.bits(distance_bits[which][selector])? as usize;
+        let extra = reader.bits(distance_bits[which][selector])? as usize;
+        // Up to 32 extra bits, so the sum can wrap on a 32-bit target.
+        let distance = base.checked_add(extra)?.checked_add(1)?;
         out.copy(distance, count)?;
     }
 }
