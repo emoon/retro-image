@@ -33,20 +33,33 @@ retro-image = "0.0.1"
 
 ```rust
 let data = std::fs::read("PICTURE.PI1")?;
-let image = retro_image::decode("PICTURE.PI1", &data)?;
+let decoded = retro_image::decode("PICTURE.PI1", &data)?;
+let image = decoded.image();
 let (width, height) = (image.width(), image.height());
 let rgb: &[u8] = image.rgb(); // 3 bytes per pixel, row by row
+println!("{} / {}", decoded.format().platform(), decoded.format().name());
 ```
 
 If a picture has transparency, `image.has_alpha()` is true. `rgb()` still returns only the color
 channels, and they are black wherever a pixel is fully transparent. `rgba()` copies the pixels
-with straight (not premultiplied) alpha, and `flattened([r, g, b])` draws the picture over a
+with straight (not premultiplied) alpha, and `flattened([r, g, b])` returns a copy drawn over a
 background color. For these pictures the command line writes a PNG with an alpha channel.
 
 The file name tells it which formats to try. Many formats also have a reliable signature,
 so those still decode if the extension is wrong. A few formats keep their colors in a
-second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass the
-extra file in.
+second file, such as a `.SCR` with a `.PAL`. For those, call `decode_with` and pass an
+implementation of `Companions` that can fetch the extra file.
+
+When nothing decodes the file, the error says why. `DecodeError::NoMatch` lists every format
+that was tried and the reason it gave, and `DecodeError::UnknownFormat` means that no format
+uses the extension and none recognized the content. The enum is `#[non_exhaustive]`, so keep a
+wildcard arm.
+
+Decoding never panics on a truncated or corrupt file, it returns an error. It also doesn't let a
+header demand memory: a decoded picture may take at most 32 MiB by default (4 bytes per pixel,
+about 8.4 million pixels), and a bigger one fails with `DecodeError::TooLarge` before anything
+is allocated. Call `Limits::default().with_max_image_bytes(n).install()` once at start-up to
+change it. The limit applies to the whole process.
 
 ## Command line
 
@@ -54,6 +67,7 @@ extra file in.
 cargo install retro-image-cli
 retro-image PICTURE.PI1                  # writes PICTURE.PI1.png
 retro-image --list-formats
+retro-image --max-image-mb 64 BIG.GIF    # raise the picture size limit (default 32)
 ```
 
 It can also generate thumbnails for file managers that use freedesktop thumbnailers:
