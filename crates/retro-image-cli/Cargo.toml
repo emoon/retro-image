@@ -21,3 +21,6 @@ doc = false
 [dependencies]
 retro-image.workspace = true
 png.workspace = true
+
+[lints]
+workspace = true

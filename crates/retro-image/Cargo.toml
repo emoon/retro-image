@@ -15,6 +15,6 @@ categories = ["multimedia::images", "no-std", "parser-implementations"]
 [dev-dependencies]
 png.workspace = true
 
-[lints.rust]
-# cargo-fuzz builds with `--cfg fuzzing`.
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+[lints]
+workspace = true
+

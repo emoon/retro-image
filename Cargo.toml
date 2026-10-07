@@ -15,6 +15,16 @@ readme = "README.md"
 retro-image = { path = "crates/retro-image", version = "0.0.1" }
 png = "0.18"
 
+[workspace.lints.rust]
+# cargo-fuzz builds with `--cfg fuzzing`.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
+unsafe_op_in_unsafe_fn = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+missing_safety_doc = "warn"
+
 # The corpus tests decode thousands of files many times over; optimise them
 # but keep overflow checks and debug assertions so arithmetic bugs still panic.
 [profile.test]
