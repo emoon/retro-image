@@ -310,7 +310,8 @@ mod tests {
         let as_iff = crate::decode("x.iff", &ilbm).unwrap();
         let renamed = crate::decode("x.xyz", &ilbm).unwrap();
         assert_eq!(as_iff, renamed);
-        assert_eq!(renamed.rgb(), &[0xff, 0xff, 0xff]);
+        assert_eq!(renamed.image().rgb(), &[0xff, 0xff, 0xff]);
+        assert_eq!(renamed.format().name(), "Interchange File Format");
         assert_eq!(
             crate::decode("x.xyz", b"not a picture"),
             Err(DecodeError::UnknownFormat)

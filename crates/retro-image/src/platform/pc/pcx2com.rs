@@ -98,7 +98,7 @@ mod tests {
         let image = decode_pcx2com(&com).unwrap();
         assert_eq!((image.width(), image.height()), (320, 200));
         assert_eq!(image.get(319, 199), 0xff0082);
-        assert_eq!(crate::decode("picture.com", &com), Ok(image));
+        assert_eq!(crate::decode("picture.com", &com).unwrap().image(), &image);
         let last = com.len() - 1;
         com[last] = 0;
         assert!(decode_pcx2com(&com).is_err());

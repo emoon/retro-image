@@ -438,8 +438,8 @@ mod tests {
         ] {
             let data = mag(machine, 0, 0, 7, &[0x44; 48], &[0x10, 0x01, 0, 0]);
             let ours = decode_mag(&data, expected).unwrap();
-            assert_eq!(crate::decode("x.dat", &data), Ok(ours.clone()));
-            assert_eq!(crate::decode("x.mag", &data), Ok(ours));
+            assert_eq!(crate::decode("x.dat", &data).unwrap().image(), &ours);
+            assert_eq!(crate::decode("x.mag", &data).unwrap().image(), &ours);
             let (format, _) = crate::candidates("x.dat")
                 .find_map(|f| f.decode(&data).ok().map(|i| (f, i)))
                 .unwrap();

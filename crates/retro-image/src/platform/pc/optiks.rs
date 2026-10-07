@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(image.get(0, 0), 0xffffff);
         assert_eq!(image.get(7, 1), 0xffffff);
         assert_eq!(image.get(1, 0), 0);
-        assert_eq!(crate::decode("picture.com", &com), Ok(image));
+        assert_eq!(crate::decode("picture.com", &com).unwrap().image(), &image);
         com[at - 13] = 0;
         assert!(decode_optiks(&com).is_err());
     }

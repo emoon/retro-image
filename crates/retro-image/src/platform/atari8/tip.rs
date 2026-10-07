@@ -105,7 +105,10 @@ mod tests {
     #[test]
     fn detected_by_content() {
         let data = tip(0x99, 0x44, 0xff);
-        assert_eq!(crate::decode("x.dat", &data), decode_tip(&data));
+        assert_eq!(
+            crate::decode("x.dat", &data).map(crate::Decoded::into_image),
+            decode_tip(&data)
+        );
     }
 
     #[test]

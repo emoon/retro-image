@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(image.get(0, 0), 0xff0082);
         assert_eq!(image.get(1, 0), 0);
         // Found by content under the name a DOS program has.
-        assert_eq!(crate::decode("picture.com", &com), Ok(image));
+        assert_eq!(crate::decode("picture.com", &com).unwrap().image(), &image);
         com[at] = b'Q';
         assert!(decode_pixit(&com).is_err());
     }

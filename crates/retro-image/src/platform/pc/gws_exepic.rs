@@ -183,7 +183,10 @@ mod tests {
         let file = exe(2, 8, STORED as u16, &[1, 3]);
         let stored = decode_gws_exepic(&file).unwrap();
         assert_eq!([stored.get(0, 0), stored.get(1, 0)], [0x010101, 0x030303]);
-        assert_eq!(crate::decode("picture.exe", &file), Ok(stored));
+        assert_eq!(
+            crate::decode("picture.exe", &file).unwrap().image(),
+            &stored
+        );
         // C2 01: two pixels of color 1.
         let packed = decode_gws_exepic(&exe(2, 8, RUN_LENGTH as u16, &[0xc2, 1])).unwrap();
         assert_eq!([packed.get(0, 0), packed.get(1, 0)], [0x010101; 2]);

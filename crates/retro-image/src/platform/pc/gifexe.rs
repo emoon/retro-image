@@ -69,8 +69,8 @@ mod tests {
         assert_eq!((image.width(), image.height()), (1, 1));
         // Found by content under any name: no format claims `.exe` or `.com`,
         // so those files are not all sent to the image viewer by extension.
-        assert_eq!(crate::decode("picture.exe", &exe), Ok(image.clone()));
-        assert_eq!(crate::decode("picture.bin", &exe), Ok(image));
+        assert_eq!(crate::decode("picture.exe", &exe).unwrap().image(), &image);
+        assert_eq!(crate::decode("picture.bin", &exe).unwrap().image(), &image);
         assert!(
             !crate::formats().any(|f| f.matches_filename("x.exe") || f.matches_filename("x.com"))
         );

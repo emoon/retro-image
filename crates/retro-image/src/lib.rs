@@ -8,7 +8,7 @@
 //!
 //! ```
 //! fn to_rgb(filename: &str, data: &[u8]) -> Result<Vec<u8>, retro_image::DecodeError> {
-//!     Ok(retro_image::decode(filename, data)?.into_rgb())
+//!     Ok(retro_image::decode(filename, data)?.into_image().into_rgb())
 //! }
 //! ```
 
@@ -23,6 +23,7 @@ use alloc::vec::Vec;
 
 mod bytes;
 mod codec;
+mod decoded;
 mod error;
 mod format;
 mod image;
@@ -35,6 +36,7 @@ mod sheet;
 mod simd;
 mod tiles;
 
+pub use decoded::Decoded;
 pub use error::{Attempt, DecodeError};
 pub use format::{Companions, Format, FormatId, NoCompanions, candidates, formats};
 pub(crate) use image::BitOrder;
@@ -51,12 +53,13 @@ pub use simd::check_levels as fuzz_check_simd_levels;
 const _: () = {
     const fn is_send_sync<T: Send + Sync>() {}
     is_send_sync::<Image>();
+    is_send_sync::<Decoded>();
     is_send_sync::<Format>();
     is_send_sync::<DecodeError>();
 };
 
 /// Decodes `data` on its own. See [`decode_with`].
-pub fn decode(filename: &str, data: &[u8]) -> Result<Image, DecodeError> {
+pub fn decode(filename: &str, data: &[u8]) -> Result<Decoded, DecodeError> {
     decode_with(filename, data, &NoCompanions)
 }
 
@@ -70,11 +73,11 @@ pub fn decode_with(
     filename: &str,
     data: &[u8],
     companions: &dyn Companions,
-) -> Result<Image, DecodeError> {
+) -> Result<Decoded, DecodeError> {
     let mut attempts = Vec::new();
     for format in candidates(filename) {
         match format.decode_with(data, companions) {
-            Ok(image) => return Ok(image),
+            Ok(image) => return Ok(Decoded { image, format }),
             Err(error) => attempts.push(Attempt::new(format, error)),
         }
     }

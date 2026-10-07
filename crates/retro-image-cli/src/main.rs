@@ -117,7 +117,8 @@ fn run(convert: &Convert) -> Result<(), Box<dyn Error>> {
             .unwrap_or_default()
             .to_owned(),
     };
-    let image = retro_image::decode_with(&filename, &data, &SiblingFiles(&convert.input))?;
+    let image =
+        retro_image::decode_with(&filename, &data, &SiblingFiles(&convert.input))?.into_image();
     let raster = match convert.size {
         Some(size) => thumbnail::fit(&image, size),
         None => Raster::of(&image),
@@ -241,7 +242,9 @@ mod tests {
         )
         .into_bytes();
         file.extend_from_slice(rgba);
-        retro_image::decode("picture.pam", &file).unwrap()
+        retro_image::decode("picture.pam", &file)
+            .unwrap()
+            .into_image()
     }
 
     fn color_type(png_data: &[u8]) -> png::ColorType {
