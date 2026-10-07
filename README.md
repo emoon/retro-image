@@ -70,7 +70,7 @@ patch.
 cargo install retro-image-cli
 retro-image PICTURE.PI1                  # writes PICTURE.PI1.png
 retro-image --list-formats
-retro-image --max-image-mb 64 BIG.GIF    # raise the picture size limit (default 32)
+retro-image --max-image-mb 128 BIG.GIF   # raise the picture size limit (default 64)
 ```
 
 It can also generate thumbnails for file managers that use freedesktop thumbnailers:

@@ -16,7 +16,7 @@ minor-version change.
 - `FormatId` and `Format::id()`, a stable identity for a format.
 - `Format` accessors `platform()`, `name()` and `extensions()`.
 - `Limits` and `DEFAULT_MAX_IMAGE_BYTES`: a process-wide cap on decoded picture size,
-  32 MiB (4 bytes per pixel) by default. Change it with
+  64 MiB (4 bytes per pixel) by default. Change it with
   `Limits::default().with_max_image_bytes(n).install()`. Images over the cap fail with
   `DecodeError::TooLarge` before anything is allocated.
 - `Image::flattened(background)`, which composites a picture with alpha onto a color.
@@ -26,7 +26,8 @@ minor-version change.
 - Runnable examples in the crate docs, and a written promise that decoding never panics on
   malformed input. `Image`, `Decoded`, `Format` and `DecodeError` are `Send + Sync`, and a
   compile-time check keeps them that way.
-- Command line: `--max-image-mb MB` sets the size limit.
+- Command line: `--max-image-mb MB` sets the size limit; `--help` and `--version` work; errors
+  say which formats were tried and why they refused the file.
 
 ### Changed
 
