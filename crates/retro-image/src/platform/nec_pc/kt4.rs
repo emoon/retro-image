@@ -49,6 +49,9 @@ const COLUMNS: usize = 160;
 const ROWS: usize = 100;
 const WIDTH: usize = COLUMNS * 4;
 const RAW_MARKER: u8 = 0xff;
+/// How many times the cell count plus the input length the area fills may
+/// write before the file is refused.
+const WORK_FACTOR: usize = 4;
 
 /// Top tile then bottom tile, three plane bytes each.
 type Cell = [u8; 6];
@@ -107,6 +110,8 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
     let mut cells: Vec<Option<Cell>> = vec![None; COLUMNS * ROWS];
     // Whether the segments use mode 0 (all of them or none).
     let mut half_height: Option<bool> = None;
+    // Areas may overlap, so bound the cells written by the input size.
+    let mut budget = WORK_FACTOR * (COLUMNS * ROWS + data.len());
 
     loop {
         let count = reader.byte().ok_or(bad)?;
@@ -130,6 +135,9 @@ pub(in crate::platform) fn decode_kt4(data: &[u8]) -> Result<Image, DecodeError>
                 break;
             }
             let (columns, rows) = area(&mut reader, first).ok_or(bad)?;
+            budget = budget
+                .checked_sub(columns.clone().count() * rows.clone().count())
+                .ok_or(bad)?;
             for row in rows {
                 for column in columns.clone() {
                     cells[row * COLUMNS + column] = Some(cell);
@@ -214,6 +222,17 @@ mod tests {
             pos: 0,
         };
         assert!(area(&mut r, 0xc0).is_none());
+    }
+
+    #[test]
+    fn repeated_full_screen_fills_are_bounded() {
+        // One segment with 100000 whole-screen fills: 1.6e9 writes unbounded.
+        let mut file = vec![2, 1, 2, 3, 4, 5, 6];
+        for _ in 0..100_000 {
+            file.extend_from_slice(&[0x00, 0, 0, 159, 99]);
+        }
+        file.extend_from_slice(&[0xff, 0xff, 0xff]);
+        assert!(decode_kt4(&file).is_err());
     }
 
     #[test]
