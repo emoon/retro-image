@@ -61,6 +61,9 @@ about 8.4 million pixels), and a bigger one fails with `DecodeError::TooLarge` b
 is allocated. Call `Limits::default().with_max_image_bytes(n).install()` once at start-up to
 change it. The limit applies to the whole process.
 
+The minimum supported Rust version is 1.94. Raising it counts as a minor-version change, not a
+patch.
+
 ## Command line
 
 ```sh
